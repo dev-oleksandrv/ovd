@@ -17,10 +17,12 @@ paths:
 
 - The design is the spec: [OVD Desktop v2 in Claude Design](https://claude.ai/design/p/11662d93-ccfb-4d11-9761-b6fd499be3fd?file=OVD+Desktop+v2.dc.html). Layout, copy, states and colors come from it (ADR 0019). The maintainer makes UI changes there first, then they go to code.
 - When code and design disagree, follow the design or ask the maintainer to update it. Don't improvise screens, copy or states. If you can't open the design, ask for the screen (export or screenshot) before building it.
-- Dark theme only. Colors, radii and fonts come from the token file only; no hard-coded hex in components.
+- Dark theme only. Styling is Tailwind CSS v4. Tokens live in the `@theme` block of `src/renderer/src/assets/main.css` (the default Tailwind palette is removed). Components use token classes only (`bg-panel`, `text-muted`, `rounded-card`, `text-label`…): no hex values and no arbitrary colors in components. A missing value becomes a new token first.
   - Tokens: background `#0B0E12`, text `#E7EBF0`, accent `#7CE0C3`, warning `#F2C26B`, error `#FF7A7A`, info `#7AB8FF`, muted `#8E98A6`, plus log-level colors (V, D, I, W, E).
-  - Fonts: Geist for UI, Geist Mono for IDs, commands and logs. Material Symbols for icons.
-- Build screens from the base components (button, icon button, tabs with underline and badge, chip, status dot with pulse, table, key–value rows, code block with Copy, toast, modal wizard with "Step N of 4", empty state). Add to the base set rather than one-off styling.
+  - Fonts: Geist for UI, Geist Mono for IDs, commands and logs. Material Symbols Rounded for icons (`<Icon name=… />`). All bundled locally from npm; the app never loads fonts from the network.
+- Build screens from the base components in `src/renderer/src/ui/` (`Button`, `IconButton`, `Tabs`, `Badge`, `Chip`, `StatusDot`, `StatusPill`, `Table`, `KeyValueGrid`, `Card`, `CodeBlock`, `Modal`, `Wizard`, `EmptyState`, `LoadingState`, `ErrorState`, `OfflineState`) and the frame in `src/renderer/src/frame/`. Add to the base set rather than one-off styling.
+- Every new base component or state goes into the dev-only gallery (`src/renderer/src/gallery/`, ⌘⇧G / Ctrl+Shift+G in `pnpm run gui`).
+- Toasts and the CLI echo go through `useFeedback().notify({ tone, text, cli })`; passing `cli` also updates the status-bar echo.
 
 ## Behavior
 
