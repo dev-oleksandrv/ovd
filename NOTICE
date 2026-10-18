@@ -1,0 +1,11 @@
+OVD (Open Vega DevTools)
+Copyright 2026 Oleksandr Voronkov
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+OVD is an unofficial, open-source device toolkit for Vega OS developers.
+It is not affiliated with, endorsed by, or sponsored by Amazon.
+Vega and Fire TV are trademarks of Amazon.com, Inc. or its affiliates.
+
+OVD does not bundle or redistribute the Vega SDK. It calls the SDK tools
+installed on the user's machine.
