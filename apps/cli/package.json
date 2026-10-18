@@ -4,21 +4,24 @@
   "description": "Open Vega DevTools CLI",
   "license": "Apache-2.0",
   "type": "module",
-  "bin": { "ovd": "./dist/index.js" },
-  "files": ["dist"],
+  "bin": {
+    "ovd": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --target node22 --clean",
+    "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "commander": "^15.0.0"
+    "commander": "^15.0.0",
+    "@ovd/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
     "tsup": "^9.0.0",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "tsx": "^4.23.15"
   }
 }
