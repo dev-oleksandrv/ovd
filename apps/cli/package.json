@@ -3,24 +3,50 @@
   "version": "0.0.0",
   "description": "Open Vega DevTools CLI",
   "license": "Apache-2.0",
+  "author": "Oleksandr Voronkov",
+  "homepage": "https://github.com/dev-oleksandrv/ovd#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dev-oleksandrv/ovd.git",
+    "directory": "apps/cli"
+  },
+  "bugs": "https://github.com/dev-oleksandrv/ovd/issues",
+  "keywords": [
+    "vega",
+    "vega-os",
+    "fire-tv",
+    "devtools",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "type": "module",
   "bin": {
     "ovd": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "cp ../../LICENSE ../../NOTICE .",
+    "postpack": "rm -f LICENSE NOTICE"
   },
   "dependencies": {
-    "commander": "^15.0.0",
-    "@ovd/core": "workspace:*"
+    "commander": "^15.0.0"
   },
   "devDependencies": {
+    "@ovd/core": "workspace:*",
     "tsup": "^9.0.0",
     "tsx": "^4.23.15"
   }

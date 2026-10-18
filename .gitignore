@@ -11,3 +11,8 @@ release/
 # Working specs and plans (polished docs live in docs/ARCHITECTURE.md, docs/ROADMAP.md and docs/adr/)
 docs/superpowers/
 .superpowers/
+
+# Copied into the CLI tarball at pack time
+apps/cli/LICENSE
+apps/cli/NOTICE
+*.tgz
