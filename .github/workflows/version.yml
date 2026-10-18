@@ -30,11 +30,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Opens or updates the Version PR on changeset-release/main while changesets are pending.
-      - uses: changesets/action@v2
+      - id: changesets
+        uses: changesets/action@v2
         with:
           version-script: pnpm exec changeset version
           commit-message: 'chore: release next version'
           pr-title: 'chore: release next version'
           github-token: ${{ secrets.CHANGESETS_TOKEN }}
       # Once the Version PR is merged, nothing is pending: tag the new version to start the release.
-      - run: scripts/tag-release.sh
+      # While changesets are pending the action leaves the Version PR branch checked out, so the
+      # tag step must not run then.
+      - if: steps.changesets.outputs.hasChangesets == 'false'
+        run: scripts/tag-release.sh
