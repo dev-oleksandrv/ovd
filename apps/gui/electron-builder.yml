@@ -12,11 +12,15 @@ files:
 asarUnpack:
   - resources/**
 # macOS and Ubuntu only (ADR 0013).
+# One universal dmg for Apple Silicon and Intel. Signing and notarization run only when the
+# release workflow provides credentials (ADR 0021); otherwise the build is unsigned.
 mac:
   target:
-    - dmg
+    - target: dmg
+      arch: [universal]
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  notarize: false
 dmg:
   artifactName: ovd-${version}-${arch}.${ext}
 linux:
