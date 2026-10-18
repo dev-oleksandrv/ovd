@@ -1,5 +1,7 @@
 appId: io.github.dev-oleksandrv.ovd
 productName: OVD
+# The package name (@ovd/gui) is not a valid file name; Linux packages need an explicit one.
+executableName: ovd
 directories:
   buildResources: build
 files:
