@@ -59,7 +59,8 @@ CI fails a pull request that changes package sources (`apps/*/src`, `packages/*/
 1. Each merge to `main` updates the Version PR, **chore: release next version**. It bumps the shared version and writes the changelogs.
 2. Merging the Version PR is the release decision. The Version workflow then tags `v<version>`.
 3. The tag starts the Release workflow: desktop builds (`.dmg`, AppImage, `.deb`), the npm publish and a GitHub Release.
-4. To test the pipeline without publishing, push a tag containing `-dry`, e.g. `v0.1.0-dry.1`.
+4. To test the pipeline without publishing, push a tag containing `-dry`, e.g. `v0.1.0-dry.1` (unsigned builds, npm dry run). To test macOS signing and notarization, run the Release workflow by hand: `gh workflow run release.yml`; the signed builds land in the run's artifacts.
+5. A real tag must match the version in `apps/cli/package.json`, or the release stops before publishing.
 
 The workflows need two secrets: `CHANGESETS_TOKEN` (fine-grained PAT for this repository, Contents and Pull requests read/write) and `NPM_TOKEN`. macOS signing and notarization use `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`; without them the `.dmg` is unsigned (ADR 0021).
 
