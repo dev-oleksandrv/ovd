@@ -44,6 +44,7 @@ The maintainer drives the process. Propose, then wait for a decision.
   - Repo-level changes outside packages: no scope (`docs: …`, `ci: …`, `chore: …`), or `deps` for dependency updates (`build(deps): …`).
   - Subject: imperative, lowercase, no trailing period, ≤ 72 chars. Breaking changes: `!` plus a `BREAKING CHANGE:` footer.
 - Claude may create branches and commit. Claude must **never push, force-push, rewrite history, or merge into `main`**, except when the maintainer invokes `/ship` (`.claude/skills/ship/`): it pushes the current branch, opens a PR, and merges it once CI is green.
+- Every user-facing change adds a changeset (`.changeset/*.md`, `pnpm changeset`) on its branch; no user-visible change → `pnpm changeset --empty`. CI fails package changes without one. Merging the Version PR (`changeset-release/main`) tags `v<version>`, and the tag releases npm + desktop builds (ADR 0020).
 - `docs/superpowers/` (working specs and plans) is gitignored. Only polished docs (`docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/adr/`) are versioned.
 
 ## Open source: no secrets, no personal data

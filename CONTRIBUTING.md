@@ -43,9 +43,30 @@ Commits follow [Conventional Commits 1.0](https://www.conventionalcommits.org/en
 - **Subject:** imperative, lowercase, no trailing period, ≤ 72 characters.
 - **Breaking changes** (including `--json` output shape changes): add `!` and a `BREAKING CHANGE:` footer.
 
+## Changesets
+
+Every change a user can notice needs a changeset: a small file that names the version bump and says what changed, in plain language. It becomes the changelog entry and the release notes.
+
+```bash
+pnpm changeset          # pick patch / minor / major, write the summary
+pnpm changeset --empty  # package code changed, but nothing the user notices
+```
+
+CI fails a pull request that changes package sources (`apps/*/src`, `packages/*/src`, package manifests) without one.
+
+## Releases
+
+1. Each merge to `main` updates the Version PR, **chore: release next version**. It bumps the shared version and writes the changelogs.
+2. Merging the Version PR is the release decision. The Version workflow then tags `v<version>`.
+3. The tag starts the Release workflow: desktop builds (`.dmg`, AppImage, `.deb`), the npm publish and a GitHub Release.
+4. To test the pipeline without publishing, push a tag containing `-dry`, e.g. `v0.1.0-dry.1`.
+
+The workflows need two secrets: `CHANGESETS_TOKEN` (fine-grained PAT for this repository, Contents and Pull requests read/write) and `NPM_TOKEN`.
+
 ## Before opening a pull request
 
 - `pnpm run check` passes.
+- A changeset is included, if the change is user-facing.
 - New logic comes with tests that run without hardware.
 - New parsers come with recorded fixtures.
 - The feature works in both the CLI and the desktop app.

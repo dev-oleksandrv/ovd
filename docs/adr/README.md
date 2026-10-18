@@ -45,3 +45,4 @@ An ADR records one significant decision: the context, what was decided, and what
 - [0017 MCP server: stdio and device control only](0017-mcp-server-scope.md)
 - [0018 Stage-by-stage releases and a growing UI](0018-stage-releases-growing-ui.md)
 - [0019 The desktop design is the spec](0019-desktop-design-is-the-spec.md)
+- [0020 Changesets and tag-driven releases](0020-changesets-and-tag-releases.md)
