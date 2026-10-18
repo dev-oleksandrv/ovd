@@ -1,7 +1,7 @@
 ---
 paths:
-  - "packages/**"
-  - "apps/**"
+  - 'packages/**'
+  - 'apps/**'
 ---
 
 # Architecture rules

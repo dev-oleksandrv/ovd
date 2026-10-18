@@ -1,6 +1,6 @@
 ---
 paths:
-  - "apps/cli/**"
+  - 'apps/cli/**'
 ---
 
 # CLI rules

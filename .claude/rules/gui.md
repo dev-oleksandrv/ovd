@@ -1,6 +1,6 @@
 ---
 paths:
-  - "apps/gui/**"
+  - 'apps/gui/**'
 ---
 
 # Desktop (Electron) rules

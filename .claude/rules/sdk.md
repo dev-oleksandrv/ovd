@@ -1,7 +1,7 @@
 ---
 paths:
-  - "packages/core/**"
-  - "fixtures/**"
+  - 'packages/core/**'
+  - 'fixtures/**'
 ---
 
 # Vega SDK integration rules

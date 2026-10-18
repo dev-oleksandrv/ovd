@@ -1,8 +1,8 @@
 ---
 paths:
-  - "packages/**"
-  - "apps/**"
-  - "fixtures/**"
+  - 'packages/**'
+  - 'apps/**'
+  - 'fixtures/**'
 ---
 
 # Testing rules

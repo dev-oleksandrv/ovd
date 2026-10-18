@@ -8,15 +8,16 @@ The official Vega tooling can do everything, but it is spread across about ten C
 
 **Users:**
 
-| User | Main job | Priority |
-|---|---|---|
-| Indie or small-team Vega developer | Build → install → see logs → fix, many times a day | Primary |
-| Developer porting a Fire OS (Android) app | Find adb / Logcat / scrcpy equivalents | Secondary |
-| QA engineer with a Fire TV stick | Install a build, drive the app, capture evidence | Secondary |
-| CI pipeline | Automated smoke tests on every commit | Later |
-| AI coding agent | Install, launch, read logs, look at the screen | Later |
+| User                                      | Main job                                           | Priority  |
+| ----------------------------------------- | -------------------------------------------------- | --------- |
+| Indie or small-team Vega developer        | Build → install → see logs → fix, many times a day | Primary   |
+| Developer porting a Fire OS (Android) app | Find adb / Logcat / scrcpy equivalents             | Secondary |
+| QA engineer with a Fire TV stick          | Install a build, drive the app, capture evidence   | Secondary |
+| CI pipeline                               | Automated smoke tests on every commit              | Later     |
+| AI coding agent                           | Install, launch, read logs, look at the screen     | Later     |
 
 **Constraints:**
+
 - **Open source** (Apache-2.0), public from day one: no secrets or personal data in the repo (ADR 0015).
 - **Wrap, don't reimplement:** the user's installed Vega SDK does the work; OVD never bundles it (ADR 0002).
 - **Platforms:** macOS and Ubuntu only (ADR 0013).
@@ -99,11 +100,11 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 
 **Exit codes:**
 
-| Code | Meaning |
-|---|---|
-| 0 | Success |
-| 1 | Failure (generic) |
-| 2 | Usage error |
+| Code | Meaning           |
+| ---- | ----------------- |
+| 0    | Success           |
+| 1    | Failure (generic) |
+| 2    | Usage error       |
 
 Specific codes (no SDK, target offline, architecture mismatch, launch not verified) are added here when the commands that use them ship.
 
@@ -121,23 +122,23 @@ Specific codes (no SDK, target offline, architecture mismatch, launch not verifi
 
 What OVD builds on (SDK 0.24). Host tools run on the dev machine; device tools run through `vega exec vda shell`.
 
-| Tool | Where | Capabilities |
-|---|---|---|
-| `vega device` | Host | `list`, `info` (JSON: OS, arch, profile, simulated, Developer Mode), `is-connected`, `install-app` (`-p` or `--dir`, Debug/Release), `uninstall-app`, `launch-app`, `terminate-app`, `is-app-installed`, `is-app-running`, `installed-apps`, `installed-packages`, `running-apps`, `copy-to`, `copy-from`, `copy-logs`, `get-log-info`, `start/stop-log-stream`, `start/stop-port-forwarding`, `run-cmd`, `shell`, `reboot` |
-| `vega devmode` | Host | `login` (browser sign-in), `enable-device --code <6-digit code>` |
-| `vega run-app`, `vega virtual-device` | Host | Install + launch in one step; Virtual Device start, stop, status |
-| `vega project` | Host | `generate`, `install --fix`, `update --dry-run`, `doctor` (non-zero exit), `update-manifest` |
-| `vega sdk` | Host | Install, list, switch, uninstall versions; `vega-sdk-requirements.json` pin; `config doctor`; `--json`, `--non-interactive` |
-| VDA (`vega exec vda`) | Host | `devices -l`, `get-serialno`, `tcpip`, `usb`, `connect`, `disconnect`, `push`/`pull`, `wait-for-device`, `reboot`, `shell`, `shell -c <component>`, `-s <serial>`. Over TCP/IP the ID is `IP:port` |
-| `vpm` | Device | `list packages`, `list components`, `info <id>`, `install`, `uninstall` |
-| `vlcm` | Device | `list` (pid, component state, lifespan state, container), `terminate-app --pkg-id/--pid [--force]`, crash history |
-| `vmsgr` | Device | `send pkg://<component>?<params>` (deep links), `enforce-security` |
-| `loggingctl` | Device | `log` (follow, priority, identity, tag, boot, PID, TID, facility, since/until, package), `config` (level, rate, mute per process), `vault` (list, JSON dump, cat ACR, size, health) |
-| `inputd-cli` | Device | Button press/long/hold/release, combos, touch, swipe, mouse, `send_text`, persistent console mode |
-| Screenshot, memory | Device | `gwsi-tool-screenshooter <file.png>` + `pull`; `ace_memusage` (USS/PSS/RSS per process, system) |
-| `vpt` | Host | `info --json`, `show-contents`, `unpack`, `dump <entry>`, `extract-locales`, `checksum`, `validate`, signing |
-| `perf` | Host | `record`, `activity-monitor`, `memory-monitor`, `kpi-visualizer` (TTFF, TTFD, fluidity, memory) |
-| Emulator console, gRPC | Host (Virtual Device) | `grpc <port>` (auth token), `sendKey`, `getScreenshot`, `network speed/delay/capture` |
+| Tool                                  | Where                 | Capabilities                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vega device`                         | Host                  | `list`, `info` (JSON: OS, arch, profile, simulated, Developer Mode), `is-connected`, `install-app` (`-p` or `--dir`, Debug/Release), `uninstall-app`, `launch-app`, `terminate-app`, `is-app-installed`, `is-app-running`, `installed-apps`, `installed-packages`, `running-apps`, `copy-to`, `copy-from`, `copy-logs`, `get-log-info`, `start/stop-log-stream`, `start/stop-port-forwarding`, `run-cmd`, `shell`, `reboot` |
+| `vega devmode`                        | Host                  | `login` (browser sign-in), `enable-device --code <6-digit code>`                                                                                                                                                                                                                                                                                                                                                            |
+| `vega run-app`, `vega virtual-device` | Host                  | Install + launch in one step; Virtual Device start, stop, status                                                                                                                                                                                                                                                                                                                                                            |
+| `vega project`                        | Host                  | `generate`, `install --fix`, `update --dry-run`, `doctor` (non-zero exit), `update-manifest`                                                                                                                                                                                                                                                                                                                                |
+| `vega sdk`                            | Host                  | Install, list, switch, uninstall versions; `vega-sdk-requirements.json` pin; `config doctor`; `--json`, `--non-interactive`                                                                                                                                                                                                                                                                                                 |
+| VDA (`vega exec vda`)                 | Host                  | `devices -l`, `get-serialno`, `tcpip`, `usb`, `connect`, `disconnect`, `push`/`pull`, `wait-for-device`, `reboot`, `shell`, `shell -c <component>`, `-s <serial>`. Over TCP/IP the ID is `IP:port`                                                                                                                                                                                                                          |
+| `vpm`                                 | Device                | `list packages`, `list components`, `info <id>`, `install`, `uninstall`                                                                                                                                                                                                                                                                                                                                                     |
+| `vlcm`                                | Device                | `list` (pid, component state, lifespan state, container), `terminate-app --pkg-id/--pid [--force]`, crash history                                                                                                                                                                                                                                                                                                           |
+| `vmsgr`                               | Device                | `send pkg://<component>?<params>` (deep links), `enforce-security`                                                                                                                                                                                                                                                                                                                                                          |
+| `loggingctl`                          | Device                | `log` (follow, priority, identity, tag, boot, PID, TID, facility, since/until, package), `config` (level, rate, mute per process), `vault` (list, JSON dump, cat ACR, size, health)                                                                                                                                                                                                                                         |
+| `inputd-cli`                          | Device                | Button press/long/hold/release, combos, touch, swipe, mouse, `send_text`, persistent console mode                                                                                                                                                                                                                                                                                                                           |
+| Screenshot, memory                    | Device                | `gwsi-tool-screenshooter <file.png>` + `pull`; `ace_memusage` (USS/PSS/RSS per process, system)                                                                                                                                                                                                                                                                                                                             |
+| `vpt`                                 | Host                  | `info --json`, `show-contents`, `unpack`, `dump <entry>`, `extract-locales`, `checksum`, `validate`, signing                                                                                                                                                                                                                                                                                                                |
+| `perf`                                | Host                  | `record`, `activity-monitor`, `memory-monitor`, `kpi-visualizer` (TTFF, TTFD, fluidity, memory)                                                                                                                                                                                                                                                                                                                             |
+| Emulator console, gRPC                | Host (Virtual Device) | `grpc <port>` (auth token), `sendKey`, `getScreenshot`, `network speed/delay/capture`                                                                                                                                                                                                                                                                                                                                       |
 
 ## 8. Known SDK behavior
 

@@ -85,7 +85,7 @@ Order: core → CLI → desktop → tests, in one branch.
 
 - TypeScript `strict`. No `any`, no non-null `!` without a comment explaining why it is safe.
 - Named exports only. One React component per file. Files: `PascalCase.tsx` for components, `camelCase.ts` otherwise.
-- Prefer small, single-purpose files. Comments explain *why*, not *what*.
+- Prefer small, single-purpose files. Comments explain _why_, not _what_.
 - Validate everything parsed from SDK output or IPC at the boundary; never pass untyped data inward.
 
 ## Vega specifics
