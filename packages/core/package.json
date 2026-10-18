@@ -1,6 +1,6 @@
 {
   "name": "@ovd/core",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "OVD core library: all device, package, app and log logic",
   "license": "Apache-2.0",
   "private": true,
