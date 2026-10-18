@@ -61,7 +61,7 @@ CI fails a pull request that changes package sources (`apps/*/src`, `packages/*/
 3. The tag starts the Release workflow: desktop builds (`.dmg`, AppImage, `.deb`), the npm publish and a GitHub Release.
 4. To test the pipeline without publishing, push a tag containing `-dry`, e.g. `v0.1.0-dry.1`.
 
-The workflows need two secrets: `CHANGESETS_TOKEN` (fine-grained PAT for this repository, Contents and Pull requests read/write) and `NPM_TOKEN`.
+The workflows need two secrets: `CHANGESETS_TOKEN` (fine-grained PAT for this repository, Contents and Pull requests read/write) and `NPM_TOKEN`. macOS signing and notarization use `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`; without them the `.dmg` is unsigned (ADR 0021).
 
 ## Before opening a pull request
 

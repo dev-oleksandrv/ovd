@@ -46,3 +46,4 @@ An ADR records one significant decision: the context, what was decided, and what
 - [0018 Stage-by-stage releases and a growing UI](0018-stage-releases-growing-ui.md)
 - [0019 The desktop design is the spec](0019-desktop-design-is-the-spec.md)
 - [0020 Changesets and tag-driven releases](0020-changesets-and-tag-releases.md)
+- [0021 macOS signing, notarization and a universal build](0021-macos-signing-and-universal-build.md)
