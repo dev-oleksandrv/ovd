@@ -15,9 +15,11 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test"
+    "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test",
+    "changeset": "changeset"
   },
   "devDependencies": {
+    "@changesets/cli": "3.0.3",
     "@eslint/js": "^9.39.5",
     "@types/node": "^24.19.2",
     "eslint": "^9.39.5",
