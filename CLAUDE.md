@@ -2,7 +2,7 @@
 
 Open-source (Apache-2.0), unofficial device toolkit for **Vega OS** developers. One core library, exposed as a CLI (`ovd`), an Electron desktop app, and later an MCP server and a GitHub Action. It wraps the official Vega SDK tools (`vega`, `vda`, `vpm`, `vlcm`, `vmsgr`, `loggingctl`, `inputd-cli`, `vpt`, `perf`) behind one scriptable interface: devices, packages, apps, logs, crashes, remote, screenshots.
 
-- Published on npm as `@voronkov/ovd` with the `ovd` command. Not affiliated with Amazon.
+- Published on npm as `@ovd/cli` (the maintainer's npm user scope `ovd`) with the `ovd` command. Not affiliated with Amazon.
 - Architecture: `docs/ARCHITECTURE.md`. Decisions: `docs/adr/`. Build order and stage scope: `docs/ROADMAP.md`. Read them before structural changes or starting a stage.
 - Desktop design: [OVD Desktop v2 in Claude Design](https://claude.ai/design/p/11662d93-ccfb-4d11-9761-b6fd499be3fd?file=OVD+Desktop+v2.dc.html). It is the spec for every screen; UI changes are made there first, then in code (ADR 0019).
 

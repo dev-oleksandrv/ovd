@@ -15,7 +15,7 @@ OVD wraps the official Vega SDK tools behind one consistent, scriptable interfac
 
 ## Install
 
-Not published yet. The CLI will be available as `@voronkov/ovd` on npm, and the desktop app as `.dmg`, `.deb` and AppImage on GitHub Releases.
+Not published yet. The CLI will be available as `@ovd/cli` on npm (`npm i -g @ovd/cli`, command `ovd`), and the desktop app as `.dmg`, `.deb` and AppImage on GitHub Releases.
 
 ## Development
 

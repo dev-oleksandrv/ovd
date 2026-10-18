@@ -22,5 +22,5 @@ Every stage ends with a release (ADR 0018): the CLI on npm and desktop builds on
 - One small file per user-facing pull request. `/ship` drafts it from the diff when it is missing.
 - Release notes are written with the change, not at release time.
 - The PAT expires and must be renewed. While it is expired, no Version PR appears and nothing is tagged; pending changesets wait on `main`.
-- The CLI package is still named `@ovd/cli`, and the `@ovd` npm scope is not ours. It must be renamed to `@voronkov/ovd` (ADR 0015) before the first real publish; dry runs work with either name.
+- Only `@ovd/cli` is published. `@ovd/gui` and `@ovd/core` are private and only carry the shared version.
 - Desktop builds are unsigned and not notarized until signing is decided.
