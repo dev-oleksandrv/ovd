@@ -1,0 +1,14 @@
+{
+  "name": "@ovd/core",
+  "version": "0.0.0",
+  "description": "OVD core library: all device, package, app and log logic",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
