@@ -2,11 +2,16 @@
   "name": "ovd-monorepo",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "cli": "pnpm --filter @ovd/cli dev",
     "gui": "pnpm --filter @ovd/gui dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test"
   }
 }
