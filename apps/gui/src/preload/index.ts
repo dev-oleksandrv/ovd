@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { channels, type OvdApi } from './api'
 
 const api: OvdApi = {
+  appInfo: () => ipcRenderer.invoke(channels.appInfo),
   hello: () => ipcRenderer.invoke(channels.hello)
 }
 
