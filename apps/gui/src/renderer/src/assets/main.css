@@ -1,71 +1,157 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import 'material-symbols/rounded.css';
+
+/*
+ * Design tokens from OVD Desktop v2 (ADR 0019). Components use these names only;
+ * the default Tailwind palette is removed so no off-design color can sneak in.
+ */
+@theme {
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* Surfaces */
+  --color-bg: #0b0e12;
+  --color-chrome: #0e1115;
+  --color-panel: #11151a;
+  --color-sunken: #0d1014;
+  --color-row-hover: #12161b;
+  --color-field: #13171c;
+  --color-raised: #151a20;
+  --color-control: #161b21;
+  --color-nav-hover: #171c22;
+  --color-control-hover: #1c222a;
+  --color-selected: #1a2027;
+  --color-disabled: #1f252c;
+  --color-backdrop: rgb(4 6 8 / 0.6);
+
+  /* Lines */
+  --color-line: #1b2028;
+  --color-line-row: #161a20;
+  --color-line-soft: #1e242c;
+  --color-line-menu: #232a33;
+  --color-line-strong: #2a313a;
+  --color-line-hover: #333b46;
+  --color-line-dashed: #3a4350;
+  --color-line-toast: #2f3742;
+
+  /* Text */
+  --color-text: #e7ebf0;
+  --color-text-bright: #d5dce4;
+  --color-text-soft: #b8c1cc;
+  --color-text-nav: #a3adba;
+  --color-muted: #8e98a6;
+  --color-subtle: #7c8693;
+  --color-faint: #626c79;
+  --color-group: #596370;
+
+  /* Tones */
+  --color-accent: #7ce0c3;
+  --color-accent-hover: #94ebd1;
+  --color-accent-bright: #a8f0da;
+  --color-accent-ink: #05211a;
+  --color-accent-line: #3d7f6d;
+  --color-warning: #f2c26b;
+  --color-error: #ff7a7a;
+  --color-error-soft: #ff9a9a;
+  --color-info: #7ab8ff;
+
+  /* Log levels (V, D, I, W, E) */
+  --color-log-v: #6b7480;
+  --color-log-d: #8fa3bf;
+  --color-log-i: #7ce0c3;
+  --color-log-w: #f2c26b;
+  --color-log-e: #ff7a7a;
+
+  /* Type scale */
+  --text-micro: 10.5px;
+  --text-label: 11px;
+  --text-meta: 11.5px;
+  --text-small: 12px;
+  --text-compact: 12.5px;
+  --text-body: 13px;
+  --text-lead: 15px;
+  --text-title: 16px;
+  --text-heading: 19px;
+  --text-display: 20px;
+
+  /* Radii */
+  --radius-chip: 5px;
+  --radius-control-sm: 6px;
+  --radius-control: 7px;
+  --radius-field: 8px;
+  --radius-tile: 9px;
+  --radius-card: 10px;
+  --radius-palette: 12px;
+  --radius-modal: 14px;
+
+  --shadow-popover: 0 18px 40px rgb(0 0 0 / 0.5);
+  --shadow-modal: 0 30px 80px rgb(0 0 0 / 0.6);
+  --shadow-toast: 0 12px 30px rgb(0 0 0 / 0.45);
+
+  --animate-pulse-dot: ovdpulse 1.4s ease-in-out infinite;
+  --animate-enter: ovdin 0.12s ease-out;
+  --animate-enter-toast: ovdin 0.16s ease-out;
+
+  @keyframes ovdpulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes ovdin {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
-body {
-  font-family: system-ui, sans-serif;
-  background: #111418;
-  color: #e6e8eb;
-}
-.shell {
-  display: flex;
-  height: 100vh;
-}
-.sidebar {
-  width: 200px;
-  background: #181c22;
-  padding: 20px;
-  border-right: 1px solid #262b33;
-}
-.sidebar h1 {
-  font-size: 20px;
-  margin-bottom: 24px;
-}
-.sidebar nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.sidebar a {
-  padding: 8px 10px;
-  border-radius: 6px;
-  color: #9aa3ad;
-  cursor: pointer;
-}
-.sidebar a.active {
-  background: #262b33;
-  color: #fff;
-}
-.content {
-  flex: 1;
-  padding: 28px;
-}
-.content h2 {
-  margin-bottom: 16px;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-th,
-td {
-  text-align: left;
-  padding: 10px 12px;
-  border-bottom: 1px solid #262b33;
-}
-th {
-  color: #9aa3ad;
-  font-weight: 500;
-  font-size: 13px;
-}
-.online {
-  color: #4ade80;
-}
-.stopped {
-  color: #9aa3ad;
-}
-.hint {
-  margin-top: 16px;
-  color: #6b7480;
-  font-size: 13px;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--color-accent);
+  }
+  a:hover {
+    color: var(--color-accent-bright);
+    text-decoration: underline;
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--color-accent-line);
+  }
+  ::selection {
+    background: rgb(124 224 195 / 0.28);
+  }
+  * {
+    scrollbar-color: #262d36 transparent;
+    scrollbar-width: thin;
+  }
 }
