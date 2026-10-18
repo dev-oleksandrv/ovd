@@ -1,62 +1,40 @@
-import type { JSX } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { AppFrame } from './frame/AppFrame'
+import { Welcome } from './screens/Welcome'
 
-const devices = [
-  {
-    name: 'Fire TV Stick 4K Select',
-    serial: 'G000XXXXXXXXXXXX',
-    arch: 'armv7',
-    connection: 'USB',
-    status: 'online'
-  },
-  {
-    name: 'Vega Virtual Device',
-    serial: 'emulator-5554',
-    arch: 'aarch64',
-    connection: 'local',
-    status: 'stopped'
-  }
-]
+// The gallery is imported only in development, so it never ships in a release build.
+const Gallery = import.meta.env.DEV
+  ? lazy(() => import('./gallery/Gallery').then((m) => ({ default: m.Gallery })))
+  : null
 
-function App(): JSX.Element {
+export function App() {
+  const [info, setInfo] = useState<{ version: string; platform: 'darwin' | 'linux' } | null>(null)
+  const [gallery, setGallery] = useState(false)
+
+  useEffect(() => {
+    window.ovd.appInfo().then(setInfo)
+  }, [])
+
+  useEffect(() => {
+    if (!Gallery) return
+    const onKey = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'g') {
+        setGallery((open) => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <h1>OVD</h1>
-        <nav>
-          <a className="active">Devices</a>
-          <a>Apps</a>
-          <a>Logs</a>
-          <a>Remote</a>
-        </nav>
-      </aside>
-      <main className="content">
-        <h2>Devices</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Serial</th>
-              <th>Arch</th>
-              <th>Connection</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {devices.map((d) => (
-              <tr key={d.serial}>
-                <td>{d.name}</td>
-                <td>{d.serial}</td>
-                <td>{d.arch}</td>
-                <td>{d.connection}</td>
-                <td className={d.status}>{d.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="hint">Mock data. Not connected to the SDK yet.</p>
-      </main>
-    </div>
+    <AppFrame version={info?.version ?? null} platform={info?.platform ?? null}>
+      {gallery && Gallery ? (
+        <Suspense fallback={null}>
+          <Gallery />
+        </Suspense>
+      ) : (
+        <Welcome />
+      )}
+    </AppFrame>
   )
 }
-
-export default App
