@@ -13,6 +13,8 @@ asarUnpack:
   - resources/**
 # macOS and Ubuntu only (ADR 0013).
 mac:
+  target:
+    - dmg
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
 dmg:
