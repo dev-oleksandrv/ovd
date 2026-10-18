@@ -9,15 +9,18 @@ Open-source (Apache-2.0), unofficial device toolkit for **Vega OS** developers. 
 ## Commands
 
 ```bash
-pnpm run check      # lint + typecheck + test across the workspace — run before every commit
-pnpm run build      # build every package
-pnpm run typecheck  # tsc --noEmit in every package
-pnpm run lint       # eslint where configured
-pnpm run cli <args> # run the CLI from source (tsx), e.g. pnpm run cli hello --json (no `--`)
-pnpm run gui        # desktop app in dev mode (electron-vite)
+pnpm run check        # lint + format check + typecheck + test — run before every commit
+pnpm test             # vitest run (all projects: core, cli)
+pnpm run test:watch   # vitest in watch mode
+pnpm run lint         # eslint (one flat config at the root, enforces package boundaries)
+pnpm run format       # prettier --write
+pnpm run typecheck    # tsc --noEmit in every package
+pnpm run build        # build every package (CLI bundles core with tsup; desktop via electron-vite)
+pnpm run cli <args>   # run the CLI from source (tsx), e.g. pnpm run cli hello --json (no `--`)
+pnpm run gui          # desktop app in dev mode (electron-vite)
 ```
 
-Vitest, the shared lint/format config and `packages/core` arrive with Stage 0 (`docs/ROADMAP.md`). Until then `check` runs whatever each package defines.
+Tooling lives at the root: TypeScript 5.9 (typescript-eslint doesn't support 7.x), `eslint.config.mjs`, `.prettierrc.yaml`, `vitest.config.ts` (one project per package). `@ovd/core` is private and exports TypeScript source; surfaces bundle it.
 
 ## Working agreement
 

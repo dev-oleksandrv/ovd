@@ -6,7 +6,7 @@ Thanks for your interest! This guide covers how to set up the project and what a
 
 ```bash
 pnpm install
-pnpm run check   # lint + typecheck + tests
+pnpm run check   # lint + format check + typecheck + tests
 pnpm run build
 ```
 

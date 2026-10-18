@@ -55,7 +55,7 @@ docs/
   ARCHITECTURE.md · ROADMAP.md · adr/
 ```
 
-Today the repo has `apps/cli` and `apps/gui` boilerplates; `packages/core` and `fixtures/` arrive in Stage 0.
+`apps/mcp` arrives in Stage 7. `packages/core` exports TypeScript source and is bundled into each surface (tsup for the CLI, electron-vite for the desktop).
 
 ## 3. Dependency rules
 
