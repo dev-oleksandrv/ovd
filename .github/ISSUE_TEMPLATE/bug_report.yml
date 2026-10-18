@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in OVD doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please don't paste real device serials, IP addresses, account emails or tokens. Replace them with placeholders.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and output
+      description: The `ovd` command (or desktop action) and its output. `--json` output is most useful.
+      render: shell
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options: [CLI, Desktop app, Both]
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target device
+      options: [Fire TV stick (USB), Fire TV stick (Wi-Fi), Vega Virtual Device, No device involved]
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: OVD version, Vega SDK version (`vega --version`), OS.
+      placeholder: ovd 0.1.0 · SDK 0.24.x · macOS 15.4 arm64
+    validations:
+      required: true

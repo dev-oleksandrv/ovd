@@ -1,0 +1,40 @@
+name: Version
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: version
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # CHANGESETS_TOKEN is a fine-grained PAT (Contents + Pull requests: read/write on this repo
+      # only). The default GITHUB_TOKEN would neither trigger CI on the Version PR nor start the
+      # Release workflow when the tag is pushed.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.CHANGESETS_TOKEN }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Opens or updates the Version PR on changeset-release/main while changesets are pending.
+      - uses: changesets/action@v2
+        with:
+          version-script: pnpm exec changeset version
+          commit-message: 'chore: release next version'
+          pr-title: 'chore: release next version'
+          github-token: ${{ secrets.CHANGESETS_TOKEN }}
+      # Once the Version PR is merged, nothing is pending: tag the new version to start the release.
+      - run: scripts/tag-release.sh

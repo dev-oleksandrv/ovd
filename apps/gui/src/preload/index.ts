@@ -1,22 +1,10 @@
-import { contextBridge } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
+import { contextBridge, ipcRenderer } from 'electron'
+import { channels, type OvdApi } from './api'
 
-// Custom APIs for renderer
-const api = {}
-
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
-if (process.contextIsolated) {
-  try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api)
-  } catch (error) {
-    console.error(error)
-  }
-} else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
+const api: OvdApi = {
+  appInfo: () => ipcRenderer.invoke(channels.appInfo),
+  hello: () => ipcRenderer.invoke(channels.hello)
 }
+
+// contextIsolation is always on (ADR 0004), so the bridge is the only way in.
+contextBridge.exposeInMainWorld('ovd', api)

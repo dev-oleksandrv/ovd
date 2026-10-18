@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
+  "baseBranch": "main",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "access": "public",
+  "fixed": [["@ovd/cli", "@ovd/gui", "@ovd/core"]],
+  "privatePackages": { "version": true, "tag": false },
+  "changedFilePatterns": [
+    "apps/*/src/**",
+    "apps/*/resources/**",
+    "apps/*/package.json",
+    "packages/*/src/**",
+    "packages/*/package.json"
+  ]
+}

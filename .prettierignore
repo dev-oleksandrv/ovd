@@ -1,0 +1,10 @@
+node_modules
+dist
+out
+release
+coverage
+pnpm-lock.yaml
+LICENSE
+fixtures
+.changeset/*.md
+CHANGELOG.md

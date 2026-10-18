@@ -1,0 +1,136 @@
+name: Release
+
+# A tag v<version> releases that version: npm package, desktop builds, GitHub Release.
+# A tag with "-dry" (e.g. v0.1.0-dry.1) runs every build and an npm dry run, and publishes nothing.
+# Running it by hand (workflow_dispatch) builds signed, notarized desktop packages as workflow
+# artifacts only, to test signing without releasing.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' || contains(github.ref_name, '-dry') }}
+  # -dry tags build unsigned; real tags and manual runs sign when the secrets exist (ADR 0021).
+  SIGN_ALLOWED: ${{ !contains(github.ref_name, '-dry') }}
+
+jobs:
+  desktop:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: mac
+          - os: ubuntu-latest
+            target: linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Real macOS releases are signed and notarized when the signing secrets exist (ADR 0021).
+      # CI-style -dry tags and repos without the secrets build unsigned.
+      - name: Configure macOS signing
+        if: matrix.target == 'mac'
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          if [ "$SIGN_ALLOWED" = "true" ] && [ -n "$CSC_LINK" ] && [ -n "$APPLE_API_KEY" ]; then
+            key="$RUNNER_TEMP/AuthKey.p8"
+            printf '%s' "$APPLE_API_KEY" > "$key"
+            echo "APPLE_API_KEY_PATH=$key" >> "$GITHUB_ENV"
+            echo "OVD_SIGN=true" >> "$GITHUB_ENV"
+            echo "Signing and notarizing."
+          else
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "Building unsigned."
+          fi
+      - name: Build (signed)
+        if: env.OVD_SIGN == 'true'
+        run: pnpm --filter @ovd/gui run build:${{ matrix.target }} --publish never
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ env.APPLE_API_KEY_PATH }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      - name: Build (unsigned)
+        if: env.OVD_SIGN != 'true'
+        run: pnpm --filter @ovd/gui run build:${{ matrix.target }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: |
+            apps/gui/dist/*.dmg
+            apps/gui/dist/*.AppImage
+            apps/gui/dist/*.deb
+          if-no-files-found: error
+
+  npm:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      # A real tag must name the version main is at, so a mistyped tag can't publish.
+      - name: Check tag matches version
+        if: env.DRY_RUN != 'true'
+        run: |
+          version=$(node -p "require('./apps/cli/package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match @ovd/cli $version." >&2
+            exit 1
+          fi
+      - run: pnpm run check
+      - run: pnpm --filter @ovd/cli build
+      - name: Publish (dry run)
+        if: env.DRY_RUN == 'true'
+        run: pnpm --filter @ovd/cli publish --dry-run --no-git-checks
+      - name: Publish
+        if: env.DRY_RUN != 'true'
+        run: pnpm --filter @ovd/cli publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+
+  github-release:
+    if: github.event_name == 'push' && !contains(github.ref_name, '-dry')
+    needs: [desktop, npm]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - run: node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" > notes.md
+      - run: gh release create "$GITHUB_REF_NAME" artifacts/* --title "$GITHUB_REF_NAME" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
