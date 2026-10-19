@@ -19,12 +19,12 @@ jobs:
       # CHANGESETS_TOKEN is a fine-grained PAT (Contents + Pull requests: read/write on this repo
       # only). The default GITHUB_TOKEN would neither trigger CI on the Version PR nor start the
       # Release workflow when the tag is pushed.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.CHANGESETS_TOKEN }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
