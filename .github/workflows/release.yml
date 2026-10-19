@@ -128,15 +128,18 @@ jobs:
           fi
       - run: pnpm run check
       - run: pnpm --filter @ovd/cli build
+      # pnpm packs (it rewrites workspace: versions and runs prepack); the npm CLI publishes,
+      # because pnpm's own publish attached no provenance to 0.0.1.
+      - name: Pack
+        run: pnpm --filter @ovd/cli pack --pack-destination "$RUNNER_TEMP/pack"
       - name: Publish (dry run)
         if: env.DRY_RUN == 'true'
-        run: pnpm --filter @ovd/cli publish --dry-run --no-git-checks
+        run: npm publish "$RUNNER_TEMP"/pack/*.tgz --dry-run
       - name: Publish
         if: env.DRY_RUN != 'true'
-        run: pnpm --filter @ovd/cli publish --access public --no-git-checks
+        run: npm publish "$RUNNER_TEMP"/pack/*.tgz --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
 
   github-release:
     if: github.event_name == 'push' && !contains(github.ref_name, '-dry')
