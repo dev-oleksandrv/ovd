@@ -15,7 +15,7 @@ paths:
 
 ## Core
 
-- Every SDK call goes through one runner (`execa`-based) that injects the target serial (`-s` / `VEGA_SERIAL`), applies timeouts, honors `AbortSignal`, and returns stdout, stderr and exit code. Tests replace the runner with a fake.
+- Every SDK call goes through one runner (`execa`-based) that injects the target (`--device <id>` for `vega device`, `-s <serial>` for `vega exec vda`), applies timeouts, honors `AbortSignal`, and returns stdout, stderr and exit code. Tests replace the runner with a fake.
 - Parsed output is validated with `zod` at the adapter boundary. Adapters are versioned per SDK version when output differs (ADR 0007).
 - Long-running streams (logs, input console, memory polling) are managed child processes with explicit start/stop, auto-reconnect when a device drops, and clean shutdown on abort. No orphaned processes.
 - Every device action (install, launch, stop, input, screenshot, reboot…) appends one entry to the activity log (ADR 0011).
