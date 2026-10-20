@@ -47,6 +47,26 @@ describe('createStateStore', () => {
     expect((await store.read()).state.target).toBe('VirtualDevice')
   })
 
+  test('two readers recovering the same corrupt file both get the empty state', async () => {
+    await seed('{not json')
+    const results = await Promise.all([
+      createStateStore(home).read(),
+      createStateStore(home).read()
+    ])
+    expect(results).toEqual([
+      { state: emptyState, recovered: true },
+      { state: emptyState, recovered: true }
+    ])
+  })
+
+  test('a mutating update callback cannot change the shared empty state', async () => {
+    await createStateStore(home).update((s) => {
+      s.names['G070000000000001'] = 'Den'
+      return s
+    })
+    expect(emptyState).toEqual({ version: 1, names: {}, saved: [] })
+  })
+
   test('no temporary files remain after an update', async () => {
     await createStateStore(home).update((s) => ({ ...s, names: { G070000000000001: 'Den' } }))
     expect(await readdir(home)).toEqual(['state.json'])
