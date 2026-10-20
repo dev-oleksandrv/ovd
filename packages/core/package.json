@@ -10,5 +10,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "execa": "^10.2.0",
+    "zod": "^4.6.7"
   }
 }

@@ -10,8 +10,10 @@ paths:
 
 - Host tools: `vega`, `vpt`, `perf`. VDA always as `vega exec vda …`, never from PATH.
 - Device tools (`vpm`, `vlcm`, `vmsgr`, `loggingctl`, `inputd-cli`, `gwsi-tool-screenshooter`, `ace_memusage`) run through `vega exec vda shell` (or `shell -c <component>` when scoped to a component).
-- Target one device per call with `-s <id>` / `VEGA_SERIAL`. Over Wi‑Fi the device ID is `IP:port`; `vda get-serialno` returns the real serial.
-- Use JSON modes wherever they exist: `vega device info --json`, `vpt info --json`, `loggingctl vault --json-dump`, `vega sdk … --json`. Parse text only when there is no JSON mode, and keep that parser small.
+- Target one device per call: `vega device …` takes `--device <id>`; `vega exec vda` takes `-s <serial>`. Over Wi‑Fi the device ID is `IP:port`; `vda get-serialno` returns the real serial.
+- Use JSON modes wherever they exist: `vega device info` (JSON by default, no `--json` flag), `vpt info --json`, `loggingctl vault --json-dump`, `vega sdk … --json`, `vega devmode … --json`. Parse text only when there is no JSON mode, and keep that parser small.
+- `vega sdk` and `vega devmode` exist only in the Vega CLI (SDK Manager, `~/vega/bin/vega`), not in the `vega` bundled inside an SDK.
+- Never run `vega platform doctor`: it prints the whole environment, secrets included.
 - Never request elevated access. Crash and log access is scoped to the user's own app; surface permission errors with a clear hint.
 
 ## Known SDK behavior (design around it)
@@ -33,10 +35,10 @@ paths:
 ## Developer Mode
 
 - A stick without Developer Mode doesn't appear in `vega device list` or `vda devices`. Never model it as a device state; explain it in doctor and offer the setup flow (ADR 0009).
-- Setup wraps `vega devmode login` (browser sign-in) and `vega devmode enable-device --code <6-digit code>`. The Virtual Device uses `vsm developer-mode enable`. OVD never stores credentials.
+- Setup wraps `vega devmode login` (browser sign-in) and `vega devmode enable-device --code <code> [--vendor <id>]`. The Virtual Device uses `vsm developer-mode enable`. OVD never stores credentials.
 
 ## Doctor
 
 - Doctor only reports; it never changes the machine.
-- Checks: Vega SDK (`vega --version`, `vega sdk config doctor`), VDA (`vega exec vda version`), devices (`vega device list`), Developer Mode hints, Metro ports 8081/8097. Later stages add Project and Emulator gRPC rows.
+- Checks: Vega SDK (`vega --version` must be the Vega CLI, `vega sdk config doctor --json`), VDA (`vega exec vda version`), devices (`vega exec vda devices -l`, `vega virtual-device status`), Developer Mode hints (`vega devmode login --json` probe), Metro ports 8081/8097 (`vega device is-port-forwarded`). Later stages add Project and Emulator gRPC rows.
 - Every failed check carries a one-line fix hint.
