@@ -19,6 +19,7 @@ import { StatusDot } from '../ui/StatusDot'
 import { StatusPill } from '../ui/StatusPill'
 import { Table, type Column } from '../ui/Table'
 import { Tabs } from '../ui/Tabs'
+import { TextField } from '../ui/TextField'
 import { Wizard } from '../ui/Wizard'
 import { GallerySection } from './GallerySection'
 
@@ -100,6 +101,7 @@ export function Gallery() {
   const [modal, setModal] = useState(false)
   const [step, setStep] = useState<number | null>(null)
   const [nav, setNav] = useState('devices')
+  const [name, setName] = useState('Living room stick')
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-auto px-6 py-5">
@@ -343,6 +345,10 @@ export function Gallery() {
             />
           </NavGroup>
         </div>
+      </GallerySection>
+
+      <GallerySection title="Text field">
+        <TextField label="Device name" value={name} onChange={setName} />
       </GallerySection>
 
       {modal && (

@@ -10,7 +10,14 @@ describe('Gallery', () => {
         <Gallery />
       </FeedbackProvider>
     )
-    for (const section of ['Buttons', 'Tabs', 'Table', 'Screen states', 'Modal and wizard']) {
+    for (const section of [
+      'Buttons',
+      'Tabs',
+      'Table',
+      'Screen states',
+      'Modal and wizard',
+      'Text field'
+    ]) {
       expect(screen.getByText(section)).toBeTruthy()
     }
   })
