@@ -34,3 +34,5 @@ export type {
 } from './devices/types.js'
 export { createOvd } from './ovd.js'
 export type { Ovd, OvdOptions } from './ovd.js'
+export { createDevicesWatcher } from './devices/devicesWatcher.js'
+export type { DevicesUpdate, DevicesWatcher } from './devices/devicesWatcher.js'
