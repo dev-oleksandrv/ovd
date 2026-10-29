@@ -179,6 +179,8 @@ describe('Doctor.run', () => {
     }
     expect(check(checks, 'node')?.status).toBe('ok')
     expect(runner.calls).toEqual([])
+    // Only commands that ran are shown (architecture rule: commands shown are real).
+    expect(checks.filter((c) => c.command !== undefined)).toEqual([])
   })
 
   test('only the SDK-bundled vega: SDK fails, sign-in is skipped, VDA and devices run', async () => {
@@ -195,6 +197,8 @@ describe('Doctor.run', () => {
       detail: 'Needs the Vega CLI (SDK Manager)'
     })
     expect(statuses(checks).slice(1, 3)).toEqual(['ok', 'ok'])
+    expect(check(checks, 'sdk')).not.toHaveProperty('command')
+    expect(check(checks, 'devmode')).not.toHaveProperty('command')
   })
 
   test('corrupted SDK components warn', async () => {
@@ -225,7 +229,9 @@ describe('Doctor.run', () => {
     })
     for (const id of ['devices', 'metro']) {
       expect(check(checks, id)).toMatchObject({ status: 'skipped', detail: 'Waiting for VDA' })
+      expect(check(checks, id)).not.toHaveProperty('command')
     }
+    expect(check(checks, 'vda')?.command).toBe(VDA_VERSION)
     expect(check(checks, 'devmode')?.status).toBe('ok')
   })
 
@@ -300,6 +306,7 @@ describe('Doctor.run', () => {
         status: 'info',
         detail: '8081 in use on this computer · no target device'
       })
+      expect(check(checks, 'metro')).not.toHaveProperty('command')
       expect(runner.calls.some((c) => c.display.includes('is-port-forwarded'))).toBe(false)
     }
   )

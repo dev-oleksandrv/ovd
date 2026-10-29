@@ -33,6 +33,8 @@ const NAMES: Record<CheckId, string> = {
   metro: 'Metro',
   node: 'Node'
 }
+// Row labels: the main command each check runs. Metro runs it per port with `--port`,
+// `--forward false` and `--device`; Devices also reads Virtual Device status and device info.
 const COMMANDS: Partial<Record<CheckId, string>> = {
   sdk: 'vega sdk config doctor --json',
   vda: 'vega exec vda version',
@@ -45,11 +47,16 @@ const NODE_MAJOR = 22
 // Signed in answers in 0.2 s; signed out prints `pending` at once and then waits for sign-in.
 const DEVMODE_TIMEOUT_MS = 5_000
 
-type Result = Pick<Check, 'status' | 'detail'> & Partial<Pick<Check, 'hint' | 'fix'>>
+// A check names its command only when that command ran (commands shown are real).
+type Result = Pick<Check, 'status' | 'detail'> & Partial<Pick<Check, 'hint' | 'fix' | 'command'>>
 
 function check(id: CheckId, result: Result): Check {
+  return { id, name: NAMES[id], ...result }
+}
+
+function ran(id: CheckId, result: Result): Result {
   const command = COMMANDS[id]
-  return { id, name: NAMES[id], ...result, ...(command === undefined ? {} : { command }) }
+  return command === undefined ? result : { ...result, command }
 }
 
 function skipped(detail: string): Result {
@@ -110,7 +117,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
         detail: `${sdk.sdkVersion} · Vega CLI ${sdk.cliVersion ?? '?'} · ${tilde(sdk.vegaPath)}`
       }
     }, 'warn')
-    return { sdk, result }
+    return { sdk, result: ran('sdk', result) }
   }
 
   async function vdaCheck(sdk: SdkInfo): Promise<Result> {
@@ -202,19 +209,19 @@ export function createDoctor(deps: DoctorDeps): Doctor {
       }
     } catch (error) {
       if (!(error instanceof OvdError)) throw error
-      return { status: 'info', detail: `${host} · couldn’t check ${target.name}` } satisfies Result
+      return ran('metro', { status: 'info', detail: `${host} · couldn’t check ${target.name}` })
     }
     if (reversed.length === METRO_PORTS.length) {
-      return {
+      return ran('metro', {
         status: 'ok',
         detail: `${METRO_PORTS.join(', ')} reversed on ${target.name}`
-      } satisfies Result
+      })
     }
     const where =
       reversed.length === 0
         ? `not reversed on ${target.name}`
         : `${reversed.join(', ')} reversed on ${target.name}`
-    return { status: 'info', detail: `${host} · ${where}` } satisfies Result
+    return ran('metro', { status: 'info', detail: `${host} · ${where}` })
   }
 
   function nodeCheck(node: string): Result {
@@ -234,7 +241,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
           results[id] = skipped('Waiting for the Vega SDK')
         }
       } else {
-        results.vda = await vdaCheck(sdk)
+        results.vda = ran('vda', await vdaCheck(sdk))
         if (results.vda.status === 'fail') {
           results.devices = skipped('Waiting for VDA')
           results.metro = skipped('Waiting for VDA')
@@ -247,16 +254,20 @@ export function createDoctor(deps: DoctorDeps): Doctor {
             }
           )
           if (snapshot instanceof OvdError) {
-            results.devices = { status: 'fail', detail: snapshot.message, hint: snapshot.hint }
+            results.devices = ran('devices', {
+              status: 'fail',
+              detail: snapshot.message,
+              hint: snapshot.hint
+            })
             results.metro = skipped('Waiting for VDA')
           } else {
-            results.devices = devicesCheck(snapshot.devices)
+            results.devices = ran('devices', devicesCheck(snapshot.devices))
             results.metro = await metroCheck(sdk, snapshot)
           }
         }
         results.devmode =
           sdk.cli === 'manager'
-            ? await devmodeCheck(sdk)
+            ? ran('devmode', await devmodeCheck(sdk))
             : skipped('Needs the Vega CLI (SDK Manager)')
       }
       results.node = nodeCheck(host.node)
