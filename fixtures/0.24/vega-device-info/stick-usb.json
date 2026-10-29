@@ -1,0 +1,14 @@
+{
+  "idme": "A0000000000000",
+  "os": "OS",
+  "hostname": "firestick-0000000000000000",
+  "architecture": "armv7l",
+  "profile": "tv",
+  "product": "callie",
+  "buildDescription": "OS 2.0 (TV Ship/529)",
+  "deviceName": "G070000000000001",
+  "kvdVersion": "",
+  "simulated": false,
+  "inDeveloperMode": true,
+  "user": "app_user"
+}

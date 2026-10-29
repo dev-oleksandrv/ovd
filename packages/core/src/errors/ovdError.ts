@@ -18,6 +18,7 @@ export type ErrorCode =
   | 'PAIR_TIMEOUT'
   | 'DIFFERENT_NETWORK'
   | 'INVALID_ADDRESS'
+  | 'INVALID_NAME'
   | 'COMMAND_FAILED'
   | 'UNEXPECTED_OUTPUT'
 
@@ -38,6 +39,12 @@ export function isOvdError(value: unknown): value is OvdError {
   return value instanceof OvdError
 }
 
-export function toErrorJson(error: OvdError): { code: ErrorCode; message: string; hint: string } {
+export interface ErrorJson {
+  code: ErrorCode
+  message: string
+  hint: string
+}
+
+export function toErrorJson(error: OvdError): ErrorJson {
   return { code: error.code, message: error.message, hint: error.hint }
 }
