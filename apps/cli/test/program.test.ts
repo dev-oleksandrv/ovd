@@ -1,25 +1,29 @@
 import { describe, expect, test } from 'vitest'
-import { createProgram } from '../src/program.js'
-
-async function run(...args: string[]): Promise<{ stdout: string; stderr: string }> {
-  let stdout = ''
-  let stderr = ''
-  const program = createProgram({
-    stdout: (text) => (stdout += text),
-    stderr: (text) => (stderr += text)
-  })
-  program.exitOverride()
-  await program.parseAsync(args, { from: 'user' })
-  return { stdout, stderr }
-}
+import { cli } from './support/runCli.js'
 
 describe('ovd hello', () => {
   test('prints the core message', async () => {
-    expect((await run('hello')).stdout).toBe('OVD core is alive\n')
+    expect(await cli(['hello'])).toEqual({ stdout: 'OVD core is alive\n', stderr: '', exitCode: 0 })
   })
 
-  test('--json prints one JSON document', async () => {
-    const { stdout } = await run('hello', '--json')
-    expect(JSON.parse(stdout)).toEqual({ ok: true, message: 'OVD core is alive' })
+  test.each([[['hello', '--json']], [['--json', 'hello']]])(
+    '%j prints one JSON document',
+    async (args) => {
+      const { stdout, exitCode } = await cli(args)
+      expect(JSON.parse(stdout)).toEqual({ ok: true, message: 'OVD core is alive' })
+      expect(exitCode).toBe(0)
+    }
+  )
+})
+
+describe('runCli', () => {
+  test('an unknown command is a usage error', async () => {
+    const { exitCode, stdout } = await cli(['nope'])
+    expect(exitCode).toBe(2)
+    expect(stdout).toBe('')
+  })
+
+  test.each([['--version'], ['--help']])('%s exits 0', async (flag) => {
+    expect((await cli([flag])).exitCode).toBe(0)
   })
 })
