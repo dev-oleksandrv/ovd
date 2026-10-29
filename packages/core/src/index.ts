@@ -20,3 +20,15 @@ export { createStateStore, emptyState } from './state/stateStore.js'
 export type { HostState, SavedDevice, StateStore } from './state/stateStore.js'
 export { createActivityLog } from './activity/activityLog.js'
 export type { ActivityAction, ActivityEntry, ActivityLog, Surface } from './activity/activityLog.js'
+export { canonicalId, classifyVdaEntry, defaultName } from './devices/deviceModel.js'
+export { createDevices } from './devices/devices.js'
+export type { Devices, DevicesDeps } from './devices/devices.js'
+export type {
+  Connection,
+  Device,
+  DeviceKind,
+  DevicesSnapshot,
+  DeviceStatus,
+  ResolvedTarget,
+  TargetSource
+} from './devices/types.js'
