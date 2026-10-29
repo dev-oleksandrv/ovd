@@ -164,7 +164,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
         : {
             status: 'warn',
             detail: 'Not signed in — needed to set up a new stick',
-            hint: 'Sign in when you set up a stick: ovd setup-stick',
+            hint: 'Sign in with vega devmode login',
             fix: 'setup-stick'
           }
     } catch (error) {
