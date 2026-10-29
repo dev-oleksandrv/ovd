@@ -102,13 +102,16 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 
 **Exit codes:**
 
-| Code | Meaning           |
-| ---- | ----------------- |
-| 0    | Success           |
-| 1    | Failure (generic) |
-| 2    | Usage error       |
+| Code | Meaning                                                                    |
+| ---- | -------------------------------------------------------------------------- |
+| 0    | Success                                                                    |
+| 1    | Failure (generic)                                                          |
+| 2    | Usage error                                                                |
+| 3    | SDK missing or unusable                                                    |
+| 4    | Device not found, target offline or no target                              |
+| 5    | External step not completed (not signed in, code rejected, pairing failed) |
 
-Specific codes (no SDK, target offline, architecture mismatch, launch not verified) are added here when the commands that use them ship.
+Other specific codes (architecture mismatch, launch not verified) are added here when the commands that use them ship.
 
 ## 6. Desktop
 
@@ -162,6 +165,7 @@ OVD designs around these:
 - No command reports a friendly device name; `deviceName` echoes the ID passed in.
 - `vega device list` takes 1–4 s and has no JSON mode; `vega exec vda devices -l` takes about 0.3 s.
 - `vega platform doctor` prints the whole environment, secrets included. OVD never runs it.
+- Two `vega` processes started at the same moment can break each other: the SDK relinks its workspace and rewrites a cache on every start, and the loser fails with `[Errno 2] No such file or directory: 'vda'` (exit 2) or `EOFError`. Each core runs one SDK command at a time, and retries the device list once for clashes with another surface.
 
 ## 9. Testing
 

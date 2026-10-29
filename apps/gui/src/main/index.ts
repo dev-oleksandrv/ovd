@@ -2,11 +2,18 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { createOvd } from '@ovd/core'
+import { registerDevicesIpc } from './devicesIpc'
 import { registerIpcHandlers } from './ipc'
+
+// One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
+const ovd = createOvd({ surface: 'desktop' })
+let mainWindow: BrowserWindow | undefined
+const devices = registerDevicesIpc(ovd, () => mainWindow)
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 960,
@@ -26,11 +33,17 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  mainWindow = win
+  devices.watch(win)
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = undefined
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  win.on('ready-to-show', () => {
+    win.show()
+  })
+
+  win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
@@ -38,9 +51,9 @@ function createWindow(): void {
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
