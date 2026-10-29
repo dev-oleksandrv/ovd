@@ -51,6 +51,7 @@
   --color-subtle: #7c8693;
   --color-faint: #626c79;
   --color-group: #596370;
+  --color-dim: #4e5865;
 
   /* Tones */
   --color-accent: #7ce0c3;
@@ -81,6 +82,7 @@
   --text-title: 16px;
   --text-heading: 19px;
   --text-display: 20px;
+  --text-hero: 22px;
 
   /* Radii */
   --radius-chip: 5px;

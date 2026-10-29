@@ -1,6 +1,8 @@
+import type { CheckId } from '@ovd/core'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { DevicesProvider } from './devices/DevicesProvider'
 import { targetDevice, useDevicesContext } from './devices/devicesContext'
+import { useDoctor } from './doctor/useDoctor'
 import { useFeedback } from './feedback/feedbackContext'
 import { AppFrame } from './frame/AppFrame'
 import { CommandPalette } from './frame/CommandPalette'
@@ -11,8 +13,13 @@ import { SearchButton } from './frame/SearchButton'
 import { TargetPicker } from './frame/TargetPicker'
 import { TargetStatus } from './frame/TargetStatus'
 import { DevicesScreen } from './screens/devices/DevicesScreen'
+import { gateFailure, gateOpen } from './screens/environment/doctorView'
+import { EnvironmentScreen } from './screens/environment/EnvironmentScreen'
 import { useSdk } from './sdk/useSdk'
-import { paletteItems } from './shell/paletteItems'
+import { paletteItems, type Screen } from './shell/paletteItems'
+
+// How long a bounced-back check stays highlighted (design `frHl`).
+const HIGHLIGHT_MS = 2400
 
 // The gallery is imported only in development, so it never ships in a release build.
 const Gallery = import.meta.env.DEV
@@ -32,16 +39,55 @@ function Shell() {
   const [gallery, setGallery] = useState(false)
   const [menu, setMenu] = useState(false)
   const [palette, setPalette] = useState(false)
+  const [screen, setScreen] = useState<Screen>('devices')
+  // null until the first doctor report arrives and decides the start screen.
+  const [firstRun, setFirstRun] = useState<boolean | null>(null)
+  const [highlight, setHighlight] = useState<CheckId | null>(null)
+  const doctor = useDoctor()
   const { state, setTarget } = useDevicesContext()
   const { notify } = useFeedback()
-  // Each new device error may mean the SDK changed (installed, removed), so it asks again.
-  const sdk = useSdk(state.status === 'error' ? state.error.code : state.status)
+  const report = doctor.state.status === 'ready' ? doctor.state.report : null
+  // Each new device error or doctor result may mean the SDK changed (installed, removed), so
+  // it asks again.
+  const sdk = useSdk(
+    `${state.status === 'error' ? state.error.code : state.status}:${report?.checks[0]?.status ?? ''}`
+  )
   const devices = state.status === 'ready' ? state.devices : []
   const target = targetDevice(state)
 
   useEffect(() => {
     window.ovd.appInfo().then(setInfo)
   }, [])
+
+  // The first report picks the start screen: Doctor while the SDK or VDA fail (spec D8).
+  // Set during render (not in an effect) so the wrong screen never paints.
+  if (firstRun === null && report) {
+    const blocked = !gateOpen(report.checks)
+    setFirstRun(blocked)
+    if (blocked) setScreen('doctor')
+  }
+
+  useEffect(() => {
+    if (!highlight) return
+    const timer = setTimeout(() => setHighlight(null), HIGHLIGHT_MS)
+    return () => clearTimeout(timer)
+  }, [highlight])
+
+  const go = (next: Screen): void => {
+    setGallery(false)
+    if (next !== 'doctor' && firstRun && report && !gateOpen(report.checks)) {
+      setScreen('doctor')
+      setHighlight(gateFailure(report.checks))
+      return
+    }
+    setScreen(next)
+  }
+
+  const runDoctor = async (): Promise<void> => {
+    const result = await doctor.run()
+    if (result.ok) notify({ tone: 'info', text: 'ovd doctor finished', cli: 'ovd doctor --json' })
+    else notify({ tone: 'error', text: result.error.message, cli: 'ovd doctor --json' })
+  }
 
   const platform = info?.platform ?? null
   useEffect(() => {
@@ -65,7 +111,11 @@ function Shell() {
   const items = paletteItems({
     devices,
     target: target?.id ?? null,
-    go: () => setGallery(false),
+    go,
+    runDoctor: () => {
+      go('doctor')
+      void runDoctor()
+    },
     switchTarget: (device) => void setTarget(device),
     later: (label) => notify({ tone: 'info', text: `${label} is coming in a later version` })
   })
@@ -95,21 +145,44 @@ function Shell() {
       }
       status={
         <>
-          <SdkStatus sdk={sdk} />
+          <SdkStatus sdk={sdk} onClick={() => go('doctor')} />
           <TargetStatus target={target} onClick={() => setMenu((open) => !open)} />
         </>
       }
       sidebar={
-        // Only shipped screens appear (ADR 0018); Setup → Doctor joins in Stage 1.2.
-        <NavGroup label="Device">
-          <NavItem label="Devices" icon="tv" active={!gallery} onClick={() => setGallery(false)} />
-        </NavGroup>
+        // Only shipped screens appear (ADR 0018).
+        <>
+          <NavGroup label="Device">
+            <NavItem
+              label="Devices"
+              icon="tv"
+              active={!gallery && screen === 'devices'}
+              onClick={() => go('devices')}
+            />
+          </NavGroup>
+          <NavGroup label="Setup">
+            <NavItem
+              label="Doctor"
+              icon="health_and_safety"
+              active={!gallery && screen === 'doctor'}
+              onClick={() => go('doctor')}
+            />
+          </NavGroup>
+        </>
       }
     >
       {gallery && Gallery ? (
         <Suspense fallback={null}>
           <Gallery />
         </Suspense>
+      ) : screen === 'doctor' ? (
+        <EnvironmentScreen
+          doctor={doctor}
+          firstRun={firstRun === true}
+          highlight={highlight}
+          onGoDevices={() => go('devices')}
+          onRunDoctor={() => void runDoctor()}
+        />
       ) : (
         <DevicesScreen />
       )}

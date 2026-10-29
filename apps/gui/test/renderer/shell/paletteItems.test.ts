@@ -3,15 +3,17 @@ import { filterItems, LATER, paletteItems } from '../../../src/renderer/src/shel
 import { stick, vvd, wifiOffline } from '../screens/devices/sample'
 
 const build = (target: string | null) => {
-  const opts = { go: vi.fn(), switchTarget: vi.fn(), later: vi.fn() }
+  const opts = { go: vi.fn(), runDoctor: vi.fn(), switchTarget: vi.fn(), later: vi.fn() }
   return { opts, items: paletteItems({ devices: [stick, vvd, wifiOffline], target, ...opts }) }
 }
 
 describe('paletteItems', () => {
-  test('lists Devices, a switch per other device, then every later screen', () => {
+  test('lists Devices, Doctor, a switch per other device, then every later screen', () => {
     const { items } = build(stick.id)
     expect(items.map((i) => [i.label, i.kind])).toEqual([
       ['Go to Devices', 'Screen'],
+      ['Go to Doctor', 'Screen'],
+      ['Run ovd doctor', 'Action'],
       ['Switch target to Vega Virtual Device', 'Device'],
       ['Switch target to Bedroom stick', 'Device'],
       ...LATER.map(([label]) => [label, 'Coming in a later version'])
@@ -32,6 +34,10 @@ describe('paletteItems', () => {
     expect(opts.later).toHaveBeenCalledWith('Logs')
     items[0]?.run()
     expect(opts.go).toHaveBeenCalledWith('devices')
+    items[1]?.run()
+    expect(opts.go).toHaveBeenCalledWith('doctor')
+    items[2]?.run()
+    expect(opts.runDoctor).toHaveBeenCalled()
   })
 
   test('filters by a case-insensitive substring, ignoring surrounding spaces', () => {

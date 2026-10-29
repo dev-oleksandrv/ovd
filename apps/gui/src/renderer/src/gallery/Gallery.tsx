@@ -1,4 +1,4 @@
-import type { Device } from '@ovd/core'
+import type { Check, Device } from '@ovd/core'
 import { useState } from 'react'
 import { useFeedback } from '../feedback/feedbackContext'
 import { CommandPalette } from '../frame/CommandPalette'
@@ -6,6 +6,7 @@ import { NavGroup } from '../frame/NavGroup'
 import { NavItem } from '../frame/NavItem'
 import { SearchButton } from '../frame/SearchButton'
 import { TargetPicker } from '../frame/TargetPicker'
+import { DoctorRow } from '../screens/environment/DoctorRow'
 import { paletteItems } from '../shell/paletteItems'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -30,6 +31,38 @@ import { GallerySection } from './GallerySection'
 
 // Dev-only page with every base component in every state (Stage 0.2). Sample data uses the
 // neutral set (ADR 0016).
+
+const DOCTOR_ROWS: Check[] = [
+  {
+    id: 'sdk',
+    name: 'Vega SDK',
+    status: 'ok',
+    detail: '0.24.12112 · Vega CLI 1.4.5 · ~/vega/bin/vega',
+    command: 'vega sdk config doctor --json'
+  },
+  {
+    id: 'metro',
+    name: 'Metro',
+    status: 'info',
+    detail: '8081 in use on this computer · not reversed on Fire TV Stick 4K Select',
+    command: 'vega device is-port-forwarded'
+  },
+  {
+    id: 'devices',
+    name: 'Devices',
+    status: 'warn',
+    detail: 'No devices connected',
+    command: 'vega exec vda devices -l'
+  },
+  {
+    id: 'vda',
+    name: 'VDA',
+    status: 'fail',
+    detail: 'vega exec vda version didn’t respond',
+    command: 'vega exec vda version'
+  },
+  { id: 'devmode', name: 'Developer Mode', status: 'skipped', detail: 'Waiting for the Vega SDK' }
+]
 
 interface SampleApp {
   id: string
@@ -327,6 +360,15 @@ export function Gallery() {
         </div>
       </GallerySection>
 
+      <GallerySection title="Doctor rows">
+        <ul className="m-0 flex w-full list-none flex-col overflow-hidden rounded-card border border-line-soft p-0">
+          {DOCTOR_ROWS.map((check) => (
+            <DoctorRow key={check.id} check={check} />
+          ))}
+          <DoctorRow check={{ id: 'node', name: 'Node', status: 'ok', detail: '' }} checking />
+        </ul>
+      </GallerySection>
+
       <GallerySection title="Toasts and CLI echo">
         <Button
           onClick={() =>
@@ -385,6 +427,7 @@ export function Gallery() {
               devices,
               target: target?.id ?? null,
               go: () => undefined,
+              runDoctor: () => undefined,
               switchTarget: setTarget,
               later: (label) =>
                 notify({ tone: 'info', text: `${label} is coming in a later version` })
