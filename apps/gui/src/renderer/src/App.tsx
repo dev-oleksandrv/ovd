@@ -34,7 +34,8 @@ function Shell() {
   const [palette, setPalette] = useState(false)
   const { state, setTarget } = useDevicesContext()
   const { notify } = useFeedback()
-  const sdk = useSdk(state.status)
+  // Each new device error may mean the SDK changed (installed, removed), so it asks again.
+  const sdk = useSdk(state.status === 'error' ? state.error.code : state.status)
   const devices = state.status === 'ready' ? state.devices : []
   const target = targetDevice(state)
 
@@ -42,9 +43,11 @@ function Shell() {
     window.ovd.appInfo().then(setInfo)
   }, [])
 
+  const platform = info?.platform ?? null
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      const mod = event.metaKey || event.ctrlKey
+      // ⌘ on macOS only: Ctrl+K there is a text shortcut (kill to end of line) in inputs.
+      const mod = platform === 'linux' ? event.ctrlKey : event.metaKey
       if (mod && !event.shiftKey && event.key.toLowerCase() === 'k') {
         event.preventDefault()
         setMenu(false)
@@ -57,7 +60,7 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [platform])
 
   const items = paletteItems({
     devices,

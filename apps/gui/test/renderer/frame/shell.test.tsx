@@ -1,6 +1,6 @@
 import type { DevicesUpdate } from '@ovd/core'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import type { IpcResult, OvdApi, SdkSummary } from '../../../src/preload/api'
 import { App } from '../../../src/renderer/src/App'
 import { FeedbackProvider } from '../../../src/renderer/src/feedback/FeedbackProvider'
@@ -11,9 +11,10 @@ const devices = [stick, vvd, wifiOffline]
 
 async function renderShell(
   update: DevicesUpdate = ready(devices, stick.id),
-  sdk?: IpcResult<SdkSummary>
+  sdk?: IpcResult<SdkSummary> | (() => IpcResult<SdkSummary>),
+  platform: 'darwin' | 'linux' = 'darwin'
 ): Promise<{ api: OvdApi; push: (u: DevicesUpdate) => void }> {
-  const stub = stubOvd({ list: async () => update, devices, ...(sdk ? { sdk } : {}) })
+  const stub = stubOvd({ list: async () => update, devices, platform, ...(sdk ? { sdk } : {}) })
   render(
     <FeedbackProvider>
       <App />
@@ -94,6 +95,19 @@ describe('status bar', () => {
     expect(await screen.findByText('SDK not found')).toBeTruthy()
   })
 
+  test('checks the SDK again when the device error changes, so an install is noticed', async () => {
+    let sdk = sdkMissing
+    const failed = (code: 'SDK_NOT_FOUND' | 'VDA_UNAVAILABLE'): DevicesUpdate => ({
+      ok: false,
+      error: { code, message: code, hint: '' }
+    })
+    const { push } = await renderShell(failed('SDK_NOT_FOUND'), () => sdk)
+    expect(await screen.findByText('SDK not found')).toBeTruthy()
+    sdk = { ok: true, data: { sdkVersion: '0.24.12112' } }
+    await act(async () => push(failed('VDA_UNAVAILABLE')))
+    expect(await screen.findByText('SDK 0.24.12112')).toBeTruthy()
+  })
+
   test('a stopped target carries its state label, and a click opens the picker', async () => {
     await renderShell(ready(devices, vvd.id))
     expect(statusBar().textContent).toBe('Vega Virtual DeviceStopped')
@@ -127,8 +141,26 @@ describe('command palette', () => {
     expect(screen.getAllByText('Coming in a later version')).toHaveLength(9)
   })
 
-  test('Ctrl+K and the search button open it too; Esc closes it', async () => {
+  test('on macOS Ctrl+K stays a text shortcut and does not open it', async () => {
     await renderShell()
+    await screen.findByText('⌘K')
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('two devices with the same name each get a switch entry without key clashes', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const twin = { ...wifiOffline, name: 'Fire TV stick' }
+    await renderShell(ready([stick, twin, { ...twin, id: '192.0.2.78:5555' }], stick.id))
+    open()
+    expect(options().filter((o) => o === 'Switch target to Fire TV stick')).toHaveLength(2)
+    expect(error.mock.calls.flat().join(' ')).not.toMatch(/same key/)
+    error.mockRestore()
+  })
+
+  test('on Linux Ctrl+K and the search button open it; Esc closes it', async () => {
+    await renderShell(ready(devices, stick.id), undefined, 'linux')
+    await screen.findByText('Ctrl K')
     fireEvent.keyDown(window, { key: 'K', ctrlKey: true })
     expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })

@@ -3,6 +3,8 @@ import type { Device } from '@ovd/core'
 export type Screen = 'devices'
 
 export interface PaletteItem {
+  // Unique per entry; labels are not (two devices can share a name).
+  id: string
   label: string
   icon: string
   kind: 'Screen' | 'Action' | 'Device' | 'Coming in a later version'
@@ -34,6 +36,7 @@ export function paletteItems(opts: {
 }): PaletteItem[] {
   return [
     {
+      id: 'screen:devices',
       label: 'Go to Devices',
       icon: 'tv',
       kind: 'Screen',
@@ -43,6 +46,7 @@ export function paletteItems(opts: {
     ...opts.devices
       .filter((device) => device.id !== opts.target)
       .map((device): PaletteItem => ({
+        id: `device:${device.id}`,
         label: `Switch target to ${device.name}`,
         icon: device.kind === 'vvd' ? 'desktop_windows' : 'tv',
         kind: 'Device',
@@ -50,6 +54,7 @@ export function paletteItems(opts: {
         run: () => opts.switchTarget(device)
       })),
     ...LATER.map(([label, icon]): PaletteItem => ({
+      id: `later:${label}`,
       label,
       icon,
       kind: 'Coming in a later version',

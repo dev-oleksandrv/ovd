@@ -29,13 +29,18 @@ export const ready = (devices: Device[], target: string | null = null): DevicesU
 export function stubOvd(opts: {
   list: () => Promise<DevicesUpdate>
   devices?: Device[]
-  sdk?: IpcResult<SdkSummary>
+  sdk?: IpcResult<SdkSummary> | (() => IpcResult<SdkSummary>)
+  platform?: 'darwin' | 'linux'
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
   const api: OvdApi = {
-    appInfo: async () => ({ version: '0.1.0', platform: 'darwin' }),
-    sdk: { info: vi.fn(async () => opts.sdk ?? sdkFound) },
+    appInfo: async () => ({ version: '0.1.0', platform: opts.platform ?? 'darwin' }),
+    sdk: {
+      info: vi.fn(async () =>
+        typeof opts.sdk === 'function' ? opts.sdk() : (opts.sdk ?? sdkFound)
+      )
+    },
     devices: {
       list: vi.fn(opts.list),
       rename: vi.fn(async (id: string, name: string): Promise<IpcResult<Device>> => {

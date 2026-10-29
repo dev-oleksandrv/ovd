@@ -65,7 +65,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
         <div id="palette-items" role="listbox" className="overflow-auto p-1.5">
           {shown.map((item, index) => (
             <div
-              key={item.label}
+              key={item.id}
               role="option"
               aria-selected={index === selected}
               onClick={() => run(item)}
