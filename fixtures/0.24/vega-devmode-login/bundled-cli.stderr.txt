@@ -1,0 +1,1 @@
+Vega CLI argument error: Unknown arguments: json, devmode, login

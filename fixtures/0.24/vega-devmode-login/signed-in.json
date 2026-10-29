@@ -1,0 +1,5 @@
+{
+  "status": "error",
+  "errorCode": 2,
+  "errorMessage": "Already logged in. Please run 'vega devmode logout' first to log in with a different account."
+}
