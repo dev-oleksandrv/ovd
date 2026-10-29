@@ -46,6 +46,14 @@ export function createOvd(opts: OvdOptions): Ovd {
     }),
     env
   })
-  const doctor = createDoctor({ runner, sdk, devices, homedir, host: hostInfo, portInUse })
+  const doctor = createDoctor({
+    runner,
+    sdk,
+    devices,
+    homedir,
+    shell: env.SHELL ?? '/bin/sh',
+    host: hostInfo,
+    portInUse
+  })
   return { sdk, devices, doctor }
 }

@@ -4,8 +4,8 @@ import type { HostInfo } from './types.js'
 
 // `os.release()` is the kernel version, not the product version users know ("macOS 26.6"),
 // so read the product files; fall back to the kernel version if they're unreadable.
-export async function hostInfo(): Promise<HostInfo> {
-  const base = { arch: arch(), node: process.versions.node }
+export async function hostInfo(): Promise<Omit<HostInfo, 'node'>> {
+  const base = { arch: arch() }
   if (process.platform === 'darwin') {
     const plist = await readText('/System/Library/CoreServices/SystemVersion.plist')
     const version = /<key>ProductVersion<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1]

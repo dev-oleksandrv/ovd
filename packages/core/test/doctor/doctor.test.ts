@@ -15,6 +15,7 @@ import { fixture } from '../support/fixtures.js'
 const SDK_DOCTOR = 'vega sdk config doctor --json'
 const VDA_VERSION = 'vega exec vda version'
 const DEVMODE = 'vega devmode login --json'
+const NODE = 'node --version'
 const forwarded = (id: string, port: number) =>
   `vega device is-port-forwarded --port ${port} --forward false --device ${id}`
 
@@ -58,7 +59,8 @@ const healthy = () => ({
   [VDA_VERSION]: out('vda-version/ok.txt'),
   [DEVMODE]: { ...out('vega-devmode-login/signed-in.json'), exitCode: 2 },
   [forwarded(stick.id, 8081)]: out('vega-device-is-port-forwarded/false.txt'),
-  [forwarded(stick.id, 8097)]: out('vega-device-is-port-forwarded/false.txt')
+  [forwarded(stick.id, 8097)]: out('vega-device-is-port-forwarded/false.txt'),
+  [NODE]: { stdout: 'v24.2.0\n' }
 })
 
 interface Setup {
@@ -66,7 +68,6 @@ interface Setup {
   sdk?: SdkInfo | OvdError
   snapshot?: DevicesSnapshot | OvdError
   inUse?: number[]
-  node?: string
 }
 
 function setup(opts: Setup = {}) {
@@ -97,12 +98,8 @@ function setup(opts: Setup = {}) {
     sdk,
     devices,
     homedir: '/home/dev',
-    host: async () => ({
-      os: 'macOS',
-      osVersion: '26.6',
-      arch: 'arm64',
-      node: opts.node ?? '24.2.0'
-    }),
+    shell: '/bin/zsh',
+    host: async () => ({ os: 'macOS', osVersion: '26.6', arch: 'arm64' }),
     portInUse: async (port) => (opts.inUse ?? []).includes(port)
   })
   return { doctor, runner, discovered, sdk }
@@ -148,9 +145,19 @@ describe('Doctor.run', () => {
         detail: '8081, 8097 free on this computer · not reversed on Fire TV Stick 4K Select',
         command: 'vega device is-port-forwarded'
       },
-      { name: 'Node', detail: 'v24.2.0 (requires ≥ 22)' }
+      { name: 'Node', detail: 'v24.2.0 (requires ≥ 22)', command: NODE }
     ])
-    expect(check(report.checks, 'node')).not.toHaveProperty('command')
+  })
+
+  // An app started from Finder or the Dock doesn't get the shell PATH, so a bare `node`
+  // would miss an nvm/fnm/Volta Node: ask the user's login shell, which Metro also runs in.
+  test('Node is the one the login shell finds', async () => {
+    const { doctor, runner } = setup()
+    await doctor.run()
+    expect(runner.calls.find((c) => c.display === NODE)).toMatchObject({
+      file: '/bin/zsh',
+      args: ['-ilc', 'node --version']
+    })
   })
 
   test('re-discovers the SDK on every run', async () => {
@@ -178,9 +185,9 @@ describe('Doctor.run', () => {
       })
     }
     expect(check(checks, 'node')?.status).toBe('ok')
-    expect(runner.calls).toEqual([])
+    expect(runner.calls.map((c) => c.display)).toEqual([NODE])
     // Only commands that ran are shown (architecture rule: commands shown are real).
-    expect(checks.filter((c) => c.command !== undefined)).toEqual([])
+    expect(checks.filter((c) => c.command !== undefined).map((c) => c.id)).toEqual(['node'])
   })
 
   test('only the SDK-bundled vega: SDK fails, sign-in is skipped, VDA and devices run', async () => {
@@ -339,12 +346,30 @@ describe('Doctor.run', () => {
   })
 
   test('Node older than 22 fails', async () => {
-    const { doctor } = setup({ node: '20.11.0' })
+    const { doctor } = setup({ script: { ...healthy(), [NODE]: { stdout: 'v20.11.0\n' } } })
     const { checks } = await doctor.run()
     expect(check(checks, 'node')).toMatchObject({
       status: 'fail',
       detail: 'v20.11.0 (requires ≥ 22)',
       hint: 'Install Node 22 or newer'
     })
+  })
+
+  test.each([
+    ['not installed', { exitCode: 127, stderr: 'zsh: command not found: node' }],
+    [
+      'a shell that never answers',
+      new OvdError('COMMAND_FAILED', 'node --version did not finish in time', 'Retry')
+    ]
+  ])('Node not found (%s) warns and the header leaves Node out', async (_, result) => {
+    const { doctor } = setup({ script: { ...healthy(), [NODE]: result } })
+    const report = await doctor.run()
+    expect(check(report.checks, 'node')).toMatchObject({
+      status: 'warn',
+      detail: 'Couldn’t find Node in your shell',
+      hint: 'Install Node 22 or newer',
+      command: NODE
+    })
+    expect(report.host).not.toHaveProperty('node')
   })
 })

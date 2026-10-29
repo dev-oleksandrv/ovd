@@ -18,7 +18,8 @@ export interface HostInfo {
   os: string
   osVersion: string
   arch: string
-  node: string
+  // The Node the user's shell finds (the doctor's Node check); absent when it finds none.
+  node?: string
 }
 
 export interface DoctorReport {

@@ -1,4 +1,5 @@
 import { parseDevmodeLogin } from '../adapters/parseDevmodeLogin.js'
+import { parseNodeVersion } from '../adapters/parseNodeVersion.js'
 import { parseIsPortForwarded } from '../adapters/parseIsPortForwarded.js'
 import { parseSdkConfigDoctor } from '../adapters/parseSdkConfigDoctor.js'
 import { parseVdaVersion } from '../adapters/parseVdaVersion.js'
@@ -16,7 +17,9 @@ export interface DoctorDeps {
   sdk: SdkLocator
   devices: Devices
   homedir: string
-  host: () => Promise<HostInfo>
+  // The user's login shell ($SHELL): it finds the Node that Metro and builds use.
+  shell: string
+  host: () => Promise<Omit<HostInfo, 'node'>>
   portInUse: (port: number) => Promise<boolean>
 }
 
@@ -40,10 +43,13 @@ const COMMANDS: Partial<Record<CheckId, string>> = {
   vda: 'vega exec vda version',
   devices: 'vega exec vda devices -l',
   devmode: 'vega devmode login --json',
-  metro: 'vega device is-port-forwarded'
+  metro: 'vega device is-port-forwarded',
+  node: 'node --version'
 }
 const METRO_PORTS: readonly number[] = [8081, 8097]
 const NODE_MAJOR = 22
+// An interactive login shell loads the user's rc files (nvm and the like) first.
+const NODE_TIMEOUT_MS = 5_000
 // Signed in answers in 0.2 s; signed out prints `pending` at once and then waits for sign-in.
 const DEVMODE_TIMEOUT_MS = 5_000
 
@@ -224,12 +230,33 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     return ran('metro', { status: 'info', detail: `${host} · ${where}` })
   }
 
-  function nodeCheck(node: string): Result {
+  // An app started from Finder or the Dock doesn't get the shell PATH, so `node` from the
+  // app's own PATH would miss an nvm/fnm/Volta install; `-i` because nvm loads from ~/.zshrc.
+  async function nodeCheck(): Promise<{ result: Result; node?: string }> {
+    const hint = `Install Node ${NODE_MAJOR} or newer`
+    const node = await deps.runner
+      .run({
+        file: deps.shell,
+        args: ['-ilc', 'node --version'],
+        display: 'node --version',
+        timeoutMs: NODE_TIMEOUT_MS
+      })
+      .then((run) => (run.exitCode === 0 ? parseNodeVersion(run.stdout).version : undefined))
+      // Not started, timed out, or no version line: all mean no Node this shell can run.
+      .catch((error: unknown) => {
+        if (!(error instanceof OvdError)) throw error
+        return undefined
+      })
+    if (node === undefined) {
+      return {
+        result: ran('node', { status: 'warn', detail: 'Couldn’t find Node in your shell', hint })
+      }
+    }
     const major = Number(node.split('.')[0])
     const detail = `v${node} (requires ≥ ${NODE_MAJOR})`
-    return major >= NODE_MAJOR
-      ? { status: 'ok', detail }
-      : { status: 'fail', detail, hint: `Install Node ${NODE_MAJOR} or newer` }
+    const result: Result =
+      major >= NODE_MAJOR ? { status: 'ok', detail } : { status: 'fail', detail, hint }
+    return { node, result: ran('node', result) }
   }
 
   return {
@@ -270,10 +297,11 @@ export function createDoctor(deps: DoctorDeps): Doctor {
             ? ran('devmode', await devmodeCheck(sdk))
             : skipped('Needs the Vega CLI (SDK Manager)')
       }
-      results.node = nodeCheck(host.node)
+      const { result: nodeResult, node } = await nodeCheck()
+      results.node = nodeResult
       const order: CheckId[] = ['sdk', 'vda', 'devices', 'devmode', 'metro', 'node']
       return {
-        host,
+        host: node === undefined ? host : { ...host, node },
         checks: order.flatMap((id) => {
           const result = results[id]
           return result ? [check(id, result)] : []

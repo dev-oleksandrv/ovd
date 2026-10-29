@@ -70,7 +70,8 @@ export function EnvironmentScreen({
         </div>
         {host && (
           <div className="pb-2.5 font-mono text-meta text-faint">
-            {host.os} {host.osVersion} · {host.arch} · Node {host.node}
+            {host.os} {host.osVersion} · {host.arch}
+            {host.node !== undefined && ` · Node ${host.node}`}
           </div>
         )}
       </div>
