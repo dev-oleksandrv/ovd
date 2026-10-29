@@ -1,0 +1,52 @@
+import { OvdError, type Device, type Devices, type ErrorCode, type Ovd } from '@ovd/core'
+
+export const stick: Device = {
+  id: 'G070000000000001',
+  vdaSerial: 'G070000000000001',
+  serial: 'G070000000000001',
+  name: 'Fire TV stick',
+  kind: 'stick',
+  connection: 'usb',
+  status: 'online',
+  isTarget: true,
+  saved: false,
+  info: {
+    os: 'OS 2.0',
+    build: 'TV Ship/529',
+    architecture: 'armv7',
+    profile: 'tv',
+    product: 'callie',
+    simulated: false,
+    developerMode: true,
+    raw: { architecture: 'armv7l' }
+  }
+}
+
+export const vvd: Device = {
+  id: 'VirtualDevice',
+  serial: 'VirtualDevice',
+  name: 'Vega Virtual Device',
+  kind: 'vvd',
+  connection: 'local',
+  status: 'stopped',
+  isTarget: false,
+  saved: false
+}
+
+export const fail = (code: ErrorCode) => () =>
+  Promise.reject(new OvdError(code, `failed: ${code}`, `hint for ${code}`))
+
+// A core whose device calls are scripted per test; unscripted calls fail loudly.
+export function stubOvd(devices: Partial<Devices>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    devices: {
+      list: missing('list'),
+      currentTarget: missing('currentTarget'),
+      get: missing('get'),
+      rename: missing('rename'),
+      setTarget: missing('setTarget'),
+      ...devices
+    }
+  }
+}

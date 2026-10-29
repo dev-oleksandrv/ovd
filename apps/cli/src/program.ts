@@ -1,6 +1,9 @@
 import { Command } from 'commander'
 import { hello, type Ovd } from '@ovd/core'
 import pkg from '../package.json' with { type: 'json' }
+import { registerDevice } from './commands/device.js'
+import { registerDevices } from './commands/devices.js'
+import { registerTarget } from './commands/target.js'
 
 export interface Output {
   stdout: (text: string) => void
@@ -40,6 +43,8 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
       output.stdout(json ? `${JSON.stringify(result)}\n` : `${result.message}\n`)
     })
 
-  void setExitCode
+  registerDevices(program, deps, setExitCode)
+  registerDevice(program, deps, setExitCode)
+  registerTarget(program, deps, setExitCode)
   return program
 }
