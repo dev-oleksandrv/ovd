@@ -16,7 +16,8 @@ describe('Gallery', () => {
       'Table',
       'Screen states',
       'Modal and wizard',
-      'Text field'
+      'Text field',
+      'Title bar controls'
     ]) {
       expect(screen.getByText(section)).toBeTruthy()
     }
