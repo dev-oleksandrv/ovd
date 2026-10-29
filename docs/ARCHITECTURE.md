@@ -159,7 +159,8 @@ OVD designs around these:
 - Metro runs on the host; its output isn't in the device log stream.
 - The KPI Visualizer fails warm starts on the Virtual Device and fails offline apps.
 - GitHub's arm64 macOS runners can't start the Virtual Device (ADR 0013).
-- Two CLIs answer to `vega`: the Vega CLI (SDK Manager, `~/vega/bin/vega`) and the one bundled inside each SDK. The bundled one has no `sdk` or `devmode` and prints its help, exit 0, for unknown commands.
+- Two CLIs answer to `vega`: the Vega CLI (SDK Manager, `~/vega/bin/vega`) and the one bundled inside each SDK. The bundled one has no `sdk` or `devmode`: `vega devmode login --json` there exits 253 with `Unknown arguments`.
+- `vega devmode login --json` is the only sign-in probe: signed in, it exits 2 at once ("Already logged in"); signed out, it prints `"status": "pending"` with a verification URL and code, opens no browser, and waits. Doctor stops it at `pending`.
 - `vega device info` exits 0 with empty fields for an unknown or still-booting device, or when several devices are connected and no `--device` is given.
 - The Virtual Device is `VirtualDevice` to `vega device` and `emulator-5554` to VDA.
 - No command reports a friendly device name; `deviceName` echoes the ID passed in.

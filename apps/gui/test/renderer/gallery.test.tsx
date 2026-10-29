@@ -15,6 +15,7 @@ describe('Gallery', () => {
       'Tabs',
       'Table',
       'Screen states',
+      'Doctor rows',
       'Modal and wizard',
       'Text field',
       'Title bar controls'

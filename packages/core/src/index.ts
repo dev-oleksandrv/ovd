@@ -9,6 +9,13 @@ export type { VdaEntry } from './adapters/parseVdaDevices.js'
 export { parseDeviceInfo } from './adapters/parseDeviceInfo.js'
 export type { DeviceInfo } from './adapters/parseDeviceInfo.js'
 export { parseVvdStatus } from './adapters/parseVvdStatus.js'
+export { parseSdkConfigDoctor } from './adapters/parseSdkConfigDoctor.js'
+export type { SdkConfigDoctor } from './adapters/parseSdkConfigDoctor.js'
+export { parseVdaVersion } from './adapters/parseVdaVersion.js'
+export { parseNodeVersion } from './adapters/parseNodeVersion.js'
+export { parseIsPortForwarded } from './adapters/parseIsPortForwarded.js'
+export { parseDevmodeLogin } from './adapters/parseDevmodeLogin.js'
+export type { DevmodeLogin } from './adapters/parseDevmodeLogin.js'
 export { discoverSdk, defaultDiscoverOptions } from './sdk/discoverSdk.js'
 export type { DiscoverOptions, SdkInfo } from './sdk/discoverSdk.js'
 export { createSdkLocator } from './sdk/sdkLocator.js'
@@ -37,3 +44,15 @@ export { createOvd } from './ovd.js'
 export type { Ovd, OvdOptions } from './ovd.js'
 export { createDevicesWatcher } from './devices/devicesWatcher.js'
 export type { DevicesUpdate, DevicesWatcher } from './devices/devicesWatcher.js'
+export { createDoctor } from './doctor/doctor.js'
+export type { Doctor, DoctorDeps } from './doctor/doctor.js'
+export { portInUse } from './doctor/portProbe.js'
+export { hostInfo } from './doctor/hostInfo.js'
+export type {
+  Check,
+  CheckFix,
+  CheckId,
+  CheckStatus,
+  DoctorReport,
+  HostInfo
+} from './doctor/types.js'

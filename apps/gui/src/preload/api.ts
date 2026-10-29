@@ -1,4 +1,4 @@
-import type { Device, DevicesUpdate, ErrorJson } from '@ovd/core'
+import type { Device, DevicesUpdate, DoctorReport, ErrorJson } from '@ovd/core'
 
 export interface AppInfo {
   version: string
@@ -19,6 +19,10 @@ export interface OvdApi {
     // The SDK this core runs; SDK_NOT_FOUND until one is installed.
     info(): Promise<IpcResult<SdkSummary>>
   }
+  doctor: {
+    // Runs every check again (Re-check and "Run ovd doctor"); never changes anything.
+    run(): Promise<IpcResult<DoctorReport>>
+  }
   devices: {
     // Polls now and resolves with the result; also what Rescan does.
     list(): Promise<DevicesUpdate>
@@ -32,6 +36,7 @@ export interface OvdApi {
 export const channels = {
   appInfo: 'ovd:app-info',
   sdkInfo: 'ovd:sdk:info',
+  doctorRun: 'ovd:doctor:run',
   devicesList: 'ovd:devices:list',
   devicesRename: 'ovd:devices:rename',
   devicesChanged: 'ovd:devices:changed',

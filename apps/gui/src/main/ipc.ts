@@ -1,5 +1,6 @@
 import { app, ipcMain } from 'electron'
 import type { Ovd } from '@ovd/core'
+import type { DoctorReport } from '@ovd/core'
 import { channels, type AppInfo, type IpcResult, type SdkSummary } from '../preload/api'
 import { toResult } from './ipcResult'
 
@@ -13,5 +14,9 @@ export function registerIpcHandlers(ovd: Ovd): void {
 
   ipcMain.handle(channels.sdkInfo, (): Promise<IpcResult<SdkSummary>> =>
     toResult(async () => ({ sdkVersion: (await ovd.sdk.get()).sdkVersion }))
+  )
+
+  ipcMain.handle(channels.doctorRun, (): Promise<IpcResult<DoctorReport>> =>
+    toResult(() => ovd.doctor.run())
   )
 }

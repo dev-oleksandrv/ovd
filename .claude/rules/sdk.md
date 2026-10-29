@@ -40,5 +40,5 @@ paths:
 ## Doctor
 
 - Doctor only reports; it never changes the machine.
-- Checks: Vega SDK (`vega --version` must be the Vega CLI, `vega sdk config doctor --json`), VDA (`vega exec vda version`), devices (`vega exec vda devices -l`, `vega virtual-device status`), Developer Mode hints (`vega devmode login --json` probe), Metro ports 8081/8097 (`vega device is-port-forwarded`). Later stages add Project and Emulator gRPC rows.
+- Checks: Vega SDK (`vega --version` must be the Vega CLI, `vega sdk config doctor --json`), VDA (`vega exec vda version`), devices (`vega exec vda devices -l`, `vega virtual-device status`), Developer Mode sign-in (`vega devmode login --json` probe, 5 s timeout, stopped as soon as it prints `pending`), Metro ports 8081/8097 (host connect test on 127.0.0.1 and ::1, `vega device is-port-forwarded` on an online target), Node ≥ 22 (`node --version` through the user's login shell, `$SHELL -ilc`, because an app started from Finder doesn't get the shell PATH; not found is a warning). Later stages add Project and Emulator gRPC rows.
 - Every failed check carries a one-line fix hint.

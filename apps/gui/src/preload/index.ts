@@ -7,6 +7,9 @@ const api: OvdApi = {
   sdk: {
     info: () => ipcRenderer.invoke(channels.sdkInfo)
   },
+  doctor: {
+    run: () => ipcRenderer.invoke(channels.doctorRun)
+  },
   devices: {
     list: () => ipcRenderer.invoke(channels.devicesList),
     rename: (id, name) => ipcRenderer.invoke(channels.devicesRename, id, name),

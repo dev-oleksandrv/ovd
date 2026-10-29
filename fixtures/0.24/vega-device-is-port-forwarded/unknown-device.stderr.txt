@@ -1,0 +1,2 @@
+Vega operation FAILED due to an irrecoverable error: Incomplete: error: device 'NOPE' not found
+Additional logs can be found at ~/vega/sdk/vega-sdk/main/0.24.12112/logs

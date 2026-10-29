@@ -1,0 +1,3 @@
+Vega Device Adapter version 2.6+3d072013
+Server Version 41
+Platform Version 34.0.4

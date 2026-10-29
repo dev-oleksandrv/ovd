@@ -1,6 +1,6 @@
 import type { Device } from '@ovd/core'
 
-export type Screen = 'devices'
+export type Screen = 'devices' | 'doctor'
 
 export interface PaletteItem {
   // Unique per entry; labels are not (two devices can share a name).
@@ -25,12 +25,13 @@ export const LATER: readonly (readonly [label: string, icon: string])[] = [
   ['Scenarios & MCP', 'account_tree']
 ]
 
-// Stage 1 palette as shipped so far: Doctor, Virtual Device, setup and pairing entries join
-// with their slices.
+// Stage 1 palette as shipped so far: Virtual Device, setup and pairing entries join with
+// their slices.
 export function paletteItems(opts: {
   devices: Device[]
   target: string | null
   go: (screen: Screen) => void
+  runDoctor: () => void
   switchTarget: (device: Device) => void
   later: (label: string) => void
 }): PaletteItem[] {
@@ -42,6 +43,22 @@ export function paletteItems(opts: {
       kind: 'Screen',
       later: false,
       run: () => opts.go('devices')
+    },
+    {
+      id: 'screen:doctor',
+      label: 'Go to Doctor',
+      icon: 'health_and_safety',
+      kind: 'Screen',
+      later: false,
+      run: () => opts.go('doctor')
+    },
+    {
+      id: 'action:doctor',
+      label: 'Run ovd doctor',
+      icon: 'health_and_safety',
+      kind: 'Action',
+      later: false,
+      run: opts.runDoctor
     },
     ...opts.devices
       .filter((device) => device.id !== opts.target)
