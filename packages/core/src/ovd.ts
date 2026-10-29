@@ -1,6 +1,9 @@
 import { homedir as osHomedir } from 'node:os'
 import { createActivityLog, type Surface } from './activity/activityLog.js'
 import { createDevices, type Devices } from './devices/devices.js'
+import { createDoctor, type Doctor } from './doctor/doctor.js'
+import { hostInfo } from './doctor/hostInfo.js'
+import { portInUse } from './doctor/portProbe.js'
 import { defaultDiscoverOptions, discoverSdk, type SdkInfo } from './sdk/discoverSdk.js'
 import { createExecaRunner, type Runner } from './sdk/runner.js'
 import { createSdkLocator, type SdkLocator } from './sdk/sdkLocator.js'
@@ -20,6 +23,7 @@ export interface OvdOptions {
 export interface Ovd {
   sdk: SdkLocator
   devices: Devices
+  doctor: Doctor
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -42,5 +46,6 @@ export function createOvd(opts: OvdOptions): Ovd {
     }),
     env
   })
-  return { sdk, devices }
+  const doctor = createDoctor({ runner, sdk, devices, homedir, host: hostInfo, portInUse })
+  return { sdk, devices, doctor }
 }

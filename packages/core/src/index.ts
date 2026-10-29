@@ -43,3 +43,15 @@ export { createOvd } from './ovd.js'
 export type { Ovd, OvdOptions } from './ovd.js'
 export { createDevicesWatcher } from './devices/devicesWatcher.js'
 export type { DevicesUpdate, DevicesWatcher } from './devices/devicesWatcher.js'
+export { createDoctor } from './doctor/doctor.js'
+export type { Doctor, DoctorDeps } from './doctor/doctor.js'
+export { portInUse } from './doctor/portProbe.js'
+export { hostInfo } from './doctor/hostInfo.js'
+export type {
+  Check,
+  CheckFix,
+  CheckId,
+  CheckStatus,
+  DoctorReport,
+  HostInfo
+} from './doctor/types.js'
