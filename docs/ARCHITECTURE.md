@@ -165,7 +165,7 @@ OVD designs around these:
 - No command reports a friendly device name; `deviceName` echoes the ID passed in.
 - `vega device list` takes 1–4 s and has no JSON mode; `vega exec vda devices -l` takes about 0.3 s.
 - `vega platform doctor` prints the whole environment, secrets included. OVD never runs it.
-- The Vega CLI 1.4.5 sometimes fails `vega exec vda …` with `[Errno 2] No such file or directory: 'vda'` (exit 2) and succeeds on the next run. OVD retries once.
+- Two `vega` processes started at the same moment can break each other: the SDK relinks its workspace and rewrites a cache on every start, and the loser fails with `[Errno 2] No such file or directory: 'vda'` (exit 2) or `EOFError`. Each core runs one SDK command at a time, and retries the device list once for clashes with another surface.
 
 ## 9. Testing
 
