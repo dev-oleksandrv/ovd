@@ -2,6 +2,7 @@ import type { CheckStatus } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import {
   firstRunCount,
+  firstRunNeeded,
   firstRunPassed,
   gateOpen,
   rowView,
@@ -57,5 +58,16 @@ describe('first run', () => {
     expect(gateOpen(doctorReport({ vda: { status: 'fail' } }).checks)).toBe(false)
     expect(gateOpen(doctorReport({ devices: { status: 'warn' } }).checks)).toBe(true)
     expect(gateOpen(doctorReport({ sdk: { status: 'warn' } }).checks)).toBe(true)
+  })
+
+  // Spec D3: device commands still run with only the SDK-bundled vega.
+  test('a bundled-only vega opens first run but does not lock the user in', () => {
+    const bundled = doctorReport({ sdk: { status: 'fail', fix: 'install-cli' } }).checks
+    expect(firstRunNeeded(bundled)).toBe(true)
+    expect(gateOpen(bundled)).toBe(true)
+    const missing = doctorReport({ sdk: { status: 'fail', fix: 'install-sdk' } }).checks
+    expect(firstRunNeeded(missing)).toBe(true)
+    expect(gateOpen(missing)).toBe(false)
+    expect(firstRunNeeded(doctorReport({ devices: { status: 'warn' } }).checks)).toBe(false)
   })
 })

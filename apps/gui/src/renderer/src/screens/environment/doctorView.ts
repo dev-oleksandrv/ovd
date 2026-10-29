@@ -41,12 +41,25 @@ export function firstRunPassed(checks: Check[]): boolean {
   return FIRST_RUN.every((id) => passed(byId(checks, id)))
 }
 
-// Navigation bounces back to Doctor only while the SDK or VDA fail (spec D8).
+// The app opens on first run while the SDK or VDA fail (spec D8), including a bundled-only
+// vega, so its "Install the Vega CLI" fix is the first thing the user sees.
+export function firstRunNeeded(checks: Check[]): boolean {
+  return !(passed(byId(checks, 'sdk')) && passed(byId(checks, 'vda')))
+}
+
+// A bundled-only vega still runs device commands (spec D3): only a missing SDK locks the user
+// on Doctor.
+function sdkFound(check: Check | undefined): boolean {
+  return passed(check) || check?.fix === 'install-cli'
+}
+
+// Navigation bounces back to Doctor only while no SDK is found or VDA fails (spec D3, D8).
 export function gateOpen(checks: Check[]): boolean {
-  return passed(byId(checks, 'sdk')) && passed(byId(checks, 'vda'))
+  return sdkFound(byId(checks, 'sdk')) && passed(byId(checks, 'vda'))
 }
 
 // The check to highlight when the gate bounces the user back.
 export function gateFailure(checks: Check[]): CheckId | null {
-  return (['sdk', 'vda'] as const).find((id) => !passed(byId(checks, id))) ?? null
+  if (!sdkFound(byId(checks, 'sdk'))) return 'sdk'
+  return passed(byId(checks, 'vda')) ? null : 'vda'
 }

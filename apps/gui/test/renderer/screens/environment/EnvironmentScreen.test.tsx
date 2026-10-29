@@ -68,9 +68,11 @@ describe('first run', () => {
     expect(screen.getByText('macOS 26.6 · arm64 · Node 24.2.0')).toBeTruthy()
   })
 
-  test('only the bundled vega offers the Vega CLI install', async () => {
+  test('only the bundled vega offers the Vega CLI install and still lets Devices open', async () => {
     await renderApp(bundledCli)
     expect(await screen.findByRole('link', { name: 'Install the Vega CLI ↗' })).toBeTruthy()
+    fireEvent.click(nav('Devices'))
+    expect(await screen.findByRole('heading', { name: 'Devices' })).toBeTruthy()
   })
 
   test('navigating away bounces back while the SDK fails', async () => {

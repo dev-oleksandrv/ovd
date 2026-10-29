@@ -13,7 +13,7 @@ import { SearchButton } from './frame/SearchButton'
 import { TargetPicker } from './frame/TargetPicker'
 import { TargetStatus } from './frame/TargetStatus'
 import { DevicesScreen } from './screens/devices/DevicesScreen'
-import { gateFailure, gateOpen } from './screens/environment/doctorView'
+import { firstRunNeeded, gateFailure, gateOpen } from './screens/environment/doctorView'
 import { EnvironmentScreen } from './screens/environment/EnvironmentScreen'
 import { useSdk } from './sdk/useSdk'
 import { paletteItems, type Screen } from './shell/paletteItems'
@@ -62,9 +62,9 @@ function Shell() {
   // The first report picks the start screen: Doctor while the SDK or VDA fail (spec D8).
   // Set during render (not in an effect) so the wrong screen never paints.
   if (firstRun === null && report) {
-    const blocked = !gateOpen(report.checks)
-    setFirstRun(blocked)
-    if (blocked) setScreen('doctor')
+    const needed = firstRunNeeded(report.checks)
+    setFirstRun(needed)
+    if (needed) setScreen('doctor')
   }
 
   useEffect(() => {
