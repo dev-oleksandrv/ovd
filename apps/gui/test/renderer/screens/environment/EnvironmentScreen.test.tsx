@@ -90,6 +90,8 @@ describe('first run', () => {
     expect(await screen.findByText('Re-checking…')).toBeTruthy()
     expect(await screen.findByText('Setup complete — OVD is ready.')).toBeTruthy()
     expect(await screen.findByText('Vega SDK found')).toBeTruthy()
+    // Re-check runs the whole doctor, so it echoes the CLI equivalent (ADR 0005).
+    expect(screen.getAllByText(/ovd doctor --json/).length).toBeGreaterThan(0)
     expect(api.doctor.run).toHaveBeenCalledTimes(2)
     fireEvent.click(screen.getByRole('button', { name: 'Go to Devices' }))
     expect(await screen.findByRole('heading', { name: 'Devices' })).toBeTruthy()
