@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
@@ -223,5 +223,76 @@ describe('Devices.list', () => {
       device: { id: 'VirtualDevice' },
       source: 'flag'
     })
+  })
+})
+
+const activity = async () =>
+  (await readFile(join(home, 'activity.jsonl'), 'utf8'))
+    .split('\n')
+    .filter((l) => l !== '')
+    .map((l) => JSON.parse(l) as Record<string, unknown>)
+
+describe('Devices actions', () => {
+  test('rename trims, stores the name by serial and logs it', async () => {
+    const { devices } = setup(stickOnly())
+    const device = await devices.rename('G070000000000001', '  Living room stick ')
+    expect(device).toMatchObject({ id: 'G070000000000001', name: 'Living room stick' })
+    const state = JSON.parse(await readFile(join(home, 'state.json'), 'utf8')) as HostState
+    expect(state.names).toEqual({ G070000000000001: 'Living room stick' })
+    expect(await activity()).toMatchObject([
+      {
+        surface: 'cli',
+        action: 'device.rename',
+        target: 'G070000000000001',
+        args: { name: 'Living room stick' },
+        result: 'ok'
+      }
+    ])
+  })
+
+  test.each(['   ', 'x'.repeat(65)])('rename rejects %j and logs the error', async (name) => {
+    const { devices } = setup(stickOnly())
+    await expect(devices.rename('G070000000000001', name)).rejects.toMatchObject({
+      code: 'INVALID_NAME'
+    })
+    expect(await activity()).toMatchObject([
+      { action: 'device.rename', result: 'error', errorCode: 'INVALID_NAME' }
+    ])
+  })
+
+  test('setTarget accepts the VDA alias, remembers the canonical ID and logs it', async () => {
+    const { devices } = setup(stickAndVvd())
+    expect(await devices.setTarget('emulator-5554')).toMatchObject({
+      id: 'VirtualDevice',
+      isTarget: true
+    })
+    const state = JSON.parse(await readFile(join(home, 'state.json'), 'utf8')) as HostState
+    expect(state.target).toBe('VirtualDevice')
+    expect((await devices.list()).target).toBe('VirtualDevice')
+    expect(await activity()).toMatchObject([
+      { action: 'target.set', target: 'VirtualDevice', args: {}, result: 'ok' }
+    ])
+  })
+
+  test('setTarget and rename refuse an unknown device', async () => {
+    const { devices } = setup(stickOnly())
+    await expect(devices.setTarget('NOPE')).rejects.toMatchObject({ code: 'DEVICE_NOT_FOUND' })
+    await expect(devices.rename('NOPE', 'Bedroom stick')).rejects.toMatchObject({
+      code: 'DEVICE_NOT_FOUND'
+    })
+    expect((await activity()).map((e) => e.errorCode)).toEqual([
+      'DEVICE_NOT_FOUND',
+      'DEVICE_NOT_FOUND'
+    ])
+  })
+
+  test('get returns one device with its info and writes nothing', async () => {
+    const { devices } = setup(stickAndVvd())
+    expect(await devices.get('VirtualDevice')).toMatchObject({
+      id: 'VirtualDevice',
+      info: { architecture: 'aarch64' }
+    })
+    await expect(devices.get('NOPE')).rejects.toMatchObject({ code: 'DEVICE_NOT_FOUND' })
+    await expect(readFile(join(home, 'activity.jsonl'))).rejects.toMatchObject({ code: 'ENOENT' })
   })
 })

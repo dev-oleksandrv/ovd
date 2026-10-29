@@ -32,3 +32,5 @@ export type {
   ResolvedTarget,
   TargetSource
 } from './devices/types.js'
+export { createOvd } from './ovd.js'
+export type { Ovd, OvdOptions } from './ovd.js'

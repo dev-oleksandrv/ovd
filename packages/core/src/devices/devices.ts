@@ -1,4 +1,4 @@
-import type { ActivityLog } from '../activity/activityLog.js'
+import type { ActivityAction, ActivityLog } from '../activity/activityLog.js'
 import { parseDeviceInfo, type DeviceInfo } from '../adapters/parseDeviceInfo.js'
 import { parseVdaDevices } from '../adapters/parseVdaDevices.js'
 import { parseVvdStatus } from '../adapters/parseVvdStatus.js'
@@ -22,7 +22,12 @@ export interface Devices {
   list(): Promise<DevicesSnapshot>
   // `override` is an ID the user passed explicitly (`--device`); it must name a known device.
   currentTarget(override?: string): Promise<ResolvedTarget | null>
+  get(id: string): Promise<Device>
+  rename(id: string, name: string): Promise<Device>
+  setTarget(id: string): Promise<Device>
 }
+
+const MAX_NAME = 64
 
 type Unnamed = Omit<Device, 'name' | 'isTarget'>
 
@@ -146,7 +151,67 @@ export function createDevices(deps: DevicesDeps): Devices {
     return { devices, target: device ? { device, source: target.source } : null }
   }
 
+  async function find(id: string): Promise<Device> {
+    const { devices } = await snapshot()
+    const device = devices.find((d) => d.id === canonicalId(id))
+    if (!device) {
+      throw new OvdError(
+        'DEVICE_NOT_FOUND',
+        `No device ${id}`,
+        'See connected devices: ovd devices'
+      )
+    }
+    return device
+  }
+
+  // Device actions are logged whether they succeed or fail (ADR 0011).
+  async function logged<T>(
+    action: ActivityAction,
+    id: string,
+    args: Record<string, string>,
+    run: () => Promise<T>
+  ): Promise<T> {
+    const target = canonicalId(id)
+    try {
+      const value = await run()
+      await deps.activity.append({ action, target, args, result: 'ok' })
+      return value
+    } catch (error) {
+      if (error instanceof OvdError) {
+        await deps.activity.append({ action, target, args, result: 'error', errorCode: error.code })
+      }
+      throw error
+    }
+  }
+
   return {
+    get: find,
+
+    rename(id, name) {
+      const trimmed = name.trim()
+      return logged('device.rename', id, { name: trimmed }, async () => {
+        if (trimmed === '' || trimmed.length > MAX_NAME) {
+          throw new OvdError(
+            'INVALID_NAME',
+            `A device name needs 1–${MAX_NAME} characters`,
+            `Use 1–${MAX_NAME} characters`
+          )
+        }
+        const device = await find(id)
+        const key = device.serial ?? device.id
+        await deps.state.update((s) => ({ ...s, names: { ...s.names, [key]: trimmed } }))
+        return { ...device, name: trimmed }
+      })
+    },
+
+    setTarget(id) {
+      return logged('target.set', id, {}, async () => {
+        const device = await find(id)
+        await deps.state.update((s) => ({ ...s, target: device.id }))
+        return { ...device, isTarget: true }
+      })
+    },
+
     async list() {
       const { devices, target } = await snapshot()
       return { devices, target: target?.device.id ?? null }
