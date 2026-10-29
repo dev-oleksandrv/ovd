@@ -1,4 +1,4 @@
-import type { Device, DevicesUpdate } from '@ovd/core'
+import type { Check, Device, DevicesUpdate, DoctorReport } from '@ovd/core'
 import { vi } from 'vitest'
 import type { IpcResult, OvdApi, SdkSummary } from '../../../src/preload/api'
 
@@ -14,6 +14,56 @@ const notFound: IpcResult<Device> = {
 }
 
 export const sdkFound: IpcResult<SdkSummary> = { ok: true, data: { sdkVersion: '0.24.12112' } }
+const host = { os: 'macOS', osVersion: '26.6', arch: 'arm64', node: '24.2.0' }
+
+// A report shaped like core's: every row ok unless overridden by id.
+export function doctorReport(
+  overrides: Partial<Record<Check['id'], Partial<Check>>> = {}
+): DoctorReport {
+  const rows: Check[] = [
+    {
+      id: 'sdk',
+      name: 'Vega SDK',
+      status: 'ok',
+      detail: '0.24.12112 · Vega CLI 1.4.5 · ~/vega/bin/vega',
+      command: 'vega sdk config doctor --json'
+    },
+    {
+      id: 'vda',
+      name: 'VDA',
+      status: 'ok',
+      detail: 'Checked with vega exec vda version',
+      command: 'vega exec vda version'
+    },
+    {
+      id: 'devices',
+      name: 'Devices',
+      status: 'ok',
+      detail: '2 online · 0 unavailable',
+      command: 'vega exec vda devices -l'
+    },
+    {
+      id: 'devmode',
+      name: 'Developer Mode',
+      status: 'ok',
+      detail:
+        'Signed in to Amazon Developer Services · Developer Mode is required for a stick to appear',
+      command: 'vega devmode login --json'
+    },
+    {
+      id: 'metro',
+      name: 'Metro',
+      status: 'info',
+      detail: '8081, 8097 free on this computer · no target device',
+      command: 'vega device is-port-forwarded'
+    },
+    { id: 'node', name: 'Node', status: 'ok', detail: 'v24.2.0 (requires ≥ 22)' }
+  ]
+  return { host, checks: rows.map((row) => ({ ...row, ...overrides[row.id] })) }
+}
+
+export const doctorOk: IpcResult<DoctorReport> = { ok: true, data: doctorReport() }
+
 export const sdkMissing: IpcResult<SdkSummary> = {
   ok: false,
   error: { code: 'SDK_NOT_FOUND', message: 'Vega SDK not found', hint: 'Install the Vega SDK' }
@@ -30,6 +80,7 @@ export function stubOvd(opts: {
   list: () => Promise<DevicesUpdate>
   devices?: Device[]
   sdk?: IpcResult<SdkSummary> | (() => IpcResult<SdkSummary>)
+  doctor?: () => IpcResult<DoctorReport>
   platform?: 'darwin' | 'linux'
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
@@ -40,6 +91,9 @@ export function stubOvd(opts: {
       info: vi.fn(async () =>
         typeof opts.sdk === 'function' ? opts.sdk() : (opts.sdk ?? sdkFound)
       )
+    },
+    doctor: {
+      run: vi.fn(async () => (opts.doctor ?? (() => doctorOk))())
     },
     devices: {
       list: vi.fn(opts.list),
