@@ -232,6 +232,27 @@ const activity = async () =>
     .filter((l) => l !== '')
     .map((l) => JSON.parse(l) as Record<string, unknown>)
 
+describe('Devices.list review fixes', () => {
+  test('a Virtual Device target without a VVD row stays a stopped Virtual Device', async () => {
+    const { devices } = setup(
+      { ...stickOnly(), [VVD]: { exitCode: 1 } },
+      { env: { VEGA_SERIAL: 'emulator-5554' } }
+    )
+    const snapshot = await devices.list()
+    expect(snapshot.devices.map((d) => [d.id, d.name, d.kind, d.connection, d.status])).toEqual([
+      ['G070000000000001', 'Fire TV stick', 'stick', 'usb', 'online'],
+      ['VirtualDevice', 'Vega Virtual Device', 'vvd', 'local', 'stopped']
+    ])
+  })
+
+  test('device info gets a short timeout so one hung device cannot stall every poll', async () => {
+    const { devices, runner } = setup(stickOnly())
+    await devices.list()
+    const info = runner.calls.find((c) => c.display === STICK_INFO)
+    expect(info?.timeoutMs).toBeLessThanOrEqual(5_000)
+  })
+})
+
 describe('Devices actions', () => {
   test('rename trims, stores the name by serial and logs it', async () => {
     const { devices } = setup(stickOnly())

@@ -28,6 +28,9 @@ export interface Devices {
 }
 
 const MAX_NAME = 64
+// Info normally answers in under 1 s; commands run one at a time, so a hung device must
+// not hold up every poll for the runner's default 15 s.
+const INFO_TIMEOUT_MS = 5_000
 
 type Unnamed = Omit<Device, 'name' | 'isTarget'>
 
@@ -51,7 +54,9 @@ export function createDevices(deps: DevicesDeps): Devices {
         .filter((id) => !infoCache.has(id))
         .map(async (id) => {
           try {
-            const result = await deps.runner.run(vegaDeviceCmd(vegaPath, 'info', [], id))
+            const result = await deps.runner.run(
+              vegaDeviceCmd(vegaPath, 'info', [], id, { timeoutMs: INFO_TIMEOUT_MS })
+            )
             if (result.exitCode === 0) infoCache.set(id, parseDeviceInfo(result.stdout))
           } catch (error) {
             // A booting or unreachable device has no info yet; the next list retries it.
@@ -232,13 +237,17 @@ export function createDevices(deps: DevicesDeps): Devices {
 }
 
 function offline(id: string): Unnamed {
+  // The ID is already canonical here, so the Virtual Device arrives as `VirtualDevice`.
+  if (id === VVD_ID) {
+    return { id, serial: VVD_ID, kind: 'vvd', connection: 'local', status: 'stopped', saved: false }
+  }
   const { kind, connection, ip } = classifyVdaEntry({ vdaSerial: id, state: 'offline', props: {} })
   return {
     id,
     kind,
     connection,
     ...(ip === undefined ? {} : { ip }),
-    status: kind === 'vvd' ? 'stopped' : 'offline',
+    status: 'offline',
     saved: false
   }
 }
