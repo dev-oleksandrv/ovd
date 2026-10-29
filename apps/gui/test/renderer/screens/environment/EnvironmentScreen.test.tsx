@@ -95,6 +95,16 @@ describe('first run', () => {
     expect(await screen.findByRole('heading', { name: 'Devices' })).toBeTruthy()
   })
 
+  test('clicking Re-check again while a run is in progress does not queue another run', async () => {
+    const api = await renderApp(noSdk)
+    await screen.findByText('Set up OVD')
+    const recheck = screen.getAllByRole('button', { name: 'Re-check' })[0] as HTMLElement
+    fireEvent.click(recheck)
+    fireEvent.click(recheck)
+    await screen.findAllByText('Re-checking…')
+    expect(api.doctor.run).toHaveBeenCalledTimes(2)
+  })
+
   test('with the SDK and VDA working, no devices does not block the app', async () => {
     await renderApp(noDevices)
     await screen.findByText('Doctor')
