@@ -4,6 +4,7 @@ import { createDevices, type Devices } from './devices/devices.js'
 import { defaultDiscoverOptions, discoverSdk, type SdkInfo } from './sdk/discoverSdk.js'
 import { createExecaRunner, type Runner } from './sdk/runner.js'
 import { createSdkLocator, type SdkLocator } from './sdk/sdkLocator.js'
+import { createSerialRunner } from './sdk/serialRunner.js'
 import { resolveOvdHome } from './state/ovdHome.js'
 import { createStateStore } from './state/stateStore.js'
 
@@ -25,7 +26,7 @@ export interface Ovd {
 export function createOvd(opts: OvdOptions): Ovd {
   const env = opts.env ?? process.env
   const homedir = opts.homedir ?? osHomedir()
-  const runner = opts.runner ?? createExecaRunner()
+  const runner = createSerialRunner(opts.runner ?? createExecaRunner())
   const home = resolveOvdHome(env, homedir)
   const sdk = createSdkLocator(
     opts.discover ?? (() => discoverSdk({ ...defaultDiscoverOptions(runner), env, homedir }))

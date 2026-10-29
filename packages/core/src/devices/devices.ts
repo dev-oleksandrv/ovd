@@ -31,10 +31,6 @@ const MAX_NAME = 64
 
 type Unnamed = Omit<Device, 'name' | 'isTarget'>
 
-// The Vega CLI 1.4.5 sometimes fails `vega exec vda …` this way and succeeds on the next run
-// (fixtures/0.24/vda-devices/vda-missing-errno.txt).
-const VDA_FLAKE = "[Errno 2] No such file or directory: 'vda'"
-
 export function createDevices(deps: DevicesDeps): Devices {
   // Info is read once per device while it stays online (spec D9).
   const infoCache = new Map<string, DeviceInfo>()
@@ -42,8 +38,9 @@ export function createDevices(deps: DevicesDeps): Devices {
   async function vdaDevices(vegaPath: string): Promise<RunResult> {
     const run = () => deps.runner.run(vdaCmd(vegaPath, ['devices', '-l']))
     const first = await run()
-    if (first.exitCode !== 0 && first.stdout.trim() === VDA_FLAKE) return run()
-    return first
+    // Another surface's `vega` running at the same moment can make this one fail
+    // (fixtures/0.24/vda-devices/vda-missing-errno.txt); one retry rides it out.
+    return first.exitCode === 0 ? first : run()
   }
 
   async function fetchInfo(vegaPath: string, devices: Unnamed[]): Promise<void> {
