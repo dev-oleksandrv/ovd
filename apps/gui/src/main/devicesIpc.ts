@@ -1,16 +1,8 @@
 import { ipcMain, type BrowserWindow } from 'electron'
-import { createDevicesWatcher, isOvdError, toErrorJson, type Ovd } from '@ovd/core'
-import { channels, type IpcResult } from '../preload/api'
+import { createDevicesWatcher, type Ovd } from '@ovd/core'
+import { channels } from '../preload/api'
 import { requireText } from './guards'
-
-async function toResult<T>(action: () => Promise<T>): Promise<IpcResult<T>> {
-  try {
-    return { ok: true, data: await action() }
-  } catch (error) {
-    if (isOvdError(error)) return { ok: false, error: toErrorJson(error) }
-    throw error
-  }
-}
+import { toResult } from './ipcResult'
 
 // Main owns device state (gui rules): it polls while the window is visible and pushes changes.
 export function registerDevicesIpc(

@@ -68,7 +68,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  registerIpcHandlers()
+  registerIpcHandlers(ovd)
 
   createWindow()
 
