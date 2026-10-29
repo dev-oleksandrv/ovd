@@ -1,7 +1,12 @@
+import type { Device } from '@ovd/core'
 import { useState } from 'react'
 import { useFeedback } from '../feedback/feedbackContext'
+import { CommandPalette } from '../frame/CommandPalette'
 import { NavGroup } from '../frame/NavGroup'
 import { NavItem } from '../frame/NavItem'
+import { SearchButton } from '../frame/SearchButton'
+import { TargetPicker } from '../frame/TargetPicker'
+import { paletteItems } from '../shell/paletteItems'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
@@ -88,6 +93,55 @@ const columns: Array<Column<SampleApp>> = [
   }
 ]
 
+const info = {
+  os: 'OS 2.0',
+  build: 'TV Ship/515',
+  architecture: 'armv7',
+  profile: 'tv',
+  product: 'sample',
+  simulated: false,
+  developerMode: true,
+  raw: {}
+}
+
+const devices: Device[] = [
+  {
+    id: 'G4N0AB1234567',
+    vdaSerial: 'G4N0AB1234567',
+    serial: 'G4N0AB1234567',
+    name: 'Fire TV Stick 4K Select',
+    kind: 'stick',
+    connection: 'usb',
+    status: 'online',
+    isTarget: true,
+    saved: false,
+    info
+  },
+  {
+    id: '192.0.2.42:5555',
+    vdaSerial: '192.0.2.42:5555',
+    serial: 'G4N0AB7654321',
+    name: 'Living room stick',
+    kind: 'stick',
+    connection: 'wifi',
+    ip: '192.0.2.42',
+    status: 'online',
+    isTarget: false,
+    saved: true,
+    info
+  },
+  {
+    id: 'VirtualDevice',
+    serial: 'VirtualDevice',
+    name: 'Vega Virtual Device',
+    kind: 'vvd',
+    connection: 'local',
+    status: 'stopped',
+    isTarget: false,
+    saved: false
+  }
+]
+
 const deviceInfo = JSON.stringify(
   { name: 'Fire TV Stick 4K Select', os: 'Vega OS 1.1', arch: 'armv7', profile: 'user' },
   null,
@@ -102,6 +156,9 @@ export function Gallery() {
   const [step, setStep] = useState<number | null>(null)
   const [nav, setNav] = useState('devices')
   const [name, setName] = useState('Living room stick')
+  const [target, setTarget] = useState(devices[0])
+  const [picker, setPicker] = useState(false)
+  const [palette, setPalette] = useState(false)
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-auto px-6 py-5">
@@ -309,6 +366,32 @@ export function Gallery() {
       <GallerySection title="Modal and wizard">
         <Button onClick={() => setModal(true)}>Open modal</Button>
         <Button onClick={() => setStep(1)}>Open wizard</Button>
+      </GallerySection>
+
+      <GallerySection title="Title bar controls">
+        <div className="flex w-full items-center gap-2.5">
+          <TargetPicker
+            devices={devices}
+            target={target}
+            open={picker}
+            onOpenChange={setPicker}
+            onPick={setTarget}
+          />
+          <SearchButton platform="darwin" onClick={() => setPalette(true)} />
+        </div>
+        {palette && (
+          <CommandPalette
+            items={paletteItems({
+              devices,
+              target: target?.id ?? null,
+              go: () => undefined,
+              switchTarget: setTarget,
+              later: (label) =>
+                notify({ tone: 'info', text: `${label} is coming in a later version` })
+            })}
+            onClose={() => setPalette(false)}
+          />
+        )}
       </GallerySection>
 
       <GallerySection title="Sidebar navigation">

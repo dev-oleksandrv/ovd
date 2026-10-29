@@ -3,7 +3,7 @@ import { useFeedback } from '../feedback/feedbackContext'
 import { Icon } from '../ui/Icon'
 
 interface StatusBarProps {
-  // SDK and target items arrive with Stage 1; the CLI echo is always on the right.
+  // SDK and target items; the CLI echo is always on the right.
   children?: ReactNode
 }
 

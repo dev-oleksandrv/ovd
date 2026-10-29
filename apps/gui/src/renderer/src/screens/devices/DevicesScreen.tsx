@@ -1,5 +1,6 @@
 import type { Device } from '@ovd/core'
 import { useState } from 'react'
+import { useDevicesContext } from '../../devices/devicesContext'
 import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
@@ -7,12 +8,11 @@ import { ErrorState } from '../../ui/ErrorState'
 import { LoadingState } from '../../ui/LoadingState'
 import { DeviceDetail } from './DeviceDetail'
 import { DeviceRow } from './DeviceRow'
-import { useDevices } from './useDevices'
 
 // Devices (Stage 1.3). Actions of later slices (pairing, setup, VVD start/stop) are not drawn
 // until they ship (ADR 0018).
 export function DevicesScreen() {
-  const { state, rescan } = useDevices()
+  const { state, rescan, setTarget } = useDevicesContext()
   const { notify } = useFeedback()
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -33,13 +33,6 @@ export function DevicesScreen() {
     const cli = `ovd device rename ${device.id} "${name}"`
     const result = await window.ovd.devices.rename(device.id, name)
     if (result.ok) notify({ tone: 'ok', text: `Renamed to ${result.data.name}`, cli })
-    else notify({ tone: 'error', text: result.error.message, cli })
-  }
-
-  const setTarget = async (device: Device): Promise<void> => {
-    const cli = `ovd target set ${device.id}`
-    const result = await window.ovd.devices.setTarget(device.id)
-    if (result.ok) notify({ tone: 'info', text: `Target: ${result.data.name}`, cli })
     else notify({ tone: 'error', text: result.error.message, cli })
   }
 

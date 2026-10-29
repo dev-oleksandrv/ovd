@@ -4,6 +4,9 @@ import { channels, type OvdApi } from './api'
 
 const api: OvdApi = {
   appInfo: () => ipcRenderer.invoke(channels.appInfo),
+  sdk: {
+    info: () => ipcRenderer.invoke(channels.sdkInfo)
+  },
   devices: {
     list: () => ipcRenderer.invoke(channels.devicesList),
     rename: (id, name) => ipcRenderer.invoke(channels.devicesRename, id, name),

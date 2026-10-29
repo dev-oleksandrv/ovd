@@ -5,12 +5,20 @@ export interface AppInfo {
   platform: 'darwin' | 'linux'
 }
 
+export interface SdkSummary {
+  sdkVersion: string
+}
+
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson }
 
 // The only surface the renderer sees (ADR 0004). Every method maps to one IPC channel in main.
 export interface OvdApi {
   appInfo(): Promise<AppInfo>
+  sdk: {
+    // The SDK this core runs; SDK_NOT_FOUND until one is installed.
+    info(): Promise<IpcResult<SdkSummary>>
+  }
   devices: {
     // Polls now and resolves with the result; also what Rescan does.
     list(): Promise<DevicesUpdate>
@@ -23,6 +31,7 @@ export interface OvdApi {
 
 export const channels = {
   appInfo: 'ovd:app-info',
+  sdkInfo: 'ovd:sdk:info',
   devicesList: 'ovd:devices:list',
   devicesRename: 'ovd:devices:rename',
   devicesChanged: 'ovd:devices:changed',

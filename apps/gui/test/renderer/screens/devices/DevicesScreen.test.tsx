@@ -1,9 +1,10 @@
 import type { Device, DevicesUpdate } from '@ovd/core'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import type { OvdApi } from '../../../../src/preload/api'
 import { App } from '../../../../src/renderer/src/App'
 import { FeedbackProvider } from '../../../../src/renderer/src/feedback/FeedbackProvider'
+import { ready, stubOvd } from '../../support/ovdStub'
 import { stick, vvd } from './sample'
 
 const secondStick: Device = {
@@ -15,38 +16,12 @@ const secondStick: Device = {
   isTarget: false
 }
 
-let listener: ((update: DevicesUpdate) => void) | undefined
 let api: OvdApi
+let push: (update: DevicesUpdate) => void
 
 function stub(list: () => Promise<DevicesUpdate>): void {
-  api = {
-    appInfo: async () => ({ version: '0.1.0', platform: 'darwin' }),
-    devices: {
-      list: vi.fn(list),
-      rename: vi.fn(async (id: string, name: string) => ({
-        ok: true as const,
-        data: { ...stick, id, name }
-      })),
-      setTarget: vi.fn(async (id: string) => ({
-        ok: true as const,
-        data: { ...secondStick, id, isTarget: true }
-      })),
-      onChange: (l) => {
-        listener = l
-        return () => {
-          listener = undefined
-        }
-      }
-    }
-  }
-  window.ovd = api
+  ;({ api, push } = stubOvd({ list, devices: [stick, secondStick, vvd] }))
 }
-
-const ready = (devices: Device[], target: string | null = null): DevicesUpdate => ({
-  ok: true,
-  devices,
-  target
-})
 
 function renderApp(): void {
   render(
@@ -55,10 +30,6 @@ function renderApp(): void {
     </FeedbackProvider>
   )
 }
-
-beforeEach(() => {
-  listener = undefined
-})
 
 describe('Devices screen', () => {
   test('shows loading, then the devices with the target badge and status', async () => {
@@ -164,7 +135,7 @@ describe('Devices screen', () => {
     stub(async () => ready([stick, vvd], stick.id))
     renderApp()
     const list = await screen.findByRole('list', { name: 'Devices' })
-    act(() => listener?.(ready([vvd])))
+    act(() => push(ready([vvd])))
     expect(within(list).queryByText('Fire TV stick')).toBeNull()
     expect(within(list).getByText('Vega Virtual Device')).toBeTruthy()
   })
