@@ -4,11 +4,23 @@ import type { Tone } from '../../ui/tone'
 
 // Labels and states as the design's Devices screen draws them (OVD Desktop v2).
 
-export function statusView(device: Device): {
-  label: 'Online' | 'Offline' | 'Starting…' | 'Stopped'
+// A Virtual Device start or stop this window is running; the device list catches up after.
+export type VvdBusy = 'start' | 'stop' | null
+
+export function statusView(
+  device: Device,
+  busy: VvdBusy = null
+): {
+  label: 'Online' | 'Offline' | 'Starting…' | 'Stopping…' | 'Stopped'
   tone: Tone
   pulse: boolean
 } {
+  if (device.kind === 'vvd' && busy === 'stop') {
+    return { label: 'Stopping…', tone: 'warning', pulse: true }
+  }
+  if (device.kind === 'vvd' && busy === 'start') {
+    return { label: 'Starting…', tone: 'warning', pulse: true }
+  }
   switch (device.status) {
     case 'online':
       return { label: 'Online', tone: 'ok', pulse: false }
@@ -35,7 +47,13 @@ export function subtitle(device: Device): string {
     .join(' · ')
 }
 
-export function dimmed(device: Device): boolean {
+// Online and not mid start or stop: the only state that can be a working target.
+export function usable(device: Device, busy: VvdBusy = null): boolean {
+  return device.status === 'online' && !(device.kind === 'vvd' && busy !== null)
+}
+
+export function dimmed(device: Device, busy: VvdBusy = null): boolean {
+  if (device.kind === 'vvd' && busy !== null) return false
   return device.status === 'offline' || device.status === 'stopped'
 }
 

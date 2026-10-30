@@ -10,10 +10,12 @@ interface FirstRunCheckProps {
   check: Check
   highlighted: boolean
   onRecheck: () => void
+  // The Devices card's "Start the Virtual Device" (fix `start-vvd`).
+  startVvd?: { detail: string; busy: boolean; onStart: () => void }
 }
 
 // A first-run card: icon, name, detail, and while failing its fix and Re-check.
-export function FirstRunCheck({ check, highlighted, onRecheck }: FirstRunCheckProps) {
+export function FirstRunCheck({ check, highlighted, onRecheck, startVvd }: FirstRunCheckProps) {
   const ok = passed(check)
   const waiting = check.status === 'skipped'
   const install =
@@ -41,7 +43,32 @@ export function FirstRunCheck({ check, highlighted, onRecheck }: FirstRunCheckPr
           <div className="font-semibold">{check.name}</div>
           <div className="text-compact text-muted">{check.detail}</div>
         </div>
-        {!ok && !waiting && (
+        {!ok && !waiting && check.fix === 'start-vvd' && startVvd && (
+          <>
+            {/* "Set up a Fire TV stick" joins with its slice; until then the hint says how. */}
+            {check.hint && <div className="text-compact text-muted">{check.hint}</div>}
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2.5">
+              <button
+                type="button"
+                aria-busy={startVvd.busy || undefined}
+                onClick={startVvd.busy ? undefined : startVvd.onStart}
+                className="flex cursor-pointer items-start gap-2.5 rounded-tile border border-line-menu bg-input px-3.5 py-3 text-left hover:border-accent-line hover:bg-row-hover"
+              >
+                <Icon
+                  name={startVvd.busy ? 'progress_activity' : 'desktop_windows'}
+                  size={20}
+                  spin={startVvd.busy}
+                  className="text-accent"
+                />
+                <span className="flex flex-col gap-[3px]">
+                  <span className="font-semibold">Start the Virtual Device</span>
+                  <span className="text-small leading-[1.4] text-muted">{startVvd.detail}</span>
+                </span>
+              </button>
+            </div>
+          </>
+        )}
+        {!ok && !waiting && !(check.fix === 'start-vvd' && startVvd) && (
           <>
             {check.hint && check.id === 'devices' && (
               <div className="text-compact text-muted">{check.hint}</div>

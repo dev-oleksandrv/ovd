@@ -10,5 +10,9 @@ process.exitCode = await runCli(process.argv.slice(2), {
     stderr: (text) => process.stderr.write(text)
   },
   ovd: () => (ovd ??= createOvd({ surface: 'cli' })),
-  env: process.env
+  env: process.env,
+  onInterrupt: (abort) => {
+    process.once('SIGINT', abort)
+    return () => process.off('SIGINT', abort)
+  }
 })

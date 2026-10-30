@@ -44,7 +44,7 @@ function Shell() {
   const [firstRun, setFirstRun] = useState<boolean | null>(null)
   const [highlight, setHighlight] = useState<CheckId | null>(null)
   const doctor = useDoctor()
-  const { state, setTarget } = useDevicesContext()
+  const { state, setTarget, vvd } = useDevicesContext()
   const { notify } = useFeedback()
   const report = doctor.state.status === 'ready' ? doctor.state.report : null
   // Each new device error or doctor result may mean the SDK changed (installed, removed), so
@@ -116,6 +116,7 @@ function Shell() {
       go('doctor')
       void runDoctor()
     },
+    vvd: { busy: vvd.busy, start: () => void vvd.start(), stop: () => void vvd.stop() },
     switchTarget: (device) => void setTarget(device),
     later: (label) => notify({ tone: 'info', text: `${label} is coming in a later version` })
   })
@@ -132,6 +133,7 @@ function Shell() {
             open={menu}
             onOpenChange={setMenu}
             onPick={(device) => void setTarget(device)}
+            vvdBusy={vvd.busy}
           />
           <div className="flex-1" />
           <SearchButton
@@ -146,7 +148,11 @@ function Shell() {
       status={
         <>
           <SdkStatus sdk={sdk} onClick={() => go('doctor')} />
-          <TargetStatus target={target} onClick={() => setMenu((open) => !open)} />
+          <TargetStatus
+            target={target}
+            onClick={() => setMenu((open) => !open)}
+            vvdBusy={vvd.busy}
+          />
         </>
       }
       sidebar={

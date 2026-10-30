@@ -1,12 +1,13 @@
 import type { Check, CheckId } from '@ovd/core'
 import type { DoctorHook } from '../../doctor/useDoctor'
+import { useDevicesContext } from '../../devices/devicesContext'
 import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
 import { ErrorState } from '../../ui/ErrorState'
 import { LoadingState } from '../../ui/LoadingState'
 import { Tabs } from '../../ui/Tabs'
 import { DoctorTab } from './DoctorTab'
-import { firstRunPassed } from './doctorView'
+import { firstRunPassed, vvdArchLine } from './doctorView'
 import { FirstRun } from './FirstRun'
 
 interface EnvironmentScreenProps {
@@ -31,7 +32,16 @@ export function EnvironmentScreen({
   onRunDoctor
 }: EnvironmentScreenProps) {
   const { notify } = useFeedback()
+  const { vvd } = useDevicesContext()
   const { state, running } = doctor
+
+  // Both fixes change what doctor reports, so it runs again after each (design `frVvd`).
+  const startVvd = async (): Promise<void> => {
+    if (await vvd.start()) await doctor.run()
+  }
+  const enableVvdDevmode = async (): Promise<void> => {
+    if (await vvd.enableDeveloperMode()) await doctor.run()
+  }
 
   const recheck = async (check: Check): Promise<void> => {
     const cli = DOCTOR_CLI
@@ -94,6 +104,11 @@ export function EnvironmentScreen({
             checks={report.checks}
             highlight={highlight}
             onRecheck={(c) => void recheck(c)}
+            startVvd={{
+              detail: vvdArchLine(report.host),
+              busy: vvd.busy === 'start',
+              onStart: () => void startVvd()
+            }}
           />
         ) : (
           <DoctorTab
@@ -101,6 +116,7 @@ export function EnvironmentScreen({
             running={running}
             onRun={onRunDoctor}
             {...(firstRun ? { onSetupDone: onGoDevices } : {})}
+            enableVvdDevmode={{ busy: vvd.enabling, onEnable: () => void enableVvdDevmode() }}
           />
         ))}
     </div>

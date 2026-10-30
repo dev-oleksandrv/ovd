@@ -19,6 +19,11 @@ const api: OvdApi = {
       ipcRenderer.on(channels.devicesChanged, handler)
       return () => ipcRenderer.removeListener(channels.devicesChanged, handler)
     }
+  },
+  vvd: {
+    start: () => ipcRenderer.invoke(channels.vvdStart),
+    stop: () => ipcRenderer.invoke(channels.vvdStop),
+    enableDeveloperMode: () => ipcRenderer.invoke(channels.vvdDevmodeEnable)
   }
 }
 

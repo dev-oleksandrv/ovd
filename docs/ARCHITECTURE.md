@@ -163,6 +163,8 @@ OVD designs around these:
 - `vega devmode login --json` is the only sign-in probe: signed in, it exits 2 at once ("Already logged in"); signed out, it prints `"status": "pending"` with a verification URL and code, opens no browser, and waits. Doctor stops it at `pending`.
 - `vega device info` exits 0 with empty fields for an unknown or still-booting device, or when several devices are connected and no `--device` is given.
 - The Virtual Device is `VirtualDevice` to `vega device` and `emulator-5554` to VDA.
+- `vega virtual-device start` blocks until "Virtual device ready." (about 6 s) and VDA lists the device right after. On a running Virtual Device it exits 0 anyway ("Failed to launch: virtual device is already running" on stderr), so OVD checks the status first. `stop` on a stopped one exits 1 ("virtual device not running").
+- Virtual Device Developer Mode survives a restart. Right after `vsm developer-mode disable` the device shell stops answering (`No running instances of com.amazon.dev.shell.service`) and `vega device info` prints empty fields until the Virtual Device restarts. `inDeveloperMode` in `vega device info` follows `vsm developer-mode`.
 - No command reports a friendly device name; `deviceName` echoes the ID passed in.
 - `vega device list` takes 1–4 s and has no JSON mode; `vega exec vda devices -l` takes about 0.3 s.
 - `vega platform doctor` prints the whole environment, secrets included. OVD never runs it.

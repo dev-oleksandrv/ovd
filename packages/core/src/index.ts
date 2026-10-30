@@ -16,6 +16,10 @@ export { parseNodeVersion } from './adapters/parseNodeVersion.js'
 export { parseIsPortForwarded } from './adapters/parseIsPortForwarded.js'
 export { parseDevmodeLogin } from './adapters/parseDevmodeLogin.js'
 export type { DevmodeLogin } from './adapters/parseDevmodeLogin.js'
+export {
+  parseVsmDeveloperMode,
+  parseVsmDeveloperModeSet
+} from './adapters/parseVsmDeveloperMode.js'
 export { discoverSdk, defaultDiscoverOptions } from './sdk/discoverSdk.js'
 export type { DiscoverOptions, SdkInfo } from './sdk/discoverSdk.js'
 export { createSdkLocator } from './sdk/sdkLocator.js'
@@ -56,3 +60,5 @@ export type {
   DoctorReport,
   HostInfo
 } from './doctor/types.js'
+export { createVvd } from './vvd/vvd.js'
+export type { Vvd, VvdDeps, VvdState, VvdStatus } from './vvd/vvd.js'

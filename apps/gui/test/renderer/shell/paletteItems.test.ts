@@ -1,10 +1,17 @@
+import type { Device } from '@ovd/core'
 import { describe, expect, test, vi } from 'vitest'
+import type { VvdBusy } from '../../../src/renderer/src/screens/devices/deviceView'
 import { filterItems, LATER, paletteItems } from '../../../src/renderer/src/shell/paletteItems'
 import { stick, vvd, wifiOffline } from '../screens/devices/sample'
 
-const build = (target: string | null) => {
+const build = (
+  target: string | null,
+  busy: VvdBusy = null,
+  devices: Device[] = [stick, vvd, wifiOffline]
+) => {
   const opts = { go: vi.fn(), runDoctor: vi.fn(), switchTarget: vi.fn(), later: vi.fn() }
-  return { opts, items: paletteItems({ devices: [stick, vvd, wifiOffline], target, ...opts }) }
+  const vvdOpts = { busy, start: vi.fn(), stop: vi.fn() }
+  return { opts, vvdOpts, items: paletteItems({ devices, target, vvd: vvdOpts, ...opts }) }
 }
 
 describe('paletteItems', () => {
@@ -13,6 +20,7 @@ describe('paletteItems', () => {
     expect(items.map((i) => [i.label, i.kind])).toEqual([
       ['Go to Devices', 'Screen'],
       ['Go to Doctor', 'Screen'],
+      ['Start Virtual Device', 'Action'],
       ['Run ovd doctor', 'Action'],
       ['Switch target to Vega Virtual Device', 'Device'],
       ['Switch target to Bedroom stick', 'Device'],
@@ -36,7 +44,7 @@ describe('paletteItems', () => {
     expect(opts.go).toHaveBeenCalledWith('devices')
     items[1]?.run()
     expect(opts.go).toHaveBeenCalledWith('doctor')
-    items[2]?.run()
+    items[3]?.run()
     expect(opts.runDoctor).toHaveBeenCalled()
   })
 
@@ -44,5 +52,29 @@ describe('paletteItems', () => {
     const { items } = build(stick.id)
     expect(filterItems(items, '  DEEP ').map((i) => i.label)).toEqual(['Deep links'])
     expect(filterItems(items, '')).toHaveLength(items.length)
+  })
+
+  test.each([
+    ['stopped', 'stopped', 'Start Virtual Device', 'start'],
+    ['booting', 'starting', 'Stop Virtual Device', 'stop'],
+    ['running', 'online', 'Stop Virtual Device', 'stop']
+  ] as const)('Virtual Device %s: %s', (_name, status, label, action) => {
+    const { items, vvdOpts } = build(stick.id, null, [stick, { ...vvd, status }])
+    const item = items.find((i) => i.id === 'action:vvd')
+    expect(item).toMatchObject({ label, kind: 'Action', later: false })
+    item?.run()
+    expect(vvdOpts[action]).toHaveBeenCalled()
+  })
+
+  test.each([
+    ['start', 'Stop Virtual Device', 'Unavailable · Virtual Device is starting'],
+    ['stop', 'Start Virtual Device', 'Unavailable · Virtual Device is stopping']
+  ] as const)('while busy (%s) the other action is unavailable', (busy, label, kind) => {
+    const { items, vvdOpts } = build(stick.id, busy)
+    const item = items.find((i) => i.id === 'action:vvd')
+    expect(item).toMatchObject({ label, kind, later: true })
+    item?.run()
+    expect(vvdOpts.start).not.toHaveBeenCalled()
+    expect(vvdOpts.stop).not.toHaveBeenCalled()
   })
 })

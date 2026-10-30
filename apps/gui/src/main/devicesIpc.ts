@@ -10,6 +10,8 @@ export function registerDevicesIpc(
   window: () => BrowserWindow | undefined
 ): {
   watch(win: BrowserWindow): void
+  // Polls now and pushes the result, after an action that changed the devices.
+  refresh(): Promise<unknown>
 } {
   const watcher = createDevicesWatcher({
     list: () => ovd.devices.list(),
@@ -33,6 +35,7 @@ export function registerDevicesIpc(
   })
 
   return {
+    refresh: () => watcher.refresh(),
     watch(win) {
       const sync = (): void => {
         if (win.isVisible() && !win.isMinimized()) watcher.start()

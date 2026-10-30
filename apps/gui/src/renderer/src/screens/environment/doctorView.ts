@@ -1,4 +1,4 @@
-import type { Check, CheckId, CheckStatus } from '@ovd/core'
+import type { Check, CheckId, CheckStatus, HostInfo } from '@ovd/core'
 import type { Tone } from '../../ui/tone'
 
 // Icons and tones per status, from the design's Doctor rows.
@@ -62,4 +62,11 @@ export function gateOpen(checks: Check[]): boolean {
 export function gateFailure(checks: Check[]): CheckId | null {
   if (!sdkFound(byId(checks, 'sdk'))) return 'sdk'
   return passed(byId(checks, 'vda')) ? null : 'vda'
+}
+
+// The Virtual Device matches the host's architecture (ADR 0008); the first-run card says which.
+export function vvdArchLine(host: Pick<HostInfo, 'os' | 'arch'>): string {
+  const arch = host.arch === 'arm64' ? 'aarch64' : host.arch === 'x64' ? 'x86_64' : host.arch
+  if (host.os !== 'macOS') return `Runs locally on this computer · ${arch}`
+  return `Runs locally on this computer · ${arch} on ${arch === 'aarch64' ? 'Apple Silicon' : 'Intel'}`
 }

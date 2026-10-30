@@ -1,4 +1,5 @@
-import type { ActivityAction, ActivityLog } from '../activity/activityLog.js'
+import type { ActivityLog } from '../activity/activityLog.js'
+import { createLogged } from '../activity/logged.js'
 import { parseDeviceInfo, type DeviceInfo } from '../adapters/parseDeviceInfo.js'
 import { parseVdaDevices } from '../adapters/parseVdaDevices.js'
 import { parseVvdStatus } from '../adapters/parseVvdStatus.js'
@@ -25,6 +26,9 @@ export interface Devices {
   get(id: string): Promise<Device>
   rename(id: string, name: string): Promise<Device>
   setTarget(id: string): Promise<Device>
+  // Drops a device's cached info so the next list reads it again, after an action that
+  // changes it (Developer Mode on the Virtual Device).
+  invalidate(id: string): void
 }
 
 const MAX_NAME = 64
@@ -37,6 +41,7 @@ type Unnamed = Omit<Device, 'name' | 'isTarget'>
 export function createDevices(deps: DevicesDeps): Devices {
   // Info is read once per device while it stays online (spec D9).
   const infoCache = new Map<string, DeviceInfo>()
+  const logged = createLogged(deps.activity)
 
   async function vdaDevices(vegaPath: string): Promise<RunResult> {
     const run = () => deps.runner.run(vdaCmd(vegaPath, ['devices', '-l']))
@@ -166,32 +171,16 @@ export function createDevices(deps: DevicesDeps): Devices {
     return device
   }
 
-  // Device actions are logged whether they succeed or fail (ADR 0011).
-  async function logged<T>(
-    action: ActivityAction,
-    id: string,
-    args: Record<string, string>,
-    run: () => Promise<T>
-  ): Promise<T> {
-    const target = canonicalId(id)
-    try {
-      const value = await run()
-      await deps.activity.append({ action, target, args, result: 'ok' })
-      return value
-    } catch (error) {
-      if (error instanceof OvdError) {
-        await deps.activity.append({ action, target, args, result: 'error', errorCode: error.code })
-      }
-      throw error
-    }
-  }
-
   return {
     get: find,
 
+    invalidate(id) {
+      infoCache.delete(canonicalId(id))
+    },
+
     rename(id, name) {
       const trimmed = name.trim()
-      return logged('device.rename', id, { name: trimmed }, async () => {
+      return logged('device.rename', canonicalId(id), { name: trimmed }, async () => {
         if (trimmed === '' || trimmed.length > MAX_NAME) {
           throw new OvdError(
             'INVALID_NAME',
@@ -207,7 +196,7 @@ export function createDevices(deps: DevicesDeps): Devices {
     },
 
     setTarget(id) {
-      return logged('target.set', id, {}, async () => {
+      return logged('target.set', canonicalId(id), {}, async () => {
         const device = await find(id)
         await deps.state.update((s) => ({ ...s, target: device.id }))
         return { ...device, isTarget: true }

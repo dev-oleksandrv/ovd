@@ -5,6 +5,7 @@ import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerTarget } from './commands/target.js'
+import { registerVvd } from './commands/vvd.js'
 
 export interface Output {
   stdout: (text: string) => void
@@ -16,6 +17,9 @@ export interface CliDeps {
   // Lazy: `hello`, `--help` and `--version` work without an SDK.
   ovd: () => Ovd
   env: Record<string, string | undefined>
+  // Calls `abort` on Ctrl+C until the returned function is called; for commands that must
+  // stop their SDK process cleanly instead of being killed with it.
+  onInterrupt: (abort: () => void) => () => void
 }
 
 export interface GlobalOptions {
@@ -48,5 +52,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerDevices(program, deps, setExitCode)
   registerDevice(program, deps, setExitCode)
   registerTarget(program, deps, setExitCode)
+  registerVvd(program, deps, setExitCode)
   return program
 }

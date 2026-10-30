@@ -1,7 +1,8 @@
 export type CheckId = 'sdk' | 'vda' | 'devices' | 'devmode' | 'metro' | 'node'
 export type CheckStatus = 'ok' | 'info' | 'warn' | 'fail' | 'skipped'
 // What a surface can offer to fix a check; each surface shows only the fixes it has shipped.
-export type CheckFix = 'install-sdk' | 'install-cli' | 'start-vvd' | 'setup-stick'
+export type CheckFix =
+  'install-sdk' | 'install-cli' | 'start-vvd' | 'setup-stick' | 'enable-vvd-devmode'
 
 export interface Check {
   id: CheckId

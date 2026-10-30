@@ -1,4 +1,5 @@
 import type { Device } from '@ovd/core'
+import type { VvdBusy } from '../screens/devices/deviceView'
 
 export type Screen = 'devices' | 'doctor'
 
@@ -7,7 +8,7 @@ export interface PaletteItem {
   id: string
   label: string
   icon: string
-  kind: 'Screen' | 'Action' | 'Device' | 'Coming in a later version'
+  kind: 'Screen' | 'Action' | 'Device' | 'Coming in a later version' | `Unavailable · ${string}`
   later: boolean
   run: () => void
 }
@@ -25,13 +26,13 @@ export const LATER: readonly (readonly [label: string, icon: string])[] = [
   ['Scenarios & MCP', 'account_tree']
 ]
 
-// Stage 1 palette as shipped so far: Virtual Device, setup and pairing entries join with
-// their slices.
+// Stage 1 palette as shipped so far: setup and pairing entries join with their slices.
 export function paletteItems(opts: {
   devices: Device[]
   target: string | null
   go: (screen: Screen) => void
   runDoctor: () => void
+  vvd: { busy: VvdBusy; start: () => void; stop: () => void }
   switchTarget: (device: Device) => void
   later: (label: string) => void
 }): PaletteItem[] {
@@ -52,6 +53,7 @@ export function paletteItems(opts: {
       later: false,
       run: () => opts.go('doctor')
     },
+    vvdItem(opts.devices, opts.vvd),
     {
       id: 'action:doctor',
       label: 'Run ovd doctor',
@@ -79,6 +81,32 @@ export function paletteItems(opts: {
       run: () => opts.later(label)
     }))
   ]
+}
+
+// While a start or stop runs, the other action is listed but unavailable (design `vvdPal`).
+function vvdItem(
+  devices: Device[],
+  vvd: { busy: VvdBusy; start: () => void; stop: () => void }
+): PaletteItem {
+  const base = { id: 'action:vvd', icon: 'desktop_windows', later: false }
+  if (vvd.busy) {
+    const stopping = vvd.busy === 'stop'
+    return {
+      ...base,
+      label: `${stopping ? 'Start' : 'Stop'} Virtual Device`,
+      kind: `Unavailable · Virtual Device is ${stopping ? 'stopping' : 'starting'}`,
+      later: true,
+      run: () => {}
+    }
+  }
+  const status = devices.find((d) => d.kind === 'vvd')?.status
+  const running = status === 'online' || status === 'starting'
+  return {
+    ...base,
+    label: `${running ? 'Stop' : 'Start'} Virtual Device`,
+    kind: 'Action',
+    run: running ? vvd.stop : vvd.start
+  }
 }
 
 export function filterItems(items: PaletteItem[], query: string): PaletteItem[] {

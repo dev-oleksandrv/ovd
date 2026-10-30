@@ -7,16 +7,28 @@ import { OfflineState } from '../../ui/OfflineState'
 import { StatusDot } from '../../ui/StatusDot'
 import { toneText } from '../../ui/tone'
 import { DeviceName } from './DeviceName'
-import { infoRows, kindLabel, serialLine, statusView } from './deviceView'
+import { infoRows, kindLabel, serialLine, statusView, usable, type VvdBusy } from './deviceView'
 
 interface DeviceDetailProps {
   device: Device
   onRename: (name: string) => void
   onSetTarget: () => void
+  // Virtual Device controls; absent where they aren't offered.
+  vvd?: {
+    busy: VvdBusy
+    enabling: boolean
+    onStart: () => void
+    onStop: () => void
+    onEnableDeveloperMode: () => void
+  }
 }
 
-export function DeviceDetail({ device, onRename, onSetTarget }: DeviceDetailProps) {
-  const status = statusView(device)
+export function DeviceDetail({ device, onRename, onSetTarget, vvd }: DeviceDetailProps) {
+  const busy = vvd?.busy ?? null
+  const status = statusView(device, busy)
+  const isVvd = device.kind === 'vvd' && vvd !== undefined
+  // The core status already says `starting` while a start from elsewhere boots.
+  const running = device.status === 'online' || device.status === 'starting'
   const serial = serialLine(device)
   return (
     <div className="flex flex-col gap-[18px] overflow-auto px-6.5 py-[22px]">
@@ -36,17 +48,56 @@ export function DeviceDetail({ device, onRename, onSetTarget }: DeviceDetailProp
           </div>
           {serial && <div className="font-mono text-meta text-subtle">{serial}</div>}
         </div>
-        {!device.isTarget && device.status === 'online' && (
-          <Button variant="primary" onClick={onSetTarget}>
-            Use as target
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {!device.isTarget && usable(device, busy) && (
+            <Button variant="primary" onClick={onSetTarget}>
+              Use as target
+            </Button>
+          )}
+          {isVvd && (
+            <Button
+              icon={running ? 'stop_circle' : 'play_circle'}
+              loading={busy !== null}
+              onClick={running ? vvd.onStop : vvd.onStart}
+            >
+              {busy === 'stop'
+                ? 'Stopping…'
+                : busy === 'start'
+                  ? 'Starting…'
+                  : running
+                    ? 'Stop'
+                    : 'Start'}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {device.status === 'stopped' && (
-        <div className="flex items-center gap-3 rounded-card border border-line-menu bg-row-hover px-4 py-3.5 text-text-soft">
+      {device.status === 'stopped' && busy === null && (
+        <div className="flex items-center gap-3 rounded-card border border-line-menu bg-row-hover px-4 py-3.5">
           <Icon name="power_settings_new" size={20} className="text-muted" />
-          The Virtual Device is stopped.
+          <div className="flex-1 text-text-soft">The Virtual Device is stopped.</div>
+          {isVvd && (
+            <Button variant="primary" size="sm" onClick={vvd.onStart}>
+              Start Virtual Device
+            </Button>
+          )}
+        </div>
+      )}
+      {isVvd && usable(device, busy) && device.info?.developerMode === false && (
+        <div className="flex items-center gap-3 rounded-card border border-line-menu bg-row-hover px-4 py-3.5">
+          <Icon name="developer_mode" size={20} className="text-warning" />
+          <div className="flex flex-1 flex-col gap-[3px]">
+            <div className="text-text-soft">Developer Mode is off on the Virtual Device.</div>
+            <div className="text-small text-muted">It’s needed to install and debug apps.</div>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={vvd.enabling}
+            onClick={vvd.onEnableDeveloperMode}
+          >
+            {vvd.enabling ? 'Enabling…' : 'Enable Developer Mode'}
+          </Button>
         </div>
       )}
       {device.status === 'offline' && (

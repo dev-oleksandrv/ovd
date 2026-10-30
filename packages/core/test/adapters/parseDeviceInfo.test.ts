@@ -27,6 +27,10 @@ describe('parseDeviceInfo', () => {
         simulated: true,
         developerMode: true
       }
+    ],
+    [
+      'vega-device-info/virtual-device-developer-mode-off.json',
+      { architecture: 'aarch64', simulated: true, developerMode: false }
     ]
   ])('%s', (file, expected) => {
     expect(parseDeviceInfo(fixture(`0.24/${file}`))).toMatchObject(expected)

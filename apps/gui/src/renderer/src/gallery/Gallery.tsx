@@ -428,6 +428,7 @@ export function Gallery() {
               target: target?.id ?? null,
               go: () => undefined,
               runDoctor: () => undefined,
+              vvd: { busy: null, start: () => undefined, stop: () => undefined },
               switchTarget: setTarget,
               later: (label) =>
                 notify({ tone: 'info', text: `${label} is coming in a later version` })

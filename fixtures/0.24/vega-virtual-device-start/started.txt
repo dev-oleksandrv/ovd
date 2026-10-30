@@ -1,0 +1,3 @@
+Launching virtual device.
+Waiting for virtual device to boot.
+Virtual device ready.
