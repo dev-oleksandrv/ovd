@@ -1,4 +1,4 @@
-import type { Check, Device, DevicesUpdate, DoctorReport } from '@ovd/core'
+import type { Check, Device, DevicesUpdate, DoctorReport, VvdState } from '@ovd/core'
 import { vi } from 'vitest'
 import type { IpcResult, OvdApi, SdkSummary } from '../../../src/preload/api'
 
@@ -69,6 +69,10 @@ export const sdkMissing: IpcResult<SdkSummary> = {
   error: { code: 'SDK_NOT_FOUND', message: 'Vega SDK not found', hint: 'Install the Vega SDK' }
 }
 
+function unexpected<T>(name: string): IpcResult<T> {
+  throw new Error(`unexpected ${name}`)
+}
+
 export const ready = (devices: Device[], target: string | null = null): DevicesUpdate => ({
   ok: true,
   devices,
@@ -82,6 +86,7 @@ export function stubOvd(opts: {
   sdk?: IpcResult<SdkSummary> | (() => IpcResult<SdkSummary>)
   doctor?: () => IpcResult<DoctorReport>
   platform?: 'darwin' | 'linux'
+  vvd?: Partial<OvdApi['vvd']>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
@@ -111,6 +116,14 @@ export function stubOvd(opts: {
           listener = undefined
         }
       }
+    },
+    vvd: {
+      start: vi.fn(opts.vvd?.start ?? (async () => unexpected<VvdState>('vvd.start'))),
+      stop: vi.fn(opts.vvd?.stop ?? (async () => unexpected<VvdState>('vvd.stop'))),
+      enableDeveloperMode: vi.fn(
+        opts.vvd?.enableDeveloperMode ??
+          (async () => unexpected<{ developerMode: true }>('vvd.enableDeveloperMode'))
+      )
     }
   }
   window.ovd = api

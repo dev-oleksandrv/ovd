@@ -33,13 +33,30 @@ const noDevices = doctorReport({
   devices: { status: 'warn', detail: 'No devices connected', fix: 'start-vvd' }
 })
 
+const vvdDevmodeOff = doctorReport({
+  devmode: {
+    status: 'warn',
+    detail: 'Developer Mode is off on the Virtual Device',
+    command: 'vega exec vda -s emulator-5554 shell vsm developer-mode',
+    hint: 'Turn it on with ovd vvd devmode enable',
+    fix: 'enable-vvd-devmode'
+  }
+})
+
 // Each call to doctor.run answers with the next report; the last one repeats.
 async function renderApp(...reports: DoctorReport[]): Promise<OvdApi> {
   let call = 0
   const { api } = stubOvd({
     list: async () => ready([stick, vvd], stick.id),
     devices: [stick, vvd],
-    doctor: () => ok(reports[Math.min(call++, reports.length - 1)] ?? doctorReport())
+    doctor: () => ok(reports[Math.min(call++, reports.length - 1)] ?? doctorReport()),
+    vvd: {
+      start: async () => ({
+        ok: true,
+        data: { running: true, status: 'online', device: { ...vvd, status: 'online' } }
+      }),
+      enableDeveloperMode: async () => ({ ok: true, data: { developerMode: true } })
+    }
   })
   render(
     <FeedbackProvider>
@@ -107,6 +124,19 @@ describe('first run', () => {
     expect(api.doctor.run).toHaveBeenCalledTimes(2)
   })
 
+  test('no devices: the Devices card starts the Virtual Device, then checks again', async () => {
+    const api = await renderApp(noSdk, noDevices, doctorReport())
+    fireEvent.click(await screen.findByRole('button', { name: 'Re-check' }))
+    const card = await screen.findByRole('region', { name: 'Devices' })
+    expect(
+      within(card).getByText('Runs locally on this computer · aarch64 on Apple Silicon')
+    ).toBeTruthy()
+    fireEvent.click(within(card).getByRole('button', { name: /Start the Virtual Device/ }))
+    expect(api.vvd.start).toHaveBeenCalled()
+    expect(await screen.findByText('Virtual Device started')).toBeTruthy()
+    expect(api.doctor.run).toHaveBeenCalledTimes(3)
+  })
+
   test('with the SDK and VDA working, no devices does not block the app', async () => {
     await renderApp(noDevices)
     await screen.findByText('Doctor')
@@ -116,6 +146,18 @@ describe('first run', () => {
 })
 
 describe('Doctor tab', () => {
+  test('Virtual Device Developer Mode off: Enable turns it on and checks again', async () => {
+    const api = await renderApp(vvdDevmodeOff, doctorReport())
+    fireEvent.click(nav('Doctor'))
+    const rows = await screen.findByRole('list', { name: 'Checks' })
+    expect(within(rows).getByText('Developer Mode is off on the Virtual Device')).toBeTruthy()
+    fireEvent.click(within(rows).getByRole('button', { name: 'Enable' }))
+    expect(api.vvd.enableDeveloperMode).toHaveBeenCalled()
+    expect(await screen.findByText('Developer Mode on')).toBeTruthy()
+    expect(api.doctor.run).toHaveBeenCalledTimes(2)
+    expect(within(rows).queryByRole('button', { name: 'Enable' })).toBeNull()
+  })
+
   test('the sidebar opens Doctor with the summary and every row', async () => {
     await renderApp(noDevices)
     fireEvent.click(nav('Doctor'))

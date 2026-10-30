@@ -1,12 +1,14 @@
 import type { Device, DevicesUpdate } from '@ovd/core'
 import { createContext, useContext } from 'react'
 import type { DevicesState } from './useDevices'
+import type { VvdActions } from './useVvdActions'
 
 export interface DevicesValue {
   state: DevicesState
   rescan: () => Promise<DevicesUpdate>
   // Sets the target and reports it (toast + CLI echo); the picker, palette and detail share it.
   setTarget: (device: Device) => Promise<void>
+  vvd: VvdActions
 }
 
 export const DevicesContext = createContext<DevicesValue | null>(null)

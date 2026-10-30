@@ -3,12 +3,14 @@ import { useCallback, useMemo, type ReactNode } from 'react'
 import { useFeedback } from '../feedback/feedbackContext'
 import { DevicesContext, type DevicesValue } from './devicesContext'
 import { useDevices } from './useDevices'
+import { useVvdActions } from './useVvdActions'
 
 // One device subscription for the whole window: the title bar, status bar, palette and
 // Devices screen all read the same snapshot.
 export function DevicesProvider({ children }: { children: ReactNode }) {
   const { state, rescan } = useDevices()
   const { notify } = useFeedback()
+  const vvd = useVvdActions()
 
   const setTarget = useCallback(
     async (device: Device): Promise<void> => {
@@ -21,8 +23,8 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<DevicesValue>(
-    () => ({ state, rescan, setTarget }),
-    [state, rescan, setTarget]
+    () => ({ state, rescan, setTarget, vvd }),
+    [state, rescan, setTarget, vvd]
   )
   return <DevicesContext.Provider value={value}>{children}</DevicesContext.Provider>
 }

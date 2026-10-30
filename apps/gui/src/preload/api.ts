@@ -1,4 +1,4 @@
-import type { Device, DevicesUpdate, DoctorReport, ErrorJson } from '@ovd/core'
+import type { Device, DevicesUpdate, DoctorReport, ErrorJson, VvdState } from '@ovd/core'
 
 export interface AppInfo {
   version: string
@@ -31,6 +31,12 @@ export interface OvdApi {
     // Main pushes every change while the window is visible; returns an unsubscribe.
     onChange(listener: (update: DevicesUpdate) => void): () => void
   }
+  vvd: {
+    // Resolves once VDA lists the Virtual Device online.
+    start(): Promise<IpcResult<VvdState>>
+    stop(): Promise<IpcResult<VvdState>>
+    enableDeveloperMode(): Promise<IpcResult<{ developerMode: true }>>
+  }
 }
 
 export const channels = {
@@ -40,5 +46,8 @@ export const channels = {
   devicesList: 'ovd:devices:list',
   devicesRename: 'ovd:devices:rename',
   devicesChanged: 'ovd:devices:changed',
-  targetSet: 'ovd:target:set'
+  targetSet: 'ovd:target:set',
+  vvdStart: 'ovd:vvd:start',
+  vvdStop: 'ovd:vvd:stop',
+  vvdDevmodeEnable: 'ovd:vvd:devmode-enable'
 } as const

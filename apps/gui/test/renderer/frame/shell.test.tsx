@@ -133,9 +133,10 @@ describe('command palette', () => {
   test('⌘K opens it with Devices, Doctor, the other devices and later screens', async () => {
     await renderShell()
     open()
-    expect(options().slice(0, 5)).toEqual([
+    expect(options().slice(0, 6)).toEqual([
       'Go to Devices',
       'Go to Doctor',
+      'Start Virtual Device',
       'Run ovd doctor',
       'Switch target to Vega Virtual Device',
       'Switch target to Bedroom stick'
@@ -185,9 +186,9 @@ describe('command palette', () => {
     const { api } = await renderShell()
     open()
     const input = screen.getByRole('combobox')
-    for (let i = 0; i < 4; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
+    for (let i = 0; i < 5; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'ArrowUp' })
-    expect(screen.getAllByRole('option')[3]?.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getAllByRole('option')[4]?.getAttribute('aria-selected')).toBe('true')
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(api.devices.setTarget).toHaveBeenCalledWith('VirtualDevice')
   })

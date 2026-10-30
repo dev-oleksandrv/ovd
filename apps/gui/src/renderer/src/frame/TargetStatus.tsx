@@ -1,5 +1,5 @@
 import type { Device } from '@ovd/core'
-import { statusView } from '../screens/devices/deviceView'
+import { statusView, usable, type VvdBusy } from '../screens/devices/deviceView'
 import { cx } from '../ui/cx'
 import { StatusDot } from '../ui/StatusDot'
 import { toneText } from '../ui/tone'
@@ -7,12 +7,13 @@ import { toneText } from '../ui/tone'
 interface TargetStatusProps {
   target: Device | undefined
   onClick: () => void
+  vvdBusy?: VvdBusy
 }
 
-export function TargetStatus({ target, onClick }: TargetStatusProps) {
+export function TargetStatus({ target, onClick, vvdBusy = null }: TargetStatusProps) {
   if (!target) return null
-  const status = statusView(target)
-  const online = target.status === 'online'
+  const status = statusView(target, vvdBusy)
+  const online = usable(target, vvdBusy)
   return (
     <button
       type="button"

@@ -10,9 +10,16 @@ interface DoctorTabProps {
   onRun: () => void
   // Shown once first run completes: "Setup complete" with a way to Devices.
   onSetupDone?: () => void
+  enableVvdDevmode?: { busy: boolean; onEnable: () => void }
 }
 
-export function DoctorTab({ checks, running, onRun, onSetupDone }: DoctorTabProps) {
+export function DoctorTab({
+  checks,
+  running,
+  onRun,
+  onSetupDone,
+  enableVvdDevmode
+}: DoctorTabProps) {
   return (
     <div className="flex max-w-[860px] flex-1 flex-col gap-3.5 overflow-auto px-5.5 pt-5 pb-8">
       {onSetupDone && (
@@ -38,7 +45,12 @@ export function DoctorTab({ checks, running, onRun, onSetupDone }: DoctorTabProp
         className="m-0 flex shrink-0 list-none flex-col overflow-hidden rounded-card border border-line-soft p-0"
       >
         {checks.map((check) => (
-          <DoctorRow key={check.id} check={check} checking={running} />
+          <DoctorRow
+            key={check.id}
+            check={check}
+            checking={running}
+            {...(enableVvdDevmode ? { enableVvdDevmode } : {})}
+          />
         ))}
       </ul>
     </div>

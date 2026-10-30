@@ -1,6 +1,6 @@
 import type { Device } from '@ovd/core'
 import { useEffect, useRef } from 'react'
-import { connectionLabel, dimmed, statusView } from '../screens/devices/deviceView'
+import { connectionLabel, dimmed, statusView, type VvdBusy } from '../screens/devices/deviceView'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
 import { StatusDot } from '../ui/StatusDot'
@@ -12,11 +12,19 @@ interface TargetPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onPick: (device: Device) => void
+  vvdBusy?: VvdBusy
 }
 
 // The title bar's target switch. "Set up a new stick…" and "Pair a device over Wi‑Fi…" join the
 // menu with their slices (ADR 0018: no dead entries).
-export function TargetPicker({ devices, target, open, onOpenChange, onPick }: TargetPickerProps) {
+export function TargetPicker({
+  devices,
+  target,
+  open,
+  onOpenChange,
+  onPick,
+  vvdBusy = null
+}: TargetPickerProps) {
   const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,7 +53,7 @@ export function TargetPicker({ devices, target, open, onOpenChange, onPick }: Ta
         onClick={() => onOpenChange(!open)}
         className="flex h-[30px] max-w-[360px] min-w-[230px] cursor-pointer items-center gap-2 rounded-field border border-line-menu bg-field px-2.5 hover:bg-field-hover"
       >
-        <StatusDot tone={target ? statusView(target).tone : 'muted'} size={8} />
+        <StatusDot tone={target ? statusView(target, vvdBusy).tone : 'muted'} size={8} />
         <span className="min-w-0 truncate font-medium">{target?.name ?? 'No device'}</span>
         {target?.info && (
           <span className="font-mono text-label text-muted">{target.info.architecture}</span>
@@ -68,7 +76,7 @@ export function TargetPicker({ devices, target, open, onOpenChange, onPick }: Ta
             Target device
           </div>
           {devices.map((device) => {
-            const status = statusView(device)
+            const status = statusView(device, vvdBusy)
             const arch = device.info?.architecture
             return (
               <button
@@ -83,7 +91,7 @@ export function TargetPicker({ devices, target, open, onOpenChange, onPick }: Ta
                 className={cx(
                   'flex cursor-pointer items-center gap-2.5 rounded-control p-2 text-left hover:bg-control-hover',
                   device.id === target?.id && 'bg-selected',
-                  dimmed(device) && 'opacity-55'
+                  dimmed(device, vvdBusy) && 'opacity-55'
                 )}
               >
                 <StatusDot tone={status.tone} size={8} pulse={status.pulse} />

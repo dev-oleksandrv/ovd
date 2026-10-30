@@ -3,16 +3,17 @@ import { cx } from '../../ui/cx'
 import { Icon } from '../../ui/Icon'
 import { StatusDot } from '../../ui/StatusDot'
 import { toneText } from '../../ui/tone'
-import { dimmed, statusView, subtitle } from './deviceView'
+import { dimmed, statusView, subtitle, type VvdBusy } from './deviceView'
 
 interface DeviceRowProps {
   device: Device
   selected: boolean
   onSelect: () => void
+  vvdBusy?: VvdBusy
 }
 
-export function DeviceRow({ device, selected, onSelect }: DeviceRowProps) {
-  const status = statusView(device)
+export function DeviceRow({ device, selected, onSelect, vvdBusy = null }: DeviceRowProps) {
+  const status = statusView(device, vvdBusy)
   return (
     <li className="list-none">
       <button
@@ -22,7 +23,7 @@ export function DeviceRow({ device, selected, onSelect }: DeviceRowProps) {
         className={cx(
           'flex w-full cursor-pointer items-center gap-3 rounded-card border p-3 text-left hover:border-line-hover',
           selected ? 'border-accent-line bg-selected' : 'border-line-soft bg-panel',
-          dimmed(device) && 'opacity-60'
+          dimmed(device, vvdBusy) && 'opacity-60'
         )}
       >
         <span className="grid size-9 flex-none place-items-center rounded-tile bg-selected text-text-soft">

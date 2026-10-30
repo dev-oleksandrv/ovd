@@ -1,6 +1,7 @@
 import type { Device } from '@ovd/core'
 import { useState } from 'react'
 import { useDevicesContext } from '../../devices/devicesContext'
+import type { VvdActions } from '../../devices/useVvdActions'
 import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
@@ -9,10 +10,10 @@ import { LoadingState } from '../../ui/LoadingState'
 import { DeviceDetail } from './DeviceDetail'
 import { DeviceRow } from './DeviceRow'
 
-// Devices (Stage 1.3). Actions of later slices (pairing, setup, VVD start/stop) are not drawn
-// until they ship (ADR 0018).
+// Devices (Stage 1.3, 1.4). Actions of later slices (pairing, setup) are not drawn until they
+// ship (ADR 0018).
 export function DevicesScreen() {
-  const { state, rescan, setTarget } = useDevicesContext()
+  const { state, rescan, setTarget, vvd } = useDevicesContext()
   const { notify } = useFeedback()
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -62,6 +63,7 @@ export function DevicesScreen() {
           onSelect={setSelectedId}
           onRename={rename}
           onSetTarget={setTarget}
+          vvd={vvd}
         />
       )}
     </div>
@@ -75,9 +77,10 @@ interface BodyProps {
   onSelect: (id: string) => void
   onRename: (device: Device, name: string) => void
   onSetTarget: (device: Device) => void
+  vvd: VvdActions
 }
 
-function Body({ devices, target, selectedId, onSelect, onRename, onSetTarget }: BodyProps) {
+function Body({ devices, target, selectedId, onSelect, onRename, onSetTarget, vvd }: BodyProps) {
   const selected =
     devices.find((d) => d.id === selectedId) ?? devices.find((d) => d.id === target) ?? devices[0]
   return (
@@ -90,6 +93,7 @@ function Body({ devices, target, selectedId, onSelect, onRename, onSetTarget }: 
               device={device}
               selected={device.id === selected?.id}
               onSelect={() => onSelect(device.id)}
+              vvdBusy={vvd.busy}
             />
           ))}
         </ul>
@@ -99,11 +103,28 @@ function Body({ devices, target, selectedId, onSelect, onRename, onSetTarget }: 
           device={selected}
           onRename={(name) => onRename(selected, name)}
           onSetTarget={() => onSetTarget(selected)}
+          vvd={{
+            busy: vvd.busy,
+            enabling: vvd.enabling,
+            onStart: () => void vvd.start(),
+            onStop: () => void vvd.stop(),
+            onEnableDeveloperMode: () => void vvd.enableDeveloperMode()
+          }}
         />
       ) : (
         <EmptyState
           title="No devices yet"
           body="Start the Virtual Device, or set up a Fire TV stick with Developer Mode."
+          actions={
+            <Button
+              variant="primary"
+              icon="desktop_windows"
+              loading={vvd.busy === 'start'}
+              onClick={() => void vvd.start()}
+            >
+              Start the Virtual Device
+            </Button>
+          }
         />
       )}
     </div>
