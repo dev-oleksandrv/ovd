@@ -1,4 +1,4 @@
-import { OvdError, type Device, type Devices, type ErrorCode, type Ovd } from '@ovd/core'
+import { OvdError, type Device, type Devices, type ErrorCode, type Ovd, type Vvd } from '@ovd/core'
 
 export const stick: Device = {
   id: 'G070000000000001',
@@ -46,7 +46,23 @@ export function stubOvd(devices: Partial<Devices>): Partial<Ovd> {
       get: missing('get'),
       rename: missing('rename'),
       setTarget: missing('setTarget'),
+      invalidate: () => undefined,
       ...devices
+    }
+  }
+}
+
+// A core whose Virtual Device calls are scripted per test.
+export function stubVvd(vvd: Partial<Vvd>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    vvd: {
+      status: missing('status'),
+      start: missing('start'),
+      stop: missing('stop'),
+      developerMode: missing('developerMode'),
+      enableDeveloperMode: missing('enableDeveloperMode'),
+      ...vvd
     }
   }
 }
