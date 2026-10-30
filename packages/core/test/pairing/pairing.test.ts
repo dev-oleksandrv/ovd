@@ -160,6 +160,16 @@ describe('pairUsb', () => {
     await expect(pairing.pairUsb()).rejects.toMatchObject({ code: 'DEVICE_NOT_FOUND' })
   })
 
+  test('a stick already in TCP/IP mode is named, with the way back to USB', async () => {
+    const { pairing } = setup({ [VDA]: lists.wifi })
+    const error = pairing.pairUsb()
+    await expect(error).rejects.toMatchObject({
+      code: 'DEVICE_NOT_FOUND',
+      hint: `It is already paired. To use it over USB again: vega exec vda -s ${WIFI} usb`
+    })
+    await expect(error).rejects.toThrow(`connected over Wi‑Fi as ${WIFI}`)
+  })
+
   test('a --device that is not on USB', async () => {
     const { pairing } = setup({ [VDA]: lists.wifi })
     await expect(pairing.pairUsb({ device: WIFI })).rejects.toMatchObject({

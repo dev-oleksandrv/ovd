@@ -162,6 +162,18 @@ export function createPairing(deps: PairingDeps): Pairing {
       )
     }
     const [only, ...more] = usb
+    // A stick in TCP/IP mode leaves the USB list even while plugged in; say so instead of
+    // asking the user to plug in a stick that already is.
+    const onWifi = devices.find(
+      (d) => d.kind === 'stick' && d.connection === 'wifi' && d.status === 'online'
+    )
+    if (!only && onWifi) {
+      throw new OvdError(
+        'DEVICE_NOT_FOUND',
+        `No stick on USB: ${onWifi.name} is in TCP/IP mode and connected over Wi‑Fi as ${onWifi.id}`,
+        `It is already paired. To use it over USB again: vega exec vda -s ${onWifi.id} usb`
+      )
+    }
     if (!only) {
       throw new OvdError(
         'DEVICE_NOT_FOUND',
