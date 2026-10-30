@@ -10,12 +10,18 @@ import { LoadingState } from '../../ui/LoadingState'
 import { DeviceDetail } from './DeviceDetail'
 import { DeviceRow } from './DeviceRow'
 
-// Devices (Stage 1.3, 1.4). Actions of later slices (pairing, setup) are not drawn until they
-// ship (ADR 0018).
-export function DevicesScreen() {
+interface DevicesScreenProps {
+  // Opens the pairing wizard.
+  onPair: () => void
+}
+
+// Devices (Stage 1.3, 1.4, 1.6, 1.7). The stick setup of a later slice is not drawn until it
+// ships (ADR 0018).
+export function DevicesScreen({ onPair }: DevicesScreenProps) {
   const { state, rescan, setTarget, vvd } = useDevicesContext()
   const { notify } = useFeedback()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [reconnecting, setReconnecting] = useState<string | null>(null)
 
   const onRescan = async (): Promise<void> => {
     const update = await rescan()
@@ -37,6 +43,38 @@ export function DevicesScreen() {
     else notify({ tone: 'error', text: result.error.message, cli })
   }
 
+  const reconnect = async (device: Device): Promise<void> => {
+    if (reconnecting) return
+    const cli = `ovd connect ${device.id}`
+    setReconnecting(device.id)
+    notify({ tone: 'info', text: `Reconnecting ${device.name}…`, cli })
+    const result = await window.ovd.pairing.connect(device.id)
+    setReconnecting(null)
+    if (result.ok) notify({ tone: 'ok', text: `${device.name} is back online`, cli })
+    else {
+      notify({
+        tone: 'error',
+        text: `${result.error.message}. ${result.error.hint}`,
+        cli,
+        action: { label: 'Retry', run: () => void reconnect(device) }
+      })
+    }
+  }
+
+  const forget = async (device: Device): Promise<void> => {
+    const cli = `ovd forget ${device.id}`
+    const result = await window.ovd.pairing.forget(device.id)
+    if (result.ok && result.data.switchedToUsb) {
+      notify({ tone: 'ok', text: `Forgot ${device.name} · switching back to USB`, cli })
+    } else if (result.ok) {
+      notify({
+        tone: 'warning',
+        text: `Forgot ${device.name}. It stays in TCP/IP mode: on the TV, Settings → My Fire TV → Developer Options → Connection Mode → USB`,
+        cli
+      })
+    } else notify({ tone: 'error', text: result.error.message, cli })
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-b border-line px-6 pt-5 pb-4">
@@ -46,9 +84,14 @@ export function DevicesScreen() {
             Discovered over USB, TCP/IP and the local Virtual Device · refreshes every 2 s
           </div>
         </div>
-        <Button variant="secondary" icon="refresh" onClick={onRescan}>
-          Rescan
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" icon="refresh" onClick={onRescan}>
+            Rescan
+          </Button>
+          <Button variant="secondary" icon="wifi_add" onClick={onPair}>
+            Pair over Wi‑Fi
+          </Button>
+        </div>
       </div>
 
       {state.status === 'loading' && <LoadingState label="Loading devices…" />}
@@ -64,6 +107,9 @@ export function DevicesScreen() {
           onRename={rename}
           onSetTarget={setTarget}
           vvd={vvd}
+          reconnecting={reconnecting}
+          onReconnect={(device) => void reconnect(device)}
+          onForget={(device) => void forget(device)}
         />
       )}
     </div>
@@ -78,9 +124,23 @@ interface BodyProps {
   onRename: (device: Device, name: string) => void
   onSetTarget: (device: Device) => void
   vvd: VvdActions
+  reconnecting: string | null
+  onReconnect: (device: Device) => void
+  onForget: (device: Device) => void
 }
 
-function Body({ devices, target, selectedId, onSelect, onRename, onSetTarget, vvd }: BodyProps) {
+function Body({
+  devices,
+  target,
+  selectedId,
+  onSelect,
+  onRename,
+  onSetTarget,
+  vvd,
+  reconnecting,
+  onReconnect,
+  onForget
+}: BodyProps) {
   const selected =
     devices.find((d) => d.id === selectedId) ?? devices.find((d) => d.id === target) ?? devices[0]
   return (
@@ -109,6 +169,11 @@ function Body({ devices, target, selectedId, onSelect, onRename, onSetTarget, vv
             onStart: () => void vvd.start(),
             onStop: () => void vvd.stop(),
             onEnableDeveloperMode: () => void vvd.enableDeveloperMode()
+          }}
+          saved={{
+            reconnecting: reconnecting === selected.id,
+            onReconnect: () => onReconnect(selected),
+            onForget: () => onForget(selected)
           }}
         />
       ) : (

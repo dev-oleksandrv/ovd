@@ -4,6 +4,7 @@ import pkg from '../package.json' with { type: 'json' }
 import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
+import { registerPairing } from './commands/pair.js'
 import { registerTarget } from './commands/target.js'
 import { registerVvd } from './commands/vvd.js'
 
@@ -53,5 +54,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerDevice(program, deps, setExitCode)
   registerTarget(program, deps, setExitCode)
   registerVvd(program, deps, setExitCode)
+  registerPairing(program, deps, setExitCode)
   return program
 }

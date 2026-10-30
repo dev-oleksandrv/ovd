@@ -119,7 +119,11 @@ export function createDevices(deps: DevicesDeps): Devices {
 
     for (const saved of state.saved) {
       if (found.some((d) => d.id === saved.id)) continue
-      found.push({ ...offline(saved.id), serial: saved.serial, saved: true })
+      found.push({
+        ...offline(saved.id),
+        ...(saved.serial === undefined ? {} : { serial: saved.serial }),
+        saved: true
+      })
     }
 
     await fetchInfo(vegaPath, found)

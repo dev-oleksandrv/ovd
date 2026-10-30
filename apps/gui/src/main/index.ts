@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { createOvd } from '@ovd/core'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerIpcHandlers } from './ipc'
+import { registerPairingIpc } from './pairingIpc'
 import { registerVvdIpc } from './vvdIpc'
 
 // One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
@@ -71,6 +72,7 @@ app.whenReady().then(() => {
 
   registerIpcHandlers(ovd)
   registerVvdIpc(ovd, devices.refresh)
+  registerPairingIpc(ovd, devices.refresh)
 
   createWindow()
 

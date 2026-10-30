@@ -13,6 +13,7 @@ import { SearchButton } from './frame/SearchButton'
 import { TargetPicker } from './frame/TargetPicker'
 import { TargetStatus } from './frame/TargetStatus'
 import { DevicesScreen } from './screens/devices/DevicesScreen'
+import { PairWizard } from './pairing/PairWizard'
 import { firstRunNeeded, gateFailure, gateOpen } from './screens/environment/doctorView'
 import { EnvironmentScreen } from './screens/environment/EnvironmentScreen'
 import { useSdk } from './sdk/useSdk'
@@ -39,6 +40,7 @@ function Shell() {
   const [gallery, setGallery] = useState(false)
   const [menu, setMenu] = useState(false)
   const [palette, setPalette] = useState(false)
+  const [pairing, setPairing] = useState(false)
   const [screen, setScreen] = useState<Screen>('devices')
   // null until the first doctor report arrives and decides the start screen.
   const [firstRun, setFirstRun] = useState<boolean | null>(null)
@@ -117,6 +119,7 @@ function Shell() {
       void runDoctor()
     },
     vvd: { busy: vvd.busy, start: () => void vvd.start(), stop: () => void vvd.stop() },
+    pair: () => setPairing(true),
     switchTarget: (device) => void setTarget(device),
     later: (label) => notify({ tone: 'info', text: `${label} is coming in a later version` })
   })
@@ -133,6 +136,7 @@ function Shell() {
             open={menu}
             onOpenChange={setMenu}
             onPick={(device) => void setTarget(device)}
+            onPair={() => setPairing(true)}
             vvdBusy={vvd.busy}
           />
           <div className="flex-1" />
@@ -190,9 +194,18 @@ function Shell() {
           onRunDoctor={() => void runDoctor()}
         />
       ) : (
-        <DevicesScreen />
+        <DevicesScreen onPair={() => setPairing(true)} />
       )}
       {palette && <CommandPalette items={items} onClose={() => setPalette(false)} />}
+      {pairing && (
+        <PairWizard
+          onClose={() => setPairing(false)}
+          onDone={() => {
+            setPairing(false)
+            go('devices')
+          }}
+        />
+      )}
     </AppFrame>
   )
 }

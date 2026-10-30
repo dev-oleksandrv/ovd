@@ -55,7 +55,7 @@ describe('infoRows', () => {
 
 describe('serialLine', () => {
   test.each([
-    [wifiOffline, 'Serial G070000000000002 · vda get-serialno'],
+    [wifiOffline, 'Serial G070000000000002'],
     [stick, null],
     [{ ...wifiOffline, serial: undefined }, null]
   ] as [Device, string | null][])('%#', (device, expected) => {

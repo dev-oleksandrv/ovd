@@ -1,4 +1,5 @@
 import type { Device } from '@ovd/core'
+import { useState } from 'react'
 import { Button } from '../../ui/Button'
 import { CodeBlock } from '../../ui/CodeBlock'
 import { Icon } from '../../ui/Icon'
@@ -21,11 +22,29 @@ interface DeviceDetailProps {
     onStop: () => void
     onEnableDeveloperMode: () => void
   }
+  // Forget for a saved Wi‑Fi device; Reconnect too while it is offline.
+  saved?: {
+    reconnecting: boolean
+    onReconnect: () => void
+    onForget: () => void
+  }
 }
 
-export function DeviceDetail({ device, onRename, onSetTarget, vvd }: DeviceDetailProps) {
+export function DeviceDetail({ device, onRename, onSetTarget, vvd, saved }: DeviceDetailProps) {
+  // The device whose Forget waits for confirmation; another selection drops it.
+  const [confirmForget, setConfirmForget] = useState<string | null>(null)
   const busy = vvd?.busy ?? null
-  const status = statusView(device, busy)
+  const reconnecting = saved?.reconnecting === true
+  const status = reconnecting
+    ? ({ label: 'Reconnecting…', tone: 'warning', pulse: true } as const)
+    : statusView(device, busy)
+  const savedWifi =
+    saved !== undefined &&
+    device.saved &&
+    device.connection === 'wifi' &&
+    confirmForget !== device.id
+  // Core switches back only a stick it switched itself, and only while it is online.
+  const backToUsb = device.serial !== undefined && device.status === 'online'
   const isVvd = device.kind === 'vvd' && vvd !== undefined
   // The core status already says `starting` while a start from elsewhere boots.
   const running = device.status === 'online' || device.status === 'starting'
@@ -69,8 +88,44 @@ export function DeviceDetail({ device, onRename, onSetTarget, vvd }: DeviceDetai
                     : 'Start'}
             </Button>
           )}
+          {savedWifi && (
+            <>
+              {device.status === 'offline' && (
+                <Button icon="wifi" loading={reconnecting} onClick={saved.onReconnect}>
+                  {reconnecting ? 'Reconnecting…' : 'Reconnect'}
+                </Button>
+              )}
+              <Button icon="delete" onClick={() => setConfirmForget(device.id)}>
+                Forget
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {saved && confirmForget === device.id && (
+        <div className="flex items-center gap-3 rounded-card border border-error/35 bg-error/7 px-4 py-3">
+          <Icon name="error" size={20} className="text-error" />
+          <div className="flex-1 text-text-soft">
+            {backToUsb
+              ? `Forget ${device.name}? It switches back to USB; pair it again to use Wi‑Fi.`
+              : `Forget ${device.name}? You’ll need to pair it again.`}
+          </div>
+          <Button size="sm" onClick={() => setConfirmForget(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setConfirmForget(null)
+              saved.onForget()
+            }}
+          >
+            Forget
+          </Button>
+        </div>
+      )}
 
       {device.status === 'stopped' && busy === null && (
         <div className="flex items-center gap-3 rounded-card border border-line-menu bg-row-hover px-4 py-3.5">

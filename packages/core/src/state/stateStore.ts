@@ -5,7 +5,8 @@ import { z } from 'zod'
 
 const savedDeviceSchema = z.object({
   id: z.string(),
-  serial: z.string(),
+  // Known only for a stick paired over USB: no command reads the serial over Wi‑Fi.
+  serial: z.string().optional(),
   savedAt: z.string()
 })
 

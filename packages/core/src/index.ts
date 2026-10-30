@@ -13,6 +13,11 @@ export { parseSdkConfigDoctor } from './adapters/parseSdkConfigDoctor.js'
 export type { SdkConfigDoctor } from './adapters/parseSdkConfigDoctor.js'
 export { parseVdaVersion } from './adapters/parseVdaVersion.js'
 export { parseNodeVersion } from './adapters/parseNodeVersion.js'
+export { parseVdaConnect } from './adapters/parseVdaConnect.js'
+export type { VdaConnect } from './adapters/parseVdaConnect.js'
+export { parseVdaTcpip } from './adapters/parseVdaTcpip.js'
+export { parseVdaUsb } from './adapters/parseVdaUsb.js'
+export { parseFibTrie } from './adapters/parseFibTrie.js'
 export { parseIsPortForwarded } from './adapters/parseIsPortForwarded.js'
 export { parseDevmodeLogin } from './adapters/parseDevmodeLogin.js'
 export type { DevmodeLogin } from './adapters/parseDevmodeLogin.js'
@@ -62,3 +67,14 @@ export type {
 } from './doctor/types.js'
 export { createVvd } from './vvd/vvd.js'
 export type { Vvd, VvdDeps, VvdState, VvdStatus } from './vvd/vvd.js'
+export { createPairing } from './pairing/pairing.js'
+export { TV_USB_MODE } from './pairing/pairing.js'
+export type { ForgetResult, Pairing, PairingDeps } from './pairing/pairing.js'
+export {
+  DEFAULT_PORT,
+  networkCidr,
+  onHostNetwork,
+  parseAddress,
+  parsePort
+} from './pairing/address.js'
+export type { Address, HostNetwork } from './pairing/address.js'

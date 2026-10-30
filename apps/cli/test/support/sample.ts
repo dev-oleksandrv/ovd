@@ -1,4 +1,12 @@
-import { OvdError, type Device, type Devices, type ErrorCode, type Ovd, type Vvd } from '@ovd/core'
+import {
+  OvdError,
+  type Device,
+  type Devices,
+  type ErrorCode,
+  type Ovd,
+  type Pairing,
+  type Vvd
+} from '@ovd/core'
 
 export const stick: Device = {
   id: 'G070000000000001',
@@ -33,6 +41,15 @@ export const vvd: Device = {
   saved: false
 }
 
+export const wifiStick: Device = {
+  ...stick,
+  id: '192.0.2.42:5555',
+  vdaSerial: '192.0.2.42:5555',
+  connection: 'wifi',
+  ip: '192.0.2.42',
+  saved: true
+}
+
 export const fail = (code: ErrorCode) => () =>
   Promise.reject(new OvdError(code, `failed: ${code}`, `hint for ${code}`))
 
@@ -63,6 +80,21 @@ export function stubVvd(vvd: Partial<Vvd>): Partial<Ovd> {
       developerMode: missing('developerMode'),
       enableDeveloperMode: missing('enableDeveloperMode'),
       ...vvd
+    }
+  }
+}
+
+// A core whose pairing calls are scripted per test.
+export function stubPairing(pairing: Partial<Pairing>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    pairing: {
+      pairUsb: missing('pairUsb'),
+      pair: missing('pair'),
+      connect: missing('connect'),
+      forget: missing('forget'),
+      reconnectSaved: missing('reconnectSaved'),
+      ...pairing
     }
   }
 }

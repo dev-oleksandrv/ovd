@@ -6,6 +6,7 @@ import { hostInfo } from './doctor/hostInfo.js'
 import { portInUse } from './doctor/portProbe.js'
 import { defaultDiscoverOptions, discoverSdk, type SdkInfo } from './sdk/discoverSdk.js'
 import { createExecaRunner, type Runner } from './sdk/runner.js'
+import { createPairing, type Pairing } from './pairing/pairing.js'
 import { createSdkLocator, type SdkLocator } from './sdk/sdkLocator.js'
 import { createSerialRunner } from './sdk/serialRunner.js'
 import { resolveOvdHome } from './state/ovdHome.js'
@@ -26,6 +27,7 @@ export interface Ovd {
   devices: Devices
   doctor: Doctor
   vvd: Vvd
+  pairing: Pairing
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -42,7 +44,8 @@ export function createOvd(opts: OvdOptions): Ovd {
     surface: opts.surface,
     ...(opts.now ? { now: opts.now } : {})
   })
-  const devices = createDevices({ runner, sdk, state: createStateStore(home), activity, env })
+  const state = createStateStore(home)
+  const devices = createDevices({ runner, sdk, state, activity, env })
   const vvd = createVvd({ runner, sdk, devices, activity })
   const doctor = createDoctor({
     runner,
@@ -54,5 +57,6 @@ export function createOvd(opts: OvdOptions): Ovd {
     host: hostInfo,
     portInUse
   })
-  return { sdk, devices, doctor, vvd }
+  const pairing = createPairing({ runner, sdk, devices, state, activity })
+  return { sdk, devices, doctor, vvd, pairing }
 }

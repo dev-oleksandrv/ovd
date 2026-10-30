@@ -13,13 +13,16 @@ import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { Chip } from '../ui/Chip'
 import { CodeBlock } from '../ui/CodeBlock'
+import { CommandLine } from '../ui/CommandLine'
 import { EmptyState } from '../ui/EmptyState'
 import { ErrorState } from '../ui/ErrorState'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { KeyValueGrid } from '../ui/KeyValueGrid'
 import { LoadingState } from '../ui/LoadingState'
+import { InlineError } from '../ui/InlineError'
 import { Modal } from '../ui/Modal'
+import { StepList } from '../ui/StepList'
 import { OfflineState } from '../ui/OfflineState'
 import { StatusDot } from '../ui/StatusDot'
 import { StatusPill } from '../ui/StatusPill'
@@ -410,6 +413,20 @@ export function Gallery() {
         <Button onClick={() => setStep(1)}>Open wizard</Button>
       </GallerySection>
 
+      <GallerySection title="Wizard step parts">
+        <div className="flex w-full max-w-[500px] flex-col gap-3">
+          <StepList
+            steps={['Connection Mode → TCP/IP.', 'Choose a port above 1024 (5555 is the default).']}
+          />
+          <CommandLine command="vega exec vda tcpip 5555" />
+          <CommandLine command="vega exec vda connect 192.0.2.42:5555" result="connected" />
+          <InlineError
+            title="Port 5555 looks blocked"
+            body="vda connect timed out. A firewall on this computer or the router may be blocking TCP port 5555; allow it, then retry."
+          />
+        </div>
+      </GallerySection>
+
       <GallerySection title="Title bar controls">
         <div className="flex w-full items-center gap-2.5">
           <TargetPicker
@@ -418,6 +435,7 @@ export function Gallery() {
             open={picker}
             onOpenChange={setPicker}
             onPick={setTarget}
+            onPair={() => notify({ tone: 'info', text: 'Pair a device over Wi‑Fi…' })}
           />
           <SearchButton platform="darwin" onClick={() => setPalette(true)} />
         </div>
@@ -429,6 +447,7 @@ export function Gallery() {
               go: () => undefined,
               runDoctor: () => undefined,
               vvd: { busy: null, start: () => undefined, stop: () => undefined },
+              pair: () => undefined,
               switchTarget: setTarget,
               later: (label) =>
                 notify({ tone: 'info', text: `${label} is coming in a later version` })
