@@ -77,19 +77,19 @@ describe('ovd connect', () => {
 
 describe('ovd forget', () => {
   test('--json prints the ID', async () => {
-    const forget = vi.fn(async () => ({ id: '192.0.2.42:5555' }))
+    const forget = vi.fn(async () => ({ id: '192.0.2.42:5555', switchedToUsb: true }))
     const { stdout, exitCode } = await cli(['forget', '192.0.2.42:5555', '--json'], {
       ovd: stubPairing({ forget })
     })
-    expect(JSON.parse(stdout)).toEqual({ ok: true, id: '192.0.2.42:5555' })
+    expect(JSON.parse(stdout)).toEqual({ ok: true, id: '192.0.2.42:5555', switchedToUsb: true })
     expect(exitCode).toBe(0)
   })
 
-  test('human output says how to get back to USB', async () => {
+  test('a stick left in TCP/IP mode gets the way back to USB', async () => {
     const { stdout } = await cli(['forget', '192.0.2.42:5555'], {
-      ovd: stubPairing({ forget: async () => ({ id: '192.0.2.42:5555' }) })
+      ovd: stubPairing({ forget: async () => ({ id: '192.0.2.42:5555', switchedToUsb: false }) })
     })
-    expect(stdout).toContain('vega exec vda -s 192.0.2.42:5555 usb')
+    expect(stdout).toContain('Developer Options → Connection Mode → USB')
   })
 
   test('an unknown device exits 4', async () => {

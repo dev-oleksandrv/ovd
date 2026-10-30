@@ -1,5 +1,5 @@
 import type { Command } from 'commander'
-import { OvdError, type Device } from '@ovd/core'
+import { OvdError, TV_USB_MODE, type Device } from '@ovd/core'
 import type { CliDeps } from '../program.js'
 import { details } from '../format/devices.js'
 import { report } from '../report.js'
@@ -68,9 +68,10 @@ export function registerPairing(
       await report(reportContext(cmd, deps, setExitCode), () => deps.ovd().pairing.forget(id), {
         json: (result) => result,
         human: (result) =>
-          `Forgot ${result.id}\n` +
-          // A stick switched with `vda tcpip` stays off USB until switched back.
-          `To use the stick over USB again: ovd connect ${result.id}, then vega exec vda -s ${result.id} usb\n`
+          result.switchedToUsb
+            ? `Forgot ${result.id}; the stick is switching back to USB\n`
+            : // A stick left in TCP/IP mode is invisible on USB until switched back.
+              `Forgot ${result.id}\nIt stays in TCP/IP mode. To use it over USB, on the TV: ${TV_USB_MODE}\n`
       })
     })
 }
