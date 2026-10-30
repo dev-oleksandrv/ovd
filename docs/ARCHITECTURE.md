@@ -165,6 +165,10 @@ OVD designs around these:
 - The Virtual Device is `VirtualDevice` to `vega device` and `emulator-5554` to VDA.
 - `vega virtual-device start` blocks until "Virtual device ready." (about 6 s) and VDA lists the device right after. On a running Virtual Device it exits 0 anyway ("Failed to launch: virtual device is already running" on stderr), so OVD checks the status first. `stop` on a stopped one exits 1 ("virtual device not running").
 - Virtual Device Developer Mode survives a restart. Right after `vsm developer-mode disable` the device shell stops answering (`No running instances of com.amazon.dev.shell.service`) and `vega device info` prints empty fields until the Virtual Device restarts. `inDeveloperMode` in `vega device info` follows `vsm developer-mode`.
+- `vda tcpip <port>` removes the stick's USB entry from the VDA list at once, and it stays gone, across power cycles, until `vda usb`. A stick in TCP/IP mode is only listed after `vda connect`. OVD reads the stick's IP over USB (`/proc/net/fib_trie`; the stick has no `ip`, `ifconfig` or `getprop`) before switching.
+- `vda connect` exits 0 whatever happens; only stdout tells success (`connected to`, `already connected to`) from `Connection refused`, `Operation timed out` (after 47–75 s) or a bad address. OVD stops it after 20 s.
+- Over Wi‑Fi no command returns the serial: `vda get-serialno` prints the `IP:port`, `/proc/idme` is permission denied, and `vega device info` matches USB except `deviceName`. A stick paired over USB keeps the serial OVD read before switching; one paired by IP has none.
+- A Wi‑Fi device that drops stays in the VDA list as `offline`, and VDA reconnects it by itself when it comes back. After a host or VDA server restart it is gone from the list until `vda connect`.
 - No command reports a friendly device name; `deviceName` echoes the ID passed in.
 - `vega device list` takes 1–4 s and has no JSON mode; `vega exec vda devices -l` takes about 0.3 s.
 - `vega platform doctor` prints the whole environment, secrets included. OVD never runs it.
