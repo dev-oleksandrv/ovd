@@ -1,0 +1,14 @@
+{
+  "idme": "A000000000000",
+  "os": "OS",
+  "hostname": "amazon-0000000000000000",
+  "architecture": "aarch64",
+  "profile": "tv",
+  "product": "vvrp-tv-arm64",
+  "buildDescription": "OS 1.2 (TV Ship/102282480)",
+  "deviceName": "VirtualDevice",
+  "kvdVersion": "",
+  "simulated": true,
+  "inDeveloperMode": false,
+  "user": "app_user"
+}

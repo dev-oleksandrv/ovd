@@ -10,6 +10,7 @@ import { createSdkLocator, type SdkLocator } from './sdk/sdkLocator.js'
 import { createSerialRunner } from './sdk/serialRunner.js'
 import { resolveOvdHome } from './state/ovdHome.js'
 import { createStateStore } from './state/stateStore.js'
+import { createVvd, type Vvd } from './vvd/vvd.js'
 
 export interface OvdOptions {
   surface: Surface
@@ -24,6 +25,7 @@ export interface Ovd {
   sdk: SdkLocator
   devices: Devices
   doctor: Doctor
+  vvd: Vvd
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -35,25 +37,22 @@ export function createOvd(opts: OvdOptions): Ovd {
   const sdk = createSdkLocator(
     opts.discover ?? (() => discoverSdk({ ...defaultDiscoverOptions(runner), env, homedir }))
   )
-  const devices = createDevices({
-    runner,
-    sdk,
-    state: createStateStore(home),
-    activity: createActivityLog({
-      home,
-      surface: opts.surface,
-      ...(opts.now ? { now: opts.now } : {})
-    }),
-    env
+  const activity = createActivityLog({
+    home,
+    surface: opts.surface,
+    ...(opts.now ? { now: opts.now } : {})
   })
+  const devices = createDevices({ runner, sdk, state: createStateStore(home), activity, env })
+  const vvd = createVvd({ runner, sdk, devices, activity })
   const doctor = createDoctor({
     runner,
     sdk,
     devices,
+    vvd,
     homedir,
     shell: env.SHELL ?? '/bin/sh',
     host: hostInfo,
     portInUse
   })
-  return { sdk, devices, doctor }
+  return { sdk, devices, doctor, vvd }
 }

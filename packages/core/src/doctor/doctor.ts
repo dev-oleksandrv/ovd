@@ -4,18 +4,21 @@ import { parseIsPortForwarded } from '../adapters/parseIsPortForwarded.js'
 import { parseSdkConfigDoctor } from '../adapters/parseSdkConfigDoctor.js'
 import { parseVdaVersion } from '../adapters/parseVdaVersion.js'
 import type { Devices } from '../devices/devices.js'
+import { VVD_ID } from '../devices/deviceModel.js'
 import type { Device } from '../devices/types.js'
 import { OvdError } from '../errors/ovdError.js'
 import { vdaCmd, vegaCmd, vegaDeviceCmd } from '../sdk/commands.js'
 import type { SdkInfo } from '../sdk/discoverSdk.js'
 import type { Runner } from '../sdk/runner.js'
 import type { SdkLocator } from '../sdk/sdkLocator.js'
+import type { Vvd } from '../vvd/vvd.js'
 import type { Check, CheckId, DoctorReport, HostInfo } from './types.js'
 
 export interface DoctorDeps {
   runner: Runner
   sdk: SdkLocator
   devices: Devices
+  vvd: Pick<Vvd, 'developerMode'>
   homedir: string
   // The user's login shell ($SHELL): it finds the Node that Metro and builds use.
   shell: string
@@ -157,6 +160,27 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     return { status: 'ok', detail: `${online} online · ${devices.length - online} unavailable` }
   }
 
+  // A running Virtual Device with Developer Mode off takes over the row: it's the one thing
+  // here OVD can fix in a click. Otherwise (or when it can't be read) the row is about sign-in.
+  async function vvdDevmodeCheck(devices: Device[]): Promise<Result | null> {
+    const vvd = devices.find((d) => d.id === VVD_ID)
+    if (vvd?.status !== 'online') return null
+    try {
+      const { developerMode, command } = await deps.vvd.developerMode()
+      if (developerMode) return null
+      return {
+        status: 'warn',
+        detail: 'Developer Mode is off on the Virtual Device',
+        command,
+        hint: 'Turn it on with ovd vvd devmode enable',
+        fix: 'enable-vvd-devmode'
+      }
+    } catch (error) {
+      if (!(error instanceof OvdError)) throw error
+      return null
+    }
+  }
+
   async function devmodeCheck(sdk: SdkInfo): Promise<Result> {
     const unknown: Result = { status: 'info', detail: 'Couldn’t check sign-in' }
     try {
@@ -263,6 +287,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     async run() {
       const [host, { result: sdkResult, sdk }] = await Promise.all([deps.host(), sdkCheck()])
       const results: Partial<Record<CheckId, Result>> = { sdk: sdkResult }
+      let devices: Device[] = []
       if (!sdk) {
         for (const id of ['vda', 'devices', 'devmode', 'metro'] as const) {
           results[id] = skipped('Waiting for the Vega SDK')
@@ -288,14 +313,16 @@ export function createDoctor(deps: DoctorDeps): Doctor {
             })
             results.metro = skipped('Waiting for VDA')
           } else {
+            devices = snapshot.devices
             results.devices = ran('devices', devicesCheck(snapshot.devices))
             results.metro = await metroCheck(sdk, snapshot)
           }
         }
         results.devmode =
-          sdk.cli === 'manager'
+          (await vvdDevmodeCheck(devices)) ??
+          (sdk.cli === 'manager'
             ? ran('devmode', await devmodeCheck(sdk))
-            : skipped('Needs the Vega CLI (SDK Manager)')
+            : skipped('Needs the Vega CLI (SDK Manager)'))
       }
       const { result: nodeResult, node } = await nodeCheck()
       results.node = nodeResult

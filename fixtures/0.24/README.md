@@ -23,3 +23,11 @@ Recorded with Vega SDK 0.24.12112 and Vega CLI 1.4.5 on macOS (arm64).
 | `vega-devmode-login/signed-out.json` | `vega devmode login --json` (stdout printed at once, then waits; stopped after 5 s; no browser opens) | — signed out; user code replaced | 2026-10-29 |
 | `vega-devmode-login/bundled-cli.stderr.txt` | `vega devmode login --json` with the SDK-bundled `vega` (stderr first line, exit 253) | — | 2026-10-29 |
 | `vsm-developer-mode/enabled.txt` | `vega exec vda -s emulator-5554 shell vsm developer-mode` | Virtual Device (a stick prints the same) | 2026-10-29 |
+| `vega-virtual-device-start/started.txt` | `vega virtual-device start` (stdout, exit 0 in 5.7 s; stderr has SDK log lines only) | Virtual Device stopped | 2026-10-30 |
+| `vega-virtual-device-start/already-running.stderr.txt` | same, last stderr line (**exit 0**, nothing on stdout) | Virtual Device already running | 2026-10-30 |
+| `vega-virtual-device-stop/not-running.stderr.txt` | `vega virtual-device stop`, last stderr line (exit 1) | Virtual Device stopped | 2026-10-30 |
+| `vsm-developer-mode/disabled.txt` | `vega exec vda -s emulator-5554 shell vsm developer-mode` | Virtual Device with Developer Mode off (after a restart) | 2026-10-30 |
+| `vsm-developer-mode/shell-service-down.stderr.txt` | same (stderr, exit 1) | right after `vsm developer-mode disable`, until the Virtual Device restarts; `vega device info` prints `unavailable.json` meanwhile | 2026-10-30 |
+| `vsm-developer-mode-set/enabled.txt` | `vega exec vda -s emulator-5554 shell vsm developer-mode enable` (exit 0; same when already on) | Virtual Device | 2026-10-30 |
+| `vsm-developer-mode-set/disabled.txt` | `… vsm developer-mode disable` (exit 0) | Virtual Device | 2026-10-30 |
+| `vega-device-info/virtual-device-developer-mode-off.json` | `vega device info --device VirtualDevice` | Virtual Device with Developer Mode off | 2026-10-30 |

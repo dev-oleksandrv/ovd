@@ -68,7 +68,11 @@ interface Setup {
   sdk?: SdkInfo | OvdError
   snapshot?: DevicesSnapshot | OvdError
   inUse?: number[]
+  // What `vvd.developerMode()` answers; it may only be asked while the Virtual Device is online.
+  vvdDevmode?: boolean | OvdError
 }
+
+const VSM = 'vega exec vda -s emulator-5554 shell vsm developer-mode'
 
 function setup(opts: Setup = {}) {
   const runner = new FakeRunner(opts.script ?? healthy())
@@ -91,18 +95,29 @@ function setup(opts: Setup = {}) {
     currentTarget: forbidden('currentTarget'),
     get: forbidden('get'),
     rename: forbidden('rename'),
-    setTarget: forbidden('setTarget')
+    setTarget: forbidden('setTarget'),
+    invalidate: forbidden('invalidate')
+  }
+  const vvdAsked: string[] = []
+  const vvdDeps = {
+    developerMode: async () => {
+      vvdAsked.push('developerMode')
+      const answer = opts.vvdDevmode ?? true
+      if (answer instanceof OvdError) throw answer
+      return { developerMode: answer, command: VSM }
+    }
   }
   const doctor = createDoctor({
     runner,
     sdk,
     devices,
+    vvd: vvdDeps,
     homedir: '/home/dev',
     shell: '/bin/zsh',
     host: async () => ({ os: 'macOS', osVersion: '26.6', arch: 'arm64' }),
     portInUse: async (port) => (opts.inUse ?? []).includes(port)
   })
-  return { doctor, runner, discovered, sdk }
+  return { doctor, runner, discovered, sdk, vvdAsked }
 }
 
 const statuses = (checks: { status: string }[]) => checks.map((c) => c.status)
@@ -371,5 +386,48 @@ describe('Doctor.run', () => {
       command: NODE
     })
     expect(report.host).not.toHaveProperty('node')
+  })
+
+  describe('Virtual Device Developer Mode', () => {
+    const vvdOnline: Device = { ...vvd, status: 'online', vdaSerial: 'emulator-5554' }
+    const snapshot = { devices: [stick, vvdOnline], target: stick.id }
+
+    test('off: the row warns with a fix and the sign-in probe does not run', async () => {
+      const { doctor, runner } = setup({ snapshot, vvdDevmode: false })
+      const report = await doctor.run()
+      expect(report.checks.find((c) => c.id === 'devmode')).toEqual({
+        id: 'devmode',
+        name: 'Developer Mode',
+        status: 'warn',
+        detail: 'Developer Mode is off on the Virtual Device',
+        command: VSM,
+        hint: 'Turn it on with ovd vvd devmode enable',
+        fix: 'enable-vvd-devmode'
+      })
+      expect(runner.count(DEVMODE)).toBe(0)
+    })
+
+    test('on: the row is about sign-in', async () => {
+      const { doctor, vvdAsked } = setup({ snapshot, vvdDevmode: true })
+      const report = await doctor.run()
+      expect(vvdAsked).toEqual(['developerMode'])
+      expect(report.checks.find((c) => c.id === 'devmode')).toMatchObject({
+        status: 'ok',
+        command: DEVMODE
+      })
+    })
+
+    test('unreadable: the row falls back to sign-in', async () => {
+      const failure = new OvdError('COMMAND_FAILED', 'Couldn’t read Developer Mode', 'Restart it')
+      const { doctor } = setup({ snapshot, vvdDevmode: failure })
+      const report = await doctor.run()
+      expect(report.checks.find((c) => c.id === 'devmode')).toMatchObject({ status: 'ok' })
+    })
+
+    test('stopped: Developer Mode is not read', async () => {
+      const { doctor, vvdAsked } = setup({ vvdDevmode: false })
+      await doctor.run()
+      expect(vvdAsked).toEqual([])
+    })
   })
 })
