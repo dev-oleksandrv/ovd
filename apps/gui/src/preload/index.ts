@@ -24,6 +24,12 @@ const api: OvdApi = {
     start: () => ipcRenderer.invoke(channels.vvdStart),
     stop: () => ipcRenderer.invoke(channels.vvdStop),
     enableDeveloperMode: () => ipcRenderer.invoke(channels.vvdDevmodeEnable)
+  },
+  pairing: {
+    pairUsb: () => ipcRenderer.invoke(channels.pairUsb),
+    pair: (address) => ipcRenderer.invoke(channels.pairAddress, address),
+    connect: (id) => ipcRenderer.invoke(channels.connect, id),
+    forget: (id) => ipcRenderer.invoke(channels.forget, id)
   }
 }
 

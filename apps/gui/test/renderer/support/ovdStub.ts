@@ -87,6 +87,7 @@ export function stubOvd(opts: {
   doctor?: () => IpcResult<DoctorReport>
   platform?: 'darwin' | 'linux'
   vvd?: Partial<OvdApi['vvd']>
+  pairing?: Partial<OvdApi['pairing']>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
@@ -123,6 +124,14 @@ export function stubOvd(opts: {
       enableDeveloperMode: vi.fn(
         opts.vvd?.enableDeveloperMode ??
           (async () => unexpected<{ developerMode: true }>('vvd.enableDeveloperMode'))
+      )
+    },
+    pairing: {
+      pairUsb: vi.fn(opts.pairing?.pairUsb ?? (async () => unexpected<Device>('pairing.pairUsb'))),
+      pair: vi.fn(opts.pairing?.pair ?? (async () => unexpected<Device>('pairing.pair'))),
+      connect: vi.fn(opts.pairing?.connect ?? (async () => unexpected<Device>('pairing.connect'))),
+      forget: vi.fn(
+        opts.pairing?.forget ?? (async () => unexpected<{ id: string }>('pairing.forget'))
       )
     }
   }

@@ -18,7 +18,12 @@ export function registerDevicesIpc(
     onUpdate: (update) => window()?.webContents.send(channels.devicesChanged, update)
   })
 
-  ipcMain.handle(channels.devicesList, () => watcher.refresh())
+  // The first list (at launch) and every Rescan first reconnect saved Wi‑Fi devices VDA has
+  // lost (spec C5). A failure there shows up in the list itself: offline, or the SDK error.
+  ipcMain.handle(channels.devicesList, async () => {
+    await ovd.pairing.reconnectSaved().catch(() => undefined)
+    return watcher.refresh()
+  })
 
   ipcMain.handle(channels.devicesRename, async (_event, id: unknown, name: unknown) => {
     const result = await toResult(() =>

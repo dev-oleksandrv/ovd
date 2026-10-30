@@ -26,13 +26,14 @@ export const LATER: readonly (readonly [label: string, icon: string])[] = [
   ['Scenarios & MCP', 'account_tree']
 ]
 
-// Stage 1 palette as shipped so far: setup and pairing entries join with their slices.
+// Stage 1 palette as shipped so far: the setup entry joins with its slice.
 export function paletteItems(opts: {
   devices: Device[]
   target: string | null
   go: (screen: Screen) => void
   runDoctor: () => void
   vvd: { busy: VvdBusy; start: () => void; stop: () => void }
+  pair: () => void
   switchTarget: (device: Device) => void
   later: (label: string) => void
 }): PaletteItem[] {
@@ -52,6 +53,14 @@ export function paletteItems(opts: {
       kind: 'Screen',
       later: false,
       run: () => opts.go('doctor')
+    },
+    {
+      id: 'action:pair',
+      label: 'Pair a device over Wi‑Fi…',
+      icon: 'wifi_add',
+      kind: 'Action',
+      later: false,
+      run: opts.pair
     },
     vvdItem(opts.devices, opts.vvd),
     {

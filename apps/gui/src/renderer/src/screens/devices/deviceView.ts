@@ -72,9 +72,8 @@ export function infoRows(device: Device): KeyValue[] {
   return rows.filter((row): row is KeyValue => row !== null)
 }
 
-// Over Wi‑Fi the ID is `IP:port`, so the detail also names the real serial and its source.
+// Over Wi‑Fi the ID is `IP:port`, so the detail also names the real serial. No command reads
+// it over Wi‑Fi: it is the one OVD read over USB when it paired the stick.
 export function serialLine(device: Device): string | null {
-  return device.connection === 'wifi' && device.serial
-    ? `Serial ${device.serial} · vda get-serialno`
-    : null
+  return device.connection === 'wifi' && device.serial ? `Serial ${device.serial}` : null
 }

@@ -12,17 +12,19 @@ interface TargetPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onPick: (device: Device) => void
+  onPair: () => void
   vvdBusy?: VvdBusy
 }
 
-// The title bar's target switch. "Set up a new stick…" and "Pair a device over Wi‑Fi…" join the
-// menu with their slices (ADR 0018: no dead entries).
+// The title bar's target switch. "Set up a new stick…" joins the menu with its slice
+// (ADR 0018: no dead entries).
 export function TargetPicker({
   devices,
   target,
   open,
   onOpenChange,
   onPick,
+  onPair,
   vvdBusy = null
 }: TargetPickerProps) {
   const root = useRef<HTMLDivElement>(null)
@@ -105,6 +107,19 @@ export function TargetPicker({
               </button>
             )
           })}
+          <div className="mx-0.5 my-1 h-px bg-line-menu" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onOpenChange(false)
+              onPair()
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-control p-2 text-left text-text-soft hover:bg-control-hover"
+          >
+            <Icon name="wifi_add" />
+            Pair a device over Wi‑Fi…
+          </button>
         </div>
       )}
     </div>

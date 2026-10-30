@@ -37,6 +37,14 @@ export interface OvdApi {
     stop(): Promise<IpcResult<VvdState>>
     enableDeveloperMode(): Promise<IpcResult<{ developerMode: true }>>
   }
+  pairing: {
+    // Switches the stick on USB to TCP/IP and connects to it (`ovd pair --usb`).
+    pairUsb(): Promise<IpcResult<Device>>
+    // Connects to `<ip>:<port>` and remembers it (`ovd pair <ip>:<port>`).
+    pair(address: string): Promise<IpcResult<Device>>
+    connect(id: string): Promise<IpcResult<Device>>
+    forget(id: string): Promise<IpcResult<{ id: string }>>
+  }
 }
 
 export const channels = {
@@ -49,5 +57,9 @@ export const channels = {
   targetSet: 'ovd:target:set',
   vvdStart: 'ovd:vvd:start',
   vvdStop: 'ovd:vvd:stop',
-  vvdDevmodeEnable: 'ovd:vvd:devmode-enable'
+  vvdDevmodeEnable: 'ovd:vvd:devmode-enable',
+  pairUsb: 'ovd:pair:usb',
+  pairAddress: 'ovd:pair:address',
+  connect: 'ovd:connect',
+  forget: 'ovd:forget'
 } as const

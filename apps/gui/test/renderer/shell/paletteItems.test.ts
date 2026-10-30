@@ -9,7 +9,13 @@ const build = (
   busy: VvdBusy = null,
   devices: Device[] = [stick, vvd, wifiOffline]
 ) => {
-  const opts = { go: vi.fn(), runDoctor: vi.fn(), switchTarget: vi.fn(), later: vi.fn() }
+  const opts = {
+    go: vi.fn(),
+    runDoctor: vi.fn(),
+    pair: vi.fn(),
+    switchTarget: vi.fn(),
+    later: vi.fn()
+  }
   const vvdOpts = { busy, start: vi.fn(), stop: vi.fn() }
   return { opts, vvdOpts, items: paletteItems({ devices, target, vvd: vvdOpts, ...opts }) }
 }
@@ -20,6 +26,7 @@ describe('paletteItems', () => {
     expect(items.map((i) => [i.label, i.kind])).toEqual([
       ['Go to Devices', 'Screen'],
       ['Go to Doctor', 'Screen'],
+      ['Pair a device over Wi‑Fi…', 'Action'],
       ['Start Virtual Device', 'Action'],
       ['Run ovd doctor', 'Action'],
       ['Switch target to Vega Virtual Device', 'Device'],
@@ -44,7 +51,9 @@ describe('paletteItems', () => {
     expect(opts.go).toHaveBeenCalledWith('devices')
     items[1]?.run()
     expect(opts.go).toHaveBeenCalledWith('doctor')
-    items[3]?.run()
+    items[2]?.run()
+    expect(opts.pair).toHaveBeenCalled()
+    items[4]?.run()
     expect(opts.runDoctor).toHaveBeenCalled()
   })
 
