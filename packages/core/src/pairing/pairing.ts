@@ -18,6 +18,7 @@ import {
   networkCidr,
   onHostNetwork,
   parseAddress,
+  parsePort,
   type Address,
   type HostNetwork
 } from './address.js'
@@ -201,9 +202,9 @@ export function createPairing(deps: PairingDeps): Pairing {
 
   return {
     async pairUsb(opts = {}) {
+      const port = parsePort(String(opts.port ?? DEFAULT_PORT))
       const stick = await usbStick(opts.device)
       const serial = stick.id
-      const port = opts.port ?? DEFAULT_PORT
       // Read before switching: once in TCP/IP mode the stick is gone from USB.
       const ip = await stickIp(stick)
       const address = parseAddress(`${ip}:${port}`)

@@ -149,6 +149,12 @@ describe('pairUsb', () => {
     expect(runner.count('vega exec vda connect 192.0.2.42:6000')).toBe(10)
   })
 
+  test('a bad port is refused before anything runs', async () => {
+    const { pairing, runner } = setup({})
+    await expect(pairing.pairUsb({ port: 80 })).rejects.toMatchObject({ code: 'INVALID_ADDRESS' })
+    expect(runner.calls).toEqual([])
+  })
+
   test('no stick on USB', async () => {
     const { pairing } = setup({ [VDA]: lists.none })
     await expect(pairing.pairUsb()).rejects.toMatchObject({ code: 'DEVICE_NOT_FOUND' })

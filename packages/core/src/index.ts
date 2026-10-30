@@ -68,5 +68,11 @@ export { createVvd } from './vvd/vvd.js'
 export type { Vvd, VvdDeps, VvdState, VvdStatus } from './vvd/vvd.js'
 export { createPairing } from './pairing/pairing.js'
 export type { Pairing, PairingDeps } from './pairing/pairing.js'
-export { DEFAULT_PORT, networkCidr, onHostNetwork, parseAddress } from './pairing/address.js'
+export {
+  DEFAULT_PORT,
+  networkCidr,
+  onHostNetwork,
+  parseAddress,
+  parsePort
+} from './pairing/address.js'
 export type { Address, HostNetwork } from './pairing/address.js'

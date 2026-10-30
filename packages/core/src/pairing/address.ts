@@ -27,15 +27,20 @@ export function parseAddress(input: string, defaultPort = DEFAULT_PORT): Address
       'Find the IP on the TV in Settings → My Fire TV → About → Network'
     )
   }
-  const port = Number(portText)
-  if (!/^\d+$/.test(portText) || port <= 1024 || port > 65535) {
+  const port = parsePort(portText)
+  return { host, port, id: `${host}:${port}` }
+}
+
+export function parsePort(text: string): number {
+  const port = Number(text)
+  if (!/^\d+$/.test(text) || port <= 1024 || port > 65535) {
     throw new OvdError(
       'INVALID_ADDRESS',
-      `Port ${portText} is not valid`,
+      `Port ${text} is not valid`,
       'Port must be a number above 1024 (the default is 5555)'
     )
   }
-  return { host, port, id: `${host}:${port}` }
+  return port
 }
 
 function isHost(host: string): boolean {
