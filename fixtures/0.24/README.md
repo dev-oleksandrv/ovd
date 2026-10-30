@@ -31,3 +31,21 @@ Recorded with Vega SDK 0.24.12112 and Vega CLI 1.4.5 on macOS (arm64).
 | `vsm-developer-mode-set/enabled.txt` | `vega exec vda -s emulator-5554 shell vsm developer-mode enable` (exit 0; same when already on) | Virtual Device | 2026-10-30 |
 | `vsm-developer-mode-set/disabled.txt` | `… vsm developer-mode disable` (exit 0) | Virtual Device | 2026-10-30 |
 | `vega-device-info/virtual-device-developer-mode-off.json` | `vega device info --device VirtualDevice` | Virtual Device with Developer Mode off | 2026-10-30 |
+| `vda-tcpip/restarting.txt` | `vega exec vda -s <serial> tcpip 5555` (exit 0); the USB entry leaves `vda devices -l` at once (`vda-devices/none.txt`) and stays gone, across a power cycle, until `vda usb` | Fire TV stick over USB | 2026-10-30 |
+| `vda-tcpip/device-not-found.stderr.txt` | same, run again (stderr, exit 1) | stick already in TCP/IP mode | 2026-10-30 |
+| `vda-usb/restarting.txt` | `vega exec vda -s <ip>:5555 usb` (exit 0); the USB entry is back 5 s later (`vda-devices/stick-usb-and-wifi-offline.txt`) | Fire TV stick over Wi‑Fi | 2026-10-30 |
+| `vda-connect/connected.txt` | `vega exec vda connect <ip>:5555` (exit 0, 0.4 s) | stick in TCP/IP mode | 2026-10-30 |
+| `vda-connect/already-connected.txt` | same, run again; `connect <ip>` without a port prints the same (exit 0) | stick connected over Wi‑Fi | 2026-10-30 |
+| `vda-connect/refused.txt` | `vega exec vda connect <ip>:5556` (**exit 0**, 1.5 s) | stick listening on 5555 only | 2026-10-30 |
+| `vda-connect/timed-out.txt` | `vega exec vda connect 192.0.2.1:5555` (**exit 0**, 75 s); a stick that is off on the host's own subnet prints the same after 47 s | unreachable address | 2026-10-30 |
+| `vda-connect/bad-port.txt` | `vega exec vda connect <ip>:99999` (exit 0) | — | 2026-10-30 |
+| `vda-connect/bad-host.txt` | `vega exec vda connect not-an-ip` (exit 0) | — | 2026-10-30 |
+| `vda-disconnect/disconnected.txt` | `vega exec vda disconnect <ip>:5555` (exit 0) | stick connected over Wi‑Fi | 2026-10-30 |
+| `vda-disconnect/no-such-device.stderr.txt` | same, run again (stderr, exit 1) | not connected | 2026-10-30 |
+| `vda-devices/stick-wifi.txt` | `vega exec vda devices -l` | stick over Wi‑Fi (USB still plugged in, but in TCP/IP mode) | 2026-10-30 |
+| `vda-devices/stick-wifi-offline.txt` | same, 10 s after the stick lost power; it stays listed `offline`, and VDA reconnects it by itself when the stick is back | stick over Wi‑Fi, powered off | 2026-10-30 |
+| `vda-devices/stick-usb-and-wifi-offline.txt` | same, after `vda usb` | stick back on USB, Wi‑Fi entry left over | 2026-10-30 |
+| `vda-get-serialno/stick-usb.txt` | `vega exec vda -s <serial> get-serialno` | stick over USB | 2026-10-30 |
+| `vda-get-serialno/stick-wifi.txt` | `vega exec vda -s <ip>:5555 get-serialno`: prints the `IP:port`, not the serial (same when offline) | stick over Wi‑Fi | 2026-10-30 |
+| `vega-device-info/stick-wifi.json` | `vega device info --device <ip>:5555`: identical to USB except `deviceName`; offline prints `unavailable.json` | stick over Wi‑Fi | 2026-10-30 |
+| `vda-shell-fib-trie/stick.txt` | `vega exec vda -s <serial> shell cat /proc/net/fib_trie` (the stick has no `ip`, `ifconfig` or `getprop`; `/proc/idme` is permission denied) | stick over USB | 2026-10-30 |

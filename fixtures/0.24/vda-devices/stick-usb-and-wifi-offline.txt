@@ -1,0 +1,4 @@
+List of devices attached
+G070000000000001       device usb:17825792X vda:2_13_00000000 transport_id:43
+192.0.2.42:5555      offline vda:2_13_00000000 transport_id:40
+

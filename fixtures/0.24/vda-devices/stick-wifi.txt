@@ -1,0 +1,3 @@
+List of devices attached
+192.0.2.42:5555      device vda:2_13_00000000 transport_id:37
+
