@@ -181,9 +181,7 @@ describe('saved Wi‑Fi device', () => {
     )
     await openSaved()
     click('Forget')
-    expect(
-      screen.getByText('Forget Bedroom stick? It switches back to USB; pair it again to use Wi‑Fi.')
-    ).toBeTruthy()
+    expect(screen.getByText('Forget Bedroom stick? You’ll need to pair it again.')).toBeTruthy()
     click('Cancel')
     expect(api.pairing.forget).not.toHaveBeenCalled()
     click('Forget')
@@ -193,9 +191,26 @@ describe('saved Wi‑Fi device', () => {
     expect(await screen.findByText(/Forgot Bedroom stick\. It stays in TCP\/IP mode/)).toBeTruthy()
   })
 
-  test('an online device has no Reconnect or Forget', async () => {
+  test('an online stick paired over USB: Forget switches it back', async () => {
+    const api = renderWith(
+      { forget: async () => ({ ok: true, data: { id: paired.id, switchedToUsb: true } }) },
+      [stick, { ...paired, name: 'Bedroom stick' }]
+    )
+    await openSaved()
+    expect(screen.queryByRole('button', { name: 'Reconnect' })).toBeNull()
+    click('Forget')
+    expect(
+      screen.getByText('Forget Bedroom stick? It switches back to USB; pair it again to use Wi‑Fi.')
+    ).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Forget' }).at(-1) as HTMLElement)
+    expect(api.pairing.forget).toHaveBeenCalledWith('192.0.2.42:5555')
+    expect(await screen.findByText('Forgot Bedroom stick · switching back to USB')).toBeTruthy()
+  })
+
+  test('a USB device has no Reconnect or Forget', async () => {
     renderWith({}, [stick, wifiOffline])
     await screen.findByText('TV Ship/529')
     expect(screen.queryByRole('button', { name: 'Reconnect' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Forget' })).toBeNull()
   })
 })
