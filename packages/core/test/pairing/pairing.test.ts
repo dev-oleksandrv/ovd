@@ -155,9 +155,23 @@ describe('pairUsb', () => {
     expect(runner.calls).toEqual([])
   })
 
-  test('no stick on USB', async () => {
+  test('no stick on USB points at a stick left in TCP/IP mode', async () => {
     const { pairing } = setup({ [VDA]: lists.none })
-    await expect(pairing.pairUsb()).rejects.toMatchObject({ code: 'DEVICE_NOT_FOUND' })
+    await expect(pairing.pairUsb()).rejects.toMatchObject({
+      code: 'DEVICE_NOT_FOUND',
+      hint: expect.stringContaining('Developer Options → Connection Mode → USB')
+    })
+  })
+
+  test('a stick OVD paired over USB is switched back by ovd forget', async () => {
+    const { pairing, ready } = setup(
+      { [VDA]: lists.wifi },
+      { state: { saved: [{ id: WIFI, serial: SERIAL, savedAt: '2026-10-30T00:00:00.000Z' }] } }
+    )
+    await ready
+    await expect(pairing.pairUsb()).rejects.toMatchObject({
+      hint: `It is already paired. To use it over USB again: ovd forget ${WIFI}`
+    })
   })
 
   test('a stick already in TCP/IP mode is named, with the way back to USB', async () => {
@@ -165,7 +179,7 @@ describe('pairUsb', () => {
     const error = pairing.pairUsb()
     await expect(error).rejects.toMatchObject({
       code: 'DEVICE_NOT_FOUND',
-      hint: `It is already paired. To use it over USB again: vega exec vda -s ${WIFI} usb`
+      hint: expect.stringContaining('Developer Options → Connection Mode → USB')
     })
     await expect(error).rejects.toThrow(`connected over Wi‑Fi as ${WIFI}`)
   })
@@ -288,52 +302,86 @@ describe('connect', () => {
 })
 
 describe('forget', () => {
-  const saved = { saved: [{ id: WIFI, savedAt: '2026-10-30T00:00:00.000Z' }] }
+  const savedByIp = { saved: [{ id: WIFI, savedAt: '2026-10-30T00:00:00.000Z' }] }
+  const savedByUsb = {
+    saved: [{ id: WIFI, serial: SERIAL, savedAt: '2026-10-30T00:00:00.000Z' }]
+  }
+  const USB = `vega exec vda -s ${WIFI} usb`
 
-  test('disconnects and drops the device, its name and the target', async () => {
-    const { pairing, state, ready } = setup(
-      { [DISCONNECT]: out('vda-disconnect/disconnected.txt') },
-      { state: { ...saved, target: WIFI, names: { [WIFI]: 'Bedroom stick' } } }
-    )
-    await ready
-    await expect(pairing.forget(WIFI)).resolves.toEqual({ id: WIFI })
-    const { state: after } = await state.read()
-    expect(after).toEqual({ version: 1, names: {}, saved: [] })
-    expect(await activity()).toEqual([
-      expect.objectContaining({ action: 'forget', target: WIFI, result: 'ok' })
-    ])
-  })
-
-  test('keeps a name stored under the serial', async () => {
-    const { pairing, state, ready } = setup(
-      { [DISCONNECT]: err('vda-disconnect/no-such-device.stderr.txt', 1) },
+  test('switches a stick paired over USB back to USB, then forgets it', async () => {
+    const { pairing, runner, state, ready } = setup(
       {
-        state: {
-          saved: [{ id: WIFI, serial: SERIAL, savedAt: '2026-10-30T00:00:00.000Z' }],
-          names: { [SERIAL]: 'Bedroom stick' },
-          target: SERIAL
-        }
-      }
+        [VDA]: lists.wifi,
+        [USB]: out('vda-usb/restarting.txt'),
+        [DISCONNECT]: out('vda-disconnect/disconnected.txt')
+      },
+      { state: { ...savedByUsb, target: WIFI, names: { [SERIAL]: 'Bedroom stick' } } }
     )
     await ready
-    await pairing.forget(WIFI)
+    await expect(pairing.forget(WIFI)).resolves.toEqual({ id: WIFI, switchedToUsb: true })
+    const order = runner.calls.map((c) => c.display)
+    expect(order.indexOf(USB)).toBeLessThan(order.indexOf(DISCONNECT))
     const { state: after } = await state.read()
+    // Back on USB it stays the target, under its serial, and keeps its name.
     expect(after).toEqual({
       version: 1,
       target: SERIAL,
       names: { [SERIAL]: 'Bedroom stick' },
       saved: []
     })
+    expect(await activity()).toEqual([
+      expect.objectContaining({ action: 'forget', target: WIFI, result: 'ok' })
+    ])
+  })
+
+  test('an offline stick is forgotten but stays in TCP/IP mode', async () => {
+    const { pairing, runner, ready } = setup(
+      { [VDA]: lists.wifiOffline, [DISCONNECT]: out('vda-disconnect/disconnected.txt') },
+      { state: savedByUsb }
+    )
+    await ready
+    await expect(pairing.forget(WIFI)).resolves.toEqual({ id: WIFI, switchedToUsb: false })
+    expect(runner.count(USB)).toBe(0)
+  })
+
+  test('a stick paired by IP is not switched; its name and the target go', async () => {
+    const { pairing, runner, state, ready } = setup(
+      { [VDA]: lists.wifi, [DISCONNECT]: out('vda-disconnect/disconnected.txt') },
+      { state: { ...savedByIp, target: WIFI, names: { [WIFI]: 'Bedroom stick' } } }
+    )
+    await ready
+    await expect(pairing.forget(WIFI)).resolves.toEqual({ id: WIFI, switchedToUsb: false })
+    expect(runner.count(USB)).toBe(0)
+    const { state: after } = await state.read()
+    expect(after).toEqual({ version: 1, names: {}, saved: [] })
+  })
+
+  test('a failed switch back stops before forgetting', async () => {
+    const { pairing, runner, state, ready } = setup(
+      { [VDA]: lists.wifi, [USB]: err('vda-tcpip/device-not-found.stderr.txt', 1) },
+      { state: savedByUsb }
+    )
+    await ready
+    await expect(pairing.forget(WIFI)).rejects.toMatchObject({ code: 'COMMAND_FAILED' })
+    expect(runner.count(DISCONNECT)).toBe(0)
+    const { state: after } = await state.read()
+    expect(after.saved).toHaveLength(1)
   })
 
   test('an unknown device', async () => {
-    const { pairing } = setup({ [DISCONNECT]: err('vda-disconnect/no-such-device.stderr.txt', 1) })
+    const { pairing } = setup({
+      [VDA]: lists.none,
+      [DISCONNECT]: err('vda-disconnect/no-such-device.stderr.txt', 1)
+    })
     await expect(pairing.forget(WIFI)).rejects.toMatchObject({ code: 'DEVICE_NOT_FOUND' })
   })
 
   test('a connected device that was never saved is disconnected', async () => {
-    const { pairing } = setup({ [DISCONNECT]: out('vda-disconnect/disconnected.txt') })
-    await expect(pairing.forget(WIFI)).resolves.toEqual({ id: WIFI })
+    const { pairing } = setup({
+      [VDA]: lists.wifi,
+      [DISCONNECT]: out('vda-disconnect/disconnected.txt')
+    })
+    await expect(pairing.forget(WIFI)).resolves.toEqual({ id: WIFI, switchedToUsb: false })
   })
 })
 

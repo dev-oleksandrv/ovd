@@ -5,6 +5,7 @@ import { createLogged } from '../activity/logged.js'
 import { parseFibTrie } from '../adapters/parseFibTrie.js'
 import { parseVdaConnect } from '../adapters/parseVdaConnect.js'
 import { parseVdaTcpip } from '../adapters/parseVdaTcpip.js'
+import { parseVdaUsb } from '../adapters/parseVdaUsb.js'
 import { canonicalId } from '../devices/deviceModel.js'
 import type { Devices } from '../devices/devices.js'
 import type { Device } from '../devices/types.js'
@@ -34,6 +35,15 @@ export interface PairingDeps {
   hostNetworks?: () => HostNetwork[]
 }
 
+export interface ForgetResult {
+  id: string
+  // The stick was switched back to USB (`vda usb`) and is listed there again shortly.
+  switchedToUsb: boolean
+}
+
+// Where a stick in TCP/IP mode is switched back by hand (Fire OS Developer Options).
+export const TV_USB_MODE = 'Settings → My Fire TV → Developer Options → Connection Mode → USB'
+
 export interface Pairing {
   // Switches a stick on USB to TCP/IP and connects to it over Wi‑Fi. `device` picks the stick
   // when several are plugged in.
@@ -42,7 +52,9 @@ export interface Pairing {
   pair(address: string): Promise<Device>
   // Connects again to a remembered device, or to any `<ip>[:port]`.
   connect(id: string): Promise<Device>
-  forget(id: string): Promise<{ id: string }>
+  // Disconnects and stops remembering a Wi‑Fi device. A stick OVD switched from USB is
+  // switched back first when it is online; otherwise it stays in TCP/IP mode.
+  forget(id: string): Promise<ForgetResult>
   // Connects every remembered device that VDA has lost track of (after a host or VDA restart).
   // For the desktop at launch and on Rescan; failures are left for the user to retry.
   reconnectSaved(): Promise<void>
@@ -171,14 +183,18 @@ export function createPairing(deps: PairingDeps): Pairing {
       throw new OvdError(
         'DEVICE_NOT_FOUND',
         `No stick on USB: ${onWifi.name} is in TCP/IP mode and connected over Wi‑Fi as ${onWifi.id}`,
-        `It is already paired. To use it over USB again: vega exec vda -s ${onWifi.id} usb`
+        onWifi.saved && onWifi.serial
+          ? `It is already paired. To use it over USB again: ovd forget ${onWifi.id}`
+          : `It is already paired. To use it over USB again, on the TV: ${TV_USB_MODE}`
       )
     }
     if (!only) {
       throw new OvdError(
         'DEVICE_NOT_FOUND',
         'No stick is plugged in over USB',
-        'Plug the stick in over USB. It needs Developer Mode: ovd setup-stick'
+        'Plug the stick in over USB; it needs Developer Mode (ovd setup-stick). ' +
+          // A stick left in TCP/IP mode and disconnected is invisible to every command.
+          `Paired it over Wi‑Fi before? It may still be in TCP/IP mode: on the TV, ${TV_USB_MODE}`
       )
     }
     if (more.length > 0) {
@@ -267,6 +283,23 @@ export function createPairing(deps: PairingDeps): Pairing {
       return logged('forget', id, {}, async () => {
         const { state } = await deps.state.read()
         const saved = state.saved.find((d) => d.id === id)
+        const { devices } = await deps.devices.list()
+        const online = devices.some((d) => d.id === id && d.status === 'online')
+        // Only a stick OVD switched itself (paired over USB, so its serial is known): the
+        // switch back is verified for that route, not for TV Connection Mode.
+        const switchedToUsb = online && saved?.serial !== undefined
+        if (switchedToUsb) {
+          const usb = await vda(['usb'], id)
+          if (usb.exitCode !== 0) {
+            throw new OvdError(
+              'COMMAND_FAILED',
+              `Couldn’t switch ${id} back to USB`,
+              `Retry, or on the TV: ${TV_USB_MODE}`,
+              { exitCode: usb.exitCode, stderr: usb.stderr.slice(-500) }
+            )
+          }
+          parseVdaUsb(usb.stdout)
+        }
         const run = await vda(['disconnect', id])
         // Exit 1 "no such device" just means VDA wasn't connected to it
         // (fixtures/0.24/vda-disconnect/no-such-device.stderr.txt).
@@ -291,14 +324,16 @@ export function createPairing(deps: PairingDeps): Pairing {
           // A stick without a known serial was named under its ID.
           if (!saved?.serial) delete names[id]
           const { target, ...rest } = s
+          // Back on USB, the stick keeps its target role under its serial (as pairUsb did).
+          const next = target === id ? (switchedToUsb ? saved?.serial : undefined) : target
           return {
             ...rest,
-            ...(target === undefined || target === id ? {} : { target }),
+            ...(next === undefined ? {} : { target: next }),
             names,
             saved: s.saved.filter((d) => d.id !== id)
           }
         })
-        return { id }
+        return { id, switchedToUsb }
       })
     },
 
