@@ -143,7 +143,7 @@ export function PairWizard({ onClose, onDone }: PairWizardProps) {
           <div className="text-lead font-semibold">Turn on TCP/IP on the TV</div>
           <StepList
             steps={[
-              'Settings → My Fire TV → About → Developer Options.',
+              'Settings → My Fire TV → Developer Options.',
               'Connection Mode → TCP/IP.',
               'Choose a port above 1024 (5555 is the default).',
               'Wait for the TV to reboot to the home screen.'

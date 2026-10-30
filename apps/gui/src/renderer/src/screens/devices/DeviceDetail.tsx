@@ -104,7 +104,9 @@ export function DeviceDetail({ device, onRename, onSetTarget, vvd, saved }: Devi
         <div className="flex items-center gap-3 rounded-card border border-error/35 bg-error/7 px-4 py-3">
           <Icon name="error" size={20} className="text-error" />
           <div className="flex-1 text-text-soft">
-            Forget {device.name}? You’ll need to pair it again.
+            {device.serial
+              ? `Forget ${device.name}? It switches back to USB; pair it again to use Wi‑Fi.`
+              : `Forget ${device.name}? You’ll need to pair it again.`}
           </div>
           <Button size="sm" onClick={() => setConfirmForget(null)}>
             Cancel

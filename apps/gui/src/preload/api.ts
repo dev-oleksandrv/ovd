@@ -1,4 +1,11 @@
-import type { Device, DevicesUpdate, DoctorReport, ErrorJson, VvdState } from '@ovd/core'
+import type {
+  Device,
+  DevicesUpdate,
+  DoctorReport,
+  ErrorJson,
+  ForgetResult,
+  VvdState
+} from '@ovd/core'
 
 export interface AppInfo {
   version: string
@@ -43,7 +50,8 @@ export interface OvdApi {
     // Connects to `<ip>:<port>` and remembers it (`ovd pair <ip>:<port>`).
     pair(address: string): Promise<IpcResult<Device>>
     connect(id: string): Promise<IpcResult<Device>>
-    forget(id: string): Promise<IpcResult<{ id: string }>>
+    // Switches a stick OVD paired over USB back to USB first, when it is online.
+    forget(id: string): Promise<IpcResult<ForgetResult>>
   }
 }
 

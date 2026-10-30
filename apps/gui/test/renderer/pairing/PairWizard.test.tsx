@@ -175,20 +175,22 @@ describe('saved Wi‑Fi device', () => {
   })
 
   test('Forget asks first, then forgets', async () => {
-    const api = renderWith({ forget: async () => ({ ok: true, data: { id: wifiOffline.id } }) }, [
-      stick,
-      wifiOffline
-    ])
+    const api = renderWith(
+      { forget: async () => ({ ok: true, data: { id: wifiOffline.id, switchedToUsb: false } }) },
+      [stick, wifiOffline]
+    )
     await openSaved()
     click('Forget')
-    expect(screen.getByText('Forget Bedroom stick? You’ll need to pair it again.')).toBeTruthy()
+    expect(
+      screen.getByText('Forget Bedroom stick? It switches back to USB; pair it again to use Wi‑Fi.')
+    ).toBeTruthy()
     click('Cancel')
     expect(api.pairing.forget).not.toHaveBeenCalled()
     click('Forget')
     const confirm = screen.getAllByRole('button', { name: 'Forget' }).at(-1)
     fireEvent.click(confirm as HTMLElement)
     expect(api.pairing.forget).toHaveBeenCalledWith('192.0.2.77:5555')
-    expect(await screen.findByText('Forgot Bedroom stick')).toBeTruthy()
+    expect(await screen.findByText(/Forgot Bedroom stick\. It stays in TCP\/IP mode/)).toBeTruthy()
   })
 
   test('an online device has no Reconnect or Forget', async () => {

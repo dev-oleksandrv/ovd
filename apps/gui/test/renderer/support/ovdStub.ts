@@ -1,4 +1,4 @@
-import type { Check, Device, DevicesUpdate, DoctorReport, VvdState } from '@ovd/core'
+import type { Check, Device, DevicesUpdate, DoctorReport, ForgetResult, VvdState } from '@ovd/core'
 import { vi } from 'vitest'
 import type { IpcResult, OvdApi, SdkSummary } from '../../../src/preload/api'
 
@@ -131,7 +131,7 @@ export function stubOvd(opts: {
       pair: vi.fn(opts.pairing?.pair ?? (async () => unexpected<Device>('pairing.pair'))),
       connect: vi.fn(opts.pairing?.connect ?? (async () => unexpected<Device>('pairing.connect'))),
       forget: vi.fn(
-        opts.pairing?.forget ?? (async () => unexpected<{ id: string }>('pairing.forget'))
+        opts.pairing?.forget ?? (async () => unexpected<ForgetResult>('pairing.forget'))
       )
     }
   }

@@ -64,8 +64,15 @@ export function DevicesScreen({ onPair }: DevicesScreenProps) {
   const forget = async (device: Device): Promise<void> => {
     const cli = `ovd forget ${device.id}`
     const result = await window.ovd.pairing.forget(device.id)
-    if (result.ok) notify({ tone: 'ok', text: `Forgot ${device.name}`, cli })
-    else notify({ tone: 'error', text: result.error.message, cli })
+    if (result.ok && result.data.switchedToUsb) {
+      notify({ tone: 'ok', text: `Forgot ${device.name} · switching back to USB`, cli })
+    } else if (result.ok) {
+      notify({
+        tone: 'warning',
+        text: `Forgot ${device.name}. It stays in TCP/IP mode: on the TV, Settings → My Fire TV → Developer Options → Connection Mode → USB`,
+        cli
+      })
+    } else notify({ tone: 'error', text: result.error.message, cli })
   }
 
   return (
