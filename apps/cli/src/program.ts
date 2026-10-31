@@ -43,6 +43,9 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
     .option('--json', 'machine-readable output')
     .option('--device <id>', 'device to use instead of the target')
     .configureOutput({ writeOut: output.stdout, writeErr: output.stderr })
+    // Before any subcommand is added: subcommands copy it when created, so a missing argument
+    // becomes a usage error (exit 2) instead of commander calling process.exit(1).
+    .exitOverride()
 
   program
     .command('hello')
