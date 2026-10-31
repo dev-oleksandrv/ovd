@@ -16,3 +16,7 @@ docs/superpowers/
 apps/cli/LICENSE
 apps/cli/NOTICE
 *.tgz
+
+# Playwright output (e2e traces of failed desktop flows)
+e2e/test-results/
+e2e/playwright-report/

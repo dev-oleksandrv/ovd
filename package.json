@@ -15,8 +15,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "pnpm run test:e2e:cli",
+    "test:e2e": "pnpm run test:e2e:cli && pnpm run test:e2e:gui",
     "test:e2e:cli": "pnpm --filter @ovd/cli build && pnpm --filter @ovd/e2e test:cli",
+    "test:e2e:gui": "pnpm --filter @ovd/cli --filter @ovd/gui build && pnpm --filter @ovd/e2e test:gui",
     "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test",
     "changeset": "changeset"
   },
