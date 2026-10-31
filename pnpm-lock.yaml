@@ -286,6 +286,12 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
 
+  e2e:
+    devDependencies:
+      '@ovd/core':
+        specifier: workspace:*
+        version: link:../packages/core
+
   packages/core:
     dependencies:
       execa:
