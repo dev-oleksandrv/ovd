@@ -5,7 +5,7 @@ test.each([
   ['ABC123', 'ABC123'],
   ['abc123', 'ABC123'],
   ['ABC-123', 'ABC123'],
-  [' 26t ge0 ', '26TGE0']
+  [' 4a1 b2c ', '4A1B2C']
 ])('%j → %s', (input, code) => {
   expect(normalizeCode(input)).toBe(code)
 })
