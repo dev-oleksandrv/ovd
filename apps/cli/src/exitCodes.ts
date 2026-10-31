@@ -19,7 +19,8 @@ const CODES: Partial<Record<ErrorCode, number>> = {
   PAIR_TIMEOUT: 5,
   DIFFERENT_NETWORK: 5,
   INVALID_ADDRESS: 2,
-  INVALID_NAME: 2
+  INVALID_NAME: 2,
+  INVALID_CODE: 2
 }
 
 export function exitCodeFor(code: ErrorCode): number {

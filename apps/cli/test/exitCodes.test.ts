@@ -21,6 +21,7 @@ test.each<[ErrorCode, number]>([
   ['DIFFERENT_NETWORK', 5],
   ['INVALID_ADDRESS', 2],
   ['INVALID_NAME', 2],
+  ['INVALID_CODE', 2],
   ['COMMAND_FAILED', 1],
   ['UNEXPECTED_OUTPUT', 1],
   ['VVD_START_FAILED', 1]
