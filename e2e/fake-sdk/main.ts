@@ -39,6 +39,8 @@ if (!dir) {
 const args = process.argv.slice(2)
 const command = ['vega', ...args].join(' ')
 const world = readWorld(dir)
+// What was read, so a command that changed nothing doesn't write the world back.
+const before = JSON.stringify(world)
 
 function fixture(path: string): string {
   return readFileSync(join(FIXTURES, path), 'utf8')
@@ -285,7 +287,9 @@ if (reply === null) {
   process.stderr.write(`fake-sdk: no recording for: ${command}\n`)
   process.exit(UNHANDLED)
 }
-if (!wroteWorld) writeWorld(dir, world)
+// Polls run while tests change the world; writing an unchanged copy back would undo a change
+// made after it was read.
+if (!wroteWorld && JSON.stringify(world) !== before) writeWorld(dir, world)
 if (reply.stdout) process.stdout.write(reply.stdout)
 if (reply.stderr) process.stderr.write(reply.stderr)
 process.exitCode = reply.exitCode ?? 0
