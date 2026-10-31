@@ -6,6 +6,7 @@ import type {
   EnableResult,
   ForgetResult,
   LoginPrompt,
+  ProjectMode,
   VvdState
 } from '@ovd/core'
 import { vi } from 'vitest'
@@ -100,6 +101,8 @@ export function stubOvd(opts: {
   vvd?: Partial<OvdApi['vvd']>
   pairing?: Partial<OvdApi['pairing']>
   setup?: Partial<Omit<OvdApi['setup'], 'onLoginPrompt'>>
+  // Nothing open unless a test says otherwise.
+  project?: Partial<OvdApi['project']>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
@@ -145,6 +148,23 @@ export function stubOvd(opts: {
       connect: vi.fn(opts.pairing?.connect ?? (async () => unexpected<Device>('pairing.connect'))),
       forget: vi.fn(
         opts.pairing?.forget ?? (async () => unexpected<ForgetResult>('pairing.forget'))
+      )
+    },
+    project: {
+      current: vi.fn(
+        opts.project?.current ??
+          (async (): Promise<IpcResult<ProjectMode | null>> => ({ ok: true, data: null }))
+      ),
+      open: vi.fn(opts.project?.open ?? (async () => unexpected<ProjectMode>('project.open'))),
+      pickFolder: vi.fn(
+        opts.project?.pickFolder ??
+          (async () => unexpected<ProjectMode | null>('project.pickFolder'))
+      ),
+      pickVpkg: vi.fn(
+        opts.project?.pickVpkg ?? (async () => unexpected<ProjectMode | null>('project.pickVpkg'))
+      ),
+      pathForFile: vi.fn(
+        opts.project?.pathForFile ?? ((file: File) => `/home/dev/Downloads/${file.name}`)
       )
     },
     setup: {

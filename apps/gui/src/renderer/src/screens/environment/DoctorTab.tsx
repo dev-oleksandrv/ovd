@@ -12,6 +12,8 @@ interface DoctorTabProps {
   onSetupDone?: () => void
   enableVvdDevmode?: { busy: boolean; onEnable: () => void }
   onSetup?: () => void
+  onOpenFolder?: () => void
+  onProjectDetails?: () => void
 }
 
 export function DoctorTab({
@@ -20,7 +22,9 @@ export function DoctorTab({
   onRun,
   onSetupDone,
   enableVvdDevmode,
-  onSetup
+  onSetup,
+  onOpenFolder,
+  onProjectDetails
 }: DoctorTabProps) {
   return (
     <div className="flex max-w-[860px] flex-1 flex-col gap-3.5 overflow-auto px-5.5 pt-5 pb-8">
@@ -53,6 +57,8 @@ export function DoctorTab({
             checking={running}
             {...(enableVvdDevmode ? { enableVvdDevmode } : {})}
             {...(onSetup ? { onSetup } : {})}
+            {...(onOpenFolder ? { onOpenFolder } : {})}
+            {...(onProjectDetails ? { onDetails: onProjectDetails } : {})}
           />
         ))}
       </ul>

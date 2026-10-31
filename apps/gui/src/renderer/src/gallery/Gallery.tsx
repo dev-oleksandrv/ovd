@@ -189,6 +189,7 @@ export function Gallery() {
   const [tab, setTab] = useState<'installed' | 'running'>('installed')
   const [selected, setSelected] = useState(apps[0].id)
   const [modal, setModal] = useState(false)
+  const [wideModal, setWideModal] = useState(false)
   const [step, setStep] = useState<number | null>(null)
   const [nav, setNav] = useState('devices')
   const [name, setName] = useState('Living room stick')
@@ -410,6 +411,7 @@ export function Gallery() {
 
       <GallerySection title="Modal and wizard">
         <Button onClick={() => setModal(true)}>Open modal</Button>
+        <Button onClick={() => setWideModal(true)}>Open large modal</Button>
         <Button onClick={() => setStep(1)}>Open wizard</Button>
       </GallerySection>
 
@@ -514,6 +516,22 @@ export function Gallery() {
           }
         >
           <div className="px-5 py-4.5 text-muted">This removes the app and its data.</div>
+        </Modal>
+      )}
+      {wideModal && (
+        <Modal
+          size="lg"
+          title="Project doctor · sample-player"
+          subtitle="~/dev/sample-player"
+          subtitleMono
+          onClose={() => setWideModal(false)}
+          footer={<Button onClick={() => setWideModal(false)}>Close</Button>}
+        >
+          <div className="min-h-0 overflow-auto px-5 py-4 text-muted">
+            {Array.from({ length: 40 }, (_, i) => (
+              <p key={i}>Long content scrolls inside the dialog, line {i + 1}.</p>
+            ))}
+          </div>
         </Modal>
       )}
       {step !== null && (

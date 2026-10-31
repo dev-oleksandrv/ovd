@@ -1,5 +1,5 @@
 import type { CheckId } from '@ovd/core'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { DevicesProvider } from './devices/DevicesProvider'
 import { targetDevice, useDevicesContext } from './devices/devicesContext'
 import { useDoctor } from './doctor/useDoctor'
@@ -8,12 +8,15 @@ import { AppFrame } from './frame/AppFrame'
 import { CommandPalette } from './frame/CommandPalette'
 import { NavGroup } from './frame/NavGroup'
 import { NavItem } from './frame/NavItem'
+import { ProjectCard } from './frame/ProjectCard'
 import { SdkStatus } from './frame/SdkStatus'
 import { SearchButton } from './frame/SearchButton'
 import { TargetPicker } from './frame/TargetPicker'
 import { TargetStatus } from './frame/TargetStatus'
 import { DevicesScreen } from './screens/devices/DevicesScreen'
 import { PairWizard } from './pairing/PairWizard'
+import { useFileDrop } from './project/useFileDrop'
+import { useProject } from './project/useProject'
 import { SetupWizard } from './setup/SetupWizard'
 import { firstRunNeeded, gateFailure, gateOpen } from './screens/environment/doctorView'
 import { EnvironmentScreen } from './screens/environment/EnvironmentScreen'
@@ -48,6 +51,21 @@ function Shell() {
   const [firstRun, setFirstRun] = useState<boolean | null>(null)
   const [highlight, setHighlight] = useState<CheckId | null>(null)
   const doctor = useDoctor()
+  const { run: runDoctorNow } = doctor
+  // Doctor's Project row follows the project: a mode switch runs doctor again.
+  const project = useProject(
+    useCallback(() => {
+      void runDoctorNow()
+    }, [runDoctorNow])
+  )
+  const { open: openProjectPath } = project
+  const dragging = useFileDrop(
+    useCallback(
+      (file: File) => void openProjectPath(window.ovd.project.pathForFile(file)),
+      [openProjectPath]
+    )
+  )
+  const projectMode = project.state.status === 'ready' ? project.state.mode : null
   const { state, setTarget, vvd } = useDevicesContext()
   const { notify } = useFeedback()
   const report = doctor.state.status === 'ready' ? doctor.state.report : null
@@ -163,6 +181,16 @@ function Shell() {
           />
         </>
       }
+      sidebarFooter={
+        project.state.status === 'loading' ? null : (
+          <ProjectCard
+            mode={projectMode}
+            dragging={dragging}
+            onPickVpkg={() => void project.pickVpkg()}
+            onPickFolder={() => void project.pickFolder()}
+          />
+        )
+      }
       sidebar={
         // Only shipped screens appear (ADR 0018).
         <>
@@ -197,6 +225,8 @@ function Shell() {
           onGoDevices={() => go('devices')}
           onRunDoctor={() => void runDoctor()}
           onSetup={() => setSettingUp(true)}
+          project={projectMode}
+          onOpenFolder={() => void project.pickFolder()}
         />
       ) : (
         <DevicesScreen onSetup={() => setSettingUp(true)} onPair={() => setPairing(true)} />
