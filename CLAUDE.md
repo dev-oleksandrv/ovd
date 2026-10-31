@@ -12,6 +12,7 @@ Open-source (Apache-2.0), unofficial device toolkit for **Vega OS** developers. 
 pnpm run check        # lint + format check + typecheck + test — run before every commit
 pnpm test             # vitest run (all projects: core, cli, gui with jsdom)
 pnpm run test:e2e     # build, then run the e2e suite against the fake SDK (required CI check)
+pnpm run test:e2e:cli # CLI flows only; test:e2e:gui for desktop flows (Ubuntu: under xvfb-run)
 pnpm run test:watch   # vitest in watch mode
 pnpm run lint         # eslint (one flat config at the root, enforces package boundaries)
 pnpm run format       # prettier --write

@@ -54,7 +54,8 @@ apps/
 e2e/                       # end-to-end tests of the built surfaces (ADR 0023)
   fake-sdk/                # a `vega` that replays fixtures and keeps a world state
   harness/                 # sandbox (temp home, OVD_HOME, fake SDK) and surface runners
-  cli/                     # CLI flows
+  cli/                     # CLI flows (Vitest)
+  gui/                     # desktop flows (Playwright driving the built Electron app)
 fixtures/
   <sdk-version>/<tool>/    # recorded, sanitized SDK outputs
 docs/

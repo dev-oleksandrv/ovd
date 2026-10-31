@@ -28,11 +28,13 @@ paths:
 - Not e2e tests: "renders", "exits 0", or assertions that hold whether the feature works or not. Each test must fail if the flow breaks.
 - Cover the error states a flow promises (wrong code, refused port, offline device) as well as the happy path.
 - One sandbox per test, so tests run in parallel and never share state.
+- CLI flows: Vitest in `e2e/cli/`, through `ovd()` from `harness/cli.ts`. Desktop flows: Playwright in `e2e/gui/`, through the `sandbox` and `launch` fixtures from `harness/gui.ts`; query by role and visible text, and assert the toast and status-bar CLI echo of each action.
+- Wait for what the user would see (`expect(...)` retries), never for fixed time. When the app does background work that can race the flow (the doctor run at launch), wait for its last SDK call and say why in a comment.
 
 ## Style
 
 - CLI tests assert the `--json` document and exit code, not human formatting details.
-- Desktop: test renderer logic and state with React Testing Library; query by role/text the user sees. Visual checks and real-device flows are manual.
+- Desktop: test renderer logic and state with React Testing Library; query by role/text the user sees. Whole desktop flows are e2e tests (`e2e/gui/`); visual checks and real-device flows are manual.
 - No snapshot tests.
 - Prefer table tests (`test.each`) for parsers, mappings and architecture comparisons; include edge cases (empty list, offline device, unknown architecture).
 - Run `pnpm run check` before committing.
