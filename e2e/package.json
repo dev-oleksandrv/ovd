@@ -1,0 +1,15 @@
+{
+  "name": "@ovd/e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "End-to-end tests: the built CLI and desktop app against a fake Vega SDK",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:cli": "vitest run --config vitest.cli.config.ts"
+  },
+  "devDependencies": {
+    "@ovd/core": "workspace:*"
+  }
+}

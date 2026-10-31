@@ -11,6 +11,7 @@ Open-source (Apache-2.0), unofficial device toolkit for **Vega OS** developers. 
 ```bash
 pnpm run check        # lint + format check + typecheck + test — run before every commit
 pnpm test             # vitest run (all projects: core, cli, gui with jsdom)
+pnpm run test:e2e     # build, then run the e2e suite against the fake SDK (required CI check)
 pnpm run test:watch   # vitest in watch mode
 pnpm run lint         # eslint (one flat config at the root, enforces package boundaries)
 pnpm run format       # prettier --write
@@ -39,7 +40,7 @@ The maintainer drives the process. Propose, then wait for a decision.
 - Branch names: `<type>/<short-kebab-slug>`, e.g. `feat/devices-list`, `fix/logs-reinstall-restart`.
 - Commits follow **Conventional Commits 1.0**: `<type>(<scope>)!: <subject>`.
   - Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`, `chore`, `revert`.
-  - Scope names the workspace package the change touches: `core` (`packages/core`), `cli` (`apps/cli`), `gui` (`apps/gui`), `mcp` (`apps/mcp`). **Required** whenever a commit touches a package, e.g. `feat(gui): add device list screen`, `fix(cli): exit non-zero on arch mismatch`.
+  - Scope names the workspace package the change touches: `core` (`packages/core`), `cli` (`apps/cli`), `gui` (`apps/gui`), `mcp` (`apps/mcp`), `e2e` (`e2e`). **Required** whenever a commit touches a package, e.g. `feat(gui): add device list screen`, `fix(cli): exit non-zero on arch mismatch`.
   - A commit that touches several packages lists them, comma-separated, in dependency order: `feat(core,cli,gui): add devices list`. Prefer one commit per package when the change splits cleanly.
   - Repo-level changes outside packages: no scope (`docs: …`, `ci: …`, `chore: …`), or `deps` for dependency updates (`build(deps): …`).
   - Subject: imperative, lowercase, no trailing period, ≤ 72 chars. Breaking changes: `!` plus a `BREAKING CHANGE:` footer.
@@ -62,6 +63,7 @@ packages/core/   all logic: SDK discovery and runner, versioned output adapters,
 apps/cli/        `ovd` command: thin commander layer over core, human output by default, --json everywhere
 apps/gui/        Electron: main (runs core in-process, IPC), preload (typed bridge), renderer (React UI)
 apps/mcp/        stdio MCP server over core (Stage 7)
+e2e/             end-to-end tests: built CLI and desktop against a fake SDK replaying fixtures
 fixtures/<sdk-version>/  recorded SDK outputs, the test fixtures for parsers
 ```
 
@@ -71,19 +73,21 @@ fixtures/<sdk-version>/  recorded SDK outputs, the test fixtures for parsers
 - **`--json` on every command**, stable shape, meaningful exit codes (ADR 0006).
 - **JSON modes first** when parsing SDK output; text parsers stay small and are tested against recorded fixtures (ADR 0007).
 - **Tests run without hardware.** Real devices are for manual checks only.
+- **E2E in every stage.** Each stage's flows get e2e tests in both surfaces; a stage isn't done until `pnpm run test:e2e` and the `e2e` CI check pass (ADR 0023).
 - Structural changes (new package, new surface, new SDK tool dependency, new backend, new persisted store) need an ADR in `docs/adr/`.
 
 Path-scoped details live in `.claude/rules/`.
 
 ## Adding a feature
 
-Order: core → CLI → desktop → tests, in one branch.
+Order: core → CLI → desktop → tests → e2e, in one branch.
 
 1. **Core:** an action in `packages/core` that calls SDK tools through the runner, parses with an adapter, returns typed data, and appends device actions to the activity log.
 2. **Fixture:** record the SDK output the parser depends on into `fixtures/<sdk-version>/`, sanitized (`.claude/rules/testing.md`).
 3. **CLI:** an `ovd` command over the action, with human output and `--json`.
 4. **Desktop:** the screen or action from the design (OVD Desktop v2), with loading, empty, error and offline-target states, and the CLI echo.
 5. **Tests:** parser tests against fixtures, core tests with a fake runner, CLI output tests for `--json`.
+6. **E2E:** the flow end to end in `e2e/`, CLI and desktop, against the fake SDK (`.claude/rules/testing.md`). Teach the fake SDK any new command from its recorded fixture.
 
 ## Code style
 

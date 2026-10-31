@@ -19,9 +19,9 @@ git fetch origin
 git log --oneline origin/main..HEAD
 ```
 
-Stop if the branch is `main`, the tree is dirty, or there are no commits ahead of `origin/main`. Stop if the branch name does not match `<type>/<short-kebab-slug>`, any commit subject is not a Conventional Commit, or a commit that touches a workspace package lacks its scope (`packages/core` → `core`, `apps/cli` → `cli`, `apps/gui` → `gui`, `apps/mcp` → `mcp`; check with `git show --stat <sha>`). The one exception is the Version PR branch `changeset-release/main`: the changesets action names it and writes its commit, so skip these checks and step 2 for it.
+Stop if the branch is `main`, the tree is dirty, or there are no commits ahead of `origin/main`. Stop if the branch name does not match `<type>/<short-kebab-slug>`, any commit subject is not a Conventional Commit, or a commit that touches a workspace package lacks its scope (`packages/core` → `core`, `apps/cli` → `cli`, `apps/gui` → `gui`, `apps/mcp` → `mcp`, `e2e` → `e2e`; check with `git show --stat <sha>`). The one exception is the Version PR branch `changeset-release/main`: the changesets action names it and writes its commit, so skip these checks and step 2 for it.
 
-Then run `pnpm run check`. Stop on a non-zero exit.
+Then run `pnpm run check` and `pnpm run test:e2e`. Stop on a non-zero exit.
 
 Scan the diff (`git diff origin/main...HEAD`) for secrets and personal data: tokens, `.env` content, real serials, real IPs, account emails, app IDs outside the `com.example.*` sample set. Stop and report if anything turns up.
 
@@ -67,7 +67,7 @@ gh pr create --base main --head <branch> --title "<title>" --body-file <scratchp
 - **Title:** a Conventional Commit subject for the whole change. With one commit, use its subject.
 - **Body:** follow the format of earlier PRs once there are some (`gh pr list --state merged --limit 1`, then `gh pr view <n>`):
   - `## Summary`: one plain-language line on what changed and why, then bullets per area (core, CLI, desktop, docs). Describe what is in the diff, nothing more. Name the roadmap stage (e.g. "Stage 1.3") when the change belongs to one.
-  - `## Test plan`: a checklist. Tick only what was actually done; `pnpm run check` from step 1 with the real test count. Leave device checks (stick, Virtual Device) unticked unless the maintainer confirmed them in this conversation.
+  - `## Test plan`: a checklist. Tick only what was actually done; `pnpm run check` and `pnpm run test:e2e` from step 1 with the real test counts. Leave device checks (stick, Virtual Device) unticked unless the maintainer confirmed them in this conversation.
   - End with the attribution line from the system reminder, if there is one.
 - No secrets, real IPs, serials or account details in the title or body.
 

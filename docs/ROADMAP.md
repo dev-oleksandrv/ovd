@@ -18,6 +18,8 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 
 The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `docs/adr/`.
 
+**E2E in every stage.** Each stage ships end-to-end tests for its flows, in the CLI and the desktop app, next to the code (ADR 0023). They run the built surfaces against the fake SDK and check what the user does and sees, the SDK commands run and the state left behind. A stage's **E2E** line lists the flows to cover. A stage isn't done until `pnpm run test:e2e` passes locally and the required `e2e` CI check is green.
+
 ---
 
 ## Stage 0 — Setup
@@ -132,7 +134,15 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** a saved stick reconnects after a host restart without retyping its address.
 
-**Done when:** a new user installs OVD, passes first run, sets up a stick and sees it next to the Virtual Device, from both surfaces.
+### 1.8 E2E tests
+
+- Fake SDK and harness in `e2e/` (ADR 0023); `e2e` CI check required on PRs.
+- CLI: `doctor` (no SDK, bundled CLI only, no devices, all passing, VDA down, Virtual Device Developer Mode off and fixed, Metro port in use), `devices`, `device info | rename`, `target` (only online, remembered, offline, `VEGA_SERIAL`, `--device`), `vvd start | stop | status | devmode enable`, `setup-stick` (success, wrong code then retry, expired sign-in, bad code, `--wifi`, bundled CLI), `pair --usb`, `pair <ip>` (refused, different network, bad address), saved devices (offline, `connect`, `forget` both routes).
+- Desktop: first run, Doctor, Devices list and detail, target picker and CLI echo, Virtual Device start / stop, setup and pairing wizards with their error states, saved devices with Reconnect, command palette.
+
+**Expected:** every 1.1–1.7 flow above has an e2e test in its surface, and the suite passes in CI.
+
+**Done when:** a new user installs OVD, passes first run, sets up a stick and sees it next to the Virtual Device, from both surfaces, and the 1.8 e2e tests pass.
 
 ---
 
@@ -176,6 +186,8 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 - After every launch, confirm with running apps and crash history (ADR 0012). Desktop: "Verifying launch…"; on failure "Launch reported success, but the app crashed" with the cause and "Logs around crash". CLI: non-zero exit, `"verified": false, "reason": "crashed"`.
 
 **Expected:** a crash right after launch shows as "Crashed on launch", not "Running".
+
+**E2E:** open a folder and drop a .vpkg (mode switch); `pkg info` and Packages → Overview; the architecture guard blocking a mismatched install and its fix; install, launch, stop, restart and uninstall from both surfaces with Apps and "Running now" updating; a crash right after launch shown as "Crashed on launch" with a non-zero exit.
 
 **Done when:** any .vpkg reaches a running app on any device without a raw SDK command, from both surfaces.
 
@@ -235,6 +247,8 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 - Nightly CI on `ubuntu-latest`: latest SDK, headless Virtual Device, `doctor`, `devices`, `pkg info`, `install`, `launch`, `logs` with `--json`. New fixtures recorded when the SDK version changes; a failure opens an issue (ADR 0007).
 
+**E2E:** live logs with filters; logs continuing after a reinstall; export; Run (one-click deploy) end to end; Watch redeploying on a rebuild; loading, empty, error and offline-target states on every first-release screen.
+
 **Done when:** first-release metrics are measured (see Success metrics). Release = first public release.
 
 ---
@@ -251,6 +265,8 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 - **4.4 Screen view:** Virtual Device live view ("Live · emulator gRPC", ~16+ fps); stick "Latest screenshot · <time>" with Refresh (marked out of date after a key press); "No signal" when offline.
 - **4.5 Reboot & wait:** `ovd reboot` returns when the device is back; desktop shows "Rebooting…". _Expected:_ a stick returns to Online without manual reconnecting.
 
+**E2E:** keys and text reaching each device type through its backend; Home disabled on the Virtual Device; screenshots saved and listed; screen view states including "No signal"; reboot returning to Online.
+
 **Done when:** a QA engineer can drive an app and capture evidence without the physical remote.
 
 ---
@@ -264,6 +280,8 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 - **5.1 Crash radar:** `ovd crashes [--watch]`, `ovd crash pull <id>`. Crashes screen ("loggingctl vault · scoped to your apps · polling every 5 s"): list (signal chip native/JS, app, NEW, age, summary, pid · build · device); detail with Download ACR, Copy crash report path, Copy prompt for your agent, Logs at crash time; raw stack (symbolication later). New-crash toast and OVD log line. Apps' "Crashed on launch" gets "Open crash report". Never request elevated access. _Expected:_ a crash toasts within 5 s; report on disk in one click.
 - **5.2 Log power tools:** presets (All, Player errors only, Network, Lifecycle) and "Save filter"; advanced filters (PID, TID, tag, identity, facility, boot); per-process level, rate limit, mute; "Bundle" for bug reports. `ovd logs --preset <name>`, `ovd logs bundle`.
 - **5.3 Packages → Manifest, Files, Validate:** manifest from `vpt dump` with line numbers and notes; `vpt show-contents` tree; `vpt validate` table (severity, message, file) with error badge and clickable lines where possible. `ovd pkg manifest | files | validate`. _Expected:_ a broken manifest shows exact errors; clicking opens the line.
+
+**E2E:** a new crash toasting and its report downloaded; log presets, saved filters and the bundle; Manifest, Files and Validate showing a broken manifest's errors.
 
 **Done when:** you learn about crashes and invalid packages from OVD before users or the Appstore do.
 
@@ -281,6 +299,8 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 - **6.4 Performance → Memory:** `ovd mem [--app] [--watch]`. Tiles (App PSS with change vs 60 s average, Peak PSS, System used, Free), 60 s chart of PSS and USS (`ace_memusage`, 1 Hz), process table.
 - **6.5 Environment → SDK versions:** `vega-sdk-requirements.json` pin card, version list with Switch / Install, "Check OS compatibility" (`vega project update --dry-run`) and "Apply fix" (`vega project install --fix`) after confirmation; Doctor's SDK row gets Switch. `ovd sdk list | install | use | pin`, `ovd compat`.
 
+**E2E:** a deep link sent and kept in history; Metro connect and disconnect from Doctor; shell commands and snippets; the memory view updating; switching and pinning SDK versions.
+
 **Done when:** a typical debug session needs no raw SDK command.
 
 ---
@@ -295,6 +315,8 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 - **7.2 Scenario scripts:** YAML in `scenarios/` with steps install, launch (verify), waitForLog, press, assertLog, screenshot; variables `${OVD_DEVICE}`, `${BUILD_DIR}`, `${ARCH}`. `ovd scenario run <file> [--device] [--json]`. Desktop tab with list, YAML view, Run with per-step status. _Expected:_ same results on a stick and the Virtual Device; clear message on the failing step.
 - **7.3 GitHub Action:** headless Virtual Device smoke test on `ubuntu-latest` (ADR 0013), SDK with `NONINTERACTIVE=true` and pinned `VEGA_SDK_VERSION`. Desktop CI tab shows `.github/workflows/vega-smoke.yml` with Copy. _Expected:_ a sample `com.example.*` repo fails the build when the scenario fails.
 
+**E2E:** an MCP client calling each tool and the desktop listing the calls; a scenario run passing and failing on the right step; the Action workflow failing a build when its scenario fails.
+
 **Done when:** an agent and a CI pipeline both run OVD without a human.
 
 ---
@@ -306,6 +328,8 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 - **8.1 Launch KPIs:** `ovd perf kpi [--cold] [--runs 5] [--budget ttff=<ms>]`. Table per build (TTFF, TTFD, Fluidity, Memory) with a regression callout. Known KPI Visualizer failures (warm start on the Virtual Device, offline apps) are warnings.
 - **8.2 Traces:** `ovd perf trace [--duration] [--categories]`. Record with timer and categories, trace list, "Open in Perfetto ↗".
 - **8.3 Monitors:** activity monitor (CPU per thread, JS CPU profile with source maps); memory monitor (GC counts, heap). Output saved next to traces.
+
+**E2E:** KPI runs compared across two builds with a regression callout; a trace recorded and listed; monitor output saved next to traces.
 
 **Done when:** you can compare two builds' launch times and record a trace in one action.
 
@@ -329,7 +353,7 @@ Independent items, shipped one by one. **Hardware checks:** uninstall removes ap
 | Older logs (previous boot, vault)                                                | Logs → session picker           |
 | Compare two vpkgs                                                                | Packages → Compare              |
 
-**Expected per item:** works in CLI and desktop with `--json`; the design's "Later" / "to be verified" markers are removed.
+**Expected per item:** works in CLI and desktop with `--json`; the design's "Later" / "to be verified" markers are removed; e2e tests cover its flow in both surfaces.
 
 ---
 
@@ -340,6 +364,7 @@ Independent items, shipped one by one. **Hardware checks:** uninstall removes ap
 - **Hardware check first:** `network speed` / `network delay` throttle app traffic on the Virtual Device.
 - Virtual Device page → Network: speed and latency presets with Apply / Reset and current state; "Packet loss is not supported by the emulator console."; packet capture to .pcap; host vs app reference measurement; emulator console log; "Start the Virtual Device to shape its network." when stopped.
 - CLI `ovd net speed | delay | reset | capture`. Virtual Device only.
+- **E2E:** presets applied and reset; capture saved; the stopped-device state.
 
 ### 10.2 Community long tail
 

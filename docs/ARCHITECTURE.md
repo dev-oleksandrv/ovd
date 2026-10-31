@@ -51,6 +51,10 @@ apps/
     src/preload/           # typed contextBridge API
     src/renderer/          # React UI, tokens, base components, screens
   mcp/                     # stdio MCP server (Stage 7)
+e2e/                       # end-to-end tests of the built surfaces (ADR 0023)
+  fake-sdk/                # a `vega` that replays fixtures and keeps a world state
+  harness/                 # sandbox (temp home, OVD_HOME, fake SDK) and surface runners
+  cli/                     # CLI flows
 fixtures/
   <sdk-version>/<tool>/    # recorded, sanitized SDK outputs
 docs/
@@ -181,6 +185,7 @@ OVD designs around these:
 - No hardware, SDK, network or real timers in tests. Core uses a fake runner that replays fixtures from `fixtures/<sdk-version>/`.
 - Fixtures are sanitized with the neutral sample data (ADR 0016).
 - CLI tests assert `--json` output and exit codes. No snapshot tests.
+- End-to-end tests (`e2e/`, `pnpm run test:e2e`) run the built CLI and desktop app against a fake SDK that answers only with recorded fixtures (ADR 0023). They check user flows, the SDK commands run and the state left behind. CI runs them as the required `e2e` job.
 - Real-device behavior is checked manually; the nightly SDK job covers the Virtual Device (ADR 0007).
 
 ## 10. Decisions
