@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { DevicesUpdate } from '@ovd/core'
+import type { DevicesUpdate, LoginPrompt } from '@ovd/core'
 import { channels, type OvdApi } from './api'
 
 const api: OvdApi = {
@@ -30,6 +30,18 @@ const api: OvdApi = {
     pair: (address) => ipcRenderer.invoke(channels.pairAddress, address),
     connect: (id) => ipcRenderer.invoke(channels.connect, id),
     forget: (id) => ipcRenderer.invoke(channels.forget, id)
+  },
+  setup: {
+    signedIn: () => ipcRenderer.invoke(channels.setupSignedIn),
+    login: () => ipcRenderer.invoke(channels.setupLogin),
+    onLoginPrompt: (listener) => {
+      const handler = (_event: IpcRendererEvent, prompt: LoginPrompt): void => listener(prompt)
+      ipcRenderer.on(channels.setupLoginPrompt, handler)
+      return () => ipcRenderer.removeListener(channels.setupLoginPrompt, handler)
+    },
+    enable: (code, vendor) => ipcRenderer.invoke(channels.setupEnable, code, vendor),
+    waitForStick: () => ipcRenderer.invoke(channels.setupWait),
+    cancel: () => ipcRenderer.invoke(channels.setupCancel)
   }
 }
 

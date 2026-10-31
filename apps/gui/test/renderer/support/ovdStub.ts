@@ -1,4 +1,13 @@
-import type { Check, Device, DevicesUpdate, DoctorReport, ForgetResult, VvdState } from '@ovd/core'
+import type {
+  Check,
+  Device,
+  DevicesUpdate,
+  DoctorReport,
+  EnableResult,
+  ForgetResult,
+  LoginPrompt,
+  VvdState
+} from '@ovd/core'
 import { vi } from 'vitest'
 import type { IpcResult, OvdApi, SdkSummary } from '../../../src/preload/api'
 
@@ -6,6 +15,8 @@ export interface OvdStub {
   api: OvdApi
   // Pushes an update as main's watcher would.
   push: (update: DevicesUpdate) => void
+  // Shows the sign-in link and code as main does while `vega devmode login` waits.
+  prompt: (prompt: LoginPrompt) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -88,8 +99,10 @@ export function stubOvd(opts: {
   platform?: 'darwin' | 'linux'
   vvd?: Partial<OvdApi['vvd']>
   pairing?: Partial<OvdApi['pairing']>
+  setup?: Partial<Omit<OvdApi['setup'], 'onLoginPrompt'>>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
+  let promptListener: ((prompt: LoginPrompt) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
   const api: OvdApi = {
     appInfo: async () => ({ version: '0.1.0', platform: opts.platform ?? 'darwin' }),
@@ -133,8 +146,29 @@ export function stubOvd(opts: {
       forget: vi.fn(
         opts.pairing?.forget ?? (async () => unexpected<ForgetResult>('pairing.forget'))
       )
+    },
+    setup: {
+      signedIn: vi.fn(opts.setup?.signedIn ?? (async () => unexpected<boolean>('setup.signedIn'))),
+      login: vi.fn(
+        opts.setup?.login ?? (async () => unexpected<{ signedIn: true }>('setup.login'))
+      ),
+      onLoginPrompt: (l) => {
+        promptListener = l
+        return () => {
+          promptListener = undefined
+        }
+      },
+      enable: vi.fn(opts.setup?.enable ?? (async () => unexpected<EnableResult>('setup.enable'))),
+      waitForStick: vi.fn(
+        opts.setup?.waitForStick ?? (async () => unexpected<Device>('setup.waitForStick'))
+      ),
+      cancel: vi.fn(opts.setup?.cancel ?? (async () => undefined))
     }
   }
   window.ovd = api
-  return { api, push: (update) => listener?.(update) }
+  return {
+    api,
+    push: (update) => listener?.(update),
+    prompt: (p) => promptListener?.(p)
+  }
 }

@@ -9,11 +9,14 @@ interface DoctorRowProps {
   checking?: boolean
   // Turns on Virtual Device Developer Mode (fix `enable-vvd-devmode`).
   enableVvdDevmode?: { busy: boolean; onEnable: () => void }
+  // Opens the new-stick wizard (fix `setup-stick`).
+  onSetup?: () => void
 }
 
 // One row of the Doctor list. Fix buttons join with the slices that ship them (ADR 0018).
-export function DoctorRow({ check, checking = false, enableVvdDevmode }: DoctorRowProps) {
+export function DoctorRow({ check, checking = false, enableVvdDevmode, onSetup }: DoctorRowProps) {
   const enable = !checking && check.fix === 'enable-vvd-devmode' ? enableVvdDevmode : undefined
+  const setup = !checking && check.fix === 'setup-stick' ? onSetup : undefined
   const view = rowView(check.status)
   return (
     <li className="flex items-center gap-3 border-b border-line-row bg-panel px-4 py-3 last:border-b-0">
@@ -35,6 +38,11 @@ export function DoctorRow({ check, checking = false, enableVvdDevmode }: DoctorR
       {enable && (
         <Button size="sm" loading={enable.busy} onClick={enable.onEnable}>
           {enable.busy ? 'Enabling…' : 'Enable'}
+        </Button>
+      )}
+      {setup && (
+        <Button size="sm" onClick={setup}>
+          Set up
         </Button>
       )}
     </li>

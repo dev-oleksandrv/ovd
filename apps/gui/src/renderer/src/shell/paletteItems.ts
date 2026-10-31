@@ -26,13 +26,14 @@ export const LATER: readonly (readonly [label: string, icon: string])[] = [
   ['Scenarios & MCP', 'account_tree']
 ]
 
-// Stage 1 palette as shipped so far: the setup entry joins with its slice.
+// Stage 1 palette, in the design's order.
 export function paletteItems(opts: {
   devices: Device[]
   target: string | null
   go: (screen: Screen) => void
   runDoctor: () => void
   vvd: { busy: VvdBusy; start: () => void; stop: () => void }
+  setup: () => void
   pair: () => void
   switchTarget: (device: Device) => void
   later: (label: string) => void
@@ -53,6 +54,14 @@ export function paletteItems(opts: {
       kind: 'Screen',
       later: false,
       run: () => opts.go('doctor')
+    },
+    {
+      id: 'action:setup',
+      label: 'Set up a new stick (Developer Mode)',
+      icon: 'developer_mode_tv',
+      kind: 'Action',
+      later: false,
+      run: opts.setup
     },
     {
       id: 'action:pair',

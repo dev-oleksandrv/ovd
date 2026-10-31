@@ -22,6 +22,8 @@ import { RouteOption } from './RouteOption'
 
 interface PairWizardProps {
   onClose: () => void
+  // "Set it up →": the new-stick wizard takes over.
+  onSetup: () => void
   // The wizard's last step closed with Done: the caller shows Devices.
   onDone: (device: Device) => void
 }
@@ -29,7 +31,7 @@ interface PairWizardProps {
 // Pair a device over Wi‑Fi, Step N of 4 (Stage 1.6), copy from the design's PAIR WIZARD.
 // The USB route runs `ovd pair --usb`, which reads the stick's IP itself, so it goes from the
 // instructions straight to Paired; only the TV route asks for the address.
-export function PairWizard({ onClose, onDone }: PairWizardProps) {
+export function PairWizard({ onClose, onSetup, onDone }: PairWizardProps) {
   const { notify, echo } = useFeedback()
   const [step, setStep] = useState(0)
   const [route, setRoute] = useState<PairRoute>('usb')
@@ -120,7 +122,16 @@ export function PairWizard({ onClose, onDone }: PairWizardProps) {
               onSelect={() => setRoute('tv')}
             />
           </div>
-          <div className="text-small text-muted">Both routes need Developer Mode on the stick.</div>
+          <div className="text-small text-muted">
+            Both routes need Developer Mode on the stick.{' '}
+            <button
+              type="button"
+              onClick={onSetup}
+              className="cursor-pointer text-accent hover:text-accent-bright"
+            >
+              Set it up →
+            </button>
+          </div>
         </>
       )}
 

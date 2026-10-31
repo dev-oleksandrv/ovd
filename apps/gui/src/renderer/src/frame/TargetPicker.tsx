@@ -12,18 +12,19 @@ interface TargetPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onPick: (device: Device) => void
+  onSetup: () => void
   onPair: () => void
   vvdBusy?: VvdBusy
 }
 
-// The title bar's target switch. "Set up a new stick…" joins the menu with its slice
-// (ADR 0018: no dead entries).
+// The title bar's target switch, ending with the setup and pairing wizards.
 export function TargetPicker({
   devices,
   target,
   open,
   onOpenChange,
   onPick,
+  onSetup,
   onPair,
   vvdBusy = null
 }: TargetPickerProps) {
@@ -108,6 +109,18 @@ export function TargetPicker({
             )
           })}
           <div className="mx-0.5 my-1 h-px bg-line-menu" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onOpenChange(false)
+              onSetup()
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-control p-2 text-left text-text-soft hover:bg-control-hover"
+          >
+            <Icon name="developer_mode_tv" />
+            Set up a new stick…
+          </button>
           <button
             type="button"
             role="menuitem"

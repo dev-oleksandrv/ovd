@@ -12,6 +12,7 @@ const build = (
   const opts = {
     go: vi.fn(),
     runDoctor: vi.fn(),
+    setup: vi.fn(),
     pair: vi.fn(),
     switchTarget: vi.fn(),
     later: vi.fn()
@@ -26,6 +27,7 @@ describe('paletteItems', () => {
     expect(items.map((i) => [i.label, i.kind])).toEqual([
       ['Go to Devices', 'Screen'],
       ['Go to Doctor', 'Screen'],
+      ['Set up a new stick (Developer Mode)', 'Action'],
       ['Pair a device over Wi‑Fi…', 'Action'],
       ['Start Virtual Device', 'Action'],
       ['Run ovd doctor', 'Action'],
@@ -52,8 +54,10 @@ describe('paletteItems', () => {
     items[1]?.run()
     expect(opts.go).toHaveBeenCalledWith('doctor')
     items[2]?.run()
+    expect(opts.setup).toHaveBeenCalled()
+    items[3]?.run()
     expect(opts.pair).toHaveBeenCalled()
-    items[4]?.run()
+    items[5]?.run()
     expect(opts.runDoctor).toHaveBeenCalled()
   })
 
