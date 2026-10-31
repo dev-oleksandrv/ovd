@@ -48,3 +48,4 @@ An ADR records one significant decision: the context, what was decided, and what
 - [0020 Changesets and tag-driven releases](0020-changesets-and-tag-releases.md)
 - [0021 macOS signing, notarization and a universal build](0021-macos-signing-and-universal-build.md)
 - [0022 Host state directory](0022-host-state-directory.md)
+- [0023 End-to-end tests against a fake SDK](0023-e2e-tests-with-a-fake-sdk.md)

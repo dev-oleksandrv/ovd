@@ -3,6 +3,7 @@ paths:
   - 'packages/**'
   - 'apps/**'
   - 'fixtures/**'
+  - 'e2e/**'
 ---
 
 # Testing rules
@@ -18,6 +19,15 @@ paths:
 2. Sanitize before saving: replace serials with fake ones, IPs with documentation ranges (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`, `2001:db8::/32`), hostnames and account emails with placeholders, app IDs with the `com.example.*` sample set, device names with the sample names.
 3. Note the SDK version, device type and command in a sibling `README.md` or the test name.
 4. Never edit a fixture's structure by hand to make a test pass. Re-record instead.
+
+## End-to-end tests
+
+- `e2e/` runs what ships: the built CLI (`apps/cli/dist`) and desktop app, in a sandbox with a temporary home, `OVD_HOME` and the fake SDK installed at `~/vega/bin/vega` (ADR 0023). `pnpm run test:e2e` builds first.
+- The fake SDK (`e2e/fake-sdk/`) answers only with recorded fixtures and their recorded exit codes. A new SDK command: record its fixture first, then add its answer and its effect on the world. Never write SDK output by hand; an unrecorded command fails the test.
+- Test a flow, not a screen or a command in isolation: set up the world, do what the user does, then assert the outcome they see, the SDK commands run (`sandbox.calls()`) and the state left (`hostState()`, `activity()`, `world()`).
+- Not e2e tests: "renders", "exits 0", or assertions that hold whether the feature works or not. Each test must fail if the flow breaks.
+- Cover the error states a flow promises (wrong code, refused port, offline device) as well as the happy path.
+- One sandbox per test, so tests run in parallel and never share state.
 
 ## Style
 
