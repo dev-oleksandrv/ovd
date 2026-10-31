@@ -1,6 +1,7 @@
 import { homedir as osHomedir } from 'node:os'
 import { createActivityLog, type Surface } from './activity/activityLog.js'
 import { createDevices, type Devices } from './devices/devices.js'
+import { createDevmode, type Devmode } from './devmode/devmode.js'
 import { createDoctor, type Doctor } from './doctor/doctor.js'
 import { hostInfo } from './doctor/hostInfo.js'
 import { portInUse } from './doctor/portProbe.js'
@@ -28,6 +29,7 @@ export interface Ovd {
   doctor: Doctor
   vvd: Vvd
   pairing: Pairing
+  devmode: Devmode
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -58,5 +60,6 @@ export function createOvd(opts: OvdOptions): Ovd {
     portInUse
   })
   const pairing = createPairing({ runner, sdk, devices, state, activity })
-  return { sdk, devices, doctor, vvd, pairing }
+  const devmode = createDevmode({ runner, sdk, devices, activity })
+  return { sdk, devices, doctor, vvd, pairing, devmode }
 }

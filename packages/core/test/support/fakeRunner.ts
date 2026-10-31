@@ -20,6 +20,8 @@ export class FakeRunner implements Runner {
     const scripted = Array.isArray(entry) ? entry[Math.min(count, entry.length - 1)] : entry
     if (scripted === undefined) throw new Error(`FakeRunner: empty script for ${spec.display}`)
     if (scripted instanceof OvdError) throw scripted
+    // A waiting command shows its output before it ends, so the caller sees it first.
+    if (scripted.stdout) spec.onStdout?.(scripted.stdout)
     return {
       stdout: '',
       stderr: '',

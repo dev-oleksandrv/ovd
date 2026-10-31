@@ -3,7 +3,8 @@ import type { ActivityAction, ActivityLog } from './activityLog.js'
 
 export type Logged = <T>(
   action: ActivityAction,
-  target: string,
+  // null when the device isn't known yet (Developer Mode on a stick VDA doesn't list).
+  target: string | null,
   args: Record<string, string>,
   run: () => Promise<T>
 ) => Promise<T>

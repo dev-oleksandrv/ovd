@@ -12,6 +12,9 @@ export interface CommandSpec {
   // For commands that print an answer and then wait (`vega devmode login --json` when signed
   // out): once this returns true the runner stops the process and returns what it printed.
   stopWhen?: (stdout: string) => boolean
+  // Called with everything printed so far on each new chunk, for commands that print a prompt
+  // and then wait (`vega devmode login --json` waiting for the browser sign-in).
+  onStdout?: (stdout: string) => void
 }
 
 export interface RunResult {
@@ -46,12 +49,13 @@ export function createExecaRunner(): Runner {
         stdin: 'ignore'
       })
       let stopped = false
-      const { stopWhen } = spec
-      if (stopWhen) {
+      const { stopWhen, onStdout } = spec
+      if (stopWhen || onStdout) {
         let seen = ''
         subprocess.stdout.on('data', (chunk: Buffer) => {
           seen += chunk.toString()
-          if (!stopped && stopWhen(seen)) {
+          onStdout?.(seen)
+          if (stopWhen && !stopped && stopWhen(seen)) {
             stopped = true
             subprocess.kill()
           }
