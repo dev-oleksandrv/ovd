@@ -35,6 +35,7 @@ packages/
       sdk/                 # SDK discovery, runner (execa), version detection
       adapters/            # per-tool parsers, zod schemas, versioned per SDK when output differs
       devices/             # list, info, target, Virtual Device, pairing, setup
+      project/             # project mode (folder) and no-project mode (.vpkg)
       packages/            # vpkg info, architecture guard
       apps/                # install, launch (verified), stop, lists
       logs/                # loggingctl stream, filters, restart-after-install
@@ -177,6 +178,8 @@ OVD designs around these:
 - A Wi‑Fi device that drops stays in the VDA list as `offline`, and VDA reconnects it by itself when it comes back. After a host or VDA server restart it is gone from the list until `vda connect`.
 - No command reports a friendly device name; `deviceName` echoes the ID passed in.
 - `vega device list` takes 1–4 s and has no JSON mode; `vega exec vda devices -l` takes about 0.3 s.
+- A Vega project records no SDK version. It pins an OS version (`manifest.toml` → `[os.version] target`) and a React Native version (`package.json`); `vega sdk use` sets the SDK for the whole machine.
+- `vega project doctor` has no JSON mode. It checks the folder it runs in (OVD sets the working directory), prints one `✅`/`⚠️`/`❌` line per check and "To fix" bullets, takes about 2 s, works before `npm install`, and never changes the project. It exits 1 when any check fails and 0 otherwise (warnings alone exit 0); outside a project it fails one "Project config" check.
 - `vega platform doctor` prints the whole environment, secrets included. OVD never runs it.
 - Two `vega` processes started at the same moment can break each other: the SDK relinks its workspace and rewrites a cache on every start, and the loser fails with `[Errno 2] No such file or directory: 'vda'` (exit 2) or `EOFError`. Each core runs one SDK command at a time, and retries the device list once for clashes with another surface.
 
