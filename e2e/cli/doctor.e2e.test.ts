@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:net'
 import type { Check, DoctorReport } from '@ovd/core'
 import { afterEach, describe, expect, test } from 'vitest'
 import { ovd } from '../harness/cli.ts'
-import { createSandbox } from '../harness/sandbox.ts'
+import { createSandbox } from '../harness/vitest.ts'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 
 type Report = DoctorReport & { ok: true }

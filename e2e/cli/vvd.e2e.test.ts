@@ -1,7 +1,7 @@
 import type { DevicesSnapshot } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import { ovd } from '../harness/cli.ts'
-import { createSandbox } from '../harness/sandbox.ts'
+import { createSandbox } from '../harness/vitest.ts'
 
 describe('ovd vvd', () => {
   test('start returns once the Virtual Device is listed online; stop removes it', async () => {

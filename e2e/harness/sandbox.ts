@@ -10,7 +10,6 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { onTestFinished } from 'vitest'
 import {
   callsFile,
   defaultWorld,
@@ -49,9 +48,13 @@ export interface Sandbox {
   clearCalls(): void
   hostState(): unknown
   activity(): ActivityLine[]
+  // Removes the sandbox; throws when a surface ran an SDK command the fake has no recording
+  // for, since that flow ran something unverified.
+  close(): void
 }
 
-export function createSandbox(world: Partial<World> = {}): Sandbox {
+// Test runners wrap this so each test gets its own sandbox (vitest.ts, gui.ts).
+export function openSandbox(world: Partial<World> = {}): Sandbox {
   const root = mkdtempSync(join(tmpdir(), 'ovd-e2e-'))
   const home = join(root, 'home')
   const ovdHome = join(root, 'ovd')
@@ -69,7 +72,10 @@ export function createSandbox(world: Partial<World> = {}): Sandbox {
     SHELL: '/bin/sh',
     PATH: path.join(':'),
     TMPDIR: tmpdir(),
-    LANG: 'en_US.UTF-8'
+    LANG: 'en_US.UTF-8',
+    // The display of a headless Ubuntu runner (xvfb-run), for the desktop app.
+    ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
+    ...(process.env.XAUTHORITY ? { XAUTHORITY: process.env.XAUTHORITY } : {})
   }
 
   function readCalls(): Call[] {
@@ -78,17 +84,6 @@ export function createSandbox(world: Partial<World> = {}): Sandbox {
       .filter((l) => l !== '')
       .map((l) => JSON.parse(l) as Call)
   }
-
-  // A command the fake has no recording for means the flow ran something unverified.
-  onTestFinished(() => {
-    const unhandled = readCalls().filter((c) => !c.handled)
-    rmSync(root, { recursive: true, force: true })
-    if (unhandled.length > 0) {
-      throw new Error(
-        `The fake SDK has no recording for:\n${unhandled.map((c) => `  ${c.command}`).join('\n')}`
-      )
-    }
-  })
 
   return {
     home,
@@ -133,6 +128,16 @@ export function createSandbox(world: Partial<World> = {}): Sandbox {
         .split('\n')
         .filter((l) => l !== '')
         .map((l) => JSON.parse(l) as ActivityLine)
+    },
+
+    close() {
+      const unhandled = readCalls().filter((c) => !c.handled)
+      rmSync(root, { recursive: true, force: true })
+      if (unhandled.length > 0) {
+        throw new Error(
+          `The fake SDK has no recording for:\n${unhandled.map((c) => `  ${c.command}`).join('\n')}`
+        )
+      }
     }
   }
 }

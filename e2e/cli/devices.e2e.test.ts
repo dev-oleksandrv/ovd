@@ -1,7 +1,7 @@
 import type { Device, DevicesSnapshot } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import { ovd } from '../harness/cli.ts'
-import { createSandbox } from '../harness/sandbox.ts'
+import { createSandbox } from '../harness/vitest.ts'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 
 type Listed = DevicesSnapshot & { ok: true }

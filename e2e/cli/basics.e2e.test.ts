@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { ovd } from '../harness/cli.ts'
-import { createSandbox } from '../harness/sandbox.ts'
+import { createSandbox } from '../harness/vitest.ts'
 
 const pkg = JSON.parse(
   readFileSync(new URL('../../apps/cli/package.json', import.meta.url), 'utf8')

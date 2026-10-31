@@ -1,7 +1,7 @@
 import type { Device, DevicesSnapshot } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import { ovd } from '../harness/cli.ts'
-import { createSandbox, type Sandbox } from '../harness/sandbox.ts'
+import { createSandbox, type Sandbox } from '../harness/vitest.ts'
 import { STICK_ADDRESS, STICK_IP, STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 
 async function device(sandbox: Sandbox, id: string): Promise<Device | undefined> {
