@@ -5,6 +5,7 @@ import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerPairing } from './commands/pair.js'
+import { registerProject } from './commands/project.js'
 import { registerSetupStick } from './commands/setupStick.js'
 import { registerTarget } from './commands/target.js'
 import { registerVvd } from './commands/vvd.js'
@@ -63,5 +64,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerVvd(program, deps, setExitCode)
   registerPairing(program, deps, setExitCode)
   registerSetupStick(program, deps, setExitCode)
+  registerProject(program, deps, setExitCode)
   return program
 }

@@ -11,7 +11,7 @@ export function registerDoctor(
 ): void {
   program
     .command('doctor')
-    .description('Check the Vega SDK, VDA, devices, sign-in and Metro ports')
+    .description('Check the Vega SDK, VDA, project, devices, sign-in and Metro ports')
     .action(async (_opts, cmd: Command) => {
       const ctx = reportContext(cmd, deps, setExitCode)
       let failed = false
