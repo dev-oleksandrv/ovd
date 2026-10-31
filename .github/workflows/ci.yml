@@ -37,7 +37,8 @@ jobs:
         if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
         run: pnpm exec changeset status --since origin/main
 
-  # The built CLI against a fake Vega SDK that replays fixtures/0.24 (ADR 0023). Required on PRs.
+  # The built CLI and desktop app against a fake Vega SDK that replays fixtures/0.24 (ADR 0023).
+  # Required on PRs.
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -49,7 +50,15 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run test:e2e
+      # The desktop app needs a display; the runner has none, so Xvfb provides one.
+      - run: xvfb-run --auto-servernum pnpm run test:e2e
+      - name: Upload traces of failed desktop flows
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-traces-ubuntu
+          path: e2e/test-results/
+          if-no-files-found: ignore
 
   # macOS is the other supported host (ADR 0013); its runners cost more, so main only.
   e2e-macos:
@@ -65,3 +74,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test:e2e
+      - name: Upload traces of failed desktop flows
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-traces-macos
+          path: e2e/test-results/
+          if-no-files-found: ignore

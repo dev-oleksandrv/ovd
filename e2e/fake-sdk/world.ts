@@ -26,8 +26,8 @@ export interface Stick {
   mode: 'usb' | 'tcpip'
   usbCable: boolean
   powered: boolean
-  // `vda devices` polls left during which the stick is rebooting and not listed.
-  rebooting: number
+  // Until this time (epoch ms) the stick is rebooting and not listed.
+  rebootingUntil: number
 }
 
 // The values the recorded fixtures carry (fixtures/0.24/README.md); the fake can only answer
@@ -58,7 +58,7 @@ export function usbStick(overrides: Partial<Stick> = {}): Stick {
     mode: 'usb',
     usbCable: true,
     powered: true,
-    rebooting: 0,
+    rebootingUntil: 0,
     ...overrides
   }
 }

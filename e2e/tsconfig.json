@@ -5,5 +5,5 @@
     "types": ["node"],
     "allowImportingTsExtensions": true
   },
-  "include": ["fake-sdk", "harness", "cli", "*.ts"]
+  "include": ["fake-sdk", "harness", "cli", "gui", "*.ts"]
 }

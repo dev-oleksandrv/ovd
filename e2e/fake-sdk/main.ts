@@ -13,6 +13,7 @@ import {
   STICK_SERIAL,
   VVD_VDA_SERIAL,
   writeWorld,
+  type Stick,
   type World
 } from './world.ts'
 
@@ -23,6 +24,8 @@ interface Reply {
 }
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/0.24')
+// How long a stick is gone after Developer Mode is enabled (41 s in the recording).
+const REBOOT_MS = 3_000
 // How long the user takes to finish the browser sign-in (32 s in the recording).
 const BROWSER_SIGN_IN_MS = 300
 const UNHANDLED = 99
@@ -36,6 +39,8 @@ if (!dir) {
 const args = process.argv.slice(2)
 const command = ['vega', ...args].join(' ')
 const world = readWorld(dir)
+// What was read, so a command that changed nothing doesn't write the world back.
+const before = JSON.stringify(world)
 
 function fixture(path: string): string {
   return readFileSync(join(FIXTURES, path), 'utf8')
@@ -58,21 +63,20 @@ function log(handled: boolean): void {
 // meanwhile, so it writes its own effect and the stale copy is not written back.
 let wroteWorld = false
 
+function rebooting(s: Stick): boolean {
+  return Date.now() < s.rebootingUntil
+}
+
 function stickOnUsb(w: World): boolean {
   const s = w.stick
   return (
-    s !== null &&
-    s.developerMode &&
-    s.mode === 'usb' &&
-    s.usbCable &&
-    s.powered &&
-    s.rebooting === 0
+    s !== null && s.developerMode && s.mode === 'usb' && s.usbCable && s.powered && !rebooting(s)
   )
 }
 
 function stickOnWifi(w: World): boolean {
   const s = w.stick
-  return s !== null && s.developerMode && s.mode === 'tcpip' && s.powered && s.rebooting === 0
+  return s !== null && s.developerMode && s.mode === 'tcpip' && s.powered && !rebooting(s)
 }
 
 // `vda devices -l` prints a header and one line per device. Each line is taken verbatim from
@@ -89,8 +93,6 @@ function vdaDevices(w: World): string {
     )
   }
   if (w.vvd.running) lines.push(line('vda-devices/stick-usb-and-virtual-device.txt', 2))
-  // A rebooting stick is gone for this many polls (41 s in the recording).
-  if (w.stick && w.stick.rebooting > 0) w.stick.rebooting -= 1
   return `${lines.join('\n')}\n\n`
 }
 
@@ -147,7 +149,7 @@ function enableDevice(w: World, rest: string[]): Reply | null {
   }
   // The stick reboots: it leaves the device list at once and comes back on USB.
   w.stick.developerMode = true
-  w.stick.rebooting = 1
+  w.stick.rebootingUntil = Date.now() + REBOOT_MS
   return { stdout: fixture('vega-devmode-enable-device/enabled.json') }
 }
 
@@ -285,7 +287,9 @@ if (reply === null) {
   process.stderr.write(`fake-sdk: no recording for: ${command}\n`)
   process.exit(UNHANDLED)
 }
-if (!wroteWorld) writeWorld(dir, world)
+// Polls run while tests change the world; writing an unchanged copy back would undo a change
+// made after it was read.
+if (!wroteWorld && JSON.stringify(world) !== before) writeWorld(dir, world)
 if (reply.stdout) process.stdout.write(reply.stdout)
 if (reply.stderr) process.stderr.write(reply.stderr)
 process.exitCode = reply.exitCode ?? 0
