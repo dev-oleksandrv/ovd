@@ -19,8 +19,12 @@ export { parseVdaTcpip } from './adapters/parseVdaTcpip.js'
 export { parseVdaUsb } from './adapters/parseVdaUsb.js'
 export { parseFibTrie } from './adapters/parseFibTrie.js'
 export { parseIsPortForwarded } from './adapters/parseIsPortForwarded.js'
-export { parseDevmodeLogin } from './adapters/parseDevmodeLogin.js'
-export type { DevmodeLogin } from './adapters/parseDevmodeLogin.js'
+export {
+  parseDevmodeLogin,
+  parseDevmodeLoginPrompt,
+  parseDevmodeResult
+} from './adapters/parseDevmodeLogin.js'
+export type { DevmodeLogin, DevmodeResult, LoginPrompt } from './adapters/parseDevmodeLogin.js'
 export {
   parseVsmDeveloperMode,
   parseVsmDeveloperModeSet
@@ -78,3 +82,6 @@ export {
   parsePort
 } from './pairing/address.js'
 export type { Address, HostNetwork } from './pairing/address.js'
+export { createDevmode, STICK_WAIT_MS } from './devmode/devmode.js'
+export type { Devmode, DevmodeDeps, EnableResult } from './devmode/devmode.js'
+export { normalizeCode } from './devmode/code.js'

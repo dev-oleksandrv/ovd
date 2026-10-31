@@ -435,6 +435,7 @@ export function Gallery() {
             open={picker}
             onOpenChange={setPicker}
             onPick={setTarget}
+            onSetup={() => notify({ tone: 'info', text: 'Set up a new stick…' })}
             onPair={() => notify({ tone: 'info', text: 'Pair a device over Wi‑Fi…' })}
           />
           <SearchButton platform="darwin" onClick={() => setPalette(true)} />
@@ -447,6 +448,7 @@ export function Gallery() {
               go: () => undefined,
               runDoctor: () => undefined,
               vvd: { busy: null, start: () => undefined, stop: () => undefined },
+              setup: () => undefined,
               pair: () => undefined,
               switchTarget: setTarget,
               later: (label) =>

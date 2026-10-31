@@ -14,6 +14,7 @@ import { TargetPicker } from './frame/TargetPicker'
 import { TargetStatus } from './frame/TargetStatus'
 import { DevicesScreen } from './screens/devices/DevicesScreen'
 import { PairWizard } from './pairing/PairWizard'
+import { SetupWizard } from './setup/SetupWizard'
 import { firstRunNeeded, gateFailure, gateOpen } from './screens/environment/doctorView'
 import { EnvironmentScreen } from './screens/environment/EnvironmentScreen'
 import { useSdk } from './sdk/useSdk'
@@ -41,6 +42,7 @@ function Shell() {
   const [menu, setMenu] = useState(false)
   const [palette, setPalette] = useState(false)
   const [pairing, setPairing] = useState(false)
+  const [settingUp, setSettingUp] = useState(false)
   const [screen, setScreen] = useState<Screen>('devices')
   // null until the first doctor report arrives and decides the start screen.
   const [firstRun, setFirstRun] = useState<boolean | null>(null)
@@ -119,6 +121,7 @@ function Shell() {
       void runDoctor()
     },
     vvd: { busy: vvd.busy, start: () => void vvd.start(), stop: () => void vvd.stop() },
+    setup: () => setSettingUp(true),
     pair: () => setPairing(true),
     switchTarget: (device) => void setTarget(device),
     later: (label) => notify({ tone: 'info', text: `${label} is coming in a later version` })
@@ -136,6 +139,7 @@ function Shell() {
             open={menu}
             onOpenChange={setMenu}
             onPick={(device) => void setTarget(device)}
+            onSetup={() => setSettingUp(true)}
             onPair={() => setPairing(true)}
             vvdBusy={vvd.busy}
           />
@@ -192,13 +196,31 @@ function Shell() {
           highlight={highlight}
           onGoDevices={() => go('devices')}
           onRunDoctor={() => void runDoctor()}
+          onSetup={() => setSettingUp(true)}
         />
       ) : (
-        <DevicesScreen onPair={() => setPairing(true)} />
+        <DevicesScreen onSetup={() => setSettingUp(true)} onPair={() => setPairing(true)} />
       )}
       {palette && <CommandPalette items={items} onClose={() => setPalette(false)} />}
+      {settingUp && (
+        <SetupWizard
+          onClose={() => setSettingUp(false)}
+          onPair={() => {
+            setSettingUp(false)
+            setPairing(true)
+          }}
+          onDone={() => {
+            setSettingUp(false)
+            go('devices')
+          }}
+        />
+      )}
       {pairing && (
         <PairWizard
+          onSetup={() => {
+            setPairing(false)
+            setSettingUp(true)
+          }}
           onClose={() => setPairing(false)}
           onDone={() => {
             setPairing(false)

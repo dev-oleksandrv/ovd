@@ -1,0 +1,9 @@
+{
+  "status": "pending",
+  "verificationUri": "https://amazon.com/us/code?cbl-code=ABC123",
+  "userCode": "ABC123",
+  "message": "Please open the verification URI in your browser and enter the user code to complete authentication"
+}
+{
+  "status": "success"
+}

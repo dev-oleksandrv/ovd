@@ -24,3 +24,25 @@ test('runs one SDK command at a time, in call order, and keeps going after a fai
   expect(order).toEqual(['a', 'b', 'c'])
   expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected', 'fulfilled'])
 })
+
+test('a command with onStdout holds the queue only until its first output', async () => {
+  let finishLogin = (): void => undefined
+  const order: string[] = []
+  const inner: Runner = {
+    async run(s) {
+      order.push(`start ${s.display}`)
+      if (s.display === 'login') {
+        s.onStdout?.('{"status":"pending"}')
+        await new Promise<void>((resolve) => (finishLogin = resolve))
+      }
+      order.push(`end ${s.display}`)
+      return { stdout: '', stderr: '', exitCode: 0, durationMs: 0, command: s.display }
+    }
+  }
+  const runner = createSerialRunner(inner)
+  const login = runner.run({ ...spec('login'), onStdout: () => undefined })
+  await runner.run(spec('devices'))
+  finishLogin()
+  await login
+  expect(order).toEqual(['start login', 'start devices', 'end devices', 'end login'])
+})

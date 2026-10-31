@@ -7,10 +7,11 @@ interface FirstRunProps {
   highlight: CheckId | null
   onRecheck: (check: Check) => void
   startVvd?: { detail: string; busy: boolean; onStart: () => void }
+  onSetup?: () => void
 }
 
 // "Set up OVD": the first three checks in order (spec D7).
-export function FirstRun({ checks, highlight, onRecheck, startVvd }: FirstRunProps) {
+export function FirstRun({ checks, highlight, onRecheck, startVvd, onSetup }: FirstRunProps) {
   const cards = FIRST_RUN.flatMap((id) => checks.filter((c) => c.id === id))
   return (
     <div className="flex max-w-[860px] flex-1 flex-col gap-3.5 overflow-auto px-5.5 pt-6 pb-8">
@@ -27,6 +28,7 @@ export function FirstRun({ checks, highlight, onRecheck, startVvd }: FirstRunPro
           highlighted={highlight === check.id}
           onRecheck={() => onRecheck(check)}
           {...(startVvd ? { startVvd } : {})}
+          {...(onSetup ? { onSetup } : {})}
         />
       ))}
     </div>

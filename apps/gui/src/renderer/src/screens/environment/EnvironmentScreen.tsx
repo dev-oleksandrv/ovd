@@ -18,6 +18,8 @@ interface EnvironmentScreenProps {
   onGoDevices: () => void
   // "Run ovd doctor": shared with the palette, which toasts the same way.
   onRunDoctor: () => void
+  // Opens the new-stick wizard.
+  onSetup: () => void
 }
 
 // Re-check runs every check, so every Re-check echoes the whole doctor (ADR 0005).
@@ -29,7 +31,8 @@ export function EnvironmentScreen({
   firstRun,
   highlight,
   onGoDevices,
-  onRunDoctor
+  onRunDoctor,
+  onSetup
 }: EnvironmentScreenProps) {
   const { notify } = useFeedback()
   const { vvd } = useDevicesContext()
@@ -109,6 +112,7 @@ export function EnvironmentScreen({
               busy: vvd.busy === 'start',
               onStart: () => void startVvd()
             }}
+            onSetup={onSetup}
           />
         ) : (
           <DoctorTab
@@ -117,6 +121,7 @@ export function EnvironmentScreen({
             onRun={onRunDoctor}
             {...(firstRun ? { onSetupDone: onGoDevices } : {})}
             enableVvdDevmode={{ busy: vvd.enabling, onEnable: () => void enableVvdDevmode() }}
+            onSetup={onSetup}
           />
         ))}
     </div>

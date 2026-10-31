@@ -5,6 +5,7 @@ import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerPairing } from './commands/pair.js'
+import { registerSetupStick } from './commands/setupStick.js'
 import { registerTarget } from './commands/target.js'
 import { registerVvd } from './commands/vvd.js'
 
@@ -21,6 +22,9 @@ export interface CliDeps {
   // Calls `abort` on Ctrl+C until the returned function is called; for commands that must
   // stop their SDK process cleanly instead of being killed with it.
   onInterrupt: (abort: () => void) => () => void
+  // Asks on stderr and resolves with the answer; absent when stdin isn't a terminal, so
+  // commands that need input take it from flags instead.
+  prompt?: (question: string) => Promise<string>
 }
 
 export interface GlobalOptions {
@@ -55,5 +59,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerTarget(program, deps, setExitCode)
   registerVvd(program, deps, setExitCode)
   registerPairing(program, deps, setExitCode)
+  registerSetupStick(program, deps, setExitCode)
   return program
 }

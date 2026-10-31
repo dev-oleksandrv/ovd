@@ -53,6 +53,16 @@ describe('createExecaRunner', () => {
     expect(result).not.toHaveProperty('stopped')
   })
 
+  test('onStdout sees the output so far while the command keeps running', async () => {
+    const seen: string[] = []
+    const result = await runner.run({
+      ...node(`process.stdout.write('a');setTimeout(() => process.stdout.write('b'), 50)`),
+      onStdout: (stdout) => seen.push(stdout)
+    })
+    expect(seen).toEqual(['a', 'ab'])
+    expect(result).toMatchObject({ stdout: 'ab', exitCode: 0 })
+  })
+
   test('aborting rejects with an AbortError', async () => {
     const controller = new AbortController()
     const run = runner.run({ ...node('setTimeout(() => {}, 10000)'), signal: controller.signal })

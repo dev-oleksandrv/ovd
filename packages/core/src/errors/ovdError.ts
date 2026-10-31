@@ -16,6 +16,7 @@ export type ErrorCode =
   | 'NO_VENDORS'
   | 'VENDOR_REQUIRED'
   | 'CODE_REJECTED'
+  | 'INVALID_CODE'
   | 'PAIR_REFUSED'
   | 'PAIR_TIMEOUT'
   | 'DIFFERENT_NETWORK'

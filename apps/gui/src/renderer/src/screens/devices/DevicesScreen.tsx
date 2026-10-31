@@ -9,15 +9,17 @@ import { ErrorState } from '../../ui/ErrorState'
 import { LoadingState } from '../../ui/LoadingState'
 import { DeviceDetail } from './DeviceDetail'
 import { DeviceRow } from './DeviceRow'
+import { SetupHint } from './SetupHint'
 
 interface DevicesScreenProps {
+  // Opens the new-stick wizard.
+  onSetup: () => void
   // Opens the pairing wizard.
   onPair: () => void
 }
 
-// Devices (Stage 1.3, 1.4, 1.6, 1.7). The stick setup of a later slice is not drawn until it
-// ships (ADR 0018).
-export function DevicesScreen({ onPair }: DevicesScreenProps) {
+// Devices (Stage 1.3–1.7).
+export function DevicesScreen({ onSetup, onPair }: DevicesScreenProps) {
   const { state, rescan, setTarget, vvd } = useDevicesContext()
   const { notify } = useFeedback()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -110,6 +112,7 @@ export function DevicesScreen({ onPair }: DevicesScreenProps) {
           reconnecting={reconnecting}
           onReconnect={(device) => void reconnect(device)}
           onForget={(device) => void forget(device)}
+          onSetup={onSetup}
         />
       )}
     </div>
@@ -127,6 +130,7 @@ interface BodyProps {
   reconnecting: string | null
   onReconnect: (device: Device) => void
   onForget: (device: Device) => void
+  onSetup: () => void
 }
 
 function Body({
@@ -139,7 +143,8 @@ function Body({
   vvd,
   reconnecting,
   onReconnect,
-  onForget
+  onForget,
+  onSetup
 }: BodyProps) {
   const selected =
     devices.find((d) => d.id === selectedId) ?? devices.find((d) => d.id === target) ?? devices[0]
@@ -156,6 +161,11 @@ function Body({
               vvdBusy={vvd.busy}
             />
           ))}
+          {devices.length > 0 && (
+            <li className="list-none">
+              <SetupHint onSetup={onSetup} />
+            </li>
+          )}
         </ul>
       </div>
       {selected ? (
@@ -181,14 +191,19 @@ function Body({
           title="No devices yet"
           body="Start the Virtual Device, or set up a Fire TV stick with Developer Mode."
           actions={
-            <Button
-              variant="primary"
-              icon="desktop_windows"
-              loading={vvd.busy === 'start'}
-              onClick={() => void vvd.start()}
-            >
-              Start the Virtual Device
-            </Button>
+            <>
+              <Button
+                variant="primary"
+                icon="desktop_windows"
+                loading={vvd.busy === 'start'}
+                onClick={() => void vvd.start()}
+              >
+                Start the Virtual Device
+              </Button>
+              <Button icon="developer_mode_tv" onClick={onSetup}>
+                Set up a Fire TV stick
+              </Button>
+            </>
           }
         />
       )}

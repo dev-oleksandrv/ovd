@@ -2,6 +2,7 @@ import {
   OvdError,
   type Device,
   type Devices,
+  type Devmode,
   type ErrorCode,
   type Ovd,
   type Pairing,
@@ -95,6 +96,20 @@ export function stubPairing(pairing: Partial<Pairing>): Partial<Ovd> {
       forget: missing('forget'),
       reconnectSaved: missing('reconnectSaved'),
       ...pairing
+    }
+  }
+}
+
+// A core whose Developer Mode calls are scripted per test.
+export function stubDevmode(devmode: Partial<Devmode>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    devmode: {
+      signedIn: missing('signedIn'),
+      login: missing('login'),
+      enableDevice: missing('enableDevice'),
+      waitForStick: missing('waitForStick'),
+      ...devmode
     }
   }
 }

@@ -2,8 +2,10 @@ import type {
   Device,
   DevicesUpdate,
   DoctorReport,
+  EnableResult,
   ErrorJson,
   ForgetResult,
+  LoginPrompt,
   VvdState
 } from '@ovd/core'
 
@@ -53,6 +55,18 @@ export interface OvdApi {
     // Switches a stick OVD paired over USB back to USB first, when it is online.
     forget(id: string): Promise<IpcResult<ForgetResult>>
   }
+  setup: {
+    // Asks `vega devmode login --json` without waiting for a sign-in.
+    signedIn(): Promise<IpcResult<boolean>>
+    // Resolves once signed in; while it waits, `onLoginPrompt` gets the link and code to show.
+    login(): Promise<IpcResult<{ signedIn: true }>>
+    onLoginPrompt(listener: (prompt: LoginPrompt) => void): () => void
+    enable(code: string, vendor?: string): Promise<IpcResult<EnableResult>>
+    // Resolves with the stick once it is back on USB after the reboot.
+    waitForStick(): Promise<IpcResult<Device>>
+    // Stops a sign-in or wait in progress (the wizard closed).
+    cancel(): Promise<void>
+  }
 }
 
 export const channels = {
@@ -69,5 +83,11 @@ export const channels = {
   pairUsb: 'ovd:pair:usb',
   pairAddress: 'ovd:pair:address',
   connect: 'ovd:connect',
-  forget: 'ovd:forget'
+  forget: 'ovd:forget',
+  setupSignedIn: 'ovd:setup:signed-in',
+  setupLogin: 'ovd:setup:login',
+  setupLoginPrompt: 'ovd:setup:login-prompt',
+  setupEnable: 'ovd:setup:enable',
+  setupWait: 'ovd:setup:wait',
+  setupCancel: 'ovd:setup:cancel'
 } as const

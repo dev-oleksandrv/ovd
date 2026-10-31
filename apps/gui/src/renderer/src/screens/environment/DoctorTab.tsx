@@ -11,6 +11,7 @@ interface DoctorTabProps {
   // Shown once first run completes: "Setup complete" with a way to Devices.
   onSetupDone?: () => void
   enableVvdDevmode?: { busy: boolean; onEnable: () => void }
+  onSetup?: () => void
 }
 
 export function DoctorTab({
@@ -18,7 +19,8 @@ export function DoctorTab({
   running,
   onRun,
   onSetupDone,
-  enableVvdDevmode
+  enableVvdDevmode,
+  onSetup
 }: DoctorTabProps) {
   return (
     <div className="flex max-w-[860px] flex-1 flex-col gap-3.5 overflow-auto px-5.5 pt-5 pb-8">
@@ -50,6 +52,7 @@ export function DoctorTab({
             check={check}
             checking={running}
             {...(enableVvdDevmode ? { enableVvdDevmode } : {})}
+            {...(onSetup ? { onSetup } : {})}
           />
         ))}
       </ul>

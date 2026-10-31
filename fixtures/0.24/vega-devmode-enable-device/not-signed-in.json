@@ -1,0 +1,5 @@
+{
+  "status": "error",
+  "errorCode": 2,
+  "errorMessage": "Authentication required. Run 'vega devmode login' first"
+}
