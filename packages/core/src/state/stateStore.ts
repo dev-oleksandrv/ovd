@@ -10,15 +10,23 @@ const savedDeviceSchema = z.object({
   savedAt: z.string()
 })
 
+// The open project folder, or the .vpkg installed without a project (Stage 2.1).
+const openProjectSchema = z.object({
+  kind: z.enum(['folder', 'vpkg']),
+  path: z.string()
+})
+
 const hostStateSchema = z.object({
   version: z.literal(1),
   target: z.string().optional(),
   // Device names keyed by serial, so a stick keeps its name over USB and Wi‑Fi.
   names: z.record(z.string(), z.string()),
-  saved: z.array(savedDeviceSchema)
+  saved: z.array(savedDeviceSchema),
+  project: openProjectSchema.optional()
 })
 
 export type SavedDevice = z.infer<typeof savedDeviceSchema>
+export type OpenProject = z.infer<typeof openProjectSchema>
 export type HostState = z.infer<typeof hostStateSchema>
 
 // Frozen: read() hands out fresh copies, so callers may mutate what they get.

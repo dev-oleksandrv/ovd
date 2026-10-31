@@ -1,0 +1,34 @@
+validating '/home/dev/hellovega/manifest.toml' ...
+analyzing manifest.toml ...
+manifest.toml is valid
+manifest validation found 0 errors
+manifest.toml:3:1 info: [package.icon] Icon is not defined in the manifest. System default will be used.
+  help: Define icon to help users recognize your application
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.network.privilege.net-info' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to access network connection information. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.wifi.privilege.read-wifi-credential' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to read wifi credential. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.wifi.privilege.wifi-scan' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to scan wifi and get scan results. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.network.privilege.net-admin' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to configure network/wifi. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+
+🩺 Project Doctor
+
+  ✅ SDK manifest: 1 OS versions, 2 RN versions
+  ❌ OS versions valid: min "9.9" not in [1.2]
+  ❌ os.min ≤ os.target: 9.9 > 1.2
+  ✅ Dependencies: All 1 packages match manifest
+  ✅ needs.module at os.min: All needs available at os.min
+  ✅ needs.feature valid: All feature IDs known
+  ✅ Deprecated APIs: None
+  ⚠️  Scoped deps in profile: @amazon-devices/eslint-plugin-kepler not a managed OS-version package (typo, or a package the SDK does not track)
+  ✅ OS version lint: No OS version issues
+  ⚠️  VPT validation: VPT rejected manifest. Run: vpt validate manifest.toml
+  ✅ OS-version compatibility valid: No managed deps
+
+💡 To fix:
+  • Remove unknown scoped packages or check OS version
+  • Docs: https://developer.amazon.com/docs/vega/latest/vega-get-started.html
+
+❌ 2 check(s) failed. 2 warning(s).

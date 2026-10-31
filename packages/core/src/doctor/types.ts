@@ -1,4 +1,6 @@
-export type CheckId = 'sdk' | 'vda' | 'devices' | 'devmode' | 'metro' | 'node'
+import type { ProjectDoctorResult } from '../adapters/parseProjectDoctor.js'
+
+export type CheckId = 'sdk' | 'vda' | 'project' | 'devices' | 'devmode' | 'metro' | 'node'
 export type CheckStatus = 'ok' | 'info' | 'warn' | 'fail' | 'skipped'
 // What a surface can offer to fix a check; each surface shows only the fixes it has shipped.
 export type CheckFix =
@@ -13,6 +15,13 @@ export interface Check {
   command?: string
   hint?: string
   fix?: CheckFix
+  // The Project row's full `vega project doctor` result, for its Details view.
+  project?: ProjectDoctorReport
+}
+
+export interface ProjectDoctorReport extends ProjectDoctorResult {
+  // What the command printed (stderr after stdout), for "Copy output".
+  output: string
 }
 
 export interface HostInfo {

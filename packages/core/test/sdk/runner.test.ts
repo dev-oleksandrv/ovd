@@ -1,3 +1,5 @@
+import { realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { describe, expect, test } from 'vitest'
 import { OvdError } from '../../src/index.js'
 import { createExecaRunner } from '../../src/sdk/runner.js'
@@ -14,6 +16,12 @@ describe('createExecaRunner', () => {
     )
     expect(result).toMatchObject({ stdout: 'out', stderr: 'err', exitCode: 3, command: 'node' })
     expect(result.durationMs).toBeGreaterThanOrEqual(0)
+  })
+
+  test('runs the command in cwd when given', async () => {
+    const dir = realpathSync(tmpdir())
+    const result = await runner.run({ ...node('process.stdout.write(process.cwd())'), cwd: dir })
+    expect(result.stdout).toBe(dir)
   })
 
   test('a missing executable becomes COMMAND_FAILED', async () => {

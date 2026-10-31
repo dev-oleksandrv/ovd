@@ -53,3 +53,7 @@ Recorded with Vega SDK 0.24.12112 and Vega CLI 1.4.5 on macOS (arm64).
 | `vega-devmode-enable-device/enabled.json` | `vega devmode enable-device --code <code> --json` (exit 0, 1.4 s); the stick leaves `vda devices -l` at once and is back on USB 41 s later, with `unavailable.json` from `vega device info` for a moment | Fire TV stick showing a code, one vendor | 2026-10-31 |
 | `vega-devmode-enable-device/invalid-code.json` | same with a wrong code (exit 6, 3.4 s); a malformed code, an already-used code and the text mode give the same "Invalid code" | Fire TV stick showing a code | 2026-10-31 |
 | `vega-devmode-enable-device/not-signed-in.json` | same while signed out (exit 2, at once) | — | 2026-10-31 |
+| `vega-project-doctor/one-warning.txt` | `vega project doctor` in the project folder (stdout, exit 0, 2 s; no stderr; leaves the project untouched; works before `npm install`) | — `helloWorld` template, `com.example.hellovega`, path replaced | 2026-10-31 |
+| `vega-project-doctor/failed.txt` | same, with `[os.version] min = "9.9"` (stdout, exit 1) | — same project, edited manifest | 2026-10-31 |
+| `vega-project-doctor/failed.stderr.txt` | same (stderr, the `vpt` validation error) | — same project, edited manifest | 2026-10-31 |
+| `vega-project-doctor/no-project.txt` | `vega project doctor` in an empty folder (stdout, exit 1; no stderr) | — | 2026-10-31 |

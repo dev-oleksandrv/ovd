@@ -1,0 +1,18 @@
+🩺 Project Doctor
+
+  ❌ Project config: Missing OS Version and RN version.
+
+To fix:
+  • Run: vega project update-manifest --os-version <version> --os-min <version>
+  • Or add to manifest.toml:
+      [os.version]
+      target = "<version>"
+      min = "<version>"
+  • Install a RN package: npm install @amazon-devices/react-native-kepler
+  • Or pass --rn-version <X> for diagnostic checks (read-only override)
+
+💡 To fix:
+  • Run: vega project install --fix --os-version 2.0 --os-min 1.0
+  • Docs: https://developer.amazon.com/docs/vega/latest/vega-get-started.html
+
+❌ 1 check(s) failed.

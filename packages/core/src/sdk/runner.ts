@@ -9,6 +9,8 @@ export interface CommandSpec {
   timeoutMs?: number
   signal?: AbortSignal
   env?: Record<string, string>
+  // For commands that act on the folder they run in (`vega project doctor`).
+  cwd?: string
   // For commands that print an answer and then wait (`vega devmode login --json` when signed
   // out): once this returns true the runner stops the process and returns what it printed.
   stopWhen?: (stdout: string) => boolean
@@ -46,6 +48,7 @@ export function createExecaRunner(): Runner {
         cancelSignal: spec.signal,
         forceKillAfterDelay: 2_000,
         env: spec.env,
+        cwd: spec.cwd,
         stdin: 'ignore'
       })
       let stopped = false
