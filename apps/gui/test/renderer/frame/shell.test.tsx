@@ -130,11 +130,12 @@ describe('command palette', () => {
   const options = (): string[] =>
     screen.getAllByRole('option').map((o) => o.querySelector('div')?.textContent ?? '')
 
-  test('⌘K opens it with Devices, Doctor, the other devices and later screens', async () => {
+  test('⌘K opens it with Devices, Packages, Doctor, the other devices and later screens', async () => {
     await renderShell()
     open()
-    expect(options().slice(0, 8)).toEqual([
+    expect(options().slice(0, 9)).toEqual([
       'Go to Devices',
+      'Go to Packages',
       'Go to Doctor',
       'Set up a new stick (Developer Mode)',
       'Pair a device over Wi‑Fi…',
@@ -143,7 +144,7 @@ describe('command palette', () => {
       'Switch target to Vega Virtual Device',
       'Switch target to Bedroom stick'
     ])
-    expect(screen.getAllByText('Coming in a later version')).toHaveLength(9)
+    expect(screen.getAllByText('Coming in a later version')).toHaveLength(8)
   })
 
   test('on macOS Ctrl+K stays a text shortcut and does not open it', async () => {
@@ -188,9 +189,9 @@ describe('command palette', () => {
     const { api } = await renderShell()
     open()
     const input = screen.getByRole('combobox')
-    for (let i = 0; i < 7; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
+    for (let i = 0; i < 8; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'ArrowUp' })
-    expect(screen.getAllByRole('option')[6]?.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getAllByRole('option')[7]?.getAttribute('aria-selected')).toBe('true')
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(api.devices.setTarget).toHaveBeenCalledWith('VirtualDevice')
   })

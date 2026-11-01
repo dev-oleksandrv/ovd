@@ -22,10 +22,11 @@ const build = (
 }
 
 describe('paletteItems', () => {
-  test('lists Devices, Doctor, a switch per other device, then every later screen', () => {
+  test('lists Devices, Packages, Doctor, a switch per other device, then every later screen', () => {
     const { items } = build(stick.id)
     expect(items.map((i) => [i.label, i.kind])).toEqual([
       ['Go to Devices', 'Screen'],
+      ['Go to Packages', 'Screen'],
       ['Go to Doctor', 'Screen'],
       ['Set up a new stick (Developer Mode)', 'Action'],
       ['Pair a device over Wi‑Fi…', 'Action'],
@@ -52,12 +53,14 @@ describe('paletteItems', () => {
     items[0]?.run()
     expect(opts.go).toHaveBeenCalledWith('devices')
     items[1]?.run()
-    expect(opts.go).toHaveBeenCalledWith('doctor')
+    expect(opts.go).toHaveBeenCalledWith('packages')
     items[2]?.run()
-    expect(opts.setup).toHaveBeenCalled()
+    expect(opts.go).toHaveBeenCalledWith('doctor')
     items[3]?.run()
+    expect(opts.setup).toHaveBeenCalled()
+    items[4]?.run()
     expect(opts.pair).toHaveBeenCalled()
-    items[5]?.run()
+    items[6]?.run()
     expect(opts.runDoctor).toHaveBeenCalled()
   })
 
