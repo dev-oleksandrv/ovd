@@ -22,6 +22,9 @@ export type ErrorCode =
   | 'DIFFERENT_NETWORK'
   | 'INVALID_ADDRESS'
   | 'INVALID_NAME'
+  | 'PATH_NOT_FOUND'
+  | 'NOT_A_PROJECT'
+  | 'NOT_A_VPKG'
   | 'COMMAND_FAILED'
   | 'UNEXPECTED_OUTPUT'
 

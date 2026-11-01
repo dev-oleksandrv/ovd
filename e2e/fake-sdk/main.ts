@@ -1,7 +1,7 @@
 // The fake `vega`: answers each command core runs with a recorded output from fixtures/0.24
 // and its recorded exit code, and applies the command's effect to the world. A command with
 // no recording fails loudly and is logged as unhandled, which fails the test.
-import { appendFileSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -255,6 +255,25 @@ function virtualDevice(w: World, sub: string | undefined): Reply | null {
   return null
 }
 
+// `vega project doctor` checks the folder it runs in, so the answer follows that folder rather
+// than the world: no manifest (recorded in an empty folder), the recorded broken manifest
+// (`[os.version] min = "9.9"`), or the recorded template project with its one warning.
+function projectDoctor(): Reply {
+  const manifest = join(process.cwd(), 'manifest.toml')
+  const text = existsSync(manifest) ? readFileSync(manifest, 'utf8') : ''
+  if (!/^\[os\.version\]/m.test(text)) {
+    return { stdout: fixture('vega-project-doctor/no-project.txt'), exitCode: 1 }
+  }
+  if (/^min = "9\.9"/m.test(text)) {
+    return {
+      stdout: fixture('vega-project-doctor/failed.txt'),
+      stderr: fixture('vega-project-doctor/failed.stderr.txt'),
+      exitCode: 1
+    }
+  }
+  return { stdout: fixture('vega-project-doctor/one-warning.txt') }
+}
+
 async function answer(w: World): Promise<Reply | null> {
   const [first, second, ...rest] = args
   if (first === '--version' && second === undefined) {
@@ -278,6 +297,7 @@ async function answer(w: World): Promise<Reply | null> {
     return devmodeLogin(w)
   }
   if (first === 'devmode' && second === 'enable-device') return enableDevice(w, rest)
+  if (first === 'project' && second === 'doctor' && rest.length === 0) return projectDoctor()
   return null
 }
 

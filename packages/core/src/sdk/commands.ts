@@ -1,6 +1,6 @@
 import type { CommandSpec } from './runner.js'
 
-type RunOptions = Pick<CommandSpec, 'timeoutMs' | 'signal'>
+type RunOptions = Pick<CommandSpec, 'timeoutMs' | 'signal' | 'cwd'>
 
 // `display` always starts with `vega`, never the absolute path: it is what users see and copy.
 export function vegaCmd(vegaPath: string, args: string[], opts: RunOptions = {}): CommandSpec {

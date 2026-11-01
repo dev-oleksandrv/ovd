@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import type { DevicesUpdate, LoginPrompt } from '@ovd/core'
 import { channels, type OvdApi } from './api'
 
@@ -30,6 +30,13 @@ const api: OvdApi = {
     pair: (address) => ipcRenderer.invoke(channels.pairAddress, address),
     connect: (id) => ipcRenderer.invoke(channels.connect, id),
     forget: (id) => ipcRenderer.invoke(channels.forget, id)
+  },
+  project: {
+    current: () => ipcRenderer.invoke(channels.projectCurrent),
+    open: (path) => ipcRenderer.invoke(channels.projectOpen, path),
+    pickFolder: () => ipcRenderer.invoke(channels.projectPickFolder),
+    pickVpkg: () => ipcRenderer.invoke(channels.projectPickVpkg),
+    pathForFile: (file) => webUtils.getPathForFile(file)
   },
   setup: {
     signedIn: () => ipcRenderer.invoke(channels.setupSignedIn),

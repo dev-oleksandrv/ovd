@@ -20,7 +20,10 @@ const CODES: Partial<Record<ErrorCode, number>> = {
   DIFFERENT_NETWORK: 5,
   INVALID_ADDRESS: 2,
   INVALID_NAME: 2,
-  INVALID_CODE: 2
+  INVALID_CODE: 2,
+  PATH_NOT_FOUND: 2,
+  NOT_A_PROJECT: 2,
+  NOT_A_VPKG: 2
 }
 
 export function exitCodeFor(code: ErrorCode): number {

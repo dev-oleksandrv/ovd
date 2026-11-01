@@ -1,5 +1,6 @@
 import { parseDevmodeLogin } from '../adapters/parseDevmodeLogin.js'
 import { parseNodeVersion } from '../adapters/parseNodeVersion.js'
+import { parseProjectDoctor } from '../adapters/parseProjectDoctor.js'
 import { parseIsPortForwarded } from '../adapters/parseIsPortForwarded.js'
 import { parseSdkConfigDoctor } from '../adapters/parseSdkConfigDoctor.js'
 import { parseVdaVersion } from '../adapters/parseVdaVersion.js'
@@ -11,6 +12,7 @@ import { vdaCmd, vegaCmd, vegaDeviceCmd } from '../sdk/commands.js'
 import type { SdkInfo } from '../sdk/discoverSdk.js'
 import type { Runner } from '../sdk/runner.js'
 import type { SdkLocator } from '../sdk/sdkLocator.js'
+import type { Project } from '../project/project.js'
 import type { Vvd } from '../vvd/vvd.js'
 import type { Check, CheckId, DoctorReport, HostInfo } from './types.js'
 
@@ -19,6 +21,7 @@ export interface DoctorDeps {
   sdk: SdkLocator
   devices: Devices
   vvd: Pick<Vvd, 'developerMode'>
+  project: Pick<Project, 'current'>
   homedir: string
   // The user's login shell ($SHELL): it finds the Node that Metro and builds use.
   shell: string
@@ -34,6 +37,7 @@ export interface Doctor {
 const NAMES: Record<CheckId, string> = {
   sdk: 'Vega SDK',
   vda: 'VDA',
+  project: 'Project',
   devices: 'Devices',
   devmode: 'Developer Mode',
   metro: 'Metro',
@@ -44,6 +48,7 @@ const NAMES: Record<CheckId, string> = {
 const COMMANDS: Partial<Record<CheckId, string>> = {
   sdk: 'vega sdk config doctor --json',
   vda: 'vega exec vda version',
+  project: 'vega project doctor',
   devices: 'vega exec vda devices -l',
   devmode: 'vega devmode login --json',
   metro: 'vega device is-port-forwarded',
@@ -55,9 +60,12 @@ const NODE_MAJOR = 22
 const NODE_TIMEOUT_MS = 5_000
 // Signed in answers in 0.2 s; signed out prints `pending` at once and then waits for sign-in.
 const DEVMODE_TIMEOUT_MS = 5_000
+// Takes about 2 s on the template project; it validates the manifest with vpt.
+const PROJECT_TIMEOUT_MS = 60_000
 
 // A check names its command only when that command ran (commands shown are real).
-type Result = Pick<Check, 'status' | 'detail'> & Partial<Pick<Check, 'hint' | 'fix' | 'command'>>
+type Result = Pick<Check, 'status' | 'detail'> &
+  Partial<Pick<Check, 'hint' | 'fix' | 'command' | 'project'>>
 
 function check(id: CheckId, result: Result): Check {
   return { id, name: NAMES[id], ...result }
@@ -254,6 +262,57 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     return ran('metro', { status: 'info', detail: `${host} · ${where}` })
   }
 
+  async function projectCheck(sdk: SdkInfo | undefined): Promise<Result> {
+    const open = await deps.project.current()
+    if (open === null) return { status: 'info', detail: 'No project open' }
+    if (open.kind === 'vpkg') {
+      return open.missing
+        ? {
+            status: 'warn',
+            detail: `${open.file} not found`,
+            hint: 'Open another .vpkg or a project folder'
+          }
+        : { status: 'ok', detail: `No project open · installing from ${open.file}` }
+    }
+    if (open.missing) {
+      return {
+        status: 'fail',
+        detail: `${open.displayPath} is no longer a Vega project`,
+        hint: 'Open the project folder again with ovd open <folder>'
+      }
+    }
+    if (!sdk) return skipped('Waiting for the Vega SDK')
+    return ran(
+      'project',
+      await guarded(async () => {
+        const run = await deps.runner.run(
+          vegaCmd(sdk.vegaPath, ['project', 'doctor'], {
+            cwd: open.path,
+            timeoutMs: PROJECT_TIMEOUT_MS
+          })
+        )
+        const parsed = parseProjectDoctor(run.stdout)
+        const output = run.stderr ? `${run.stdout}\n${run.stderr}` : run.stdout
+        const project = { ...parsed, output }
+        const hint = parsed.fixes[0] ?? 'See vega project doctor'
+        const [onlyFailure] = parsed.checks.filter((c) => c.status === 'fail')
+        if (parsed.failed === 1 && onlyFailure) {
+          const reason = onlyFailure.message.replace(/\.$/, '')
+          return { status: 'fail', detail: `vega project doctor · ${reason}`, hint, project }
+        }
+        if (parsed.failed > 0) {
+          const detail = `vega project doctor · ${parsed.failed} checks failed, ${plural(parsed.warnings, 'warning')}`
+          return { status: 'fail', detail, hint, project }
+        }
+        if (parsed.warnings > 0) {
+          const detail = `vega project doctor · 0 errors, ${plural(parsed.warnings, 'warning')}`
+          return { status: 'warn', detail, hint, project }
+        }
+        return { status: 'ok', detail: 'vega project doctor · all checks passed', project }
+      }, 'warn')
+    )
+  }
+
   // An app started from Finder or the Dock doesn't get the shell PATH, so `node` from the
   // app's own PATH would miss an nvm/fnm/Volta install; `-i` because nvm loads from ~/.zshrc.
   async function nodeCheck(): Promise<{ result: Result; node?: string }> {
@@ -324,9 +383,10 @@ export function createDoctor(deps: DoctorDeps): Doctor {
             ? ran('devmode', await devmodeCheck(sdk))
             : skipped('Needs the Vega CLI (SDK Manager)'))
       }
+      results.project = await projectCheck(sdk)
       const { result: nodeResult, node } = await nodeCheck()
       results.node = nodeResult
-      const order: CheckId[] = ['sdk', 'vda', 'devices', 'devmode', 'metro', 'node']
+      const order: CheckId[] = ['sdk', 'vda', 'project', 'devices', 'devmode', 'metro', 'node']
       return {
         host: node === undefined ? host : { ...host, node },
         checks: order.flatMap((id) => {
@@ -336,4 +396,8 @@ export function createDoctor(deps: DoctorDeps): Doctor {
       }
     }
   }
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
 }

@@ -8,6 +8,8 @@ interface AppFrameProps {
   version: string | null
   platform: 'darwin' | 'linux' | null
   sidebar?: ReactNode
+  // Pinned to the sidebar's bottom: the project card (Stage 2.1).
+  sidebarFooter?: ReactNode
   // Title bar controls after the logo, and status bar items left of the CLI echo.
   titleBar?: ReactNode
   status?: ReactNode
@@ -19,6 +21,7 @@ export function AppFrame({
   version,
   platform,
   sidebar,
+  sidebarFooter,
   titleBar,
   status,
   children
@@ -29,7 +32,7 @@ export function AppFrame({
         {titleBar}
       </TitleBar>
       <div className="flex min-h-0 flex-1">
-        <Sidebar>{sidebar}</Sidebar>
+        <Sidebar footer={sidebarFooter}>{sidebar}</Sidebar>
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">{children}</main>
       </div>
       <StatusBar>{status}</StatusBar>

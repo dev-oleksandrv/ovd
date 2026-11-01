@@ -1,0 +1,4 @@
+Error: Validation failed with the following errors:
+Error 1: [os.version] contains value(s) not in the OS Version registry.
+  - min: '9.9' is not minted
+  Valid OS Versions: "1.2"

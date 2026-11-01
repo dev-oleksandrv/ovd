@@ -6,6 +6,7 @@ import {
   type ErrorCode,
   type Ovd,
   type Pairing,
+  type Project,
   type Vvd
 } from '@ovd/core'
 
@@ -66,6 +67,19 @@ export function stubOvd(devices: Partial<Devices>): Partial<Ovd> {
       setTarget: missing('setTarget'),
       invalidate: () => undefined,
       ...devices
+    }
+  }
+}
+
+// A core whose project calls are scripted per test.
+export function stubProject(project: Partial<Project>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    project: {
+      open: missing('open'),
+      current: missing('current'),
+      close: missing('close'),
+      ...project
     }
   }
 }

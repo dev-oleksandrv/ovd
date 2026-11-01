@@ -29,6 +29,12 @@ export {
   parseVsmDeveloperMode,
   parseVsmDeveloperModeSet
 } from './adapters/parseVsmDeveloperMode.js'
+export { parseProjectDoctor } from './adapters/parseProjectDoctor.js'
+export type {
+  ProjectCheck,
+  ProjectCheckStatus,
+  ProjectDoctorResult
+} from './adapters/parseProjectDoctor.js'
 export { discoverSdk, defaultDiscoverOptions } from './sdk/discoverSdk.js'
 export type { DiscoverOptions, SdkInfo } from './sdk/discoverSdk.js'
 export { createSdkLocator } from './sdk/sdkLocator.js'
@@ -38,7 +44,7 @@ export { createSerialRunner } from './sdk/serialRunner.js'
 export type { CommandSpec, Runner, RunResult } from './sdk/runner.js'
 export { resolveOvdHome } from './state/ovdHome.js'
 export { createStateStore, emptyState } from './state/stateStore.js'
-export type { HostState, SavedDevice, StateStore } from './state/stateStore.js'
+export type { HostState, OpenProject, SavedDevice, StateStore } from './state/stateStore.js'
 export { createActivityLog } from './activity/activityLog.js'
 export type { ActivityAction, ActivityEntry, ActivityLog, Surface } from './activity/activityLog.js'
 export { canonicalId, classifyVdaEntry, defaultName } from './devices/deviceModel.js'
@@ -67,7 +73,8 @@ export type {
   CheckId,
   CheckStatus,
   DoctorReport,
-  HostInfo
+  HostInfo,
+  ProjectDoctorReport
 } from './doctor/types.js'
 export { createVvd } from './vvd/vvd.js'
 export type { Vvd, VvdDeps, VvdState, VvdStatus } from './vvd/vvd.js'
@@ -85,3 +92,12 @@ export type { Address, HostNetwork } from './pairing/address.js'
 export { createDevmode, STICK_WAIT_MS } from './devmode/devmode.js'
 export type { Devmode, DevmodeDeps, EnableResult } from './devmode/devmode.js'
 export { normalizeCode } from './devmode/code.js'
+export { createProject } from './project/project.js'
+export type {
+  FolderProject,
+  Project,
+  ProjectDeps,
+  ProjectMode,
+  VpkgSource
+} from './project/project.js'
+export type { ProjectManifest } from './project/readProject.js'

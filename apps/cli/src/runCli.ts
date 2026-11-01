@@ -5,7 +5,6 @@ import { createProgram, type CliDeps } from './program.js'
 export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
   let exitCode = 0
   const program = createProgram(deps, (code) => (exitCode = code))
-  program.exitOverride()
   try {
     await program.parseAsync(argv, { from: 'user' })
   } catch (error) {

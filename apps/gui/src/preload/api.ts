@@ -6,6 +6,7 @@ import type {
   ErrorJson,
   ForgetResult,
   LoginPrompt,
+  ProjectMode,
   VvdState
 } from '@ovd/core'
 
@@ -55,6 +56,17 @@ export interface OvdApi {
     // Switches a stick OVD paired over USB back to USB first, when it is online.
     forget(id: string): Promise<IpcResult<ForgetResult>>
   }
+  project: {
+    // The open project folder or .vpkg; null in no-project mode with nothing loaded.
+    current(): Promise<IpcResult<ProjectMode | null>>
+    // Opens a folder or .vpkg path (a dropped file), as `ovd open <path>` does.
+    open(path: string): Promise<IpcResult<ProjectMode>>
+    // Native pickers run in main; null when the user cancels.
+    pickFolder(): Promise<IpcResult<ProjectMode | null>>
+    pickVpkg(): Promise<IpcResult<ProjectMode | null>>
+    // The path of a dropped file; the renderer gets no file paths otherwise.
+    pathForFile(file: File): string
+  }
   setup: {
     // Asks `vega devmode login --json` without waiting for a sign-in.
     signedIn(): Promise<IpcResult<boolean>>
@@ -84,6 +96,10 @@ export const channels = {
   pairAddress: 'ovd:pair:address',
   connect: 'ovd:connect',
   forget: 'ovd:forget',
+  projectCurrent: 'ovd:project:current',
+  projectOpen: 'ovd:project:open',
+  projectPickFolder: 'ovd:project:pick-folder',
+  projectPickVpkg: 'ovd:project:pick-vpkg',
   setupSignedIn: 'ovd:setup:signed-in',
   setupLogin: 'ovd:setup:login',
   setupLoginPrompt: 'ovd:setup:login-prompt',

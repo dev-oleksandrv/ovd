@@ -1,4 +1,5 @@
-import type { Check, CheckId } from '@ovd/core'
+import type { Check, CheckId, ProjectMode } from '@ovd/core'
+import { useState } from 'react'
 import type { DoctorHook } from '../../doctor/useDoctor'
 import { useDevicesContext } from '../../devices/devicesContext'
 import { useFeedback } from '../../feedback/feedbackContext'
@@ -9,6 +10,7 @@ import { Tabs } from '../../ui/Tabs'
 import { DoctorTab } from './DoctorTab'
 import { firstRunPassed, vvdArchLine } from './doctorView'
 import { FirstRun } from './FirstRun'
+import { ProjectDoctorModal } from './ProjectDoctorModal'
 
 interface EnvironmentScreenProps {
   doctor: DoctorHook
@@ -20,6 +22,9 @@ interface EnvironmentScreenProps {
   onRunDoctor: () => void
   // Opens the new-stick wizard.
   onSetup: () => void
+  // The open project, for the Project row's Details title.
+  project: ProjectMode | null
+  onOpenFolder: () => void
 }
 
 // Re-check runs every check, so every Re-check echoes the whole doctor (ADR 0005).
@@ -32,11 +37,14 @@ export function EnvironmentScreen({
   highlight,
   onGoDevices,
   onRunDoctor,
-  onSetup
+  onSetup,
+  project,
+  onOpenFolder
 }: EnvironmentScreenProps) {
   const { notify } = useFeedback()
   const { vvd } = useDevicesContext()
   const { state, running } = doctor
+  const [details, setDetails] = useState(false)
 
   // Both fixes change what doctor reports, so it runs again after each (design `frVvd`).
   const startVvd = async (): Promise<void> => {
@@ -71,6 +79,24 @@ export function EnvironmentScreen({
   }
 
   const report = state.status === 'ready' ? state.report : null
+  // Read from the latest report, so Re-run updates the open dialog.
+  const projectCheck = report?.checks.find((c) => c.id === 'project')
+
+  const copyProjectOutput = async (): Promise<void> => {
+    if (!projectCheck?.project) return
+    try {
+      await navigator.clipboard.writeText(projectCheck.project.output)
+      notify({ tone: 'ok', text: 'Copied doctor output', cli: 'ovd doctor' })
+    } catch {
+      notify({ tone: 'error', text: 'Couldn’t copy to the clipboard' })
+    }
+  }
+
+  const rerunProjectDoctor = async (): Promise<void> => {
+    const result = await doctor.run()
+    if (result.ok) notify({ tone: 'info', text: 'Project doctor finished', cli: 'ovd doctor' })
+    else notify({ tone: 'error', text: result.error.message, cli: 'ovd doctor' })
+  }
   const host = report?.host
   const inFirstRun = firstRun && report !== null && !firstRunPassed(report.checks)
 
@@ -122,8 +148,21 @@ export function EnvironmentScreen({
             {...(firstRun ? { onSetupDone: onGoDevices } : {})}
             enableVvdDevmode={{ busy: vvd.enabling, onEnable: () => void enableVvdDevmode() }}
             onSetup={onSetup}
+            onOpenFolder={onOpenFolder}
+            onProjectDetails={() => setDetails(true)}
           />
         ))}
+      {details && projectCheck?.project && project?.kind === 'folder' && (
+        <ProjectDoctorModal
+          name={project.name}
+          displayPath={project.displayPath}
+          report={projectCheck.project}
+          running={running}
+          onCopy={() => void copyProjectOutput()}
+          onRerun={() => void rerunProjectDoctor()}
+          onClose={() => setDetails(false)}
+        />
+      )}
     </div>
   )
 }

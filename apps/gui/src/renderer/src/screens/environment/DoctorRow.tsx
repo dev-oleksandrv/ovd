@@ -11,12 +11,26 @@ interface DoctorRowProps {
   enableVvdDevmode?: { busy: boolean; onEnable: () => void }
   // Opens the new-stick wizard (fix `setup-stick`).
   onSetup?: () => void
+  // Project row: opens the folder picker while no project is open.
+  onOpenFolder?: () => void
+  // Project row: shows every `vega project doctor` check.
+  onDetails?: () => void
 }
 
 // One row of the Doctor list. Fix buttons join with the slices that ship them (ADR 0018).
-export function DoctorRow({ check, checking = false, enableVvdDevmode, onSetup }: DoctorRowProps) {
+export function DoctorRow({
+  check,
+  checking = false,
+  enableVvdDevmode,
+  onSetup,
+  onOpenFolder,
+  onDetails
+}: DoctorRowProps) {
   const enable = !checking && check.fix === 'enable-vvd-devmode' ? enableVvdDevmode : undefined
   const setup = !checking && check.fix === 'setup-stick' ? onSetup : undefined
+  const openFolder =
+    !checking && check.id === 'project' && check.status === 'info' ? onOpenFolder : undefined
+  const details = !checking && check.project ? onDetails : undefined
   const view = rowView(check.status)
   return (
     <li className="flex items-center gap-3 border-b border-line-row bg-panel px-4 py-3 last:border-b-0">
@@ -28,7 +42,7 @@ export function DoctorRow({ check, checking = false, enableVvdDevmode, onSetup }
       />
       <div className="w-[140px] flex-none font-medium">{check.name}</div>
       <div className="min-w-0 flex-1 text-compact text-muted">
-        {checking ? 'Checking…' : check.detail}
+        {checking ? checkingText(check) : check.detail}
       </div>
       {check.command && (
         <div className="min-w-0 flex-[0_1_190px] truncate text-right font-mono text-label text-dim">
@@ -45,6 +59,20 @@ export function DoctorRow({ check, checking = false, enableVvdDevmode, onSetup }
           Set up
         </Button>
       )}
+      {openFolder && (
+        <Button size="sm" onClick={openFolder}>
+          Open folder…
+        </Button>
+      )}
+      {details && (
+        <Button size="sm" onClick={details}>
+          Details
+        </Button>
+      )}
     </li>
   )
+}
+
+function checkingText(check: Check): string {
+  return check.id === 'project' && check.command ? 'Running vega project doctor…' : 'Checking…'
 }

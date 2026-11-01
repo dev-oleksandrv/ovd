@@ -5,6 +5,7 @@ import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerPairing } from './commands/pair.js'
+import { registerProject } from './commands/project.js'
 import { registerSetupStick } from './commands/setupStick.js'
 import { registerTarget } from './commands/target.js'
 import { registerVvd } from './commands/vvd.js'
@@ -43,6 +44,9 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
     .option('--json', 'machine-readable output')
     .option('--device <id>', 'device to use instead of the target')
     .configureOutput({ writeOut: output.stdout, writeErr: output.stderr })
+    // Before any subcommand is added: subcommands copy it when created, so a missing argument
+    // becomes a usage error (exit 2) instead of commander calling process.exit(1).
+    .exitOverride()
 
   program
     .command('hello')
@@ -60,5 +64,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerVvd(program, deps, setExitCode)
   registerPairing(program, deps, setExitCode)
   registerSetupStick(program, deps, setExitCode)
+  registerProject(program, deps, setExitCode)
   return program
 }

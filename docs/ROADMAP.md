@@ -154,7 +154,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 ### 2.1 Project card and no-project mode
 
-- Sidebar bottom: project card (folder, path, "SDK pinned 0.24.x · RN 0.72") or "No project" with "Drop a .vpkg" / "Open a project folder…".
+- Sidebar bottom: project card (folder, path, "OS 1.2 · RN 0.72"; a project records no SDK version) or "No project" with "Drop a .vpkg" / "Open a project folder…".
 - CLI `ovd open <folder>`; commands accept `--vpkg <file>` without a project.
 - Doctor gets the Project row (`vega project doctor` summary, or "No project open · installing from <file>").
 

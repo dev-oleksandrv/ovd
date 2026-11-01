@@ -6,6 +6,7 @@ import { createOvd } from '@ovd/core'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerIpcHandlers } from './ipc'
 import { registerPairingIpc } from './pairingIpc'
+import { registerProjectIpc } from './projectIpc'
 import { registerSetupIpc } from './setupIpc'
 import { registerVvdIpc } from './vvdIpc'
 
@@ -74,6 +75,7 @@ app.whenReady().then(() => {
   registerIpcHandlers(ovd)
   registerVvdIpc(ovd, devices.refresh)
   registerPairingIpc(ovd, devices.refresh)
+  registerProjectIpc(ovd, () => mainWindow)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
 
   createWindow()

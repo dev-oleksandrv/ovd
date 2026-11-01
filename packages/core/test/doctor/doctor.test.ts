@@ -6,6 +6,7 @@ import {
   type Check,
   type Device,
   type Devices,
+  type ProjectMode,
   type DevicesSnapshot,
   type SdkInfo
 } from '../../src/index.js'
@@ -70,6 +71,8 @@ interface Setup {
   inUse?: number[]
   // What `vvd.developerMode()` answers; it may only be asked while the Virtual Device is online.
   vvdDevmode?: boolean | OvdError
+  // What `project.current()` answers; nothing open by default.
+  project?: ProjectMode | null
 }
 
 const VSM = 'vega exec vda -s emulator-5554 shell vsm developer-mode'
@@ -112,6 +115,7 @@ function setup(opts: Setup = {}) {
     sdk,
     devices,
     vvd: vvdDeps,
+    project: { current: async () => opts.project ?? null },
     homedir: '/home/dev',
     shell: '/bin/zsh',
     host: async () => ({ os: 'macOS', osVersion: '26.6', arch: 'arm64' }),
@@ -131,12 +135,13 @@ describe('Doctor.run', () => {
     expect(report.checks.map((c) => c.id)).toEqual([
       'sdk',
       'vda',
+      'project',
       'devices',
       'devmode',
       'metro',
       'node'
     ])
-    expect(statuses(report.checks)).toEqual(['ok', 'ok', 'ok', 'ok', 'info', 'ok'])
+    expect(statuses(report.checks)).toEqual(['ok', 'ok', 'info', 'ok', 'ok', 'info', 'ok'])
     expect(report.checks).toMatchObject([
       {
         name: 'Vega SDK',
@@ -144,6 +149,7 @@ describe('Doctor.run', () => {
         command: SDK_DOCTOR
       },
       { name: 'VDA', detail: 'Checked with vega exec vda version', command: VDA_VERSION },
+      { name: 'Project', detail: 'No project open' },
       {
         name: 'Devices',
         detail: '1 online · 1 unavailable',
@@ -218,7 +224,7 @@ describe('Doctor.run', () => {
       status: 'skipped',
       detail: 'Needs the Vega CLI (SDK Manager)'
     })
-    expect(statuses(checks).slice(1, 3)).toEqual(['ok', 'ok'])
+    expect([check(checks, 'vda')?.status, check(checks, 'devices')?.status]).toEqual(['ok', 'ok'])
     expect(check(checks, 'sdk')).not.toHaveProperty('command')
     expect(check(checks, 'devmode')).not.toHaveProperty('command')
   })
@@ -428,6 +434,107 @@ describe('Doctor.run', () => {
       const { doctor, vvdAsked } = setup({ vvdDevmode: false })
       await doctor.run()
       expect(vvdAsked).toEqual([])
+    })
+  })
+})
+
+describe('Doctor.run: Project row', () => {
+  const PROJECT_DOCTOR = 'vega project doctor'
+  const folder: ProjectMode = {
+    kind: 'folder',
+    path: '/home/dev/dev/hellovega',
+    displayPath: '~/dev/hellovega',
+    name: 'hellovega',
+    osTarget: '1.2',
+    rnVersion: '0.83'
+  }
+  const withProjectDoctor = (result: { stdout: string; stderr?: string; exitCode?: number }) => ({
+    script: { ...healthy(), [PROJECT_DOCTOR]: result },
+    project: folder
+  })
+
+  test('nothing open: info, and no command runs', async () => {
+    const { doctor, runner } = setup()
+    const { checks } = await doctor.run()
+    expect(check(checks, 'project')).toEqual({
+      id: 'project',
+      name: 'Project',
+      status: 'info',
+      detail: 'No project open'
+    })
+    expect(runner.count(PROJECT_DOCTOR)).toBe(0)
+  })
+
+  test('a .vpkg open without a project: ok, naming the file', async () => {
+    const { doctor, runner } = setup({
+      project: {
+        kind: 'vpkg',
+        path: '/home/dev/Downloads/player-1.4.2-armv7.vpkg',
+        displayPath: '~/Downloads/player-1.4.2-armv7.vpkg',
+        file: 'player-1.4.2-armv7.vpkg'
+      }
+    })
+    const { checks } = await doctor.run()
+    expect(check(checks, 'project')).toMatchObject({
+      status: 'ok',
+      detail: 'No project open · installing from player-1.4.2-armv7.vpkg'
+    })
+    expect(runner.count(PROJECT_DOCTOR)).toBe(0)
+  })
+
+  test('runs vega project doctor in the project folder and keeps its result for Details', async () => {
+    const stdout = fixture('0.24/vega-project-doctor/one-warning.txt')
+    const { doctor, runner } = setup(withProjectDoctor({ stdout }))
+    const { checks } = await doctor.run()
+    expect(runner.calls.find((c) => c.display === PROJECT_DOCTOR)?.cwd).toBe(folder.path)
+    const row = check(checks, 'project')
+    expect(row).toMatchObject({
+      status: 'warn',
+      detail: 'vega project doctor · 0 errors, 1 warning',
+      command: PROJECT_DOCTOR,
+      hint: 'Remove unknown scoped packages or check OS version'
+    })
+    expect(row?.project?.checks).toHaveLength(10)
+    expect(row?.project?.output).toBe(stdout)
+  })
+
+  test('failed checks fail the row, and stderr is kept in the output', async () => {
+    const stdout = fixture('0.24/vega-project-doctor/failed.txt')
+    const stderr = fixture('0.24/vega-project-doctor/failed.stderr.txt')
+    const { doctor } = setup(withProjectDoctor({ stdout, stderr, exitCode: 1 }))
+    const row = check((await doctor.run()).checks, 'project')
+    expect(row).toMatchObject({
+      status: 'fail',
+      detail: 'vega project doctor · 2 checks failed, 2 warnings'
+    })
+    expect(row?.project?.output).toContain('is not minted')
+  })
+
+  test('one failed check names it', async () => {
+    const stdout = fixture('0.24/vega-project-doctor/no-project.txt')
+    const { doctor } = setup(withProjectDoctor({ stdout, exitCode: 1 }))
+    expect(check((await doctor.run()).checks, 'project')).toMatchObject({
+      status: 'fail',
+      detail: 'vega project doctor · Missing OS Version and RN version'
+    })
+  })
+
+  test('a folder that is no longer a project fails without running the command', async () => {
+    const { doctor, runner } = setup({ project: { ...folder, missing: true } })
+    const row = check((await doctor.run()).checks, 'project')
+    expect(row).toMatchObject({
+      status: 'fail',
+      detail: '~/dev/hellovega is no longer a Vega project'
+    })
+    expect(row?.hint).toBeTruthy()
+    expect(runner.count(PROJECT_DOCTOR)).toBe(0)
+  })
+
+  test('unreadable output warns instead of failing doctor', async () => {
+    const { doctor } = setup(withProjectDoctor({ stdout: 'Usage: vega project doctor\n' }))
+    expect(check((await doctor.run()).checks, 'project')).toMatchObject({
+      status: 'warn',
+      command: PROJECT_DOCTOR
     })
   })
 })
