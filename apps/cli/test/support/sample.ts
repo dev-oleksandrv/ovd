@@ -5,6 +5,7 @@ import {
   type Devmode,
   type ErrorCode,
   type Ovd,
+  type Packages,
   type Pairing,
   type Project,
   type Vvd
@@ -125,5 +126,17 @@ export function stubDevmode(devmode: Partial<Devmode>): Partial<Ovd> {
       waitForStick: missing('waitForStick'),
       ...devmode
     }
+  }
+}
+
+// A core whose package calls (and the open project, for `pkg list`) are scripted per test.
+export function stubPackages(
+  packages: Partial<Packages>,
+  project: Partial<Project> = {}
+): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    ...stubProject(project),
+    packages: { info: missing('info'), builds: missing('builds'), ...packages }
   }
 }

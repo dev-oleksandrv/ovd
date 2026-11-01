@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { OvdError } from '../errors/ovdError.js'
 import type { OpenProject, StateStore } from '../state/stateStore.js'
+import { expandHome, tildePath } from './paths.js'
 import { PROJECT_FILES, readProject, type ProjectManifest } from './readProject.js'
 
 export interface FolderProject extends ProjectManifest {
@@ -41,10 +42,7 @@ export interface Project {
 }
 
 export function createProject(deps: ProjectDeps): Project {
-  const tilde = (path: string) =>
-    path === deps.homedir || path.startsWith(`${deps.homedir}/`)
-      ? `~${path.slice(deps.homedir.length)}`
-      : path
+  const tilde = (path: string) => tildePath(path, deps.homedir)
 
   async function describe(open: OpenProject): Promise<ProjectMode> {
     const displayPath = tilde(open.path)
@@ -127,8 +125,4 @@ async function isVpkg(path: string): Promise<boolean> {
   if (!/\.vpkg$/i.test(path)) return false
   const info = await stat(path).catch(() => undefined)
   return info !== undefined && info.isFile() && info.size > 0
-}
-
-function expandHome(path: string, homedir: string): string {
-  return path === '~' || path.startsWith('~/') ? homedir + path.slice(1) : path
 }

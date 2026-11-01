@@ -1,0 +1,13 @@
+{
+  "title": "Sample Player",
+  "id": "com.example.player",
+  "version": "1.4.2",
+  "build_number": 142,
+  "size": 2817790,
+  "os_version_registry": {
+    "contract_package_version": "1.0.323.0",
+    "os_versions": [
+      "1.2"
+    ]
+  }
+}

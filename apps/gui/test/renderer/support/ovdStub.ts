@@ -6,6 +6,8 @@ import type {
   EnableResult,
   ForgetResult,
   LoginPrompt,
+  PackageBuild,
+  PackageInfo,
   ProjectMode,
   VvdState
 } from '@ovd/core'
@@ -103,6 +105,8 @@ export function stubOvd(opts: {
   setup?: Partial<Omit<OvdApi['setup'], 'onLoginPrompt'>>
   // Nothing open unless a test says otherwise.
   project?: Partial<OvdApi['project']>
+  // No builds unless a test says otherwise.
+  packages?: Partial<OvdApi['packages']>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
@@ -166,6 +170,14 @@ export function stubOvd(opts: {
       pathForFile: vi.fn(
         opts.project?.pathForFile ?? ((file: File) => `/home/dev/Downloads/${file.name}`)
       )
+    },
+    packages: {
+      info: vi.fn(opts.packages?.info ?? (async () => unexpected<PackageInfo>('packages.info'))),
+      builds: vi.fn(
+        opts.packages?.builds ??
+          (async (): Promise<IpcResult<PackageBuild[]>> => ({ ok: true, data: [] }))
+      ),
+      pick: vi.fn(opts.packages?.pick ?? (async () => unexpected<string | null>('packages.pick')))
     },
     setup: {
       signedIn: vi.fn(opts.setup?.signedIn ?? (async () => unexpected<boolean>('setup.signedIn'))),

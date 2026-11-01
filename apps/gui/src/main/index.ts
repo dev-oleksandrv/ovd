@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { createOvd } from '@ovd/core'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerIpcHandlers } from './ipc'
+import { registerPackagesIpc } from './packagesIpc'
 import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
 import { registerSetupIpc } from './setupIpc'
@@ -76,6 +77,7 @@ app.whenReady().then(() => {
   registerVvdIpc(ovd, devices.refresh)
   registerPairingIpc(ovd, devices.refresh)
   registerProjectIpc(ovd, () => mainWindow)
+  registerPackagesIpc(ovd, () => mainWindow)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
 
   createWindow()

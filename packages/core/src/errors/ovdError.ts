@@ -25,6 +25,7 @@ export type ErrorCode =
   | 'PATH_NOT_FOUND'
   | 'NOT_A_PROJECT'
   | 'NOT_A_VPKG'
+  | 'NO_PACKAGE'
   | 'COMMAND_FAILED'
   | 'UNEXPECTED_OUTPUT'
 

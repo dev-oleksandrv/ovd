@@ -38,6 +38,11 @@ const api: OvdApi = {
     pickVpkg: () => ipcRenderer.invoke(channels.projectPickVpkg),
     pathForFile: (file) => webUtils.getPathForFile(file)
   },
+  packages: {
+    info: (path) => ipcRenderer.invoke(channels.packagesInfo, path),
+    builds: () => ipcRenderer.invoke(channels.packagesBuilds),
+    pick: () => ipcRenderer.invoke(channels.packagesPick)
+  },
   setup: {
     signedIn: () => ipcRenderer.invoke(channels.setupSignedIn),
     login: () => ipcRenderer.invoke(channels.setupLogin),

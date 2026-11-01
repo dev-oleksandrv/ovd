@@ -14,6 +14,7 @@ import { SearchButton } from './frame/SearchButton'
 import { TargetPicker } from './frame/TargetPicker'
 import { TargetStatus } from './frame/TargetStatus'
 import { DevicesScreen } from './screens/devices/DevicesScreen'
+import { PackagesScreen } from './screens/packages/PackagesScreen'
 import { PairWizard } from './pairing/PairWizard'
 import { useFileDrop } from './project/useFileDrop'
 import { useProject } from './project/useProject'
@@ -201,6 +202,12 @@ function Shell() {
               active={!gallery && screen === 'devices'}
               onClick={() => go('devices')}
             />
+            <NavItem
+              label="Packages"
+              icon="deployed_code"
+              active={!gallery && screen === 'packages'}
+              onClick={() => go('packages')}
+            />
           </NavGroup>
           <NavGroup label="Setup">
             <NavItem
@@ -226,6 +233,11 @@ function Shell() {
           onRunDoctor={() => void runDoctor()}
           onSetup={() => setSettingUp(true)}
           project={projectMode}
+          onOpenFolder={() => void project.pickFolder()}
+        />
+      ) : screen === 'packages' ? (
+        <PackagesScreen
+          projectPath={projectMode?.path ?? null}
           onOpenFolder={() => void project.pickFolder()}
         />
       ) : (

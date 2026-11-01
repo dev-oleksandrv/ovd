@@ -162,7 +162,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 ### 2.2 Packages → Overview
 
-- CLI `ovd pkg info <file>` (from `vpt info --json`).
+- CLI `ovd pkg info <file>` (`vpt info --json`; architecture from `vpt show-contents`, build type from the app config, SHA-384 from `vpt checksum`) and `ovd pkg list` (the open project's `build/`, scanned, not watched).
 - Drop zone ("Drop a .vpkg here", "or watch build/"); "Recent builds" (file, architecture chip, Debug/Release, size, time); detail with title, version (build), path, "Install on target"; Overview tab with key–value rows and the `vpt info --json` block. Only Overview is visible.
 
 **Expected:** dropping any .vpkg shows ID, title, version, build and architecture within a second.

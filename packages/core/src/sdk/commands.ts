@@ -29,3 +29,9 @@ export function vdaCmd(
   const target = vdaSerial === undefined ? [] : ['-s', vdaSerial]
   return vegaCmd(vegaPath, ['exec', 'vda', ...target, ...args], opts)
 }
+
+// `vpt` runs through `vega exec vpt`: it isn't on PATH, and both CLIs ship it. The SDK wrapper
+// breaks when two calls overlap, which the serial runner already prevents.
+export function vptCmd(vegaPath: string, args: string[], opts: RunOptions = {}): CommandSpec {
+  return vegaCmd(vegaPath, ['exec', 'vpt', ...args], opts)
+}

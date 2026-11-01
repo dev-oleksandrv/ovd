@@ -6,6 +6,8 @@ import type {
   ErrorJson,
   ForgetResult,
   LoginPrompt,
+  PackageBuild,
+  PackageInfo,
   ProjectMode,
   VvdState
 } from '@ovd/core'
@@ -67,6 +69,14 @@ export interface OvdApi {
     // The path of a dropped file; the renderer gets no file paths otherwise.
     pathForFile(file: File): string
   }
+  packages: {
+    // Reads a .vpkg with vpt, as `ovd pkg info <path>` does.
+    info(path: string): Promise<IpcResult<PackageInfo>>
+    // The open project's builds, newest first, as `ovd pkg list` lists them.
+    builds(): Promise<IpcResult<PackageBuild[]>>
+    // The native picker; resolves with the chosen path, null when the user cancels.
+    pick(): Promise<IpcResult<string | null>>
+  }
   setup: {
     // Asks `vega devmode login --json` without waiting for a sign-in.
     signedIn(): Promise<IpcResult<boolean>>
@@ -100,6 +110,9 @@ export const channels = {
   projectOpen: 'ovd:project:open',
   projectPickFolder: 'ovd:project:pick-folder',
   projectPickVpkg: 'ovd:project:pick-vpkg',
+  packagesInfo: 'ovd:packages:info',
+  packagesBuilds: 'ovd:packages:builds',
+  packagesPick: 'ovd:packages:pick',
   setupSignedIn: 'ovd:setup:signed-in',
   setupLogin: 'ovd:setup:login',
   setupLoginPrompt: 'ovd:setup:login-prompt',

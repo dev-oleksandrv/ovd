@@ -57,3 +57,17 @@ Recorded with Vega SDK 0.24.12112 and Vega CLI 1.4.5 on macOS (arm64).
 | `vega-project-doctor/failed.txt` | same, with `[os.version] min = "9.9"` (stdout, exit 1) | — same project, edited manifest | 2026-10-31 |
 | `vega-project-doctor/failed.stderr.txt` | same (stderr, the `vpt` validation error) | — same project, edited manifest | 2026-10-31 |
 | `vega-project-doctor/no-project.txt` | `vega project doctor` in an empty folder (stdout, exit 1; no stderr) | — | 2026-10-31 |
+| `vpt-info/player-armv7-release.json` | `vega exec vpt info --json <file>` (exit 0); no architecture and no build type in the output | — `helloWorld-rn72` + `@amazon-devices/react-native-mmkv`, `com.example.player` 1.4.2 build 142, Release armv7 | 2026-11-01 |
+| `vpt-info/player-aarch64-debug.json` | same | — same project, Debug aarch64 | 2026-11-01 |
+| `vpt-info/hellovega-armv7-release.json` | same | — `helloWorld-rn72`, `com.example.hellovega`, pure JS, Release armv7 | 2026-11-01 |
+| `vpt-info/not-a-vpkg.stderr.txt` | same on a text file named `.vpkg` (stderr, exit 1); a missing path prints the same | — | 2026-11-01 |
+| `vpt-show-contents/player-armv7.txt` | `vega exec vpt show-contents <file>` (exit 0): native modules sit under `lib/<arch>/`, the only place the architecture shows | — player, Release armv7 | 2026-11-01 |
+| `vpt-show-contents/player-aarch64.txt` | same | — player, Debug aarch64 | 2026-11-01 |
+| `vpt-show-contents/hellovega.txt` | same: no `lib/`; the armv7 and aarch64 packages of a pure-JS app differ only in their signatures | — hellovega, Release armv7 | 2026-11-01 |
+| `vpt-dump-app-config/debug.json` | `vega exec vpt dump <file> assets/raw/keplerscript-app-config.json` (exit 0): `developmentEnabled` is `true` in Debug builds | — player, Debug aarch64 | 2026-11-01 |
+| `vpt-dump-app-config/release.json` | same: `developmentEnabled` is `false` in Release builds | — player, Release armv7 | 2026-11-01 |
+| `vpt-dump-app-config/missing.stderr.txt` | `vega exec vpt dump <file> assets/raw/nope.json` (stderr, exit 1): what a package without the entry prints, with the entry name it was asked for | — player | 2026-11-01 |
+| `vpt-checksum/player-armv7-release.txt` | `vega exec vpt checksum <file>` (exit 0): SHA-384, not SHA-256 | — player, Release armv7 | 2026-11-01 |
+| `vpt-checksum/player-aarch64-debug.txt` | `vega exec vpt checksum <file>` (exit 0) | — player, Debug aarch64 | 2026-11-01 |
+| `vpt-checksum/hellovega-armv7-release.txt` | same | — hellovega, Release armv7 | 2026-11-01 |
+| `vpt-dump-app-config/hellovega-release.json` | `vega exec vpt dump <file> assets/raw/keplerscript-app-config.json` (exit 0): no native libraries listed | — hellovega, Release armv7 | 2026-11-01 |
