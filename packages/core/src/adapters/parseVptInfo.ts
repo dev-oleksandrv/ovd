@@ -20,7 +20,8 @@ export interface VptInfo {
   title: string
   version: string
   buildNumber: number
-  size: number
+  // The unpacked contents without `meta-info/`, not the file's size.
+  unpackedSize: number
   osVersions: string[]
   contractPackageVersion?: string
   // The document as `vpt info --json` printed it, for the desktop's raw block.
@@ -39,7 +40,7 @@ export function parseVptInfo(stdout: string): VptInfo {
     title,
     version,
     buildNumber: build_number,
-    size,
+    unpackedSize: size,
     osVersions: os_version_registry?.os_versions ?? [],
     ...(os_version_registry
       ? { contractPackageVersion: os_version_registry.contract_package_version }

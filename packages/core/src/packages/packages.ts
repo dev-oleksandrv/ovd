@@ -19,8 +19,10 @@ export interface PackageInfo {
   title: string
   version: string
   buildNumber: number
-  // Bytes, as `vpt info` reports them.
+  // The file's size in bytes.
   size: number
+  // `vpt info`'s size: the unpacked contents without `meta-info/`.
+  unpackedSize: number
   architecture: PackageArch
   // `unknown` for a package without the React Native app config (no JS bundle).
   buildType: BuildType | 'unknown'
@@ -121,6 +123,7 @@ export function createPackages(deps: PackagesDeps): Packages {
         displayPath: tilde(path),
         file,
         ...parsed,
+        size: info.size,
         architecture: parseVptContents(contents.stdout).architecture,
         buildType: config.exitCode === 0 ? parseAppConfig(config.stdout).buildType : 'unknown',
         sha384: parseVptChecksum(checksum.stdout).sha384,

@@ -89,6 +89,9 @@ describe('Packages.info', () => {
       title: 'Sample Player',
       version: '1.4.2',
       buildNumber: 142,
+      // The file's own size; `vpt info` reports the unpacked contents.
+      size: 4,
+      unpackedSize: 2817790,
       architecture: 'armv7',
       buildType: 'release',
       osVersions: ['1.2'],

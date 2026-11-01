@@ -23,7 +23,7 @@ describe('parseVptInfo', () => {
       osVersions: ['1.2'],
       contractPackageVersion: '1.0.323.0'
     })
-    expect(info.size).toBeGreaterThan(0)
+    expect(info.unpackedSize).toBeGreaterThan(0)
   })
 
   test('keeps the document as printed', () => {
