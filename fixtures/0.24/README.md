@@ -68,3 +68,6 @@ Recorded with Vega SDK 0.24.12112 and Vega CLI 1.4.5 on macOS (arm64).
 | `vpt-dump-app-config/release.json` | same: `developmentEnabled` is `false` in Release builds | — player, Release armv7 | 2026-11-01 |
 | `vpt-dump-app-config/missing.stderr.txt` | `vega exec vpt dump <file> assets/raw/nope.json` (stderr, exit 1): what a package without the entry prints, with the entry name it was asked for | — player | 2026-11-01 |
 | `vpt-checksum/player-armv7-release.txt` | `vega exec vpt checksum <file>` (exit 0): SHA-384, not SHA-256 | — player, Release armv7 | 2026-11-01 |
+| `vpt-checksum/player-aarch64-debug.txt` | `vega exec vpt checksum <file>` (exit 0) | — player, Debug aarch64 | 2026-11-01 |
+| `vpt-checksum/hellovega-armv7-release.txt` | same | — hellovega, Release armv7 | 2026-11-01 |
+| `vpt-dump-app-config/hellovega-release.json` | `vega exec vpt dump <file> assets/raw/keplerscript-app-config.json` (exit 0): no native libraries listed | — hellovega, Release armv7 | 2026-11-01 |

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, utimesSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 // The project files of the helloWorld template the vega-project-doctor fixtures were recorded
@@ -39,10 +39,28 @@ export function makeProject(
   return folder
 }
 
-// A file named like a build; its bytes are never read in Stage 2.1 (vpt info is 2.2).
+// A file named like a build that vpt can't read: the fake SDK answers only for recorded ones.
 export function makeVpkg(home: string, name = 'player-1.4.2-armv7.vpkg'): string {
   const file = join(home, 'Downloads', name)
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, 'not a real package')
+  return file
+}
+
+// The sample packages the vpt fixtures were recorded from (fixtures/0.24/README.md).
+export type RecordedPackage =
+  'player-armv7-release' | 'player-aarch64-debug' | 'hellovega-armv7-release'
+
+// A package the fake SDK answers for with that recording; `path` is relative to the home.
+export function makeRecordedVpkg(
+  home: string,
+  path: string,
+  recording: RecordedPackage,
+  modified?: Date
+): string {
+  const file = join(home, path)
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, `fake-vpkg:${recording}\n`)
+  if (modified) utimesSync(file, modified, modified)
   return file
 }

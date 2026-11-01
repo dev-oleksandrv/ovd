@@ -274,6 +274,52 @@ function projectDoctor(): Reply {
   return { stdout: fixture('vega-project-doctor/one-warning.txt') }
 }
 
+// The recorded sample packages (fixtures/0.24/README.md) and what `vpt` printed for each.
+// Test packages hold `fake-vpkg:<name>` (e2e/harness/project.ts); `vpt` reads the file, so
+// the answer follows its contents rather than the world. Anything else is a file vpt rejects.
+const PACKAGES: Record<
+  string,
+  { info: string; contents: string; config: string; checksum: string }
+> = {
+  'player-armv7-release': {
+    info: 'vpt-info/player-armv7-release.json',
+    contents: 'vpt-show-contents/player-armv7.txt',
+    config: 'vpt-dump-app-config/release.json',
+    checksum: 'vpt-checksum/player-armv7-release.txt'
+  },
+  'player-aarch64-debug': {
+    info: 'vpt-info/player-aarch64-debug.json',
+    contents: 'vpt-show-contents/player-aarch64.txt',
+    config: 'vpt-dump-app-config/debug.json',
+    checksum: 'vpt-checksum/player-aarch64-debug.txt'
+  },
+  'hellovega-armv7-release': {
+    info: 'vpt-info/hellovega-armv7-release.json',
+    contents: 'vpt-show-contents/hellovega.txt',
+    config: 'vpt-dump-app-config/hellovega-release.json',
+    checksum: 'vpt-checksum/hellovega-armv7-release.txt'
+  }
+}
+const APP_CONFIG = 'assets/raw/keplerscript-app-config.json'
+
+function vpt(rest: string[]): Reply | null {
+  const [sub, ...more] = rest
+  const path = sub === 'info' && more[0] === '--json' ? more[1] : more[0]
+  if (path === undefined) return null
+  const text = existsSync(path) ? readFileSync(path, 'utf8') : ''
+  const recorded = PACKAGES[text.replace(/^fake-vpkg:/, '').trim()]
+  if (!recorded || !text.startsWith('fake-vpkg:')) {
+    return { stderr: fixture('vpt-info/not-a-vpkg.stderr.txt'), exitCode: 1 }
+  }
+  if (sub === 'info' && more.length === 2) return { stdout: fixture(recorded.info) }
+  if (sub === 'show-contents' && more.length === 1) return { stdout: fixture(recorded.contents) }
+  if (sub === 'dump' && more.length === 2 && more[1] === APP_CONFIG) {
+    return { stdout: fixture(recorded.config) }
+  }
+  if (sub === 'checksum' && more.length === 1) return { stdout: fixture(recorded.checksum) }
+  return null
+}
+
 async function answer(w: World): Promise<Reply | null> {
   const [first, second, ...rest] = args
   if (first === '--version' && second === undefined) {
@@ -286,6 +332,7 @@ async function answer(w: World): Promise<Reply | null> {
     return { stdout: fixture('vega-sdk-config-doctor/ok.json') }
   }
   if (first === 'exec' && second === 'vda') return vda(w, rest)
+  if (first === 'exec' && second === 'vpt') return vpt(rest)
   if (first === 'virtual-device' && rest.length === 0) return virtualDevice(w, second)
   if (first === 'device' && second === 'info' && rest[0] === '--device' && rest.length === 2) {
     return deviceInfo(w, rest[1] as string)
