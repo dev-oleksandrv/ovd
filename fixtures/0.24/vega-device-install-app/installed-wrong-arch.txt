@@ -1,0 +1,1 @@
+Installing/Updating '/tmp/hellovega_armv7.vpkg' ...success

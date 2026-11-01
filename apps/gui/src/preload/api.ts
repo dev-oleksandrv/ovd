@@ -1,10 +1,12 @@
 import type {
+  ArchCheck,
   Device,
   DevicesUpdate,
   DoctorReport,
   EnableResult,
   ErrorJson,
   ForgetResult,
+  InstallResult,
   LoginPrompt,
   PackageBuild,
   PackageInfo,
@@ -77,6 +79,12 @@ export interface OvdApi {
     // The native picker; resolves with the chosen path, null when the user cancels.
     pick(): Promise<IpcResult<string | null>>
   }
+  install: {
+    // The architecture guard for a package on a device, with the matching recent build.
+    check(path: string, device: string): Promise<IpcResult<ArchCheck>>
+    // Installs behind the guard, as `ovd install <path> --device <id>` does.
+    install(path: string, device: string): Promise<IpcResult<InstallResult>>
+  }
   setup: {
     // Asks `vega devmode login --json` without waiting for a sign-in.
     signedIn(): Promise<IpcResult<boolean>>
@@ -113,6 +121,8 @@ export const channels = {
   packagesInfo: 'ovd:packages:info',
   packagesBuilds: 'ovd:packages:builds',
   packagesPick: 'ovd:packages:pick',
+  installCheck: 'ovd:install:check',
+  install: 'ovd:install',
   setupSignedIn: 'ovd:setup:signed-in',
   setupLogin: 'ovd:setup:login',
   setupLoginPrompt: 'ovd:setup:login-prompt',

@@ -1,10 +1,12 @@
 import type {
+  ArchCheck,
   Check,
   Device,
   DevicesUpdate,
   DoctorReport,
   EnableResult,
   ForgetResult,
+  InstallResult,
   LoginPrompt,
   PackageBuild,
   PackageInfo,
@@ -107,6 +109,7 @@ export function stubOvd(opts: {
   project?: Partial<OvdApi['project']>
   // No builds unless a test says otherwise.
   packages?: Partial<OvdApi['packages']>
+  install?: Partial<OvdApi['install']>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
@@ -178,6 +181,12 @@ export function stubOvd(opts: {
           (async (): Promise<IpcResult<PackageBuild[]>> => ({ ok: true, data: [] }))
       ),
       pick: vi.fn(opts.packages?.pick ?? (async () => unexpected<string | null>('packages.pick')))
+    },
+    install: {
+      check: vi.fn(opts.install?.check ?? (async () => unexpected<ArchCheck>('install.check'))),
+      install: vi.fn(
+        opts.install?.install ?? (async () => unexpected<InstallResult>('install.install'))
+      )
     },
     setup: {
       signedIn: vi.fn(opts.setup?.signedIn ?? (async () => unexpected<boolean>('setup.signedIn'))),

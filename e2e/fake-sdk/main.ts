@@ -279,21 +279,25 @@ function projectDoctor(): Reply {
 // the answer follows its contents rather than the world. Anything else is a file vpt rejects.
 const PACKAGES: Record<
   string,
-  { info: string; contents: string; config: string; checksum: string }
+  { info: string; contents: string; config: string; checksum: string; arch: string }
 > = {
   'player-armv7-release': {
+    arch: 'armv7',
     info: 'vpt-info/player-armv7-release.json',
     contents: 'vpt-show-contents/player-armv7.txt',
     config: 'vpt-dump-app-config/release.json',
     checksum: 'vpt-checksum/player-armv7-release.txt'
   },
   'player-aarch64-debug': {
+    arch: 'aarch64',
     info: 'vpt-info/player-aarch64-debug.json',
     contents: 'vpt-show-contents/player-aarch64.txt',
     config: 'vpt-dump-app-config/debug.json',
     checksum: 'vpt-checksum/player-aarch64-debug.txt'
   },
   'hellovega-armv7-release': {
+    // Pure JS: no native code.
+    arch: 'any',
     info: 'vpt-info/hellovega-armv7-release.json',
     contents: 'vpt-show-contents/hellovega.txt',
     config: 'vpt-dump-app-config/hellovega-release.json',
@@ -320,6 +324,49 @@ function vpt(rest: string[]): Reply | null {
   return null
 }
 
+// What each online device reports as its architecture (fixtures/0.24/vega-device-info).
+function onlineArch(w: World, id: string): string | null {
+  if (id === STICK_SERIAL && stickOnUsb(w)) return 'armv7'
+  if (id === STICK_ADDRESS && stickOnWifi(w) && w.vdaConnected.includes(STICK_ADDRESS)) {
+    return 'armv7'
+  }
+  if (id === 'VirtualDevice' && w.vvd.running) return 'aarch64'
+  return null
+}
+
+// `vega device install-app -p <file> --device <id>`. The SDK installs a package built for
+// another architecture without a word (installed-wrong-arch.txt); only the guard stops it.
+function installApp(w: World, rest: string[]): Reply | null {
+  const [p, path, flag, device] = rest
+  if (p !== '-p' || flag !== '--device' || path === undefined || device === undefined) return null
+  if (rest.length !== 4) return null
+  const arch = onlineArch(w, device)
+  if (arch === null) {
+    return { stderr: fixture('vega-device-install-app/device-not-found.stderr.txt'), exitCode: 2 }
+  }
+  const text = existsSync(path) ? readFileSync(path, 'utf8') : ''
+  const name = text.replace(/^fake-vpkg:/, '').trim()
+  const recorded = PACKAGES[name]
+  if (!recorded || !text.startsWith('fake-vpkg:')) {
+    return { stderr: fixture('vega-device-install-app/no-such-file.stderr.txt'), exitCode: 1 }
+  }
+  w.installed = [
+    ...w.installed.filter((i) => i.device !== device || i.package !== name),
+    {
+      device,
+      package: name
+    }
+  ]
+  const wrongArch = recorded.arch !== 'any' && recorded.arch !== arch
+  return {
+    stdout: fixture(
+      wrongArch
+        ? 'vega-device-install-app/installed-wrong-arch.txt'
+        : 'vega-device-install-app/installed.txt'
+    )
+  }
+}
+
 async function answer(w: World): Promise<Reply | null> {
   const [first, second, ...rest] = args
   if (first === '--version' && second === undefined) {
@@ -337,6 +384,7 @@ async function answer(w: World): Promise<Reply | null> {
   if (first === 'device' && second === 'info' && rest[0] === '--device' && rest.length === 2) {
     return deviceInfo(w, rest[1] as string)
   }
+  if (first === 'device' && second === 'install-app') return installApp(w, rest)
   if (first === 'device' && second === 'is-port-forwarded') {
     return { stdout: fixture('vega-device-is-port-forwarded/false.txt') }
   }

@@ -1,12 +1,14 @@
-import type { PackageInfo } from '@ovd/core'
+import type { ArchCheck, Device, InstallResult, PackageInfo } from '@ovd/core'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import type { IpcResult, OvdApi } from '../../../../src/preload/api'
+import { DevicesProvider } from '../../../../src/renderer/src/devices/DevicesProvider'
 import { FeedbackProvider } from '../../../../src/renderer/src/feedback/FeedbackProvider'
 import { ToastViewport } from '../../../../src/renderer/src/feedback/ToastViewport'
 import { StatusBar } from '../../../../src/renderer/src/frame/StatusBar'
 import { PackagesScreen } from '../../../../src/renderer/src/screens/packages/PackagesScreen'
 import { ready, stubOvd } from '../../support/ovdStub'
+import { stick } from '../devices/sample'
 import { aarch64Build, armv7Build, armv7Info, droppedInfo, project } from './sample'
 
 const infos: Record<string, PackageInfo> = {
@@ -20,11 +22,38 @@ const infos: Record<string, PackageInfo> = {
   [droppedInfo.path]: droppedInfo
 }
 
+const stickTarget = { id: stick.id, name: 'Fire TV Stick 4K Select', architecture: 'armv7' }
+
+// What core's guard answers for a recorded package on the armv7 stick.
+function guard(path: string): ArchCheck {
+  const architecture = infos[path]?.architecture ?? 'unknown'
+  const allowed = architecture === 'armv7' || architecture === 'any'
+  return {
+    allowed,
+    verdict: allowed ? 'match' : 'mismatch',
+    package: { path, architecture },
+    target: stickTarget,
+    ...(allowed ? {} : { fix: armv7Build })
+  }
+}
+
 function stub(
-  opts: { builds?: OvdApi['packages']['builds']; info?: OvdApi['packages']['info'] } = {}
+  opts: {
+    builds?: OvdApi['packages']['builds']
+    info?: OvdApi['packages']['info']
+    devices?: Device[]
+    check?: OvdApi['install']['check']
+    install?: OvdApi['install']['install']
+  } = {}
 ): OvdApi {
+  const devices = opts.devices ?? []
   return stubOvd({
-    list: async () => ready([]),
+    list: async () => ready(devices, devices[0]?.id ?? null),
+    devices,
+    install: {
+      check: opts.check ?? (async (path: string) => ({ ok: true, data: guard(path) })),
+      ...(opts.install ? { install: opts.install } : {})
+    },
     packages: {
       builds: opts.builds ?? (async () => ({ ok: true, data: [armv7Build, aarch64Build] })),
       info:
@@ -43,14 +72,39 @@ function stub(
   }).api
 }
 
-function renderScreen(projectPath: string | null = project.path): void {
+function renderScreen(
+  projectPath: string | null = project.path,
+  onSwitchTarget: () => void = () => {}
+): void {
   render(
     <FeedbackProvider>
-      <PackagesScreen projectPath={projectPath} onOpenFolder={() => {}} />
+      <DevicesProvider>
+        <PackagesScreen
+          projectPath={projectPath}
+          onOpenFolder={() => {}}
+          onSwitchTarget={onSwitchTarget}
+        />
+      </DevicesProvider>
       <StatusBar />
       <ToastViewport />
     </FeedbackProvider>
   )
+}
+
+const installed: InstallResult = {
+  installed: true,
+  package: {
+    path: armv7Info.path,
+    displayPath: armv7Info.displayPath,
+    file: armv7Info.file,
+    id: armv7Info.id,
+    title: armv7Info.title,
+    version: armv7Info.version,
+    buildNumber: armv7Info.buildNumber,
+    architecture: 'armv7'
+  },
+  target: stickTarget,
+  forced: false
 }
 
 describe('Packages screen', () => {
@@ -69,11 +123,88 @@ describe('Packages screen', () => {
     expect(api.packages.info).toHaveBeenCalledTimes(1)
   })
 
-  test('Install on target waits for a later version and says so', async () => {
+  test('without a target, Install on target is disabled and says why', async () => {
     stub()
     renderScreen()
     const install = await screen.findByRole('button', { name: 'Install on target' })
     expect((install as HTMLButtonElement).disabled).toBe(true)
+    expect(install.getAttribute('title')).toBe('No target device: pick one in the title bar')
+  })
+
+  test('an offline target disables Install on target', async () => {
+    stub({ devices: [{ ...stick, status: 'offline' }] })
+    renderScreen()
+    const install = await screen.findByRole('button', { name: 'Install on target' })
+    await vi.waitFor(() => expect(install.getAttribute('title')).toBe('Fire TV stick is offline'))
+  })
+
+  test('installs a matching package on the target with its CLI', async () => {
+    const install = vi.fn(async () => ({ ok: true as const, data: installed }))
+    stub({ devices: [stick], install })
+    renderScreen()
+    await screen.findByRole('heading', { name: 'Sample Player 1.4.2 (142)' })
+    const button = screen.getByRole('button', { name: 'Install on target' })
+    await vi.waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false))
+    await act(async () => fireEvent.click(button))
+    expect(install).toHaveBeenCalledWith(armv7Info.path, stick.id)
+    expect(await screen.findByText('Installed on Fire TV Stick 4K Select')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+    // The status bar and both toasts carry it.
+    expect(
+      screen.getAllByText(
+        '$ ovd install ~/dev/player/build/armv7-release/player_armv7.vpkg --device G070000000000001'
+      ).length
+    ).toBeGreaterThan(0)
+  })
+
+  test('a mismatch blocks the install and offers the matching build', async () => {
+    const install = vi.fn()
+    stub({ devices: [stick], install })
+    renderScreen()
+    fireEvent.click(await screen.findByRole('button', { name: /player_aarch64\.vpkg/ }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe(
+      'blockArchitecture mismatch: package is aarch64, Fire TV Stick 4K Select is armv7. Install is blocked.Use player_armv7.vpkg'
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Install on target' }))
+    expect(await screen.findByText('Install blocked: architecture mismatch')).toBeTruthy()
+    expect(install).not.toHaveBeenCalled()
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Use player_armv7.vpkg' }))
+    await vi.waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(screen.getByText('Release', { selector: 'dd' })).toBeTruthy()
+  })
+
+  test('without a matching build, the fix opens the target picker', async () => {
+    const onSwitchTarget = vi.fn()
+    stub({
+      devices: [stick],
+      check: async (path: string) => {
+        const check = guard(path)
+        delete check.fix
+        return { ok: true, data: check }
+      }
+    })
+    renderScreen(project.path, onSwitchTarget)
+    fireEvent.click(await screen.findByRole('button', { name: /player_aarch64\.vpkg/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch target' }))
+    expect(onSwitchTarget).toHaveBeenCalledOnce()
+  })
+
+  test('a failed install shows core’s message', async () => {
+    stub({
+      devices: [stick],
+      install: async () => ({
+        ok: false,
+        error: { code: 'INSTALL_FAILED', message: 'Install failed: nope', hint: 'Retry' }
+      })
+    })
+    renderScreen()
+    await screen.findByRole('heading', { name: 'Sample Player 1.4.2 (142)' })
+    const button = screen.getByRole('button', { name: 'Install on target' })
+    await vi.waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false))
+    await act(async () => fireEvent.click(button))
+    expect(await screen.findByText('Install failed: nope')).toBeTruthy()
   })
 
   test('selecting a build reads it and echoes ovd pkg info', async () => {

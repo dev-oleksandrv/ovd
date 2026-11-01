@@ -116,8 +116,9 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 | 3    | SDK missing or unusable                                                    |
 | 4    | Device not found, target offline or no target                              |
 | 5    | External step not completed (not signed in, code rejected, pairing failed) |
+| 6    | Architecture mismatch: the package doesn't match the target (ADR 0008)     |
 
-Other specific codes (architecture mismatch, launch not verified) are added here when the commands that use them ship.
+Other specific codes (launch not verified) are added here when the commands that use them ship.
 
 ## 6. Desktop
 

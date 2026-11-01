@@ -36,6 +36,8 @@ export type { PackageArch } from './adapters/parseVptContents.js'
 export { parseAppConfig } from './adapters/parseAppConfig.js'
 export type { BuildType } from './adapters/parseAppConfig.js'
 export { parseVptChecksum } from './adapters/parseVptChecksum.js'
+export { parseInstallApp } from './adapters/parseInstallApp.js'
+export type { InstallApp } from './adapters/parseInstallApp.js'
 export { parseProjectDoctor } from './adapters/parseProjectDoctor.js'
 export type {
   ProjectCheck,
@@ -110,3 +112,14 @@ export type {
 export type { ProjectManifest } from './project/readProject.js'
 export { createPackages } from './packages/packages.js'
 export type { PackageBuild, PackageInfo, Packages, PackagesDeps } from './packages/packages.js'
+export { compareArch } from './install/archGuard.js'
+export type { ArchVerdict } from './install/archGuard.js'
+export { createInstall } from './install/install.js'
+export type {
+  ArchCheck,
+  Install,
+  InstallDeps,
+  InstallOptions,
+  InstallResult,
+  InstallTarget
+} from './install/install.js'
