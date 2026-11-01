@@ -1,5 +1,18 @@
 # @ovd/gui
 
+## 0.2.0
+
+### Minor Changes
+
+- 53c4611: Project mode and no-project mode: `ovd open <folder>` opens a Vega project (a folder with `manifest.toml` and `package.json`) and `ovd open <file.vpkg>` installs from a package without one; `ovd project` shows which, and `ovd close` forgets it. `ovd doctor` gains a Project row that runs `vega project doctor` in the project folder. The desktop adds the sidebar project card (folder, path, OS and React Native versions, or "No project" with the loaded .vpkg), drag-and-drop of a .vpkg anywhere in the window, and the Doctor Project row with "Open folder…" and Details listing every check, its fix hints, Copy output and Re-run. A subcommand missing an argument now exits 2.
+- f766c91: Inspect .vpkg files: `ovd pkg info [file]` shows a package's ID, title, version, build, architecture (`any` for pure-JS packages), build type and SHA-384, and `ovd pkg list` lists the open project's builds. The desktop app gets the Packages screen with a drop zone, recent builds and the Overview tab.
+
+### Patch Changes
+
+- Updated dependencies [53c4611]
+- Updated dependencies [f766c91]
+  - @ovd/core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
