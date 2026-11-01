@@ -11,7 +11,8 @@ const info: PackageInfo = {
   title: 'Sample Player',
   version: '1.4.2',
   buildNumber: 142,
-  size: 2817790,
+  size: 1459188,
+  unpackedSize: 2817790,
   architecture: 'armv7',
   buildType: 'release',
   osVersions: ['1.2'],
@@ -63,7 +64,7 @@ describe('ovd pkg info', () => {
     expect(stdout).toContain('Version       1.4.2 (142)\n')
     expect(stdout).toContain('Architecture  any (no native code)\n')
     expect(stdout).toContain('Build type    Release\n')
-    expect(stdout).toContain('Size          2.8 MB\n')
+    expect(stdout).toContain('Size          1.5 MB (2.8 MB unpacked)\n')
   })
 
   test.each(['NO_PACKAGE', 'NOT_A_VPKG', 'PATH_NOT_FOUND'] as const)(

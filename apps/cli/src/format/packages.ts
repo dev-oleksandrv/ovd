@@ -20,7 +20,7 @@ export function packageRows(pkg: PackageInfo): string {
     ['Version', `${pkg.version} (${pkg.buildNumber})`],
     ['Architecture', archText(pkg.architecture)],
     ['Build type', BUILD_TYPE[pkg.buildType]],
-    ['Size', sizeText(pkg.size)],
+    ['Size', `${sizeText(pkg.size)} (${sizeText(pkg.unpackedSize)} unpacked)`],
     ['OS versions', pkg.osVersions.join(', ') || '—'],
     ['SHA-384', pkg.sha384],
     ['Path', pkg.displayPath]
