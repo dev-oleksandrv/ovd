@@ -33,6 +33,7 @@ The maintainer drives the process. Propose, then wait for a decision.
 - If a task grows beyond what was agreed, stop and say so.
 - Work belongs to a stage in `docs/ROADMAP.md`. Do not build features from a later stage "while you're there".
 - Before a stage that has a hardware check (`docs/ROADMAP.md`), ask whether it was done and what it showed. Never design around an unverified SDK behavior.
+- Verify host-side SDK behavior yourself; don't ask the maintainer. You may generate throwaway Vega projects (`vega project generate`), build them, and run host tools such as `vpt` on the result, in the session scratchpad or a gitignored folder outside the versioned tree. Record fixtures from these sample projects (`com.example.*`). Ask only for checks that need a real stick or for decisions.
 
 ## Git
 
