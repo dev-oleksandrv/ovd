@@ -24,3 +24,4 @@ Vega targets use different CPU architectures. Fire TV sticks (Fire TV Stick 4K S
 ## Amendments
 
 - 2026-11-01 (Stage 2.2): recorded with SDK 0.24.12112, `vpt info --json` names no architecture; the architecture comes from `vpt show-contents`, and pure-JS packages are `any`.
+- 2026-11-01 (Stage 2.3): recorded on the Virtual Device, `vega device install-app` installs a package whose native code is for another architecture without complaint (exit 0, `…success`), so the guard is the only check. A blocked install exits 6.
