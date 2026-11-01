@@ -29,6 +29,13 @@ export {
   parseVsmDeveloperMode,
   parseVsmDeveloperModeSet
 } from './adapters/parseVsmDeveloperMode.js'
+export { parseVptInfo } from './adapters/parseVptInfo.js'
+export type { VptInfo } from './adapters/parseVptInfo.js'
+export { parseVptContents } from './adapters/parseVptContents.js'
+export type { PackageArch } from './adapters/parseVptContents.js'
+export { parseAppConfig } from './adapters/parseAppConfig.js'
+export type { BuildType } from './adapters/parseAppConfig.js'
+export { parseVptChecksum } from './adapters/parseVptChecksum.js'
 export { parseProjectDoctor } from './adapters/parseProjectDoctor.js'
 export type {
   ProjectCheck,
@@ -101,3 +108,5 @@ export type {
   VpkgSource
 } from './project/project.js'
 export type { ProjectManifest } from './project/readProject.js'
+export { createPackages } from './packages/packages.js'
+export type { PackageBuild, PackageInfo, Packages, PackagesDeps } from './packages/packages.js'
