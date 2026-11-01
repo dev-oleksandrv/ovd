@@ -25,11 +25,13 @@ paths:
 - `inputd-cli` key presses report success but don't reach apps on the Virtual Device; use emulator gRPC `sendKey` there (OK = `kpenter`, Back = `KEY_BACK`, Home can't be sent). `gwsi-tool-screenshooter` fails on the Virtual Device; use gRPC `getScreenshot` (ADR 0010).
 - The emulator gRPC endpoint is off after every Virtual Device start; enable it through the console (`grpc <port>`) with the token from `~/.emulator_console_auth_token`. Never log the token.
 - Metro runs on the host; its output isn't part of the device log stream.
+- `vpt info --json` reports no architecture and no build type, and its `size` is the unpacked contents without `meta-info/`, not the file's size. The build type is `developmentEnabled` in `assets/raw/keplerscript-app-config.json` (`vpt dump`). `vpt checksum` prints SHA-384.
+- `vpt` isn't on PATH: run it as `vega exec vpt …`. Two `vpt` calls at once crash the SDK wrapper; the serial runner keeps them apart.
 - The KPI Visualizer fails warm starts on the Virtual Device and fails offline apps; report both as warnings.
 
 ## Architectures
 
-- Read the target's architecture from `vega device info`. Read the package's from `vpt info`. Compare them before every install; block on mismatch unless `--force` (ADR 0008).
+- Read the target's architecture from `vega device info`. Read the package's from `lib/<arch>/` in `vpt show-contents`; no `lib/` means pure JS, `any` (ADR 0008). Compare them before every install; block on mismatch unless `--force` (ADR 0008).
 - Sticks are `armv7`. The Virtual Device matches the host: `x86_64` (Intel, Ubuntu) or `aarch64` (Apple Silicon). Never hard-code a device type to an architecture.
 
 ## Developer Mode
