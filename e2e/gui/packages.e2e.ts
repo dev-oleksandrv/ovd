@@ -1,4 +1,5 @@
 import type { ElectronApplication, Page } from '@playwright/test'
+import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 import { expect, test } from '../harness/gui.ts'
 import { makeProject, makeRecordedVpkg, makeVpkg } from '../harness/project.ts'
 
@@ -115,5 +116,96 @@ test.describe('Packages → Overview', () => {
     ).toContainText('$ ovd pkg info')
     await expect(builds(page).getByRole('button')).toHaveCount(0)
     expect(sandbox.calls()).toContain(`vega exec vpt info --json ${path}`)
+  })
+})
+
+// Opens a project with an armv7 Release build and, when asked, a newer aarch64 Debug build.
+async function openPlayer(
+  sandbox: { home: string; installSdk: () => void },
+  launch: () => Promise<{ app: ElectronApplication; page: Page }>,
+  withArmv7 = true
+): Promise<{ page: Page; armv7: string; aarch64: string }> {
+  sandbox.installSdk()
+  makeProject(sandbox.home, 'player')
+  const armv7 = `${sandbox.home}/dev/player/build/armv7-release/player_armv7.vpkg`
+  if (withArmv7) {
+    makeRecordedVpkg(
+      sandbox.home,
+      'dev/player/build/armv7-release/player_armv7.vpkg',
+      'player-armv7-release',
+      new Date('2026-10-12T09:00:00Z')
+    )
+  }
+  const aarch64 = makeRecordedVpkg(
+    sandbox.home,
+    'dev/player/build/aarch64-debug/player_aarch64.vpkg',
+    'player-aarch64-debug',
+    new Date('2026-10-13T09:00:00Z')
+  )
+  const { app, page } = await launch()
+  await nextPick(app, `${sandbox.home}/dev/player`)
+  await page
+    .getByRole('region', { name: 'Project' })
+    .getByRole('button', { name: 'Open a project folder…' })
+    .click()
+  await expect(page.getByRole('status').filter({ hasText: 'Opened player' })).toBeVisible()
+  await nav(page, 'Packages').click()
+  return { page, armv7, aarch64 }
+}
+
+test.describe('Install on target behind the architecture guard', () => {
+  test.use({ world: { stick: usbStick() } })
+
+  test('an aarch64 build is blocked on the armv7 stick, and the fix installs the armv7 build', async ({
+    sandbox,
+    launch
+  }) => {
+    const { page, armv7 } = await openPlayer(sandbox, launch)
+    const block = page.getByRole('alert')
+
+    await expect(block).toContainText(
+      'Architecture mismatch: package is aarch64, Fire TV stick is armv7. Install is blocked.'
+    )
+    await page.getByRole('button', { name: 'Install on target' }).click()
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Install blocked: architecture mismatch' })
+    ).toContainText(
+      `$ ovd install ~/dev/player/build/aarch64-debug/player_aarch64.vpkg --device ${STICK_SERIAL}`
+    )
+    expect(sandbox.calls().some((c) => c.startsWith('vega device install-app'))).toBe(false)
+
+    await block.getByRole('button', { name: 'Use player_armv7.vpkg' }).click()
+
+    await expect(page.getByText('~/dev/player/build/armv7-release/player_armv7.vpkg')).toBeVisible()
+    await expect(page.getByRole('alert')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Install on target' }).click()
+    const cli = `$ ovd install ~/dev/player/build/armv7-release/player_armv7.vpkg --device ${STICK_SERIAL}`
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Installed on Fire TV stick' })
+    ).toContainText(cli)
+    await expect(page.getByTitle('Copy CLI equivalent')).toContainText(cli)
+    expect(sandbox.calls()).toContain(
+      `vega device install-app -p ${armv7} --device ${STICK_SERIAL}`
+    )
+    expect(sandbox.world().installed).toEqual([
+      { device: STICK_SERIAL, package: 'player-armv7-release' }
+    ])
+    expect(sandbox.activity()).toEqual([
+      expect.objectContaining({
+        surface: 'desktop',
+        action: 'app.install',
+        target: STICK_SERIAL,
+        result: 'ok'
+      })
+    ])
+  })
+
+  test('without a matching build, the fix opens the target picker', async ({ sandbox, launch }) => {
+    const { page } = await openPlayer(sandbox, launch, false)
+
+    await page.getByRole('alert').getByRole('button', { name: 'Switch target' }).click()
+
+    await expect(page.getByRole('menu', { name: 'Target device' })).toBeVisible()
+    expect(sandbox.world().installed).toEqual([])
   })
 })
