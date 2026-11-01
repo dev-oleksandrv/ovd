@@ -20,6 +20,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { KeyValueGrid } from '../ui/KeyValueGrid'
 import { LoadingState } from '../ui/LoadingState'
+import { BlockedNotice } from '../ui/BlockedNotice'
 import { InlineError } from '../ui/InlineError'
 import { Modal } from '../ui/Modal'
 import { StepList } from '../ui/StepList'
@@ -253,6 +254,7 @@ export function Gallery() {
         <Button disabled disabledReason="Open a project or drop a .vpkg">
           Run
         </Button>
+        <Button variant="blocked">Install on target</Button>
         <Button size="sm" icon="play_arrow">
           Launch
         </Button>
@@ -361,6 +363,14 @@ export function Gallery() {
               actions={<Button icon="wifi">Reconnect</Button>}
             />
           </div>
+        </div>
+        <div className="w-full">
+          <BlockedNotice
+            action={{ label: 'Use player-1.4.2-armv7.vpkg', onClick: () => undefined }}
+          >
+            Architecture mismatch: package is <b className="font-mono">aarch64</b>, Fire TV Stick 4K
+            Select is <b className="font-mono">armv7</b>. Install is blocked.
+          </BlockedNotice>
         </div>
       </GallerySection>
 

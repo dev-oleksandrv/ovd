@@ -239,6 +239,7 @@ function Shell() {
         <PackagesScreen
           projectPath={projectMode?.path ?? null}
           onOpenFolder={() => void project.pickFolder()}
+          onSwitchTarget={() => setMenu(true)}
         />
       ) : (
         <DevicesScreen onSetup={() => setSettingUp(true)} onPair={() => setPairing(true)} />
