@@ -71,3 +71,8 @@ Recorded with Vega SDK 0.24.12112 and Vega CLI 1.4.5 on macOS (arm64).
 | `vpt-checksum/player-aarch64-debug.txt` | `vega exec vpt checksum <file>` (exit 0) | — player, Debug aarch64 | 2026-11-01 |
 | `vpt-checksum/hellovega-armv7-release.txt` | same | — hellovega, Release armv7 | 2026-11-01 |
 | `vpt-dump-app-config/hellovega-release.json` | `vega exec vpt dump <file> assets/raw/keplerscript-app-config.json` (exit 0): no native libraries listed | — hellovega, Release armv7 | 2026-11-01 |
+| `vega-device-install-app/installed.txt` | `vega device install-app -p <file> --device VirtualDevice` (stdout, exit 0, ~1 s; no stderr; the same when the app is already installed, and for armv7 and x86_64 builds of the same app) | Virtual Device (aarch64) — `helloWorld` (RN 0.83), `com.example.hellovega`, pure JS, Debug aarch64 | 2026-11-01 |
+| `vega-device-install-app/installed-wrong-arch.txt` | same with a package whose native code is for another architecture (exit 0): the SDK installs it without any architecture check, an x86_64 build too | Virtual Device (aarch64) — `helloWorld` + `@amazon-devices/react-native-mmkv`, `com.example.player`, Release armv7 | 2026-11-01 |
+| `vega-device-install-app/missing-dependency.stderr.txt` | same (stderr, exit 1): the Virtual Device lacks `keplerscript_2`, which every `helloWorld-rn72` package needs, at any architecture | Virtual Device (aarch64) — `helloWorld-rn72` player, Debug aarch64 | 2026-11-01 |
+| `vega-device-install-app/device-not-found.stderr.txt` | same with `--device <serial>` of a stick that isn't connected (stderr, **exit 2**) | — | 2026-11-01 |
+| `vega-device-install-app/no-such-file.stderr.txt` | same with a path that doesn't exist (stderr, exit 1), path replaced | Virtual Device | 2026-11-01 |

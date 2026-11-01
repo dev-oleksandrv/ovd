@@ -26,6 +26,8 @@ export type ErrorCode =
   | 'NOT_A_PROJECT'
   | 'NOT_A_VPKG'
   | 'NO_PACKAGE'
+  | 'ARCH_MISMATCH'
+  | 'INSTALL_FAILED'
   | 'COMMAND_FAILED'
   | 'UNEXPECTED_OUTPUT'
 

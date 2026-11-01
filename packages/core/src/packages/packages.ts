@@ -64,6 +64,8 @@ export interface Packages {
   // Without a path, reads the .vpkg open in no-project mode.
   info(path?: string): Promise<PackageInfo>
   builds(): Promise<PackageBuild[]>
+  // Only the architecture, from `vpt show-contents`: the guard reads it for each candidate fix.
+  architecture(path: string): Promise<PackageArch>
 }
 
 const APP_CONFIG = 'assets/raw/keplerscript-app-config.json'
@@ -130,6 +132,12 @@ export function createPackages(deps: PackagesDeps): Packages {
         modifiedAt: info.mtime.toISOString(),
         vptInfo: raw
       }
+    },
+
+    async architecture(path) {
+      const contents = await vpt(['show-contents', path])
+      if (contents.exitCode !== 0) throw failed(contents)
+      return parseVptContents(contents.stdout).architecture
     },
 
     async builds() {

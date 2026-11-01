@@ -1,0 +1,1 @@
+Installing/Updating '/tmp/hellovega_aarch64.vpkg' ...success

@@ -15,6 +15,7 @@ export type ActivityAction =
   | 'pair.connect'
   | 'connect'
   | 'forget'
+  | 'app.install'
 
 export interface ActivityEntry {
   time: string
