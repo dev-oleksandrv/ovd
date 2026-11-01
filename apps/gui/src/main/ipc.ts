@@ -6,11 +6,7 @@ import { toResult } from './ipcResult'
 
 // Core runs in-process in main (ADR 0004); each handler is a thin call into it.
 export function registerIpcHandlers(ovd: Ovd): void {
-  ipcMain.handle(channels.appInfo, (): AppInfo => ({
-    version: app.getVersion(),
-    // macOS and Ubuntu only (ADR 0013).
-    platform: process.platform === 'darwin' ? 'darwin' : 'linux'
-  }))
+  ipcMain.handle(channels.appInfo, (): AppInfo => ({ version: app.getVersion() }))
 
   ipcMain.handle(channels.sdkInfo, (): Promise<IpcResult<SdkSummary>> =>
     toResult(async () => ({ sdkVersion: (await ovd.sdk.get()).sdkVersion }))

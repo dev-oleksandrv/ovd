@@ -41,7 +41,7 @@ export function App() {
 }
 
 function Shell() {
-  const [info, setInfo] = useState<{ version: string; platform: 'darwin' | 'linux' } | null>(null)
+  const [info, setInfo] = useState<{ version: string } | null>(null)
   const [gallery, setGallery] = useState(false)
   const [menu, setMenu] = useState(false)
   const [palette, setPalette] = useState(false)
@@ -112,7 +112,7 @@ function Shell() {
     else notify({ tone: 'error', text: result.error.message, cli: 'ovd doctor --json' })
   }
 
-  const platform = info?.platform ?? null
+  const platform = window.ovd.platform
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       // ⌘ on macOS only: Ctrl+K there is a text shortcut (kill to end of line) in inputs.
@@ -149,7 +149,7 @@ function Shell() {
   return (
     <AppFrame
       version={info?.version ?? null}
-      platform={info?.platform ?? null}
+      platform={platform}
       titleBar={
         <>
           <TargetPicker
@@ -164,7 +164,7 @@ function Shell() {
           />
           <div className="flex-1" />
           <SearchButton
-            platform={info?.platform ?? null}
+            platform={platform}
             onClick={() => {
               setMenu(false)
               setPalette(true)

@@ -16,7 +16,6 @@ import type {
 
 export interface AppInfo {
   version: string
-  platform: 'darwin' | 'linux'
 }
 
 export interface SdkSummary {
@@ -28,6 +27,8 @@ export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson
 
 // The only surface the renderer sees (ADR 0004). Every method maps to one IPC channel in main.
 export interface OvdApi {
+  // Known in preload, so the palette shortcut and the title bar never wait for IPC.
+  platform: 'darwin' | 'linux'
   appInfo(): Promise<AppInfo>
   sdk: {
     // The SDK this core runs; SDK_NOT_FOUND until one is installed.

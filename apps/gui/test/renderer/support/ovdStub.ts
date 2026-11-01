@@ -115,7 +115,8 @@ export function stubOvd(opts: {
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
   const api: OvdApi = {
-    appInfo: async () => ({ version: '0.1.0', platform: opts.platform ?? 'darwin' }),
+    platform: opts.platform ?? 'darwin',
+    appInfo: async () => ({ version: '0.1.0' }),
     sdk: {
       info: vi.fn(async () =>
         typeof opts.sdk === 'function' ? opts.sdk() : (opts.sdk ?? sdkFound)

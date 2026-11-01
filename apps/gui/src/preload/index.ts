@@ -3,6 +3,8 @@ import type { DevicesUpdate, LoginPrompt } from '@ovd/core'
 import { channels, type OvdApi } from './api'
 
 const api: OvdApi = {
+  // macOS and Ubuntu only (ADR 0013).
+  platform: process.platform === 'darwin' ? 'darwin' : 'linux',
   appInfo: () => ipcRenderer.invoke(channels.appInfo),
   sdk: {
     info: () => ipcRenderer.invoke(channels.sdkInfo)
