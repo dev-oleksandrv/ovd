@@ -29,6 +29,7 @@ paths:
 - Cover the error states a flow promises (wrong code, refused port, offline device) as well as the happy path.
 - One sandbox per test, so tests run in parallel and never share state.
 - CLI flows: Vitest in `e2e/cli/`, through `ovd()` from `harness/cli.ts`. Desktop flows: Playwright in `e2e/gui/`, through the `sandbox` and `launch` fixtures from `harness/gui.ts`; query by role and visible text, and assert the toast and status-bar CLI echo of each action.
+- On macOS the desktop windows run transparent, unfocused and without a Dock icon (`harness/quietElectron.cjs`), so a local run doesn't take over the screen. `OVD_E2E_SHOW=1` shows them to watch a run.
 - Wait for what the user would see (`expect(...)` retries), never for fixed time. When the app does background work that can race the flow (the doctor run at launch), wait for its last SDK call and say why in a comment.
 
 ## Style
