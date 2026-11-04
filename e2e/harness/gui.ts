@@ -16,6 +16,10 @@ const GUI = resolve(dirname(fileURLToPath(import.meta.url)), '../../apps/gui')
 // The app electron-vite builds (`pnpm --filter @ovd/gui build`), not the dev server.
 export const GUI_MAIN = join(GUI, 'out/main/index.js')
 const ELECTRON = createRequire(join(GUI, 'package.json'))('electron') as string
+// Keeps the windows of a local macOS run invisible and out of the user's way; see the file.
+const QUIET_ELECTRON = resolve(dirname(fileURLToPath(import.meta.url)), 'quietElectron.cjs')
+const QUIET =
+  process.platform === 'darwin' && !process.env.OVD_E2E_SHOW ? ['-r', QUIET_ELECTRON] : []
 
 export interface Desktop {
   app: ElectronApplication
@@ -54,7 +58,7 @@ export const test = base.extend<Fixtures>({
       const app = await _electron.launch({
         executablePath: ELECTRON,
         // Ubuntu runners don't allow Chromium's sandbox (unprivileged user namespaces).
-        args: [GUI_MAIN, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
+        args: [...QUIET, GUI_MAIN, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
         env: sandbox.env
       })
       await app.context().tracing.start({ screenshots: true, snapshots: true })
