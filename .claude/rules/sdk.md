@@ -18,6 +18,7 @@ paths:
 
 ## Known SDK behavior (design around it)
 
+- `vega device install-app` installs a package built for another architecture without complaint (exit 0). Only the architecture guard stops it (ADR 0008).
 - `vega device launch-app` reports success for an app that crashed. Confirm every launch with `running-apps` and crash history (ADR 0012).
 - A `loggingctl` session only sees apps installed before it started. Restart the stream after every install OVD makes (ADR 0014).
 - Release builds send no `console.log` to the log stream. Say so instead of showing an empty log.

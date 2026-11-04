@@ -4,6 +4,7 @@ import pkg from '../package.json' with { type: 'json' }
 import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
+import { registerInstall } from './commands/install.js'
 import { registerPairing } from './commands/pair.js'
 import { registerPkg } from './commands/pkg.js'
 import { registerProject } from './commands/project.js'
@@ -67,5 +68,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerSetupStick(program, deps, setExitCode)
   registerProject(program, deps, setExitCode)
   registerPkg(program, deps, setExitCode)
+  registerInstall(program, deps, setExitCode)
   return program
 }

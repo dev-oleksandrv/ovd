@@ -63,6 +63,7 @@
   --color-warning: #f2c26b;
   --color-error: #ff7a7a;
   --color-error-soft: #ff9a9a;
+  --color-error-text: #e3c4c4;
   --color-info: #7ab8ff;
 
   /* Log levels (V, D, I, W, E) */

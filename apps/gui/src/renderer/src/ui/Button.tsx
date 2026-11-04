@@ -5,7 +5,9 @@ import { Icon } from './Icon'
 interface ButtonProps {
   children: ReactNode
   onClick?: () => void
-  variant?: 'primary' | 'secondary' | 'dashed'
+  // `blocked` looks disabled but still answers a click, to say why (design: Install on target
+  // under an architecture mismatch).
+  variant?: 'primary' | 'secondary' | 'dashed' | 'blocked'
   size?: 'md' | 'sm'
   icon?: string
   loading?: boolean
@@ -17,7 +19,8 @@ interface ButtonProps {
 const variants = {
   primary: 'bg-accent text-accent-ink font-semibold hover:bg-accent-hover',
   secondary: 'border border-line-strong bg-control hover:bg-control-hover',
-  dashed: 'border border-dashed border-line-dashed bg-row-hover text-text-soft hover:border-accent'
+  dashed: 'border border-dashed border-line-dashed bg-row-hover text-text-soft hover:border-accent',
+  blocked: 'bg-line-strong font-semibold text-faint'
 }
 
 const sizes = {

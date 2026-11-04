@@ -1,0 +1,5 @@
+Vega operation FAILED due to an irrecoverable error: Incomplete: Installing/Updating '/tmp/player_aarch64.vpkg' ...error (Module dependency not found): error: Unable to install '/tmp/player_aarch64.vpkg' as the required dependencies are not found on the device.
+The Vega Virtual Device is missing modules that are available on a physical device. Test your app using a Fire TV Stick instead.
+The following module dependencies declared in the application manifest are not found:
+  - /com.amazon.kepler.keplerscript_2@IKeplerScript_2
+Additional logs can be found at ~/vega/sdk/vega-sdk/main/0.24.12112/logs

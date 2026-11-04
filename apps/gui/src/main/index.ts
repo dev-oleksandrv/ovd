@@ -4,6 +4,7 @@ import { optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOvd } from '@ovd/core'
 import { registerDevicesIpc } from './devicesIpc'
+import { registerInstallIpc } from './installIpc'
 import { registerIpcHandlers } from './ipc'
 import { registerPackagesIpc } from './packagesIpc'
 import { registerPairingIpc } from './pairingIpc'
@@ -78,6 +79,7 @@ app.whenReady().then(() => {
   registerPairingIpc(ovd, devices.refresh)
   registerProjectIpc(ovd, () => mainWindow)
   registerPackagesIpc(ovd, () => mainWindow)
+  registerInstallIpc(ovd)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
 
   createWindow()

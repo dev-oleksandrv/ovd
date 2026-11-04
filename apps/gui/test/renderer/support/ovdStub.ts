@@ -1,10 +1,12 @@
 import type {
+  ArchCheck,
   Check,
   Device,
   DevicesUpdate,
   DoctorReport,
   EnableResult,
   ForgetResult,
+  InstallResult,
   LoginPrompt,
   PackageBuild,
   PackageInfo,
@@ -107,12 +109,14 @@ export function stubOvd(opts: {
   project?: Partial<OvdApi['project']>
   // No builds unless a test says otherwise.
   packages?: Partial<OvdApi['packages']>
+  install?: Partial<OvdApi['install']>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
   const api: OvdApi = {
-    appInfo: async () => ({ version: '0.1.0', platform: opts.platform ?? 'darwin' }),
+    platform: opts.platform ?? 'darwin',
+    appInfo: async () => ({ version: '0.1.0' }),
     sdk: {
       info: vi.fn(async () =>
         typeof opts.sdk === 'function' ? opts.sdk() : (opts.sdk ?? sdkFound)
@@ -178,6 +182,12 @@ export function stubOvd(opts: {
           (async (): Promise<IpcResult<PackageBuild[]>> => ({ ok: true, data: [] }))
       ),
       pick: vi.fn(opts.packages?.pick ?? (async () => unexpected<string | null>('packages.pick')))
+    },
+    install: {
+      check: vi.fn(opts.install?.check ?? (async () => unexpected<ArchCheck>('install.check'))),
+      install: vi.fn(
+        opts.install?.install ?? (async () => unexpected<InstallResult>('install.install'))
+      )
     },
     setup: {
       signedIn: vi.fn(opts.setup?.signedIn ?? (async () => unexpected<boolean>('setup.signedIn'))),

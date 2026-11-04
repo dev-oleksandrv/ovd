@@ -18,10 +18,23 @@ export function registerDevicesIpc(
     onUpdate: (update) => window()?.webContents.send(channels.devicesChanged, update)
   })
 
-  // The first list (at launch) and every Rescan first reconnect saved Wi‑Fi devices VDA has
-  // lost (spec C5). A failure there shows up in the list itself: offline, or the SDK error.
+  // Launch and every Rescan first reconnect saved Wi‑Fi devices VDA has lost (spec C5). A
+  // failure there shows up in the list itself: offline, or the SDK error.
+  const reconnect = (): Promise<void> => ovd.pairing.reconnectSaved().catch(() => undefined)
+  // The launch reconnect runs once, before the first poll and the renderer's first list: a
+  // list shown while it still runs could change under the user (a device lost meanwhile
+  // would come back without Reconnect).
+  const launched = reconnect()
+  let ready = false
+  let firstList = true
+
   ipcMain.handle(channels.devicesList, async () => {
-    await ovd.pairing.reconnectSaved().catch(() => undefined)
+    if (firstList) {
+      firstList = false
+      await launched
+    } else {
+      await reconnect()
+    }
     return watcher.refresh()
   })
 
@@ -43,9 +56,13 @@ export function registerDevicesIpc(
     refresh: () => watcher.refresh(),
     watch(win) {
       const sync = (): void => {
-        if (win.isVisible() && !win.isMinimized()) watcher.start()
+        if (ready && win.isVisible() && !win.isMinimized()) watcher.start()
         else watcher.stop()
       }
+      void launched.then(() => {
+        ready = true
+        if (!win.isDestroyed()) sync()
+      })
       win.on('show', sync)
       win.on('hide', sync)
       win.on('minimize', sync)

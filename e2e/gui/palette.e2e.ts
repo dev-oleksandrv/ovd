@@ -64,6 +64,8 @@ test.describe('command palette', () => {
   test('opens the wizards', async ({ sandbox, launch }) => {
     sandbox.installSdk()
     const { page } = await launch()
+    // The palette shortcut is bound once the app has mounted; a key pressed earlier is lost.
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
 
     await runCommand(page, 'Pair a device')
     await expect(page.getByRole('dialog', { name: 'Pair a device over Wi-Fi' })).toBeVisible()
@@ -76,6 +78,8 @@ test.describe('command palette', () => {
   test('lists later screens without dead buttons', async ({ sandbox, launch }) => {
     sandbox.installSdk()
     const { page } = await launch()
+    // The palette shortcut is bound once the app has mounted; a key pressed earlier is lost.
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
 
     await runCommand(page, 'Logs')
 

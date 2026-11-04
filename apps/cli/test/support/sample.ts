@@ -4,6 +4,7 @@ import {
   type Devices,
   type Devmode,
   type ErrorCode,
+  type Install,
   type Ovd,
   type Packages,
   type Pairing,
@@ -137,6 +138,16 @@ export function stubPackages(
   const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
   return {
     ...stubProject(project),
-    packages: { info: missing('info'), builds: missing('builds'), ...packages }
+    packages: {
+      info: missing('info'),
+      builds: missing('builds'),
+      architecture: missing('architecture'),
+      ...packages
+    }
   }
+}
+
+export function stubInstall(install: Partial<Install>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return { install: { check: missing('check'), install: missing('install'), ...install } }
 }

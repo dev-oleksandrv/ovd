@@ -1,4 +1,4 @@
-import type { PackageBuild, PackageInfo } from '@ovd/core'
+import type { ArchCheck, Device, PackageBuild, PackageInfo } from '@ovd/core'
 import type { KeyValue } from '../../ui/KeyValueGrid'
 
 const BUILD_TYPE = { debug: 'Debug', release: 'Release', unknown: 'Unknown' } as const
@@ -60,6 +60,24 @@ export function overviewRows(info: PackageInfo): KeyValue[] {
 
 export function infoCli(displayPath: string): string {
   return `ovd pkg info ${displayPath}`
+}
+
+export function installCli(displayPath: string, device: string): string {
+  return `ovd install ${displayPath} --device ${device}`
+}
+
+// Why Install on target can't run yet, or null when the target can take an install.
+export function installBlocker(target: Device | undefined): string | null {
+  if (!target) return 'No target device: pick one in the title bar'
+  if (target.status === 'stopped') return `${target.name} is stopped`
+  if (target.status !== 'online') return `${target.name} is offline`
+  if (!target.info) return `Waiting for ${target.name} to report its architecture`
+  return null
+}
+
+// The mismatch block's way out (design `fixLabel`).
+export function fixLabel(check: ArchCheck): string {
+  return check.fix ? `Use ${check.fix.file}` : 'Switch target'
 }
 
 // A dropped or picked file, listed with the builds for the rest of the session.

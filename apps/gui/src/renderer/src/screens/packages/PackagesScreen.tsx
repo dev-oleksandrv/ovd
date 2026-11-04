@@ -1,6 +1,7 @@
-import type { ErrorJson, PackageBuild, PackageInfo } from '@ovd/core'
+import type { ArchCheck, ErrorJson, PackageBuild, PackageInfo } from '@ovd/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { IpcResult } from '../../../../preload/api'
+import { targetDevice, useDevicesContext } from '../../devices/devicesContext'
 import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
@@ -9,7 +10,7 @@ import { LoadingState } from '../../ui/LoadingState'
 import { BuildRow } from './BuildRow'
 import { DropZone } from './DropZone'
 import { PackageDetail } from './PackageDetail'
-import { infoCli, inspectedBuild } from './packagesView'
+import { infoCli, inspectedBuild, installBlocker, installCli } from './packagesView'
 
 type Builds =
   | { status: 'loading' }
@@ -21,12 +22,16 @@ interface PackagesScreenProps {
   // The open project's path: a mode switch lists its builds again.
   projectPath: string | null
   onOpenFolder: () => void
+  // Opens the title bar's target picker: the mismatch fix when no build matches.
+  onSwitchTarget: () => void
 }
 
-// Packages → Overview (Stage 2.2). Builds are listed when the screen opens or the project
-// changes; nothing watches build/ yet.
-export function PackagesScreen({ projectPath, onOpenFolder }: PackagesScreenProps) {
+// Packages → Overview (Stage 2.2) and Install on target behind the architecture guard (2.3).
+// Builds are listed when the screen opens or the project changes; nothing watches build/ yet.
+export function PackagesScreen({ projectPath, onOpenFolder, onSwitchTarget }: PackagesScreenProps) {
   const { notify, echo } = useFeedback()
+  const { state: devices } = useDevicesContext()
+  const target = targetDevice(devices)
   const [builds, setBuilds] = useState<Builds>({ status: 'loading' })
   // Files dropped or picked here, listed with the builds for the rest of the session.
   const [inspected, setInspected] = useState<PackageBuild[]>([])
@@ -68,6 +73,30 @@ export function PackagesScreen({ projectPath, onOpenFolder }: PackagesScreenProp
   const current = listed.find((b) => b.path === selected) ?? listed[0]
   const currentRead = current ? reads[current.path] : undefined
 
+  const readyInfo = currentRead?.status === 'ready' ? currentRead.info : undefined
+  const blocker = installBlocker(target)
+  // The guard runs again whenever the package, the target or its architecture changes.
+  const guardKey =
+    readyInfo && target?.info && blocker === null
+      ? [readyInfo.path, target.id, target.info.architecture].join('\n')
+      : null
+  const [guard, setGuard] = useState<{ key: string; check: ArchCheck } | null>(null)
+  const [installing, setInstalling] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (guardKey === null) return
+    const [path = '', device = ''] = guardKey.split('\n')
+    let live = true
+    void window.ovd.install.check(path, device).then((result) => {
+      // A failed check isn't shown: the install itself runs the guard and reports.
+      if (live && result.ok) setGuard({ key: guardKey, check: result.data })
+    })
+    return () => {
+      live = false
+    }
+  }, [guardKey])
+  const check = guard?.key === guardKey ? guard.check : undefined
+
   // The first build is shown without a click, so it is read as soon as it is listed.
   useEffect(() => {
     if (current && !requested.current.has(current.path)) void read(current.path)
@@ -98,6 +127,29 @@ export function PackagesScreen({ projectPath, onOpenFolder }: PackagesScreenProp
   const select = (build: PackageBuild): void => {
     setSelected(build.path)
     echo(infoCli(build.displayPath))
+  }
+
+  const install = async (info: PackageInfo): Promise<void> => {
+    if (!target) return
+    const cli = installCli(info.displayPath, target.id)
+    if (check && !check.allowed) {
+      notify({ tone: 'error', text: 'Install blocked: architecture mismatch', cli })
+      return
+    }
+    setInstalling(info.path)
+    notify({ tone: 'info', text: `Installing ${info.file}…`, cli })
+    const result = await window.ovd.install.install(info.path, target.id)
+    setInstalling(null)
+    notify(
+      result.ok
+        ? { tone: 'ok', text: `Installed on ${result.data.target.name}`, cli }
+        : { tone: 'error', text: result.error.message, cli }
+    )
+  }
+
+  const fix = (guarded: ArchCheck): void => {
+    if (guarded.fix) select(guarded.fix)
+    else onSwitchTarget()
   }
 
   const now = new Date()
@@ -165,7 +217,16 @@ export function PackagesScreen({ projectPath, onOpenFolder }: PackagesScreenProp
       ) : currentRead.status === 'error' ? (
         <ErrorState title={currentRead.error.message} hint={currentRead.error.hint} />
       ) : (
-        <PackageDetail info={currentRead.info} />
+        <PackageDetail
+          info={currentRead.info}
+          install={{
+            onInstall: () => void install(currentRead.info),
+            installing: installing === currentRead.info.path,
+            disabledReason: blocker,
+            ...(check ? { check } : {}),
+            onFix: fix
+          }}
+        />
       )}
     </div>
   )

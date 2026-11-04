@@ -18,6 +18,8 @@ export interface World {
   vvd: { running: boolean; developerMode: boolean }
   // Addresses VDA holds a connection to (`vda connect`), kept across stick power cycles.
   vdaConnected: string[]
+  // Packages `vega device install-app` put on a device, by device ID and recorded package.
+  installed: { device: string; package: string }[]
 }
 
 export interface Stick {
@@ -47,7 +49,8 @@ export function defaultWorld(): World {
     tvCode: 'ABC123',
     stick: null,
     vvd: { running: false, developerMode: true },
-    vdaConnected: []
+    vdaConnected: [],
+    installed: []
   }
 }
 
