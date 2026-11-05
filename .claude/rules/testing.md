@@ -39,3 +39,7 @@ paths:
 - No snapshot tests.
 - Prefer table tests (`test.each`) for parsers, mappings and architecture comparisons; include edge cases (empty list, offline device, unknown architecture).
 - Run `pnpm run check` before committing.
+
+## Gates
+
+- The gates are the maintainer's to change. Skipping or deleting a test, weakening an assertion, changing test, lint or coverage config, or excluding a file to get a pass: stop and ask first, and say which gate and why.
