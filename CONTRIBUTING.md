@@ -28,7 +28,9 @@ Every feature lands in the core first, then in the CLI and the desktop app toget
 
 ## Branches
 
-One branch per change. Never commit directly to `main`. Name branches `<type>/<short-kebab-slug>`, e.g. `feat/devices-list`.
+One branch per change (feature, fix, refactor, docs, anything), cut from an up-to-date `main`. Never commit directly to `main`. Name branches `<type>/<short-kebab-slug>`, e.g. `feat/devices-list`, `fix/logs-reinstall-restart`.
+
+History is never rewritten: no force-push, rebase, `reset --hard`, `commit --amend`, `filter-branch` or `branch -D`. When a branch conflicts with `main`, merge `main` into it with a merge commit. Pull requests are merged with a merge commit.
 
 ## Commits
 
@@ -39,7 +41,7 @@ Commits follow [Conventional Commits 1.0](https://www.conventionalcommits.org/en
 ```
 
 - **Types:** `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`, `chore`, `revert`.
-- **Scope:** the workspace package the change touches, required whenever one is touched: `core` (`packages/core`), `cli` (`apps/cli`), `gui` (`apps/gui`), `mcp` (`apps/mcp`), `e2e` (`e2e`). Several packages: comma-separated, e.g. `feat(core,cli,gui): add devices list`. Repo-level changes (docs, CI, tooling) have no scope; dependency updates use `deps`.
+- **Scope:** the workspace package the change touches, required whenever one is touched: `core` (`packages/core`), `cli` (`apps/cli`), `gui` (`apps/gui`), `mcp` (`apps/mcp`), `e2e` (`e2e`). Several packages: comma-separated in dependency order, e.g. `feat(core,cli,gui): add devices list`; prefer one commit per package when the change splits cleanly. Repo-level changes (docs, CI, tooling) have no scope, e.g. `docs: …`, `ci: …`; dependency updates use `deps`, e.g. `build(deps): …`.
 - **Subject:** imperative, lowercase, no trailing period, ≤ 72 characters.
 - **Breaking changes** (including `--json` output shape changes): add `!` and a `BREAKING CHANGE:` footer.
 

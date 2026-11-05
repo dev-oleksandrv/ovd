@@ -64,7 +64,8 @@ e2e/                       # end-to-end tests of the built surfaces (ADR 0023)
 fixtures/
   <sdk-version>/<tool>/    # recorded, sanitized SDK outputs
 docs/
-  ARCHITECTURE.md · ROADMAP.md · adr/
+  README.md                # which document owns which fact
+  ARCHITECTURE.md · ROADMAP.md · adr/ · conventions/
 ```
 
 `apps/mcp` arrives in Stage 7. `packages/core` exports TypeScript source and is bundled into each surface (tsup for the CLI, electron-vite for the desktop).
@@ -158,17 +159,21 @@ What OVD builds on (SDK 0.24). Host tools run on the dev machine; device tools r
 
 ## 8. Known SDK behavior
 
-OVD designs around these:
+OVD designs around these. This list is the one home for SDK behavior: add new findings here, and the rules that follow from them to `docs/conventions/sdk.md`.
 
 - A stick without Developer Mode is not listed by VDA at all (ADR 0009).
 - Fire TV sticks are `armv7`; the Virtual Device matches the host, `x86_64` or `aarch64` (ADR 0008).
+- `vega device install-app` installs a package built for another architecture without complaint (exit 0). Only the architecture guard stops it (ADR 0008).
 - `vega device launch-app` reports success for apps that crash (ADR 0012).
 - A log session only sees apps installed before it started (ADR 0014). Release builds send no `console.log` output.
-- On the Virtual Device, `inputd-cli` doesn't reach apps and `gwsi-tool-screenshooter` fails; emulator gRPC works, with Home unavailable. gRPC is off after every start (ADR 0010).
+- On the Virtual Device, `inputd-cli` key presses report success but don't reach apps, and `gwsi-tool-screenshooter` fails. Emulator gRPC works: `sendKey` (OK = `kpenter`, Back = `KEY_BACK`, Home can't be sent) and `getScreenshot` (ADR 0010).
+- The emulator gRPC endpoint is off after every Virtual Device start. It is enabled through the emulator console (`grpc <port>`) with the token from `~/.emulator_console_auth_token`.
 - `vega device info` reports no uptime or storage. `vlcm` lifespan is a state, not a duration.
 - Crash and log access is scoped to the user's own app.
 - Metro runs on the host; its output isn't in the device log stream.
 - The KPI Visualizer fails warm starts on the Virtual Device and fails offline apps.
+- `vpt` isn't on PATH; it runs as `vega exec vpt …`. Two `vpt` calls at once crash the SDK wrapper.
+- `vpt info --json` reports no architecture and no build type, and its `size` is the unpacked contents without `meta-info/`, not the file's size. The build type is `developmentEnabled` in `assets/raw/keplerscript-app-config.json` (`vpt dump`). `vpt checksum` prints SHA-384.
 - GitHub's arm64 macOS runners can't start the Virtual Device (ADR 0013).
 - Two CLIs answer to `vega`: the Vega CLI (SDK Manager, `~/vega/bin/vega`) and the one bundled inside each SDK. The bundled one has no `sdk` or `devmode`: `vega devmode login --json` there exits 253 with `Unknown arguments`.
 - `vega devmode login --json` is the only sign-in probe: signed in, it exits 2 at once ("Already logged in"); signed out, it prints `"status": "pending"` with a verification URL and code, opens no browser, and waits. Doctor stops it at `pending`. Once the browser sign-in finishes, it prints `"status": "success"` and exits 0.
