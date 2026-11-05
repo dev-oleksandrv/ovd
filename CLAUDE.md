@@ -109,4 +109,4 @@ Order: core → CLI → desktop → tests → e2e, in one branch.
 - Architectures: sticks are `armv7`; the Virtual Device matches the host (`x86_64` on Intel and Ubuntu, `aarch64` on Apple Silicon). Always compare against what the target reports, never assume (ADR 0008).
 - A stick without Developer Mode is invisible to VDA. "Developer Mode off" is a setup flow, never a device state (ADR 0009).
 - VDA runs through `vega exec vda`, not from PATH.
-- Use the `amazon-devices-vega-*` skills (developer mode, build-and-run, setup-sdk, app manifest) when you need SDK behavior details.
+- For SDK behavior details, use the `amazon-devices-vega-*` skills (developer mode, build-and-run, setup-sdk, app manifest). They come from Amazon Devices Builder Tools, not from this repo or the Vega SDK; each developer installs them with `npx -y @amazon-devices/amazon-devices-buildertools-mcp@latest init-context --agent claude-code-cli`. If they aren't loaded, say so and verify host-side behavior yourself (Working agreement).

@@ -2,19 +2,21 @@
 
 OVD is built in stages. Each stage is something you can do with the tool, usable on its own, in the CLI and the desktop app. Stages 0–3 are strictly sequential and form the first public release. From Stage 4 on, stages and sub-stages can be reordered freely. Every stage ends with a tagged release (ADR 0018).
 
-| Stage | Name                        | You can…                                                                 | Desktop screens                                                     | Order    |
-| ----- | --------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- | -------- |
-| 0     | Setup                       | Work on a ready repo with agent instructions                             | Empty app frame, design tokens                                      | Fixed    |
-| 1     | Connect my devices          | See every stick and the Virtual Device, set up a new stick               | App shell, Doctor (first run), Devices, setup and pairing wizards   | Fixed    |
-| 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    |
-| 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    |
-| 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible |
-| 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible |
-| 6     | Faster dev loop             | Deep links, Metro, device shell, memory, SDK versions                    | Deep links, Shell, Performance → Memory, Environment → SDK versions | Flexible |
-| 7     | Agents and CI               | Let AI agents and GitHub Actions use OVD                                 | Scenarios & MCP                                                     | Flexible |
-| 8     | Performance                 | Track launch KPIs and record traces                                      | Performance → Launch KPIs, Traces & monitors                        | Flexible |
-| 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible |
-| 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     |
+| Stage | Name                        | You can…                                                                 | Desktop screens                                                     | Order    | Status        |
+| ----- | --------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- | -------- | ------------- |
+| 0     | Setup                       | Work on a ready repo with agent instructions                             | Empty app frame, design tokens                                      | Fixed    | Done (v0.0.1) |
+| 1     | Connect my devices          | See every stick and the Virtual Device, set up a new stick               | App shell, Doctor (first run), Devices, setup and pairing wizards   | Fixed    | Done (v0.1.0) |
+| 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | In progress   |
+| 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Next          |
+| 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Planned       |
+| 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Planned       |
+| 6     | Faster dev loop             | Deep links, Metro, device shell, memory, SDK versions                    | Deep links, Shell, Performance → Memory, Environment → SDK versions | Flexible | Planned       |
+| 7     | Agents and CI               | Let AI agents and GitHub Actions use OVD                                 | Scenarios & MCP                                                     | Flexible | Planned       |
+| 8     | Performance                 | Track launch KPIs and record traces                                      | Performance → Launch KPIs, Traces & monitors                        | Flexible | Planned       |
+| 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
+| 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
+
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 work (2.1–2.3) is on `main`, not yet released.
 
 The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `docs/adr/`.
 
@@ -26,7 +28,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Goal:** a repo where any later stage can be built without re-explaining the project.
 
-### 0.1 Repo and boilerplates
+### 0.1 Repo and boilerplates — done (PR #1)
 
 - Apache-2.0 `LICENSE` and `NOTICE`.
 - pnpm workspace: `packages/core`, `apps/cli`, `apps/gui` (Electron + React + Vite). `apps/mcp` comes in Stage 7.
@@ -38,7 +40,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** `pnpm install && pnpm test && pnpm build` passes on a clean machine; `ovd --version` runs; the desktop app opens.
 
-### 0.2 Design system and empty app frame
+### 0.2 Design system and empty app frame — done (PR #1)
 
 - Design tokens, fonts and icons (`.claude/rules/gui.md`).
 - Base components: button, icon button, tabs with underline and badge, chip, status dot (with pulse), table, key–value rows, code block with Copy, toast, modal wizard with "Step N of 4", empty state.
@@ -46,14 +48,14 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** the app opens to the frame with an empty sidebar; a dev-only gallery page shows every base component in every state.
 
-### 0.3 CI
+### 0.3 CI — done (PR #1, #3, #4, #5)
 
 - GitHub Actions on `ubuntu-latest`: install, lint, typecheck, test, build.
 - Release workflow: publish to npm and attach desktop builds when a tag is pushed.
 
 **Expected:** every PR shows green or red checks; a test tag produces a dry-run release.
 
-### 0.4 Agent instructions
+### 0.4 Agent instructions — done (PR #1)
 
 - `CLAUDE.md`, path-scoped `.claude/rules/`, the `/ship` skill, `docs/ARCHITECTURE.md`, this roadmap and the ADRs.
 - The desktop design linked from the docs: [OVD Desktop v2 in Claude Design](https://claude.ai/design/p/11662d93-ccfb-4d11-9761-b6fd499be3fd?file=OVD+Desktop+v2.dc.html), with the screen → stage map below.
@@ -70,7 +72,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Sidebar after:** Device → Devices · Setup → Doctor.
 
-### 1.1 App shell
+### 1.1 App shell — done (PR #9)
 
 - Title bar: logo and version; target picker (name, architecture, connection) listing devices with status, ending with "Set up a new stick…" and "Pair a device over Wi‑Fi…"; "Search or run a command ⌘K". Run and Watch are placeholders until Stage 3.
 - Sidebar groups: Device, Debug, Analyze, Automate, Setup, with badges.
@@ -80,7 +82,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** every screen is reachable from the sidebar and the palette; changing the target updates the title bar and status bar and echoes `ovd target set <id>`.
 
-### 1.2 Doctor and first run
+### 1.2 Doctor and first run — done (PR #10)
 
 - CLI `ovd doctor`: Vega SDK (`vega --version`, `vega sdk config doctor`), VDA (`vega exec vda version`), devices (`vega device list`), Developer Mode hints (link to the setup wizard), Metro ports 8081 and 8097 (free, in use, reversed or not). Each failure prints a one-line fix.
 - Desktop first run ("Set up OVD"): four checks in order, Vega SDK → VDA → Devices → Project. Each waits for the previous one and has Re-check and its own call to action ("Install the Vega SDK ↗"; "Start the Virtual Device" / "Set up a Fire TV stick"; "Open a project folder" / "Drop a .vpkg"). All passed: "Setup complete — OVD is ready." → Go to Devices.
@@ -90,7 +92,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** without the SDK, first run shows only the SDK check with an install link. With the SDK and no devices, it explains that a stick without Developer Mode isn't listed. `ovd doctor --json` and the Doctor screen agree.
 
-### 1.3 Devices screen
+### 1.3 Devices screen — done (PR #7)
 
 - CLI: `ovd devices`, `ovd device info <id>`, `ovd target set <id>`; respects `VEGA_SERIAL`.
 - List: "Discovered over USB, TCP/IP and the local Virtual Device · refreshes every 2 s"; Rescan; Pair over Wi‑Fi. Rows: icon, name, connection · architecture · OS, status dot, Target badge; offline devices dimmed. Hint: "Stick plugged in but not listed? Set up Developer Mode →". Empty state: "No devices yet" with Start the Virtual Device and Set up a Fire TV stick.
@@ -99,13 +101,13 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** `ovd devices --json` lists every connected device with OS, architecture, connection and serial. Unplugging a stick updates the desktop within 2 s.
 
-### 1.4 Virtual Device start / stop
+### 1.4 Virtual Device start / stop — done (PR #11)
 
 - CLI `ovd vvd start | stop | status`. Desktop Start/Stop on the Virtual Device's detail ("The Virtual Device is stopped."), the palette and the Doctor Devices check.
 
 **Expected:** `ovd vvd start` returns once the device is ready and listed; stop removes it; the button shows progress.
 
-### 1.5 Set up a new stick (wizard)
+### 1.5 Set up a new stick (wizard) — done (PR #13)
 
 - CLI `ovd setup-stick`; desktop modal, Step N of 4:
   1. On the TV: Settings → My Fire TV → About; select the device name 7 times; Developer options → Developer Mode → Continue; leave the 6-digit code on screen.
@@ -118,7 +120,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** a brand-new stick goes from "not listed" to listed by following the wizard alone; every error state can be triggered and recovered from.
 
-### 1.6 Pair over Wi‑Fi (wizard)
+### 1.6 Pair over Wi‑Fi (wizard) — done (PR #12)
 
 - CLI `ovd pair --usb` / `ovd pair <ip>[:port]`; desktop modal, Step N of 4:
   1. Route: with USB (OVD switches the stick to TCP/IP) or without USB (Connection Mode on the TV). Both need Developer Mode.
@@ -128,13 +130,13 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** a stick with Developer Mode pairs by either route and appears in Devices.
 
-### 1.7 Saved Wi‑Fi devices
+### 1.7 Saved Wi‑Fi devices — done (PR #12)
 
 - Paired devices are remembered; unreachable ones stay listed as offline with Reconnect. CLI `ovd devices` shows `offline`; `ovd connect <id>`.
 
 **Expected:** a saved stick reconnects after a host restart without retyping its address.
 
-### 1.8 E2E tests
+### 1.8 E2E tests — done (PR #14, #15)
 
 - Fake SDK and harness in `e2e/` (ADR 0023); `e2e` CI check required on PRs.
 - CLI: `doctor` (no SDK, bundled CLI only, no devices, all passing, VDA down, Virtual Device Developer Mode off and fixed, Metro port in use), `devices`, `device info | rename`, `target` (only online, remembered, offline, `VEGA_SERIAL`, `--device`), `vvd start | stop | status | devmode enable`, `setup-stick` (success, wrong code then retry, expired sign-in, bad code, `--wifi`, bundled CLI), `pair --usb`, `pair <ip>` (refused, different network, bad address), saved devices (offline, `connect`, `forget` both routes).
@@ -152,7 +154,7 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Sidebar after:** Device → Devices, Apps, Packages · Setup → Doctor.
 
-### 2.1 Project card and no-project mode
+### 2.1 Project card and no-project mode — done (PR #16)
 
 - Sidebar bottom: project card (folder, path, "OS 1.2 · RN 0.72"; a project records no SDK version) or "No project" with "Drop a .vpkg" / "Open a project folder…".
 - CLI `ovd open <folder>`; commands accept `--vpkg <file>` without a project.
@@ -160,20 +162,20 @@ The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `do
 
 **Expected:** opening a folder or dropping a .vpkg switches modes; Run and Packages follow.
 
-### 2.2 Packages → Overview
+### 2.2 Packages → Overview — done (PR #19)
 
 - CLI `ovd pkg info <file>` (`vpt info --json`; architecture from `vpt show-contents`, build type from the app config, SHA-384 from `vpt checksum`) and `ovd pkg list` (the open project's `build/`, scanned, not watched).
 - Drop zone ("Drop a .vpkg here", "or watch build/"); "Recent builds" (file, architecture chip, Debug/Release, size, time); detail with title, version (build), path, "Install on target"; Overview tab with key–value rows and the `vpt info --json` block. Only Overview is visible.
 
 **Expected:** dropping any .vpkg shows ID, title, version, build and architecture within a second.
 
-### 2.3 Architecture guard
+### 2.3 Architecture guard — done (PR #20)
 
 - Before every install, compare package and target architecture (ADR 0008). Desktop: red block "Architecture mismatch: package is aarch64, Fire TV Stick 4K Select is armv7. Install is blocked." with a fix that switches to a matching recent build. CLI: error naming both; `--force` overrides.
 
 **Expected:** an `aarch64` package on an `armv7` stick is blocked in both surfaces, and the fix offers `player-1.4.2-armv7.vpkg`.
 
-### 2.4 Apps screen
+### 2.4 Apps screen — next
 
 - CLI: `ovd apps [--running]`, `ovd app info`, `ovd install | reinstall | uninstall | launch | stop [--force] | restart`, each accepting a .vpkg, a package ID or a project folder (auto-finds the Debug or Release build).
 - Desktop: header "On <target> · launches are verified against running-apps and crash history"; tabs "Installed · N" / "Running · N"; table (avatar, title, ID, version, status Running · pid / Stopped / Verifying… / Crashed on launch, Launch/Stop); detail actions Launch, Restart, Terminate, Force stop; info rows incl. Lifespan and Running for; "Components · vpm info / vlcm list" table; Uninstall & reinstall (note: "clears app data (to be verified)"), Uninstall.
