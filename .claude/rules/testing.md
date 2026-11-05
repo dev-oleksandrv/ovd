@@ -8,7 +8,8 @@ paths:
 
 # Testing rules
 
-- Vitest across the workspace. Tests sit next to the package they test: `packages/core/src/devices/parseDeviceInfo.ts` → `packages/core/test/devices/parseDeviceInfo.test.ts` (mirror `src/` 1:1).
+- Vitest across the workspace. Tests sit next to the package they test, and test paths mirror `src/`: `packages/core/src/adapters/parseDeviceInfo.ts` → `packages/core/test/adapters/parseDeviceInfo.test.ts`.
+- Every parser, core action, CLI command, desktop IPC handler, and renderer view-model or stateful component has a test. Exempt: types, `index.ts`, and presentational components covered by e2e.
 - Write the failing test first for parsers, core actions, CLI JSON output, and bug fixes.
 - **No hardware in tests.** No real SDK calls, devices, network or timers. Core tests use a fake runner that replays fixtures; streams use fake child processes; time uses fake timers.
 - Parsers are tested against recorded outputs in `fixtures/<sdk-version>/<tool>/<case>.<ext>` (e.g. `fixtures/0.24/vega-device-info/stick-usb.json`). When the SDK changes output, add a new version folder; keep the old one while the old adapter is supported.
