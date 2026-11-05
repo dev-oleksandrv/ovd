@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # DIAGNOSTIC branch: runs on push, no PR needed.
+    branches: [main, test/e2e-window-diagnostics]
   pull_request:
 
 permissions:
@@ -39,8 +40,15 @@ jobs:
 
   # The built CLI and desktop app against a fake Vega SDK that replays fixtures/0.24 (ADR 0023).
   # Required on PRs.
+  # DIAGNOSTIC: desktop flows only, 3 times on each Ubuntu image, every run reported.
   e2e:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+        attempt: [1, 2, 3]
+    name: e2e (${{ matrix.os }} #${{ matrix.attempt }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -51,18 +59,19 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # The desktop app needs a display; the runner has none, so Xvfb provides one.
-      - run: xvfb-run --auto-servernum pnpm run test:e2e
+      - run: xvfb-run --auto-servernum pnpm run test:e2e:gui
       - name: Upload traces of failed desktop flows
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-traces-ubuntu
+          name: e2e-traces-${{ matrix.os }}-${{ matrix.attempt }}
           path: e2e/test-results/
           if-no-files-found: ignore
 
   # macOS is the other supported host (ADR 0013); its runners cost more, so main only.
   e2e-macos:
-    if: github.event_name == 'push'
+    # DIAGNOSTIC: off on this branch.
+    if: false
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
