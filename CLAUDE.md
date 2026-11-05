@@ -75,6 +75,7 @@ fixtures/<sdk-version>/  recorded SDK outputs, the test fixtures for parsers
 - **`--json` on every command**, stable shape, meaningful exit codes (ADR 0006).
 - **JSON modes first** when parsing SDK output; text parsers stay small and are tested against recorded fixtures (ADR 0007).
 - **Tests run without hardware.** Real devices are for manual checks only.
+- **What an agent can observe.** Can: CLI output and `--json`, the activity log (`activity.jsonl` in `$OVD_HOME`, default `~/.config/ovd/`), e2e traces of failed desktop flows in `e2e/test-results/`, and the desktop app via `pnpm run gui` and screenshots. Can't: a real stick, Claude Design without access, the maintainer's machine state. Ask the maintainer for those; don't guess.
 - **E2E in every stage.** Each stage's flows get e2e tests in both surfaces; a stage isn't done until `pnpm run test:e2e` and the `e2e` CI check pass (ADR 0023).
 - Structural changes (new package, new surface, new SDK tool dependency, new backend, new persisted store) need an ADR in `docs/adr/`.
 
