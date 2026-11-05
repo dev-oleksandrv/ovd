@@ -8,6 +8,8 @@ paths:
 
 # Testing rules
 
+Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/testing.md` symlink when it touches a matching file; other agents start from `AGENTS.md`.
+
 - Vitest across the workspace. Tests sit next to the package they test, and test paths mirror `src/`: `packages/core/src/adapters/parseDeviceInfo.ts` → `packages/core/test/adapters/parseDeviceInfo.test.ts`.
 - Every parser, core action, CLI command, desktop IPC handler, and renderer view-model or stateful component has a test. Exempt: types, `index.ts`, and presentational components covered by e2e.
 - Write the failing test first for parsers, core actions, CLI JSON output, and bug fixes.

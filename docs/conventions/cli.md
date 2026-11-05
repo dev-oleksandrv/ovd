@@ -5,6 +5,8 @@ paths:
 
 # CLI rules
 
+Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/cli.md` symlink when it touches a matching file; other agents start from `AGENTS.md`.
+
 - Commands are thin: parse options, call `@ovd/core`, render. No SDK calls or parsing here.
 - Every command supports `--json` (ADR 0006):
   - stdout carries exactly one JSON document (or JSON lines for streams such as `ovd logs --json`). Nothing else goes to stdout in JSON mode.

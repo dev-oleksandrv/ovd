@@ -4,7 +4,7 @@
 // nothing, hook commands pointing at missing files. Prints one line on success.
 // Usage: node scripts/check-docs.mjs (or pnpm run check:docs)
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -57,13 +57,13 @@ const allowedPaths = new Map([
   ['actions/setup-node', 'a GitHub Action (owner/repo), not a repo path']
 ])
 
-/** Rule files apply to a package, so their paths may be relative to it. */
+/** Convention docs apply to a package, so their paths may be relative to it. */
 const ruleBases = {
-  '.claude/rules/architecture.md': ['packages/core'],
-  '.claude/rules/cli.md': ['apps/cli'],
-  '.claude/rules/gui.md': ['apps/gui'],
-  '.claude/rules/sdk.md': ['packages/core'],
-  '.claude/rules/testing.md': ['e2e']
+  'docs/conventions/architecture.md': ['packages/core'],
+  'docs/conventions/cli.md': ['apps/cli'],
+  'docs/conventions/gui.md': ['apps/gui'],
+  'docs/conventions/sdk.md': ['packages/core'],
+  'docs/conventions/testing.md': ['e2e']
 }
 
 const commitTypes = 'feat|fix|refactor|perf|test|docs|style|build|ci|chore|revert'
@@ -71,6 +71,8 @@ const branchName = new RegExp(`^((${commitTypes})/[a-z0-9-]+|changeset-release/m
 
 function isDocFile(file) {
   if (!file.endsWith('.md')) return false
+  // .claude/rules/*.md are symlinks to docs/conventions/; check each doc once, at its target.
+  if (lstatSync(join(root, file)).isSymbolicLink()) return false
   if (!file.includes('/')) return true
   if (file.startsWith('docs/')) return !file.startsWith('docs/superpowers/')
   return file.startsWith('.claude/rules/') || file.startsWith('.claude/skills/')
@@ -239,7 +241,7 @@ for (const file of ['CLAUDE.md', 'AGENTS.md', 'CONTRIBUTING.md', 'README.md']) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// 5. Every `paths:` glob in .claude/rules/*.md matches a file.
+// 5. Every `paths:` glob in .claude/rules/*.md (symlinks to docs/conventions/) matches a file.
 
 function globToRegExp(glob) {
   let source = ''

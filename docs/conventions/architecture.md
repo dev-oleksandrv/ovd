@@ -6,6 +6,8 @@ paths:
 
 # Architecture rules
 
+Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/architecture.md` symlink when it touches a matching file; other agents start from `AGENTS.md`.
+
 ## Layers
 
 - `packages/core/` owns all behavior: SDK discovery, process running, output parsing, device/package/app/log logic, target selection, the activity log.

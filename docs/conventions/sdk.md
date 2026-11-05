@@ -4,40 +4,40 @@ paths:
   - 'fixtures/**'
 ---
 
-# Vega SDK integration rules
+# Vega SDK integration conventions
+
+Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/sdk.md` symlink when it touches a matching file; other agents start from `AGENTS.md`.
+
+How core calls the Vega SDK. What the SDK actually does, quirks included, is in [ARCHITECTURE §8 Known SDK behavior](../ARCHITECTURE.md#8-known-sdk-behavior): read it before you call a tool, and record any new behavior there, not here.
 
 ## Calling tools
 
-- Host tools: `vega`, `vpt`, `perf`. VDA always as `vega exec vda …`, never from PATH.
+- Host tools: `vega`, `vpt`, `perf`. VDA always as `vega exec vda …`, `vpt` as `vega exec vpt …`, never from PATH.
+- `vega sdk` and `vega devmode` only through the Vega CLI (`~/vega/bin/vega`), never the `vega` bundled inside an SDK.
 - Device tools (`vpm`, `vlcm`, `vmsgr`, `loggingctl`, `inputd-cli`, `gwsi-tool-screenshooter`, `ace_memusage`) run through `vega exec vda shell` (or `shell -c <component>` when scoped to a component).
-- Target one device per call: `vega device …` takes `--device <id>`; `vega exec vda` takes `-s <serial>`. Over Wi‑Fi the device ID is `IP:port`, and no command returns the real serial (`vda get-serialno` prints the `IP:port`). `vda connect` exits 0 on failure too; read its stdout.
+- Target one device per call: `vega device …` takes `--device <id>`; `vega exec vda` takes `-s <serial>` (the `IP:port` over Wi‑Fi).
+- Judge success by what a tool reports, not by its exit code alone, wherever §8 says the exit code lies (`install-app`, `launch-app`, `vda connect`, `virtual-device start`).
 - Use JSON modes wherever they exist: `vega device info` (JSON by default, no `--json` flag), `vpt info --json`, `loggingctl vault --json-dump`, `vega sdk … --json`, `vega devmode … --json`. Parse text only when there is no JSON mode, and keep that parser small.
-- `vega sdk` and `vega devmode` exist only in the Vega CLI (SDK Manager, `~/vega/bin/vega`), not in the `vega` bundled inside an SDK.
+- One SDK command at a time per core: every call goes through the serial runner.
 - Never run `vega platform doctor`: it prints the whole environment, secrets included.
+- Never log, echo or store the emulator console token (`~/.emulator_console_auth_token`); read it at runtime only.
 - Never request elevated access. Crash and log access is scoped to the user's own app; surface permission errors with a clear hint.
 
-## Known SDK behavior (design around it)
+## Designing around the SDK
 
-- `vega device install-app` installs a package built for another architecture without complaint (exit 0). Only the architecture guard stops it (ADR 0008).
-- `vega device launch-app` reports success for an app that crashed. Confirm every launch with `running-apps` and crash history (ADR 0012).
-- A `loggingctl` session only sees apps installed before it started. Restart the stream after every install OVD makes (ADR 0014).
-- Release builds send no `console.log` to the log stream. Say so instead of showing an empty log.
-- `vega device info` reports no uptime or storage. `vlcm` lifespan is a state (`ACTIVE`, `PAUSED`), not a duration.
-- `inputd-cli` key presses report success but don't reach apps on the Virtual Device; use emulator gRPC `sendKey` there (OK = `kpenter`, Back = `KEY_BACK`, Home can't be sent). `gwsi-tool-screenshooter` fails on the Virtual Device; use gRPC `getScreenshot` (ADR 0010).
-- The emulator gRPC endpoint is off after every Virtual Device start; enable it through the console (`grpc <port>`) with the token from `~/.emulator_console_auth_token`. Never log the token.
-- Metro runs on the host; its output isn't part of the device log stream.
-- `vpt info --json` reports no architecture and no build type, and its `size` is the unpacked contents without `meta-info/`, not the file's size. The build type is `developmentEnabled` in `assets/raw/keplerscript-app-config.json` (`vpt dump`). `vpt checksum` prints SHA-384.
-- `vpt` isn't on PATH: run it as `vega exec vpt …`. Two `vpt` calls at once crash the SDK wrapper; the serial runner keeps them apart.
-- The KPI Visualizer fails warm starts on the Virtual Device and fails offline apps; report both as warnings.
+- Confirm every install with the architecture guard and every launch with `running-apps` and crash history (ADR 0008, ADR 0012).
+- Restart the log stream after every install OVD makes (ADR 0014). For a release build, say that it sends no `console.log` instead of showing an empty log.
+- On the Virtual Device, send keys and take screenshots through emulator gRPC, enabling it after every start (ADR 0010).
+- Report KPI Visualizer failures on warm starts on the Virtual Device and on offline apps as warnings.
 
 ## Architectures
 
 - Read the target's architecture from `vega device info`. Read the package's from `lib/<arch>/` in `vpt show-contents`; no `lib/` means pure JS, `any` (ADR 0008). Compare them before every install; block on mismatch unless `--force` (ADR 0008).
-- Sticks are `armv7`. The Virtual Device matches the host: `x86_64` (Intel, Ubuntu) or `aarch64` (Apple Silicon). Never hard-code a device type to an architecture.
+- Never hard-code a device type to an architecture.
 
 ## Developer Mode
 
-- A stick without Developer Mode doesn't appear in `vega device list` or `vda devices`. Never model it as a device state; explain it in doctor and offer the setup flow (ADR 0009).
+- Never model "Developer Mode off" as a device state; explain it in doctor and offer the setup flow (ADR 0009).
 - Setup wraps `vega devmode login` (browser sign-in) and `vega devmode enable-device --code <code> [--vendor <id>]`. The Virtual Device uses `vsm developer-mode enable`. OVD never stores credentials.
 
 ## Doctor

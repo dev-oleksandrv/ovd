@@ -5,6 +5,8 @@ paths:
 
 # Desktop (Electron) rules
 
+Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/gui.md` symlink when it touches a matching file; other agents start from `AGENTS.md`.
+
 ## Processes
 
 - `src/main/` runs `@ovd/core` in-process and exposes it over typed IPC handlers. Main owns device state, streams and the activity log subscription.
