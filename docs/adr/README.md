@@ -5,8 +5,8 @@ An ADR records one significant decision: the context, what was decided, and what
 ## Rules
 
 - One decision per file, named `NNNN-kebab-title.md` with the next free number.
-- Once accepted, an ADR is not edited, except to update its status.
-- To change a decision, write a new ADR. It links to the old one, and the old one's status becomes "Superseded by NNNN".
+- Accepted ADRs change only by status, or by a dated `## Amendments` entry for factual corrections. Leave the original text as it is.
+- A changed decision gets a new ADR that supersedes it. The new one links to the old one, and the old one's status becomes "Superseded by NNNN".
 - Write an ADR when you add a package or a surface, depend on a new SDK tool, add a backend (screen, input, device type), add a persisted store, or change how parts fit together.
 
 ## Template
@@ -22,6 +22,10 @@ An ADR records one significant decision: the context, what was decided, and what
 ## Decision
 
 ## Consequences
+
+## Amendments
+
+- YYYY-MM-DD (`<commit>`): one line on the factual correction.
 ```
 
 ## Index

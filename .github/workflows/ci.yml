@@ -29,6 +29,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run format:check
+      # Docs that name missing paths, scripts or ADRs (scripts/check-docs.mjs).
+      - run: pnpm run check:docs
       - run: pnpm run typecheck
       - run: pnpm test
       - run: pnpm run build

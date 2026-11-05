@@ -22,3 +22,7 @@ macOS Gatekeeper blocks apps downloaded from the internet unless they are signed
 - Notarization adds a few minutes to each release and depends on Apple's service being up.
 - The certificate expires after five years and the API key can be revoked; renewing either means updating the secrets.
 - Until the secrets are added, releases are unsigned.
+
+## Amendments
+
+- 2026-10-18 (`0f8ce35`): signing also runs on manual runs of the Release workflow (`workflow_dispatch`), which publish nothing and upload the signed builds as artifacts. Edited in place before this rule existed.

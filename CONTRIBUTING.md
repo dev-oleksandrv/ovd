@@ -6,7 +6,7 @@ Thanks for your interest! This guide covers how to set up the project and what a
 
 ```bash
 pnpm install
-pnpm run check   # lint + format check + typecheck + tests
+pnpm run check   # lint + format + docs check + typecheck + tests
 pnpm run build
 ```
 
@@ -39,7 +39,7 @@ Commits follow [Conventional Commits 1.0](https://www.conventionalcommits.org/en
 ```
 
 - **Types:** `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`, `chore`, `revert`.
-- **Scope:** the workspace package the change touches, required whenever one is touched: `core`, `cli`, `gui`, `mcp`. Several packages: comma-separated, e.g. `feat(core,cli,gui): add devices list`. Repo-level changes (docs, CI, tooling) have no scope; dependency updates use `deps`.
+- **Scope:** the workspace package the change touches, required whenever one is touched: `core` (`packages/core`), `cli` (`apps/cli`), `gui` (`apps/gui`), `mcp` (`apps/mcp`), `e2e` (`e2e`). Several packages: comma-separated, e.g. `feat(core,cli,gui): add devices list`. Repo-level changes (docs, CI, tooling) have no scope; dependency updates use `deps`.
 - **Subject:** imperative, lowercase, no trailing period, ≤ 72 characters.
 - **Breaking changes** (including `--json` output shape changes): add `!` and a `BREAKING CHANGE:` footer.
 
@@ -67,6 +67,7 @@ The workflows need two secrets: `CHANGESETS_TOKEN` (fine-grained PAT for this re
 ## Before opening a pull request
 
 - `pnpm run check` passes.
+- `pnpm run test:e2e` passes (on Ubuntu, under `xvfb-run`).
 - A changeset is included, if the change is user-facing.
 - New logic comes with tests that run without hardware.
 - New parsers come with recorded fixtures.
