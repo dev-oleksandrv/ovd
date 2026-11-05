@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,6 +20,36 @@ const ELECTRON = createRequire(join(GUI, 'package.json'))('electron') as string
 const QUIET_ELECTRON = resolve(dirname(fileURLToPath(import.meta.url)), 'quietElectron.cjs')
 const QUIET =
   process.platform === 'darwin' && !process.env.OVD_E2E_SHOW ? ['-r', QUIET_ELECTRON] : []
+// DIAGNOSTIC (branch test/e2e-window-diagnostics): window and GPU timeline per launch.
+const DIAG = ['-r', resolve(dirname(fileURLToPath(import.meta.url)), 'diagElectron.cjs')]
+
+interface DiagEvent {
+  t: number
+  event: string
+  [key: string]: unknown
+}
+
+// One line per launch, so CI logs show when the window was created, painted and shown.
+function diagSummary(file: string): string {
+  if (!existsSync(file)) return 'no diag file'
+  const events = readFileSync(file, 'utf8')
+    .split('\n')
+    .filter((l) => l !== '')
+    .map((l) => JSON.parse(l) as DiagEvent)
+  return events
+    .map((e) => {
+      const gpu = e.gpu as Record<string, string> | undefined
+      const extra = e.event.startsWith('probe-')
+        ? ` vis=${String(e.visible)} min=${String(e.minimized)}`
+        : gpu
+          ? ` gpu_compositing=${gpu.gpu_compositing} raster=${gpu.rasterization}`
+          : e.event.endsWith('-gone')
+            ? ` ${String(e.type ?? '')}:${String(e.reason)}:${String(e.exitCode)}`
+            : ''
+      return `${e.event}@${e.t}${extra}`
+    })
+    .join(' ')
+}
 
 export interface Desktop {
   app: ElectronApplication
@@ -53,14 +83,23 @@ export const test = base.extend<Fixtures>({
       )
     }
     const running: Desktop[] = []
+    const diagFiles: { file: string; launchMs: number }[] = []
 
     await use(async () => {
+      const diagFile = testInfo.outputPath(`electron-diag-${diagFiles.length}.jsonl`)
+      const launchStart = Date.now()
       const app = await _electron.launch({
         executablePath: ELECTRON,
         // Ubuntu runners don't allow Chromium's sandbox (unprivileged user namespaces).
-        args: [...QUIET, GUI_MAIN, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
-        env: sandbox.env
+        args: [
+          ...QUIET,
+          ...DIAG,
+          GUI_MAIN,
+          ...(process.platform === 'linux' ? ['--no-sandbox'] : [])
+        ],
+        env: { ...sandbox.env, OVD_E2E_DIAG: diagFile }
       })
+      diagFiles.push({ file: diagFile, launchMs: Date.now() - launchStart })
       await app.context().tracing.start({ screenshots: true, snapshots: true })
       // Links open in the user's browser through shell.openExternal; record them instead.
       await app.evaluate(({ shell }) => {
@@ -86,6 +125,11 @@ export const test = base.extend<Fixtures>({
     })
 
     const failed = testInfo.status !== testInfo.expectedStatus
+    for (const [i, { file, launchMs }] of diagFiles.entries()) {
+      console.log(
+        `DIAG ${failed ? 'FAILED' : 'passed'} w${testInfo.workerIndex} ${testInfo.titlePath.slice(1).join(' › ')} #${i} launch=${launchMs}ms: ${diagSummary(file)}`
+      )
+    }
     for (const [i, desktop] of running.entries()) {
       await stop(desktop.app, testInfo.outputPath(`trace-${i}.zip`), failed)
     }
