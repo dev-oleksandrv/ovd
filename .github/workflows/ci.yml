@@ -81,3 +81,19 @@ jobs:
           name: e2e-traces-macos
           path: e2e/test-results/
           if-no-files-found: ignore
+
+  # package.json promises Node >=22, but the other jobs run .nvmrc (24). This keeps the floor honest.
+  # Not a required check; whether it becomes one is the maintainer's call.
+  check-node22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm run build
