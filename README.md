@@ -4,7 +4,7 @@
 
 OVD wraps the official Vega SDK tools behind one consistent, scriptable interface: see your devices, inspect and install packages, launch apps and follow their logs, from a CLI (`ovd`) or a desktop app. Later stages add a remote, screenshots, crash alerts, an MCP server for AI agents and a GitHub Action.
 
-**Status:** early development. See [docs/ROADMAP.md](docs/ROADMAP.md) for what's built and what's next.
+**Status:** early development. See the Status column in [docs/ROADMAP.md](docs/ROADMAP.md) for what's built and what's next.
 
 ## Requirements
 
@@ -15,13 +15,19 @@ OVD wraps the official Vega SDK tools behind one consistent, scriptable interfac
 
 ## Install
 
-Not published yet. The CLI will be available as `@ovd/cli` on npm (`npm i -g @ovd/cli`, command `ovd`), and the desktop app as `.dmg`, `.deb` and AppImage on GitHub Releases.
+The CLI is published on npm as `@ovd/cli` (command `ovd`):
+
+```bash
+npm i -g @ovd/cli
+```
+
+The desktop app (`.dmg`, `.deb` and AppImage) is on [GitHub Releases](https://github.com/dev-oleksandrv/ovd/releases).
 
 ## Development
 
 ```bash
 pnpm install
-pnpm run check      # lint + format check + typecheck + tests
+pnpm run check      # lint + format + docs check + typecheck + tests
 pnpm run cli hello  # run the CLI from source
 pnpm run gui        # run the desktop app
 ```

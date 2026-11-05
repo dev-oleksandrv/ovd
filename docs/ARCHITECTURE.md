@@ -30,15 +30,19 @@ The official Vega tooling can do everything, but it is spread across about ten C
 
 ```
 packages/
-  core/                    # all behavior (Stage 0)
+  core/                    # all behavior
     src/
       sdk/                 # SDK discovery, runner (execa), version detection
       adapters/            # per-tool parsers, zod schemas, versioned per SDK when output differs
-      devices/             # list, info, target, Virtual Device, pairing, setup
+      devices/             # list, info, target, device watcher
+      devmode/             # Developer Mode: sign-in probe, enable with a code
+      pairing/             # Wi‑Fi pairing, saved devices, connect, forget
+      vvd/                 # Virtual Device start, stop, status, Developer Mode
       project/             # project mode (folder) and no-project mode (.vpkg)
-      packages/            # vpkg info, architecture guard
-      apps/                # install, launch (verified), stop, lists
-      logs/                # loggingctl stream, filters, restart-after-install
+      packages/            # vpkg info and list
+      install/             # install, architecture guard
+      apps/                # (Stage 2.4–2.5) launch (verified), stop, lists
+      logs/                # (Stage 3) loggingctl stream, filters, restart-after-install
       activity/            # activity log
       errors/              # typed errors: stable code, message, hint
       state/               # host state directory (ADR 0022)
@@ -80,7 +84,7 @@ docs/
 - Discovers the Vega CLI (SDK Manager) and the active SDK version: `OVD_VEGA`, then every `vega` on `PATH`, then `~/vega/bin/vega` (a desktop app doesn't inherit the shell `PATH`). The manager wins over a `vega` bundled inside an SDK, which lacks `vega sdk` and `vega devmode`. Device commands fail with an install hint when none is found.
 - Every call goes through one runner: target injection (`--device <id>` for `vega device …`, `-s <serial>` for `vega exec vda …`), timeout, `AbortSignal`, captured stdout/stderr/exit code.
 - VDA runs as `vega exec vda …`. Device tools run through `vega exec vda shell` (`shell -c <component>` for component scope).
-- Long-running processes (log stream, input console, memory polling) are managed: explicit start and stop, reconnect when a device drops, no orphans.
+- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. Planned: the log stream (Stage 3), the input console (Stage 4) and memory polling (Stage 6).
 
 ### 4.2 Adapters
 
@@ -191,7 +195,7 @@ OVD designs around these:
 - Fixtures are sanitized with the neutral sample data (ADR 0016).
 - CLI tests assert `--json` output and exit codes. No snapshot tests.
 - End-to-end tests (`e2e/`, `pnpm run test:e2e`) run the built CLI and desktop app against a fake SDK that answers only with recorded fixtures (ADR 0023). They check user flows, the SDK commands run and the state left behind. CI runs them as the required `e2e` job.
-- Real-device behavior is checked manually; the nightly SDK job covers the Virtual Device (ADR 0007).
+- Real-device behavior is checked manually. The nightly SDK job (Stage 3.7, not built yet) will cover the Virtual Device (ADR 0007).
 
 ## 10. Decisions
 
