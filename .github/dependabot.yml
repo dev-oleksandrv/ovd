@@ -1,0 +1,28 @@
+# Security updates only. open-pull-requests-limit: 0 turns off routine version-update PRs, so
+# dependency upgrades stay the maintainer's decision (CLAUDE.md § Working agreement). Security
+# PRs still open, grouped per ecosystem, once Dependabot security updates are enabled for the repo.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      npm-security:
+        applies-to: security-updates
+        patterns: ['*']
+    commit-message:
+      prefix: build(deps)
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      actions-security:
+        applies-to: security-updates
+        patterns: ['*']
+    commit-message:
+      prefix: build(deps)
