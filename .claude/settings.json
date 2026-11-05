@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(git push *--force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * -f*)",
+      "Bash(git rebase *)",
+      "Bash(git reset *--hard*)",
+      "Bash(git commit *--amend*)",
+      "Bash(git filter-branch *)",
+      "Bash(git branch -D*)",
+      "Bash(git branch * -D*)",
+      "Bash(npm publish *)",
+      "Bash(pnpm publish *)",
+      "Bash(vega platform doctor *)",
+      "Read(~/.emulator_console_auth_token)",
+      "Read(~/.npmrc)",
+      "Read(**/.env)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(gh pr merge *)",
+      "Bash(git merge *)",
+      "Bash(gh release *)",
+      "Bash(gh workflow run *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm remove *)",
+      "Bash(pnpm rm *)",
+      "Bash(pnpm up *)",
+      "Bash(pnpm update *)",
+      "Edit(/eslint.config.mjs)",
+      "Edit(/vitest.config.ts)",
+      "Edit(**/vitest.config.*)",
+      "Edit(/e2e/playwright.config.ts)",
+      "Edit(/.github/**)",
+      "Edit(/.claude/settings.json)"
+    ]
+  }
+}
