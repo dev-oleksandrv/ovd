@@ -3,6 +3,7 @@ import { canonicalId, classifyVdaEntry, defaultName, parseVdaDevices } from '../
 import { fixture } from '../support/fixtures.js'
 
 const [stick, vvd] = parseVdaDevices(fixture('0.24/vda-devices/stick-usb-and-virtual-device.txt'))
+if (!stick || !vvd) throw new Error('fixture must list a stick and the Virtual Device')
 
 describe('classifyVdaEntry', () => {
   test.each([
@@ -19,7 +20,7 @@ describe('classifyVdaEntry', () => {
       { id: 'G070000000000002', kind: 'stick', connection: 'usb' }
     ]
   ])('%s', (_, entry, expected) => {
-    expect(classifyVdaEntry(entry!)).toEqual(expected)
+    expect(classifyVdaEntry(entry)).toEqual(expected)
   })
 })
 
