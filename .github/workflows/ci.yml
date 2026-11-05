@@ -40,14 +40,14 @@ jobs:
 
   # The built CLI and desktop app against a fake Vega SDK that replays fixtures/0.24 (ADR 0023).
   # Required on PRs.
-  # DIAGNOSTIC: desktop flows only, 3 times on each Ubuntu image, every run reported.
+  # DIAGNOSTIC: desktop flows only, 5 times on each Ubuntu image, every run reported.
   e2e:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-26.04]
-        attempt: [1, 2, 3]
-    name: e2e (${{ matrix.os }} #${{ matrix.attempt }})
+        attempt: [1, 2, 3, 4, 5]
+    name: 'e2e (${{ matrix.os }} run ${{ matrix.attempt }})'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
