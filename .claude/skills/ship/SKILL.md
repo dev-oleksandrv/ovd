@@ -19,7 +19,7 @@ git fetch origin
 git log --oneline origin/main..HEAD
 ```
 
-Stop if the branch is `main`, the tree is dirty, or there are no commits ahead of `origin/main`. Stop if the branch name does not match `<type>/<short-kebab-slug>`, any commit subject is not a Conventional Commit, or a commit that touches a workspace package lacks its scope (`packages/core` → `core`, `apps/cli` → `cli`, `apps/gui` → `gui`, `apps/mcp` → `mcp`, `e2e` → `e2e`; check with `git show --stat <sha>`). The one exception is the Version PR branch `changeset-release/main`: the changesets action names it and writes its commit, so skip these checks and step 2 for it.
+Stop if the branch is `main`, the tree is dirty, or there are no commits ahead of `origin/main`. Stop if the branch name or any commit subject breaks the rules in `CONTRIBUTING.md` (Branches, Commits), in particular a commit that touches a workspace package without its scope (check with `git show --stat <sha>`). The one exception is the Version PR branch `changeset-release/main`: the changesets action names it and writes its commit, so skip these checks and step 2 for it.
 
 Then run `pnpm run check` and `pnpm run test:e2e`. Stop on a non-zero exit.
 

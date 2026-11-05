@@ -18,7 +18,7 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 
 **Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 work (2.1–2.3) is on `main`, not yet released.
 
-The rules that apply to every stage are in `CLAUDE.md`, `.claude/rules/` and `docs/adr/`.
+The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
 **E2E in every stage.** Each stage ships end-to-end tests for its flows, in the CLI and the desktop app, next to the code (ADR 0023). They run the built surfaces against the fake SDK and check what the user does and sees, the SDK commands run and the state left behind. A stage's **E2E** line lists the flows to cover. A stage isn't done until `pnpm run test:e2e` passes locally and the required `e2e` CI check is green.
 
