@@ -22,3 +22,7 @@ OVD is a tool companies may adopt, built in the open by a single maintainer who 
 - Nothing secret can live in the repo or the published packages.
 - Releases go to npm, GitHub Releases and Homebrew, so the release workflow has three targets.
 - Without telemetry, adoption is measured from GitHub stars, npm downloads and issues from non-maintainers.
+
+## Amendments
+
+- 2026-10-18 (`42add84`): the npm package changed from `@voronkov/ovd` to `@ovd/cli`, because `@ovd` is the maintainer's npm user scope. The text above was edited in place before this rule existed.

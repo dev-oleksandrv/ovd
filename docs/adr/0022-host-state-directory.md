@@ -21,3 +21,7 @@ Stage 1 needs state that outlives one command: the selected target device ("the 
 - Concurrent writers to `state.json` are last-writer-wins. That is acceptable for user-driven changes like setting a target; anything that needs stronger guarantees gets its own file.
 - `OVD_HOME` makes tests, CI and several isolated setups on one machine easy.
 - A later state format bumps `version` and adds a migration in core.
+
+## Amendments
+
+- 2026-10-31 (`53c4611`, Stage 2.1): `state.json` gained an optional `project` field (`kind: folder | vpkg`, `path`); `version` stays `1`. Edited in place before this rule existed.

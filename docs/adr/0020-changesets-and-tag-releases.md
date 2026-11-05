@@ -24,3 +24,8 @@ Every stage ends with a release (ADR 0018): the CLI on npm and desktop builds on
 - The PAT expires and must be renewed. While it is expired, no Version PR appears and nothing is tagged; pending changesets wait on `main`.
 - Only `@ovd/cli` is published. `@ovd/gui` and `@ovd/core` are private and only carry the shared version.
 - macOS signing and notarization are described in ADR 0021.
+
+## Amendments
+
+- 2026-10-18 (`42add84`): the consequence that `@ovd/cli` had to be renamed to `@voronkov/ovd` before the first publish became "only `@ovd/cli` is published; `@ovd/gui` and `@ovd/core` are private". Edited in place before this rule existed.
+- 2026-10-18 (`c4873fe`): "desktop builds are unsigned and not notarized until signing is decided" became a pointer to ADR 0021. Edited in place before this rule existed.
