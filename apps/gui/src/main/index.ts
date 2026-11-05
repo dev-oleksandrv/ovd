@@ -10,6 +10,7 @@ import { registerPackagesIpc } from './packagesIpc'
 import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
 import { registerSetupIpc } from './setupIpc'
+import { showWhenReady } from './showWindow'
 import { registerVvdIpc } from './vvdIpc'
 
 // One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
@@ -45,9 +46,7 @@ function createWindow(): void {
     if (mainWindow === win) mainWindow = undefined
   })
 
-  win.on('ready-to-show', () => {
-    win.show()
-  })
+  showWhenReady(win)
 
   win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
