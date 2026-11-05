@@ -81,6 +81,20 @@ fixtures/<sdk-version>/  recorded SDK outputs, the test fixtures for parsers
 
 Path-scoped details live in `.claude/rules/`.
 
+## Sources of truth
+
+When two sources disagree, the higher one wins:
+
+1. The maintainer's instruction in the session.
+2. `CLAUDE.md` and `.claude/rules/`.
+3. Accepted ADRs (`docs/adr/`).
+4. The design, OVD Desktop v2 (for UI).
+5. Code and tests: what is _built_.
+6. `docs/ROADMAP.md`: what is planned, and its Status column.
+7. Plans and notes (`docs/superpowers/`, `../ovd-notes`) and agent reports.
+
+Follow the higher source, and flag the conflict in your report, naming both sources and the file:line of each. Flag in particular: a rule or ADR the code doesn't follow, code the design doesn't show, a ROADMAP status the code contradicts, and a plan that contradicts an ADR. Don't fix the lower source on your own unless it's in the task's scope. `pnpm run check:docs` catches some drift mechanically.
+
 ## Adding a feature
 
 Order: core → CLI → desktop → tests → e2e, in one branch.
