@@ -170,7 +170,7 @@ test.describe('Install on target behind the architecture guard', () => {
     await expect(
       page.getByRole('status').filter({ hasText: 'Install blocked: architecture mismatch' })
     ).toContainText(
-      `$ ovd install ~/dev/player/build/aarch64-debug/player_aarch64.vpkg --device ${STICK_SERIAL}`
+      `$ ovd apps install ~/dev/player/build/aarch64-debug/player_aarch64.vpkg --device ${STICK_SERIAL}`
     )
     expect(sandbox.calls().some((c) => c.startsWith('vega device install-app'))).toBe(false)
 
@@ -179,7 +179,7 @@ test.describe('Install on target behind the architecture guard', () => {
     await expect(page.getByText('~/dev/player/build/armv7-release/player_armv7.vpkg')).toBeVisible()
     await expect(page.getByRole('alert')).toHaveCount(0)
     await page.getByRole('button', { name: 'Install on target' }).click()
-    const cli = `$ ovd install ~/dev/player/build/armv7-release/player_armv7.vpkg --device ${STICK_SERIAL}`
+    const cli = `$ ovd apps install ~/dev/player/build/armv7-release/player_armv7.vpkg --device ${STICK_SERIAL}`
     await expect(
       page.getByRole('status').filter({ hasText: 'Installed on Fire TV stick' })
     ).toContainText(cli)

@@ -5,6 +5,7 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  ALL_PACKAGES,
   callsFile,
   readWorld,
   STICK_ADDRESS,
@@ -204,7 +205,10 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null {
       w.vvd.developerMode = true
       return { stdout: fixture('vsm-developer-mode-set/enabled.txt') }
     }
-    return null
+    return vvdApps(w, sub)
+  }
+  if (serial === VVD_VDA_SERIAL) {
+    return notFound(sub, 'vda-shell/virtual-device-not-found.stderr.txt')
   }
   if (serial === STICK_SERIAL) {
     if (sub === `tcpip ${STICK_PORT}`) {
@@ -217,12 +221,72 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null {
     if (sub === 'shell cat /proc/net/fib_trie' && stickOnUsb(w)) {
       return { stdout: fixture('vda-shell-fib-trie/stick.txt') }
     }
-    return null
+    if (!stickOnUsb(w)) return notFound(sub, 'vda-shell/stick-usb-not-found.stderr.txt')
+    return stickApps(w, serial, sub)
   }
   if (serial === STICK_ADDRESS && sub === 'usb' && w.stick && stickOnWifi(w)) {
     // VDA keeps the Wi‑Fi entry, now offline (vda-devices/stick-usb-and-wifi-offline.txt).
     w.stick.mode = 'usb'
     return { stdout: fixture('vda-usb/restarting.txt') }
+  }
+  if (serial === STICK_ADDRESS && !w.vdaConnected.includes(STICK_ADDRESS)) {
+    return notFound(sub, 'vda-shell/stick-wifi-not-found.stderr.txt')
+  }
+  // Listed but offline (connected, stick unreachable): not recorded, so not answered.
+  if (serial === STICK_ADDRESS && stickOnWifi(w)) return stickApps(w, serial, sub)
+  return null
+}
+
+// A `shell` command for a device VDA doesn't list: the same error whatever the command.
+function notFound(sub: string, recording: string): Reply | null {
+  return sub.startsWith('shell ') ? { stderr: fixture(recording), exitCode: 1 } : null
+}
+
+// The stick is recorded with no side-loaded app (fixtures/0.24/vpm-info-package-all/stick.txt,
+// vlcm-list/stick.txt); with one installed or running there is no recording to answer with.
+function stickApps(w: World, id: string, sub: string): Reply | null {
+  if (w.installed.some((i) => i.device === id) || w.running.some((r) => r.device === id)) {
+    return null
+  }
+  if (sub === `shell ${ALL_PACKAGES}`) return { stdout: fixture('vpm-info-package-all/stick.txt') }
+  if (sub === 'shell vlcm list') return { stdout: fixture('vlcm-list/stick.txt') }
+  return null
+}
+
+// The player is the only app recorded on the Virtual Device (fixtures/0.24/vpm-info-package-all,
+// vlcm-list, vpm-info-component): installed from either player package, running or not.
+const PLAYER = 'com.example.player'
+
+function playerInstalled(w: World): boolean {
+  return w.installed.some((i) => i.device === 'VirtualDevice' && i.package.startsWith('player-'))
+}
+
+function vvdApps(w: World, sub: string): Reply | null {
+  const installed = playerInstalled(w)
+  if (sub === `shell ${ALL_PACKAGES}`) {
+    return {
+      stdout: fixture(
+        installed
+          ? 'vpm-info-package-all/virtual-device-player.txt'
+          : 'vpm-info-package-all/virtual-device.txt'
+      )
+    }
+  }
+  if (sub === 'shell vlcm list') {
+    const running =
+      installed && w.running.some((r) => r.device === 'VirtualDevice' && r.app === PLAYER)
+    return {
+      stdout: fixture(
+        running
+          ? 'vlcm-list/virtual-device-player-running.txt'
+          : 'vlcm-list/virtual-device-player-stopped.txt'
+      )
+    }
+  }
+  if (sub === `shell vpm info ${PLAYER}.main`) {
+    return installed
+      ? { stdout: fixture('vpm-info-component/player-main.txt') }
+      : { stdout: fixture('vpm-info-component/missing.txt'), exitCode: 248 }
   }
   return null
 }
@@ -350,6 +414,8 @@ function installApp(w: World, rest: string[]): Reply | null {
   if (!recorded || !text.startsWith('fake-vpkg:')) {
     return { stderr: fixture('vega-device-install-app/no-such-file.stderr.txt'), exitCode: 1 }
   }
+  // Installing over a running app stops it, and the SDK doesn't start it again.
+  w.running = w.running.filter((r) => r.device !== device)
   w.installed = [
     ...w.installed.filter((i) => i.device !== device || i.package !== name),
     {
