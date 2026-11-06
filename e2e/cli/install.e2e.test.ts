@@ -71,7 +71,7 @@ describe('ovd install', () => {
     expect(run.stderr).toContain(
       'Error: Architecture mismatch: package is aarch64, Fire TV stick is armv7\n'
     )
-    expect(run.stderr).toContain(`ovd install ~/${ARMV7}`)
+    expect(run.stderr).toContain(`ovd apps install ~/${ARMV7}`)
     expect(installCalls(sandbox)).toEqual([])
     expect(sandbox.world().installed).toEqual([])
     expect(sandbox.activity()).toEqual([
@@ -95,7 +95,7 @@ describe('ovd install', () => {
       error: {
         code: 'ARCH_MISMATCH',
         message: 'Architecture mismatch: package is aarch64, Fire TV stick is armv7',
-        hint: `Install the armv7 build instead: ovd install ~/${ARMV7}. Or pass --force to install anyway`
+        hint: `Install the armv7 build instead: ovd apps install ~/${ARMV7}. Or pass --force to install anyway`
       }
     })
   })

@@ -24,7 +24,7 @@ const mismatch = () =>
     new OvdError(
       'ARCH_MISMATCH',
       'Architecture mismatch: package is aarch64, Fire TV Stick 4K Select is armv7',
-      'Install the armv7 build instead: ovd install ~/dev/player/build/armv7-release/player_armv7.vpkg. Or pass --force to install anyway'
+      'Install the armv7 build instead: ovd apps install ~/dev/player/build/armv7-release/player_armv7.vpkg. Or pass --force to install anyway'
     )
   )
 

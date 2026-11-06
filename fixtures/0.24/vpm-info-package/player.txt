@@ -1,0 +1,98 @@
+id:           com.example.player
+title: 
+	value: Basic UI React Native Application for project player
+	direction: ltr
+version:      0.1.0
+build number: 1
+uuid:         05780ec6-a460-4f72-8ac9-59e1e0afaa1b
+install path: /var/lib/pkgmgrd/packages/com.example.player
+installer id: com.amazon.package-manager.cli
+install time: Thu Nov  5 23:01:46 2026 GMT
+update time:  Thu Nov  5 23:01:46 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.example.player.main
+store id: 
+sha384: d0677f206c4ecf2ff97fdf9d75d38d05b1a6804694e795e5cba9d4c0e9a2d9ff38637f7f042f6db58b128d2212c9f48f
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10

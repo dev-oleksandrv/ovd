@@ -20,6 +20,9 @@ export interface World {
   vdaConnected: string[]
   // Packages `vega device install-app` put on a device, by device ID and recorded package.
   installed: { device: string; package: string }[]
+  // Apps running on a device, by device ID and package ID (`com.example.player`). Recordings
+  // exist for the player on the Virtual Device; the stick is recorded with nothing side-loaded.
+  running: { device: string; app: string }[]
 }
 
 export interface Stick {
@@ -40,6 +43,17 @@ export const STICK_PORT = 5555
 export const STICK_ADDRESS = `${STICK_IP}:${STICK_PORT}`
 export const VVD_VDA_SERIAL = 'emulator-5554'
 
+// The script core sends to list every package (fixtures/0.24/vpm-info-package-all): the
+// recordings were made with exactly this text, base64-encoded.
+export const ALL_PACKAGES_SCRIPT = `d=$(mktemp -d) || exit 1
+vpm list packages | tail -n +2 | xargs -P4 -n1 sh -c 'vpm info --package "$1" > "$0/$1"' "$d"
+cat "$d"/*
+s=$?
+rm -rf "$d"
+exit $s
+`
+export const ALL_PACKAGES = `echo ${Buffer.from(ALL_PACKAGES_SCRIPT).toString('base64')} | base64 -d | sh`
+
 export function defaultWorld(): World {
   return {
     cli: 'manager',
@@ -50,7 +64,8 @@ export function defaultWorld(): World {
     stick: null,
     vvd: { running: false, developerMode: true },
     vdaConnected: [],
-    installed: []
+    installed: [],
+    running: []
   }
 }
 

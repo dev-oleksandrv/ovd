@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { hello, type Ovd } from '@ovd/core'
 import pkg from '../package.json' with { type: 'json' }
+import { registerApps } from './commands/apps.js'
 import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
@@ -68,6 +69,7 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerSetupStick(program, deps, setExitCode)
   registerProject(program, deps, setExitCode)
   registerPkg(program, deps, setExitCode)
+  registerApps(program, deps, setExitCode)
   registerInstall(program, deps, setExitCode)
   return program
 }

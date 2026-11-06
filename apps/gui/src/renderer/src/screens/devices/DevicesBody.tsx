@@ -18,6 +18,7 @@ interface DevicesBodyProps {
   onReconnect: (device: Device) => void
   onForget: (device: Device) => void
   onSetup: () => void
+  onOpenApps?: () => void
 }
 
 export function DevicesBody({
@@ -31,7 +32,8 @@ export function DevicesBody({
   reconnecting,
   onReconnect,
   onForget,
-  onSetup
+  onSetup,
+  onOpenApps
 }: DevicesBodyProps) {
   const selected =
     devices.find((d) => d.id === selectedId) ?? devices.find((d) => d.id === target) ?? devices[0]
@@ -58,6 +60,7 @@ export function DevicesBody({
       {selected ? (
         <DeviceDetail
           device={selected}
+          {...(onOpenApps ? { onOpenApps } : {})}
           onRename={(name) => onRename(selected, name)}
           onSetTarget={() => onSetTarget(selected)}
           vvd={{

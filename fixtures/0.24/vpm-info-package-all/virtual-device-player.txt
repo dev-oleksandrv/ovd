@@ -1,0 +1,4312 @@
+id:           com.amazon.a11y_tutorial
+title: 
+	value: a11y assistive technology tutorial
+	direction: ltr
+version:      1.0.1
+build number: 0
+uuid:         b2a844c0-1de2-4b4a-a0c1-9d28f80c0910
+install path: /var/lib/pkgmgrd/packages/com.amazon.a11y_tutorial
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.a11y_tutorial.main
+wants:
+	services:
+		com.amazon.audio.system
+store id: 
+sha384: d47025652504c3ff6b7c18202f3232af9b7943cd3047df6c8df78f87a52ddb7adf25ceb8c9a89cf9b8a7e8fc51c023a4
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.accessibility.tts.service
+title: 
+	value: Accessibility TTS Service Application Package
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         97524130-dc48-4f1f-852f-845b1c765c6d
+install path: /var/lib/pkgmgrd/packages/com.amazon.accessibility.tts.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:08 2026 GMT
+update time:  Sat Sep 26 16:57:08 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.accessibility.tts.service.main
+offers:
+	services:
+		com.amazon.accessibility.tts.service.main
+		com.amazon.tts.service.main
+		com.amazon.gipc.uuid.*
+wants:
+	services:
+		com.amazon.network.service
+		com.amazon.audio.persist.control
+		com.amazon.minerva
+		com.amazon.media.server
+		com.amazon.media.playersession.service
+		com.amazon.mediametrics.service
+		com.amazon.audio.stream
+		com.amazon.audio.control
+		com.amazon.audio.system
+		com.amazon.gipc.uuid.*
+store id: 
+sha384: e8e517694299bd0cb41e5823aa482ce1879f7c9c9455216cfffcc633fa328c1215b4bc3d266608059c41688989c41f84
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.accessoryconfig.service
+title: 
+	value: AccessoryConfig Service Application Package
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         e95a672a-f91f-416d-a267-eae3ad0a1f97
+install path: /var/lib/pkgmgrd/packages/com.amazon.accessoryconfig.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.service.accessoryconfig.main
+offers:
+	services:
+		com.amazon.service.accessoryconfig.main
+store id: 
+sha384: 3c7e8e573689e0b9d5926827f826c0c67fdfe3e794289c582a0d4c24d427469360b4107f2912445ad0f7d8ad80b806fc
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.adep
+title: 
+	value: AmazonAdep
+	direction: ltr
+version:      1.1.2
+build number: 0
+uuid:         aea1e6b3-9912-432d-8840-c8a2ca69b87d
+install path: /var/lib/pkgmgrd/packages/com.amazon.adep
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:05 2026 GMT
+update time:  Sat Sep 26 16:57:05 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.adep.config
+	com.amazon.adep.analyzer
+	com.amazon.adep.init
+	com.amazon.adep.nimh
+wants:
+	services:
+		com.amazon.minerva
+store id: 
+sha384: b23b993949d98014e10e8ef98a231bbeb7146eef84d30c0a26970fa94fdf3f194c5d1c2d09fbe4620ef582905d9c0ab1
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.admanager.service
+title: 
+	value: Admanager Service Application Package
+	direction: ltr
+version:      1.0.9
+build number: 0
+uuid:         b129e324-2376-418a-b5d7-7aa335cc8dff
+install path: /var/lib/pkgmgrd/packages/com.amazon.admanager.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.admanager.service.main
+	com.amazon.admanager.service.task
+	com.amazon.admanager.service.installtask
+offers:
+	services:
+		com.amazon.admanager.service.main
+wants:
+	services:
+		com.amazon.ace.metrics
+		com.amazon.usermanager.service
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: 84b9988305e6c62640a70fc10a3176804e805b7bf19e6efcc7b7da85416ce09f6300bcdcd0c0fdfe893f3e7fc0712ec2
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.alexawebapi
+title: 
+	value: Alexa Web API For Games
+	direction: ltr
+version:      0.1.0
+build number: 0
+uuid:         13737b42-adb3-4fa5-a541-0af57d14eea3
+install path: /var/lib/pkgmgrd/packages/com.amazon.alexawebapi
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.alexawebapi.webview
+	com.amazon.alexawebapi.main
+wants:
+	services:
+		com.amazon.inputmethod.service
+		com.amazon.webview.renderer_service
+		com.amazon.puffinexternalcapability.service
+		com.amazon.puffin
+		com.amazon.minerva
+		com.amazon.ace.metrics
+		com.amazon.mediametrics.service
+		com.amazon.audio.control
+		com.amazon.audio.stream
+store id: 
+sha384: 46343f8d981bbfdce8d5f126678dc6f2a4d6ac215ebe90c6a2007adff2b37af0d0cb3f922b75df2ef46f6ed6c49f6fe2
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.aplext.alert.10.service
+title: 
+	value: Alexa Alerts Extension Service Package
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         bb7709a1-041e-45a0-a945-6acffbadc2e8
+install path: /var/lib/pkgmgrd/packages/com.amazon.aplext.alert.10.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.aplext.alert.10.service.main
+	com.amazon.aplext.alert_widget.10.service
+offers:
+	services:
+		com.amazon.aplext.alert.10.service
+		com.amazon.aplext.alert_widget.10.service
+		com.amazon.aplext.alert.10.service.aipc
+wants:
+	services:
+		com.amazon.power.service
+		com.amazon.minerva
+		com.amazon.ace.metrics
+store id: 
+sha384: f0a3fafb7684305979e648f51a552c922155bdb1791cce0eafcee718f375292edc63b1f6af5a303f4f04a3fd2360daec
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.arol
+title: 
+	value: KEPLER APL Runtime
+	direction: ltr
+version:      1.0.2
+build number: 0
+uuid:         ab295ad0-18c6-4aa5-a9fd-d608edf67141
+install path: /var/lib/pkgmgrd/packages/com.amazon.arol
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.arol.webview
+	com.amazon.arol.lr
+	com.amazon.arol.interactive
+	com.amazon.arol.nps
+	com.amazon.arol.photos
+	com.amazon.arol.loading_screen
+	com.amazon.arol.main
+	com.amazon.arol.ipc
+	com.amazon.arol.background.cleanup
+	com.amazon.arol.setupScheduleTask
+	com.amazon.arol.syncTask
+offers:
+	services:
+		com.amazon.arol.ipc
+		com.amazon.gipc.uuid.*
+wants:
+	services:
+		com.amazon.inputmethod.service
+		com.amazon.inputd.service
+		com.amazon.example.remote.10.service
+		com.amazon.alexaext.datastore.10.service
+		com.amazon.aplext.commsextension.10.service
+		com.amazon.aplext.reauth.10.service
+		com.amazon.aplext.alert.10.service
+		com.amazon.aplext.alert_widget.10.service
+		com.amazon.webview.renderer_service
+		com.amazon.alexaext.smarthome.10.service
+		com.amazon.alexaext.gadgets.10.service
+		com.amazon.alexaext.whavolumecontrol.10.service
+		com.amazon.alexaext.mediacontrol.10.service
+		com.amazon.alexaext.skillconnections.10.service
+		com.amazon.alexaext.spotlight.10.service
+		com.amazon.media.playersession.service
+		com.amazon.media.server
+		com.amazon.mediabuffer.service
+		com.amazon.mediametrics.service
+		com.amazon.mediatransform.service
+		com.amazon.puffinexternalcapability.service
+		com.amazon.puffin
+		com.amazon.audio.stream
+		com.amazon.audio.control
+		com.amazon.audio.system
+		com.amazon.gipc.uuid.*
+		com.amazon.kepler.ucc.publisher
+		com.amazon.alexa.datastore.service
+		com.amazon.alexa.datastore.packagemanager.service
+		com.amazon.minerva
+		com.amazon.ace.metrics
+		com.amazon.lcm.app.session.notifier.service
+store id: 
+sha384: 5288e1d0e1d598d44817f7dc5820ecb207d8468517caab8b9baa4227d65dd137a419d6ba39ffb60fd07dabb06c21157e
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.dev.shell
+title: 
+	value: Developer Shell Service
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         fd2ea45b-9caf-4053-ab3f-13160fbb477b
+install path: /var/lib/pkgmgrd/packages/com.amazon.dev.shell
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.dev.shell.service
+store id: 
+sha384: 749c6a3ccc1621444d630a7805799f3b170b9e58113ec0c54a5ddb5d1ea09d84debf2ea96b4ba34a4d1fa467521ac720
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.device_name_sync
+title: 
+	value: Device Name Sync Service
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         0216782d-aa2d-437c-8b2a-46118df487e5
+install path: /var/lib/pkgmgrd/packages/com.amazon.device_name_sync
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.device_name_sync.oninstall
+	com.amazon.device_name_sync.oncloudupdate
+	com.amazon.device_name_sync.ondeviceupdate
+	com.amazon.device_name_sync.onReboot
+	com.amazon.device_name_sync.onRegister
+wants:
+	services:
+		com.amazon.minerva
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: dc7da90fe3aff42b5891835428cf2bce99f45eb80f6cf99649a782e32127630fbe34306b435ddd620d9185e43356fcc7
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.diode
+title: 
+	value: diode
+	direction: ltr
+version:      1.0.57008.0
+build number: 57008
+uuid:         73f2b47e-60a5-455c-bcea-f3b51118cd8a
+install path: /var/lib/pkgmgrd/packages/com.amazon.diode
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.diode.neo
+	com.amazon.diode.install
+	com.amazon.diode.boot
+	com.amazon.diode.handleAsyncMessage
+	com.amazon.diode.handleSyncMessage
+	com.amazon.diode.handleEvent
+	com.amazon.diode.handlePeriodicJobEvent
+offers:
+	services:
+		com.amazon.diode.neo
+wants:
+	services:
+		com.amazon.ace.messaging.service
+		com.amazon.network.service
+		com.amazon.minerva
+		com.amazon.power.service
+		com.amazon.storageManager.service
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+		com.amazon.ace.otadaemon.service
+		com.amazon.softwareupdate.service
+		com.amazon.uxeventd
+		com.amazon.device-config.service
+		com.amazon.power.service
+		com.amazon.external_storage_manager.service
+		com.amazon.usermanager.service
+		com.amazon.connectivity.control
+		com.amazon.ace.metrics
+		com.amazon.factoryreset.service
+		com.amazon.ecs
+		com.amazon.device-config.service
+store id: 
+sha384: 0146fe77c7cb11a922e31eade7f8b8dc803c18a1845b320b8a57ae65f3f606e309e6eae19f428546d2c51aee10398b52
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.ffr.token.task
+title: 
+	value: FFR token task
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         1c4f53f2-a36f-4141-87a5-d14ea4692f84
+install path: /var/lib/pkgmgrd/packages/com.amazon.ffr.token.task
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.ffr.token.task.onInstallOrUpdateTask
+	com.amazon.ffr.token.task.registration
+	com.amazon.ffr.token.task.deregistration
+	com.amazon.ffr.token.task.reboot
+	com.amazon.ffr.token.task.fetchtoken
+wants:
+	services:
+		com.amazon.power.service
+		com.amazon.minerva
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: 683b6ae99f09f61600b54834803bfa567a213f0f8e287b17afccaf1befb8574bea2c005a6410461c83426a8aadaec24f
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.hdmi.certificate
+title: 
+	value: HDMI Certificate Application
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         7676067e-6245-4656-bb76-2006254ead9d
+install path: /var/lib/pkgmgrd/packages/com.amazon.hdmi.certificate
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.hdmi.certificate.main
+wants:
+	services:
+		com.amazon.audio.system
+store id: 
+sha384: 0dd874da1e26ed09c9458548b410f6d1210b84ee76e1e51e7f169c4385eaa969fe8122a6345a48ea7bd557e73a2a6130
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.iap.core
+title: 
+	value: AFXIAPTVUIComponents
+	direction: ltr
+version:      1.0_kcli.274484.0
+build number: 169993
+uuid:         620bd3d0-41b5-4000-b55b-c61e0b789691
+install path: /var/lib/pkgmgrd/packages/com.amazon.iap.core
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.iap.core.ui
+	com.amazon.iap.core.service
+	com.amazon.iap.core.afxlocalization.onDeviceDeregisterTask
+	com.amazon.iap.core.afxlocalization.onDeviceRegisterTask
+	com.amazon.iap.core.afxlocalization.onLocaleChangeTask
+	com.amazon.iap.core.afxlocalization.onRebootTask
+	com.amazon.iap.core.afxlocalization.periodicSyncTask
+	com.amazon.iap.core.afxlocalization.periodicSyncScheduler
+	com.amazon.iap.core.afxlocalization.manualSyncTask
+	com.amazon.iap.core.afxlocalization.setupTask
+	com.amazon.iap.core.onInstallOrUpdateTask
+	com.amazon.iap.core.AppLifecycleTaskHandler
+offers:
+	services:
+		com.amazon.iap.core.service
+wants:
+	services:
+		com.amazon.inputmethod.service
+		com.amazon.inputd.service
+		com.amazon.alexa.datastore.service
+		com.amazon.venezia.core.authentication.service.main
+		com.amazon.minerva
+		com.amazon.kepler.pcon.service.main
+		com.amazon.webview.renderer_service
+		com.amazon.audio.system
+		com.amazon.usermanager.service
+		com.amazon.kepler.pcon.service.main
+		com.amazon.iap.core.service
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: 6ca26fe67d31a4ac546cd815d4e74ffe4e65c766c48ebe9f9825bd6f9aaaacc6f18bfbd0cc7a97c355b1e3531e6428ca
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.identity.lwa
+title: 
+	value: Login-With-Amazon Native Service
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         774b7828-6fc4-4f81-b70a-4ed0e61d1e5f
+install path: /var/lib/pkgmgrd/packages/com.amazon.identity.lwa
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.identity.lwa.consentwebviewmanager.main
+	com.amazon.identity.lwa.credentialmanager.service
+	com.amazon.identity.lwa.authorizationmanager.service
+offers:
+	services:
+		com.amazon.identity.lwa.credentialmanager.service
+		com.amazon.identity.lwa.authorizationmanager.service
+wants:
+	services:
+		com.amazon.webview.renderer_service
+		com.amazon.minerva
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: 0ff23867033259b4a3c1c4756b417231019c5ffd846a15ed3269630d5a553d32f15fadce935db7260f1729b26afa6811
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.kcp
+title: 
+	value: KeplerControllerPlatform Middleware
+	direction: ltr
+version:      1.0.0.0
+build number: 1
+uuid:         10d5c828-d841-4acc-8577-1d1da1d48496
+install path: /var/lib/pkgmgrd/packages/com.amazon.kcp
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.kcp.component.service
+	com.amazon.kcp.pkg-listener-setup.task
+	com.amazon.kcp.pkg-listener.task
+offers:
+	services:
+		com.amazon.kcp.component.service
+wants:
+	services:
+		com.amazon.minerva
+		*
+store id: 
+sha384: 22949e354404473ddf914b856d344e7f05676ba3a3096abcd8b3a2f26c3457f2561ec453ba14dad90bfb3e6187688a9f
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.kcp.account_login
+title: 
+	value: KeplerMediaAccountLogin
+	direction: ltr
+version:      1.0.0.0
+build number: 1
+uuid:         97b5c60a-e987-43d9-bc7f-d558834d5364
+install path: /var/lib/pkgmgrd/packages/com.amazon.kcp.account_login
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+store id: 
+sha384: aff4528d4df4e3a05f277ac7ac06e8dcd5b586d504a09f8e710f1c7dfec62f0d60ebf41edd640b6f3000011fcd724a3b
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.kcp.client_component
+title: 
+	value: KeplerControllerClientComponent
+	direction: ltr
+version:      1.0.0.0
+build number: 1
+uuid:         ab13cd24-fed1-4f20-859b-434b83a9e457
+install path: /var/lib/pkgmgrd/packages/com.amazon.kcp.client_component
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:05 2026 GMT
+update time:  Sat Sep 26 16:57:05 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+store id: 
+sha384: 913baa76812767998caab7db7c99b829aef8e55048e368e8d2df26f77f096255dc03e3a4dc48a1612d5c17fc347d91dc
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.kcp.media_focus_manager
+title: 
+	value: KeplerMediaFocusManager
+	direction: ltr
+version:      1.0.0.0
+build number: 1
+uuid:         cad12c53-6631-465b-ab30-71498efca26c
+install path: /var/lib/pkgmgrd/packages/com.amazon.kcp.media_focus_manager
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+store id: 
+sha384: 352b7c3fb04db1a3eda9f98737f78e328390f3236ff856b8d627fdca384f304f2eedca502d77499542422ea0789ad823
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.kcp.target_navigator
+title: 
+	value: KeplerTargetNavigator
+	direction: ltr
+version:      1.0.0.0
+build number: 1
+uuid:         ad18e797-8f4d-428e-b49f-3b6af329f062
+install path: /var/lib/pkgmgrd/packages/com.amazon.kcp.target_navigator
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+store id: 
+sha384: ae394928b85e3efa4df5864e339b000b75ebd59e22f8cda4dad00d58f115a15e685aafad75af4f07815c6500cfe58af4
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.kepler.keyvault.service
+title: 
+	value: Amazon KeyVault Service
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         39ff87d8-9205-47b9-9999-7d14ac63bfd9
+install path: /var/lib/pkgmgrd/packages/com.amazon.kepler.keyvault.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.kepler.keyvault.service.main
+	com.amazon.kepler.keyvault.service.cleanup.task
+	com.amazon.kepler.keyvault.service.cleanup.installtask
+offers:
+	services:
+		com.amazon.kepler.keyvault.service.main
+store id: 
+sha384: 4fdcebcbb6da6878354bae11de1afcd271a487fd50e01ddc0c9c47bd38537eecaad87f863c671365e89ff73de64b8e8d
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.kepler.pcon
+title: 
+	value: Parental Controls (PCON) Service for Vega OS
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         6d937d5f-9e60-4c65-81cf-560983ad6a24
+install path: /var/lib/pkgmgrd/packages/com.amazon.kepler.pcon
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.kepler.pcon.tv.ui
+	com.amazon.kepler.pcon.service.main
+	com.amazon.kepler.pcon.validate_pin.task
+	com.amazon.kepler.pcon.install.task
+	com.amazon.kepler.pcon.deregistration.task
+offers:
+	services:
+		com.amazon.kepler.pcon.service.main
+wants:
+	services:
+		com.amazon.inputmethod.service
+		com.amazon.connectivity.control
+		com.amazon.minerva
+		com.amazon.network.service
+		com.amazon.audio.system
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: 6ebff3db5d54ef6a9f7638ee02d1dd43890269dfda346f8ca4f8b2c31abde919b7fe1c83bfc532f5776628f01961e1f9
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.kepler.tvlaunchdelegate
+title: 
+	value: TV Launch Delegate for Vega OS
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         b978ec52-21a0-4858-b096-3951db7947dd
+install path: /var/lib/pkgmgrd/packages/com.amazon.kepler.tvlaunchdelegate
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.kepler.tvlaunchdelegate.task
+wants:
+	services:
+		com.amazon.kepler.pcon.service.main
+		com.amazon.usermanager.service
+		com.amazon.alexa.datastore.service
+		com.amazon.minerva
+store id: 
+sha384: 1652c4c688a409db4f09b1fe1b7474f53f7b9126120bfeeaa9efc719789732dafda6a519419405d9c62a83e905e1cad8
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+id:           com.amazon.keplerlauncherapp
+title: 
+	value: Kepler Register App
+	direction: ltr
+version:      2.0.145211.0
+build number: 0
+uuid:         82f83f60-b929-45e0-93b8-c9242e6a019e
+install path: /var/lib/pkgmgrd/packages/com.amazon.keplerlauncherapp
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.keplerlauncherapp.main
+wants:
+	services:
+		com.amazon.kepler.pcon.service.main
+		com.amazon.inputmethod.service
+		com.amazon.inputd.service
+		com.amazon.minerva
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: 24868aedf74ef227a89269e4588901296f50ac8ce2cec85c68cb1aef6c93f42417b8967f6b1763d20a395ae4ea191587
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.kmc
+title: 
+	value: KeplerMediaControls
+	direction: ltr
+version:      BRAZIL_PACKAGE_VERSION
+build number: 0
+uuid:         6e47d70a-3b5a-4207-a7b7-e2084ed2a84f
+install path: /var/lib/pkgmgrd/packages/com.amazon.kmc
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:08 2026 GMT
+update time:  Sat Sep 26 16:57:08 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+store id: 
+sha384: 30efb006db39666f160f09acbfee136d0213524fdf78fb35b772528302782358fdafd611442a5b15fd384e0dd1166859
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.livedeviceservice
+title: 
+	value: FireTv Live Device Service
+	direction: ltr
+version:      0.1.31886
+build number: 0
+uuid:         552bd855-c28a-48d6-add3-bc0b8c863055
+install path: /var/lib/pkgmgrd/packages/com.amazon.livedeviceservice
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.livedeviceservice.main
+	com.amazon.livedeviceservice.install.task
+	com.amazon.livedeviceservice.task
+	com.amazon.livedeviceservice.stationsync.task
+offers:
+	services:
+		com.amazon.livedeviceservice.main
+wants:
+	services:
+		com.amazon.minerva
+		com.amazon.acrreport.ipc
+		com.amazon.ace.messaging.service
+		com.amazon.livedeviceservice.main
+		com.amazon.alexa.datastore.service
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+extras:
+	"build-info" : "0.1.31886.0"
+store id: 
+sha384: 0a4f7fcbd3c011bc13fb8a748633dcaa8e1399acfd339e13b7b436d5e0d584979196d41710d3952f7cc9c5a093b4cdeb
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.map.service
+title: 
+	value: MAP service
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         f66abc8d-7e09-4c74-b66b-6f98f346e2c5
+install path: /var/lib/pkgmgrd/packages/com.amazon.map.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.map.async.service.main
+	com.amazon.tokend.service.task
+offers:
+	services:
+		com.amazon.map.async.service.main
+wants:
+	services:
+		com.amazon.minerva
+store id: 
+sha384: ff312036b27501ef6f4cb9b5e00000971b90bea7fe6329bc3d99f6b0cfcefb6306d796a90acc50c5b1a37cfe2d3e2ab4
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.mediametrics.service
+title: 
+	value: Media metrics service app
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         99e2f39e-8316-4fd4-bdb3-4aca1feb99e9
+install path: /var/lib/pkgmgrd/packages/com.amazon.mediametrics.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.mediametrics.service
+offers:
+	services:
+		com.amazon.mediametrics.service
+wants:
+	services:
+		com.amazon.minerva
+		com.amazon.ace.metrics
+store id: 
+sha384: a0e4ecc21df5d1108d9d611026428af2151b9625ff7b2900728fdb9956714b44e6558c9ab6327585b29301a4c882010a
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.miracast_sink
+title: 
+	value: Miracast Sink App
+	direction: ltr
+version:      1.0.0
+build number: 1
+uuid:         389f860e-dd9c-4cd4-b7c7-358a46044e2c
+install path: /var/lib/pkgmgrd/packages/com.amazon.miracast_sink
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.miracast_sink.main
+offers:
+	services:
+		com.amazon.gipc.uuid.*
+wants:
+	services:
+		com.amazon.audio.stream
+		com.amazon.audio.control
+		com.amazon.audio.system
+		com.amazon.media.server
+		com.amazon.mediametrics.service
+		com.amazon.inputmethod.service
+		com.amazon.inputd.service
+		com.amazon.network.service
+		com.amazon.service.hdmihdcp
+		com.amazon.minerva
+		com.amazon.audio.persist.control
+		com.amazon.gipc.uuid.*
+		com.amazon.mediabuffer.service
+		com.amazon.mediatransform.service
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: 2de95d072ed9ffd8d7b01c7b1cddb7e23b1592371120071c53cef7e4eb6e938fb8725d0cbe0140ba39a6b8cd56eb951e
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.notification.renderer
+title: 
+	value: Notification Renderer Service Package for VegaTV SystemUI
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         66e1c14a-5503-4401-92ca-3a6391c50b28
+install path: /var/lib/pkgmgrd/packages/com.amazon.notification.renderer
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.notification.renderer.ui
+	com.amazon.notification.renderer.privilege_request_handler
+	com.amazon.notification.renderer.still_watching
+	com.amazon.notification.renderer.app_failure
+	com.amazon.notification.renderer.service
+	com.amazon.notification.renderer.uiservice
+	com.amazon.notification.renderer.lostremote.task
+	com.amazon.notification.renderer.install.task
+	com.amazon.notification.renderer.external_storage_monitor.task
+offers:
+	services:
+		com.amazon.notification.renderer.service
+		com.amazon.notification.renderer.uiservice
+wants:
+	services:
+		com.amazon.connectivity.control
+		com.amazon.notification.service
+		com.amazon.inputd.service
+		com.amazon.powermanagerext.service
+		com.amazon.audio.control
+		com.amazon.audio.system
+		com.amazon.ace.metrics
+store id: 
+sha384: da44bf0d741869fdbdb4a734d0fc034152842eb7e280936920931fd6d081dfac2b15cf4cf40263173bd24c75844fb4ca
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.otad
+title: 
+	value: OTA Update Daemon
+	direction: ltr
+version:      1.5.1
+build number: 0
+uuid:         bf1ed788-da23-4b5c-b9a0-42256e96dc57
+install path: /var/lib/pkgmgrd/packages/com.amazon.otad
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.otad.main
+offers:
+	services:
+		com.amazon.otad.main
+wants:
+	services:
+		com.amazon.minerva
+		com.amazon.network.service
+		com.amazon.service.message-router
+		com.amazon.resmgr.stats-control.service
+		com.amazon.ace.otadaemon.service
+		com.amazon.power.service
+		com.amazon.powermanagerext.service
+		com.amazon.powermanagerext.service
+store id: 
+sha384: 7f5d50ebfe052f134108e7aaba800ce1446d8bc3759857376500d684a1d92f1ca613690037245d95d515dc6f777fcf3f
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.otad.ux
+title: 
+	value: OTA Update Daemon UX
+	direction: ltr
+version:      1.6.0
+build number: 0
+uuid:         b9c4d3ad-d7c6-416b-8916-ab50803dc88f
+install path: /var/lib/pkgmgrd/packages/com.amazon.otad.ux
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.otad.ux.main
+	com.amazon.otad.ux.task
+wants:
+	services:
+		com.amazon.minerva
+		com.amazon.power.service
+		com.amazon.idle.manager
+		com.amazon.powermanagerext.service
+		com.amazon.audio.stream
+		com.amazon.audio.control
+		com.amazon.audio.system
+store id: 
+sha384: 124b3f073ee9541d19ac046468b1921b589dc34e8161c5bad9869e15ee60aca64bf3266c25bd146e3c44f8132bf1363b
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.rdm.service
+title: 
+	value: RDM Service Application Package
+	direction: ltr
+version:      1.0.1
+build number: 0
+uuid:         5de4cfda-2ac3-4ad5-81d7-bfbb88ec3fb4
+install path: /var/lib/pkgmgrd/packages/com.amazon.rdm.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.rdm.service.dfu.main
+	com.amazon.rdm.service.main
+offers:
+	services:
+		com.amazon.rdm.service.main
+wants:
+	services:
+		com.amazon.bluetooth.service
+		com.amazon.ace.metrics
+		com.amazon.lcm.app.session.notifier.service
+store id: 
+sha384: b59c18e82a495000e18a074aaee1d06d45dc08e64dba6f86e140f3bec177f2dfb90925c39f62c0560ffe7ab49002cefa
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.recommendation.service
+title: 
+	value: Recommendation Service Application Package
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         681a038d-8398-4e17-8aff-41f1d04424a2
+install path: /var/lib/pkgmgrd/packages/com.amazon.recommendation.service
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:06 2026 GMT
+update time:  Sat Sep 26 16:57:06 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.recommendation.service.main
+offers:
+	services:
+		com.amazon.recommendation.service.main
+store id: 
+sha384: 935669090caec42189221062c064d34b5013ba6e414f7c5292df2773481ae91385b0020b4dd6854c803d0df83ed3e4fb
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.silverstone
+title: 
+	value: Virtual Keyboard Service
+	direction: ltr
+version:      2.0.0-862503d
+build number: 0
+uuid:         204124fe-bf9b-4a8d-a4a4-df67d1bc5565
+install path: /var/lib/pkgmgrd/packages/com.amazon.silverstone
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.inputmethod.service
+offers:
+	services:
+		com.amazon.inputmethod.service
+wants:
+	services:
+		com.amazon.inputd.service
+		com.amazon.puffinexternalcapability.service
+		com.amazon.media.server
+		com.amazon.media.playersession.service
+		com.amazon.mediametrics.service
+		com.amazon.audio.stream
+		com.amazon.audio.control
+		com.amazon.audio.system
+		com.amazon.minerva
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+store id: 
+sha384: e542983a795083c8407d5e76cb49c201c89e1b626eadbb3cead95985986b42aed2366eb421718caec595120923f7aec2
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.textbanner
+title: 
+	value: text banner accessibility UI app
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         b3e51405-c452-4f81-ba51-eb193e111a90
+install path: /var/lib/pkgmgrd/packages/com.amazon.textbanner
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.textbanner.main
+wants:
+	services:
+		com.amazon.kepler.ucc.client
+store id: 
+sha384: 1dd3154074233441530fe620af16013d06036a7f2c170e9013ed1c3443801f1bdbb3a1b60c051c2a33eedb1dfc1afb80
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+id:           com.amazon.tv.developer.dataservice
+title: 
+	value: Alberto Service
+	direction: ltr
+version:      0.1.22141
+build number: 0
+uuid:         e381d045-559c-4bed-a2ca-0557d759d54e
+install path: /var/lib/pkgmgrd/packages/com.amazon.tv.developer.dataservice
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.tv.developer.dataservice.service
+	com.amazon.tv.developer.dataservice.task
+	com.amazon.tv.developer.dataservice.onInstallOrUpdateTask
+	com.amazon.tv.developer.dataservice.onBroadcastTask
+	com.amazon.tv.developer.dataservice.compute-consent-launch.task
+	com.amazon.tv.developer.dataservice.device-messaging-receiver
+	com.amazon.tv.developer.dataservice.device-boot.task
+offers:
+	services:
+		com.amazon.tv.developer.dataservice.service
+wants:
+	services:
+		*
+		com.amazon.map.async.service.main
+		com.amazon.map.service.main
+extras:
+	"wakeup-task-component" : "com.amazon.tv.developer.dataservice.compute-consent-launch.task"
+store id: 
+sha384: c36d15050826d0334b635032242a224d350c24fbc5dd3972b379f068c4cf3b58f409144e0345d1fe7e2599a1b20d0c5a
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+id:           com.amazon.tv.systemui.volume_panel
+title: 
+	value: Volume Panel for VegaTV SystemUI
+	direction: ltr
+version:      1.0.0
+build number: 0
+uuid:         34ae21d6-5c0e-436b-9ba1-e167bf5b6902
+install path: /var/lib/pkgmgrd/packages/com.amazon.tv.systemui.volume_panel
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:07 2026 GMT
+update time:  Sat Sep 26 16:57:07 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.tv.systemui.volume_panel.main
+wants:
+	services:
+		com.amazon.audio.control
+store id: 
+sha384: 3688465ac602bb7c3cc5951f3fd6e5f34cd086ff3fdceaef60c45fe9ef39a022edd055fe0d6df0ad612525185e5ef00a
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.amazon.webview
+title: 
+	value: Webview
+	direction: ltr
+version:      144.0.9999
+build number: 0
+uuid:         b9b0c0d2-5744-4e41-9f03-c9a77863d770
+install path: /var/lib/pkgmgrd/packages/com.amazon.webview
+installer id: com.amazon.package-manager.service
+install time: Sat Sep 26 16:57:05 2026 GMT
+update time:  Sat Sep 26 16:57:05 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.amazon.webview.renderer_service
+offers:
+	services:
+		com.amazon.webview.renderer_service
+store id: 
+sha384: 7e307685abb79f4593540c2fcb9772f58df86d8502b9fa8c59ee786ab1d89cb1e6ea43699ce4ac3e0492f064294a384c
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10
+id:           com.example.player
+title: 
+	value: Basic UI React Native Application for project player
+	direction: ltr
+version:      0.1.0
+build number: 1
+uuid:         d0c9b9a8-b76d-42a3-a32b-2be4efd9e13d
+install path: /var/lib/pkgmgrd/packages/com.example.player
+installer id: com.amazon.package-manager.cli
+install time: Thu Nov  5 23:10:04 2026 GMT
+update time:  Thu Nov  5 23:10:04 2026 GMT
+enabled:      true
+package distributor: Amazon
+author subject: CN=Developer Foobar, OU=Orpheus, O=Amazon Inc, C=US
+distributor subject: CN=Debug Distributor CA, OU=Orpheus, O=Amazon Inc, C=US
+component ids:
+	com.example.player.main
+store id: 
+sha384: d0677f206c4ecf2ff97fdf9d75d38d05b1a6804694e795e5cba9d4c0e9a2d9ff38637f7f042f6db58b128d2212c9f48f
+Signers info:
+	Signer 1 info:
+		leaf certificate fingerprints:
+			 md5: e4:fb:53:c1:c5:7f:37:47:8c:ba:2d:cc:a7:14:38:77
+			 sha1: 
+			      ec:e0:09:b8:94:4d:9a:75:94:e9:9e:37:bf:8e:11:24
+			      84:54:0f:be
+			 sha256: 
+			      ef:53:3c:a0:28:e7:1a:8e:a0:ed:af:06:ef:b6:89:1e
+			      8e:4c:2e:87:13:81:92:6b:29:5f:f0:48:ba:2e:0d:cb
+			 sha384: 
+			      d8:54:4b:e9:8b:0b:07:bd:c8:56:0e:b2:74:b5:ac:cb
+			      d2:68:f7:21:f3:56:b5:57:17:61:2e:f7:23:62:b4:0a
+			      fc:9e:1d:4a:28:c3:0c:50:cc:05:c1:70:db:64:cd:92
+			 sha512: 
+			      be:2b:ea:35:43:b8:d9:b1:c9:4e:76:ec:a9:8c:87:6e
+			      23:26:03:2f:88:30:69:b3:56:70:00:ac:91:54:16:0e
+			      56:0b:4a:e7:07:46:81:2a:6b:8f:be:3f:4d:f3:8c:af
+			      9a:51:45:43:d7:b4:03:3b:40:79:9a:23:99:08:84:cc
+		leaf certificate signature:
+			30:65:02:31:00:af:05:5b:e8:3f:37:3e:8f:44:f9:65
+			80:2e:b3:7b:ac:9f:0e:5e:46:b7:f7:1d:5e:d4:ed:b0
+			77:b8:12:1b:0b:f1:64:0f:23:52:e7:58:ef:d2:39:ea
+			25:9b:b5:ac:73:02:30:3e:ee:3c:5a:c1:98:c5:b4:45
+			f5:e6:cf:4b:88:ef:23:1c:c7:8d:0f:17:cd:30:c6:92
+			fa:ae:c1:98:aa:d1:f4:a1:6e:e8:30:12:57:8c:25:8a
+			37:3a:ce:1a:2d:da:e3
+	Signer 2 info:
+		leaf certificate fingerprints:
+			 md5: 44:2b:1d:7c:80:62:18:c0:b6:9c:17:8e:be:0c:e5:f8
+			 sha1: 
+			      13:8f:85:86:74:68:0d:7b:00:12:d1:e2:0f:03:06:64
+			      d7:58:e1:5d
+			 sha256: 
+			      e7:7e:45:42:e9:ba:3f:a3:db:92:3c:4b:55:57:3a:08
+			      e5:77:c9:4c:e4:8a:e9:10:c4:a7:3c:53:9a:99:91:a0
+			 sha384: 
+			      c1:47:a2:2d:f5:87:9c:d6:6a:ed:d6:ea:14:dd:0f:0e
+			      07:d4:a2:20:c9:84:44:fd:c6:70:9d:89:b7:69:71:bb
+			      fe:83:a6:8c:c5:8c:17:0c:66:77:50:4f:80:bd:63:c6
+			 sha512: 
+			      0d:38:af:4a:c4:7a:be:75:bd:81:42:0b:e3:38:ea:5e
+			      f0:6f:75:c3:54:a1:2b:7a:d4:a1:98:24:dc:45:4d:2d
+			      cb:74:36:37:bf:e4:c0:ae:b9:1b:f1:33:78:d1:0a:a0
+			      fd:b0:fc:c8:b8:b7:db:9e:f2:38:e6:2d:d1:d5:ac:9b
+		leaf certificate signature:
+			30:64:02:30:01:ed:e0:1f:04:63:fc:78:91:ac:06:2e
+			76:09:5a:63:22:40:b8:5d:7d:80:ac:0b:4e:8d:51:24
+			ee:47:5b:8d:c1:0d:77:75:31:57:c7:63:0a:21:51:42
+			dd:a9:8f:b1:02:30:05:78:30:db:ac:19:a5:50:bc:c3
+			68:46:43:c1:d5:30:3d:e4:25:a5:b0:77:28:39:38:83
+			ba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b
+			51:d9:58:95:e3:72
+	Signer 3 info:
+		leaf certificate fingerprints:
+			 md5: 0b:eb:9f:99:37:4a:1d:33:0e:5f:fd:12:9e:46:63:49
+			 sha1: 
+			      13:97:aa:67:fb:b1:95:c4:bb:a8:78:c4:04:40:92:b5
+			      bc:60:a4:bf
+			 sha256: 
+			      12:2f:3c:ce:e1:9e:05:9b:0e:d1:c0:b9:56:54:a3:6a
+			      9d:34:9d:be:12:44:0b:c1:10:9b:3f:ba:92:e1:e3:97
+			 sha384: 
+			      93:b6:2d:6e:fc:3a:59:b8:b1:06:50:93:cd:e5:ee:75
+			      33:ac:7c:bc:6d:3b:6c:91:9f:7a:76:0b:b6:7e:19:9c
+			      00:55:d6:6d:b8:1e:28:3f:57:ba:d5:66:de:5c:d6:a8
+			 sha512: 
+			      9c:80:66:32:64:01:4b:ff:1d:ff:76:67:f6:73:b5:0d
+			      9c:6b:db:bc:59:4e:ef:b5:47:1b:9b:80:dd:bd:57:56
+			      1a:1c:07:75:d4:e0:87:ec:87:e7:50:89:29:78:7d:46
+			      69:5b:1d:86:a4:cd:6d:51:31:f2:3a:bf:7c:8f:1b:69
+		leaf certificate signature:
+			30:66:02:31:00:e0:7c:30:60:09:6d:53:29:8b:01:eb
+			f9:15:d8:7c:20:f8:09:05:c8:0c:6c:a0:5e:dd:40:5b
+			35:de:e4:22:05:85:9c:ef:b2:ce:00:b2:da:6e:80:34
+			49:bf:65:82:0c:02:31:00:bf:f5:f9:16:d4:35:8c:bf
+			32:82:a1:e8:fe:22:2b:13:94:e4:e8:41:2e:02:39:0b
+			7d:6e:69:d8:39:73:b0:40:50:46:08:fc:28:58:dd:33
+			e4:f4:9a:23:93:26:1a:10

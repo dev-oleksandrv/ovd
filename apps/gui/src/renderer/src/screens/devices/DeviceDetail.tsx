@@ -4,6 +4,7 @@ import { Button } from '../../ui/Button'
 import { CodeBlock } from '../../ui/CodeBlock'
 import { Icon } from '../../ui/Icon'
 import { KeyValueGrid } from '../../ui/KeyValueGrid'
+import { RunningNow } from './RunningNow'
 import { OfflineState } from '../../ui/OfflineState'
 import { StatusDot } from '../../ui/StatusDot'
 import { toneText } from '../../ui/tone'
@@ -28,9 +29,18 @@ interface DeviceDetailProps {
     onReconnect: () => void
     onForget: () => void
   }
+  // "All apps →" in Running now.
+  onOpenApps?: () => void
 }
 
-export function DeviceDetail({ device, onRename, onSetTarget, vvd, saved }: DeviceDetailProps) {
+export function DeviceDetail({
+  device,
+  onRename,
+  onSetTarget,
+  vvd,
+  saved,
+  onOpenApps
+}: DeviceDetailProps) {
   // The device whose Forget waits for confirmation; another selection drops it.
   const [confirmForget, setConfirmForget] = useState<string | null>(null)
   const busy = vvd?.busy ?? null
@@ -161,11 +171,14 @@ export function DeviceDetail({ device, onRename, onSetTarget, vvd, saved }: Devi
 
       <KeyValueGrid items={infoRows(device)} />
 
-      {device.info && (
-        <div className="min-w-0">
-          <CodeBlock title="vega device info" code={JSON.stringify(device.info.raw, null, 2)} />
-        </div>
-      )}
+      <div className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+        <RunningNow device={device} {...(onOpenApps ? { onOpenApps } : {})} />
+        {device.info && (
+          <div className="min-w-0">
+            <CodeBlock title="vega device info" code={JSON.stringify(device.info.raw, null, 2)} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

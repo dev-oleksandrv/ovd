@@ -1,4 +1,6 @@
 import type {
+  AppDetails,
+  AppList,
   ArchCheck,
   Device,
   DevicesUpdate,
@@ -83,8 +85,14 @@ export interface OvdApi {
   install: {
     // The architecture guard for a package on a device, with the matching recent build.
     check(path: string, device: string): Promise<IpcResult<ArchCheck>>
-    // Installs behind the guard, as `ovd install <path> --device <id>` does.
+    // Installs behind the guard, as `ovd apps install <path> --device <id>` does.
     install(path: string, device: string): Promise<IpcResult<InstallResult>>
+  }
+  apps: {
+    // Side-loaded and Appstore apps on a device with their running state, as `ovd apps --device <id>` lists them.
+    list(device: string, running?: boolean): Promise<IpcResult<AppList>>
+    // One app with its components, as `ovd apps info <app> --device <id>` shows it.
+    info(app: string, device: string): Promise<IpcResult<AppDetails>>
   }
   setup: {
     // Asks `vega devmode login --json` without waiting for a sign-in.
@@ -124,6 +132,8 @@ export const channels = {
   packagesPick: 'ovd:packages:pick',
   installCheck: 'ovd:install:check',
   install: 'ovd:install',
+  appsList: 'ovd:apps:list',
+  appsInfo: 'ovd:apps:info',
   setupSignedIn: 'ovd:setup:signed-in',
   setupLogin: 'ovd:setup:login',
   setupLoginPrompt: 'ovd:setup:login-prompt',

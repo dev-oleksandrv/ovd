@@ -1,0 +1,1 @@
+application                             type      pid     id      state       lifespan       timeout container                               launch args                   

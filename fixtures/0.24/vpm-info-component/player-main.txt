@@ -1,0 +1,14 @@
+id:           com.example.player.main
+type:         interactive
+categories:   com.amazon.category.main 
+launch type:  singleton
+lifespan:     
+timeout secs: 0
+bin path:     
+lib path:     
+assets path:  /var/lib/pkgmgrd/packages/com.example.player/assets
+data path:    /home/app_user/packages/com.example.player/data
+dm cache path:/home/app_user/packages/com.example.player/dm-cache
+cache path:   /home/app_user/packages/com.example.player/cache
+config path:  
+stem family:  /com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0

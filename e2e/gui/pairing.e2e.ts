@@ -52,6 +52,11 @@ test.describe('Pair over Wi‑Fi with USB', () => {
     expect((await ovd(sandbox, ['pair', '--usb'])).exitCode).toBe(0)
     const { page } = await launch()
     await deviceRow(page, /Wi-Fi/).click()
+    // Selecting the stick reads its apps for Running now; let that finish, or its second call
+    // reaches the stick after it left Wi‑Fi.
+    await expect(
+      page.getByRole('region', { name: 'Running now' }).getByText('No apps running')
+    ).toBeVisible()
 
     await page.getByRole('button', { name: 'Forget' }).click()
     await expect(
@@ -175,6 +180,11 @@ test.describe('saved Wi‑Fi devices', () => {
     expect((await ovd(sandbox, ['pair', STICK_ADDRESS])).exitCode).toBe(0)
     const { page } = await launch()
     await expect(deviceRow(page, /Fire TV stick.*Online/)).toBeVisible()
+    // Running now reads the stick's apps at launch; let that finish first: what VDA answers for a
+    // connected stick that lost power isn't recorded.
+    await expect(
+      page.getByRole('region', { name: 'Running now' }).getByText('No apps running')
+    ).toBeVisible()
 
     sandbox.update((w) => {
       if (w.stick) w.stick.powered = false

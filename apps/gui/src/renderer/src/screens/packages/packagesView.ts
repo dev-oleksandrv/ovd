@@ -63,7 +63,7 @@ export function infoCli(displayPath: string): string {
 }
 
 export function installCli(displayPath: string, device: string): string {
-  return `ovd install ${displayPath} --device ${device}`
+  return `ovd apps install ${displayPath} --device ${device}`
 }
 
 // Why Install on target can't run yet, or null when the target can take an install.

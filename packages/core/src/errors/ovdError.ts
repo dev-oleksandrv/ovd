@@ -28,6 +28,8 @@ export type ErrorCode =
   | 'NO_PACKAGE'
   | 'ARCH_MISMATCH'
   | 'INSTALL_FAILED'
+  | 'NO_APP'
+  | 'APP_NOT_INSTALLED'
   | 'COMMAND_FAILED'
   | 'UNEXPECTED_OUTPUT'
 
