@@ -4,16 +4,27 @@ import { installedLine } from '../format/install.js'
 import { report } from '../report.js'
 import { reportContext } from './context.js'
 
-// Install a .vpkg on the target behind the architecture guard (Stage 2.3, ADR 0008). Package
-// IDs and project folders come with the Apps screen in 2.4.
+// `ovd install` (Stage 2.3) is kept as an alias of `ovd apps install`, the name the desktop
+// echoes (2.4a).
 export function registerInstall(
   program: Command,
   deps: CliDeps,
   setExitCode: (code: number) => void
 ): void {
-  program
+  addInstallCommand(program, deps, setExitCode, 'Same as ovd apps install')
+}
+
+// Install a .vpkg on the target behind the architecture guard (ADR 0008). Project folders and
+// package IDs come with the app actions in 2.4b.
+export function addInstallCommand(
+  parent: Command,
+  deps: CliDeps,
+  setExitCode: (code: number) => void,
+  description = 'Install a .vpkg on the target; blocked when the architectures differ'
+): void {
+  parent
     .command('install')
-    .description('Install a .vpkg on the target; blocked when the architectures differ')
+    .description(description)
     .argument('[file]', '.vpkg file (default: the .vpkg open with ovd open)')
     .option('--force', 'install even when the package and target architectures differ')
     .action(async (file: string | undefined, opts: { force?: boolean }, cmd: Command) => {

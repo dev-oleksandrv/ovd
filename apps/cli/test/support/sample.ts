@@ -1,5 +1,6 @@
 import {
   OvdError,
+  type Apps,
   type Device,
   type Devices,
   type Devmode,
@@ -150,4 +151,9 @@ export function stubPackages(
 export function stubInstall(install: Partial<Install>): Partial<Ovd> {
   const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
   return { install: { check: missing('check'), install: missing('install'), ...install } }
+}
+
+export function stubApps(apps: Partial<Apps>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return { apps: { list: missing('list'), info: missing('info'), ...apps } }
 }

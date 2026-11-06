@@ -30,7 +30,7 @@ export function packageRows(pkg: PackageInfo): string {
 }
 
 // "2026-11-01 14:05" in local time.
-function timeText(iso: string): string {
+export function timeText(iso: string): string {
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
