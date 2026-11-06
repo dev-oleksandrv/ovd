@@ -9,6 +9,7 @@ import { defaultDiscoverOptions, discoverSdk, type SdkInfo } from './sdk/discove
 import { createExecaRunner, type Runner } from './sdk/runner.js'
 import { createPackages, type Packages } from './packages/packages.js'
 import { createInstall, type Install } from './install/install.js'
+import { createApps, type Apps } from './deviceApps/deviceApps.js'
 import { createPairing, type Pairing } from './pairing/pairing.js'
 import { createProject, type Project } from './project/project.js'
 import { createSdkLocator, type SdkLocator } from './sdk/sdkLocator.js'
@@ -38,6 +39,7 @@ export interface Ovd {
   project: Project
   packages: Packages
   install: Install
+  apps: Apps
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -73,5 +75,14 @@ export function createOvd(opts: OvdOptions): Ovd {
   const devmode = createDevmode({ runner, sdk, devices, activity })
   const packages = createPackages({ runner, sdk, project, homedir, cwd: opts.cwd ?? process.cwd() })
   const install = createInstall({ runner, sdk, devices, packages, activity })
-  return { sdk, devices, doctor, vvd, pairing, devmode, project, packages, install }
+  const apps = createApps({
+    runner,
+    sdk,
+    devices,
+    project,
+    packages,
+    homedir,
+    cwd: opts.cwd ?? process.cwd()
+  })
+  return { sdk, devices, doctor, vvd, pairing, devmode, project, packages, install, apps }
 }

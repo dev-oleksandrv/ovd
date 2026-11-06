@@ -3,7 +3,7 @@ import { createLogged } from '../activity/logged.js'
 import { parseInstallApp } from '../adapters/parseInstallApp.js'
 import type { PackageArch } from '../adapters/parseVptContents.js'
 import type { Devices } from '../devices/devices.js'
-import type { Device } from '../devices/types.js'
+import { onlineTarget } from '../devices/onlineTarget.js'
 import { OvdError } from '../errors/ovdError.js'
 import type { PackageBuild, PackageInfo, Packages } from '../packages/packages.js'
 import { vegaDeviceCmd } from '../sdk/commands.js'
@@ -71,17 +71,8 @@ const MAX_FIX_READS = 5
 export function createInstall(deps: InstallDeps): Install {
   const logged = createLogged(deps.activity)
 
-  async function onlineTarget(override?: string): Promise<InstallTarget> {
-    const resolved = await deps.devices.currentTarget(override)
-    if (!resolved) {
-      throw new OvdError(
-        'NO_TARGET',
-        'No target device',
-        'Set one with ovd target set <id>, or pass --device <id>'
-      )
-    }
-    const device = resolved.device
-    if (device.status !== 'online') throw offline(device)
+  async function installTarget(override?: string): Promise<InstallTarget> {
+    const device = await onlineTarget(deps.devices, override)
     if (!device.info) {
       throw new OvdError(
         'DEVICE_INFO_UNAVAILABLE',
@@ -117,12 +108,12 @@ export function createInstall(deps: InstallDeps): Install {
 
   return {
     async check(path, opts = {}) {
-      const target = await onlineTarget(opts.device)
+      const target = await installTarget(opts.device)
       return check(path, target, await deps.packages.architecture(path))
     },
 
     async install(input, opts = {}) {
-      const target = await onlineTarget(opts.device)
+      const target = await installTarget(opts.device)
       const info = await deps.packages.info(input)
       const force = opts.force ?? false
       const args = { package: info.file, ...(force ? { force: 'true' } : {}) }
@@ -174,16 +165,6 @@ export function createInstall(deps: InstallDeps): Install {
   }
 }
 
-function offline(device: Device): OvdError {
-  return new OvdError(
-    'TARGET_OFFLINE',
-    `${device.name} is ${device.status === 'stopped' ? 'stopped' : 'offline'}`,
-    device.kind === 'vvd'
-      ? 'Start it with ovd vvd start'
-      : 'Reconnect it, then check with ovd devices'
-  )
-}
-
 // "Architecture mismatch: package is aarch64, Fire TV Stick 4K Select is armv7" (design copy).
 function blocked(guard: ArchCheck, file: string): OvdError {
   const { target, fix } = guard
@@ -192,7 +173,7 @@ function blocked(guard: ArchCheck, file: string): OvdError {
       ? `Architecture unknown: ${file} has native code for several or unrecognized architectures, ${target.name} is ${target.architecture}`
       : `Architecture mismatch: package is ${guard.package.architecture}, ${target.name} is ${target.architecture}`
   const hint = fix
-    ? `Install the ${target.architecture} build instead: ovd install ${fix.displayPath}. Or pass --force to install anyway`
+    ? `Install the ${target.architecture} build instead: ovd apps install ${fix.displayPath}. Or pass --force to install anyway`
     : `Build the app for ${target.architecture} or switch the target. Or pass --force to install anyway`
   return new OvdError('ARCH_MISMATCH', message, hint, {
     package: guard.package.architecture,

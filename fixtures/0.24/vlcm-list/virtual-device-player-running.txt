@@ -1,0 +1,10 @@
+application                             type      pid     id      state       lifespan       timeout container                               launch args                   
+com.amazon.keplerlauncherapp.main       I         1633    1       NOT_VISIBLE PERMANENT      n/a     framework.slice/background/1633         <none>                        
+com.amazon.kcp.component.service        S         1639    2       READY       PERMANENT      n/a     framework.slice/essential/1639          <none>                        
+com.amazon.otad.main                    S         1862    3       READY       PERMANENT      n/a     framework.slice/service/1862            <none>                        
+com.amazon.dev.shell.service            S         1922    4       READY       PERMANENT      n/a     framework.slice/service/1922            <none>                        
+com.amazon.aplext.alert.10.service.main S         1955    5       READY       PERMANENT      n/a     framework.slice/service/1955            <none>                        
+com.amazon.kepler.keyvault.service.main S         2027    6       READY       PERMANENT      n/a     framework.slice/service/2027            <none>                        
+com.amazon.map.async.service.main       S         2059    8       READY       PERMANENT      n/a     framework.slice/service/2059            <none>                        
+com.amazon.rdm.service.main             S         2513    9       READY       PERMANENT      n/a     framework.slice/service/2513            <none>                        
+com.example.player.main                 I         3571    37      VISIBLE     PERMANENT      n/a     framework.slice/essential/3571          <none>                        

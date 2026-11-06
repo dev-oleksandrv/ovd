@@ -31,6 +31,10 @@ export {
 } from './adapters/parseVsmDeveloperMode.js'
 export { parseVptInfo } from './adapters/parseVptInfo.js'
 export type { VptInfo } from './adapters/parseVptInfo.js'
+export { parseVpmComponent, parseVpmPackages, vpmNotFound } from './adapters/parseVpmInfo.js'
+export type { VpmComponent, VpmPackage } from './adapters/parseVpmInfo.js'
+export { parseVlcmList } from './adapters/parseVlcmList.js'
+export type { VlcmEntry } from './adapters/parseVlcmList.js'
 export { parseVptContents } from './adapters/parseVptContents.js'
 export type { PackageArch } from './adapters/parseVptContents.js'
 export { parseAppConfig } from './adapters/parseAppConfig.js'
@@ -123,3 +127,17 @@ export type {
   InstallResult,
   InstallTarget
 } from './install/install.js'
+export { createApps } from './deviceApps/deviceApps.js'
+export type {
+  AppComponent,
+  AppDetails,
+  AppList,
+  Apps,
+  AppsDeps,
+  AppsListOptions,
+  AppSource,
+  AppStatus,
+  AppsTarget,
+  InstalledApp,
+  RunningComponent
+} from './deviceApps/deviceApps.js'

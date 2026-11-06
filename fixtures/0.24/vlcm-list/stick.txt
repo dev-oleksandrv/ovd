@@ -1,0 +1,22 @@
+application                                       type      pid     id      state       lifespan       timeout container                               launch args                   
+com.amazon.minerva                                S         1716    2       READY       PERMANENT      n/a     framework.slice/service/1716            <none>                        
+com.amazon.smplighthouse.launcher.main            I         875     3       VISIBLE     PERMANENT      n/a     framework.slice/essential/875           ?launchReason=wakeOnBoot      
+com.amazon.kcp.component.service                  S         1865    4       READY       PERMANENT      n/a     framework.slice/essential/1865          <none>                        
+com.amazon.map.service.main                       S         1882    5       READY       PERMANENT      n/a     framework.slice/essential/1882          <none>                        
+com.amazon.otad.main                              S         2094    6       READY       PERMANENT      n/a     framework.slice/service/2094            <none>                        
+com.amazon.kcs.component.entitlements.service     S         2104    12      READY       PERMANENT      n/a     framework.slice/essential/2104          <none>                        
+com.amazon.dev.shell.service                      S         2122    9       READY       PERMANENT      n/a     framework.slice/service/2122            <none>                        
+com.amazon.aplext.alert.10.service.main           S         869     10      READY       PERMANENT      n/a     framework.slice/service/869             <none>                        
+com.amazon.cloudstreaming.mgrclient.service.main  S         2252    11      READY       PERMANENT      n/a     framework.slice/service/2252            <none>                        
+com.amazon.notification.renderer.lostremote.task  T         2287    13      READY       PERMANENT      n/a     framework.slice/essential/2287          <none>                        
+com.amazon.admanager.service.main                 S         2295    15      READY       PERMANENT      n/a     framework.slice/essential/2295          <none>                        
+com.amazon.kepler.keyvault.service.main           S         2322    16      READY       PERMANENT      n/a     framework.slice/essential/2322          <none>                        
+com.amazon.visualindicator.uxeventsvc             S         2316    17      READY       PERMANENT      n/a     framework.slice/service/2316            <none>                        
+com.amazon.devicecontrolnativeservice.service     S         2343    18      READY       PERMANENT      n/a     framework.slice/middleware/2343         <none>                        
+com.amazon.rdm.service.main                       S         2485    20      READY       PERMANENT      n/a     framework.slice/service/2485            <none>                        
+com.amazon.kepler.netflixta.service.main          S         2810    21      READY       PERMANENT      n/a     framework.slice/service/2810            <none>                        
+com.amazon.ceviche.main                           S         3021    22      READY       PERMANENT      n/a     framework.slice/middleware/3021         <none>                        
+com.amazon.device_remote_config_sync_service.task T         3572    52      READY       PERMANENT      n/a     framework.slice/task/3572               <none>                        
+com.amazon.notification.renderer.service          S         3641    62      READY       PERMANENT      n/a     framework.slice/essential/3641          <none>                        
+com.amazon.notification.renderer.ui               I         3641    68      VISIBLE     PERMANENT      n/a     framework.slice/essential/3641          <none>                        
+com.amazon.kepler.drmprov.service.main            S         4787    94      READY       PERMANENT      n/a     framework.slice/service/4787            <none>                        

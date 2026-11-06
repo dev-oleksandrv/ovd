@@ -188,7 +188,7 @@ describe('Install.install', () => {
       code: 'ARCH_MISMATCH',
       message: 'Architecture mismatch: package is aarch64, Fire TV stick is armv7',
       hint:
-        'Install the armv7 build instead: ovd install ~/dev/player/build/armv7-release/player_armv7.vpkg. ' +
+        'Install the armv7 build instead: ovd apps install ~/dev/player/build/armv7-release/player_armv7.vpkg. ' +
         'Or pass --force to install anyway',
       details: { package: 'aarch64', target: 'armv7', fix: armv7 }
     })
