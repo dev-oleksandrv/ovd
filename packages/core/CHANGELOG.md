@@ -1,5 +1,14 @@
 # @ovd/core
 
+## 0.2.0
+
+### Minor Changes
+
+- 53c4611: Project mode and no-project mode: `ovd open <folder>` opens a Vega project (a folder with `manifest.toml` and `package.json`) and `ovd open <file.vpkg>` installs from a package without one; `ovd project` shows which, and `ovd close` forgets it. `ovd doctor` gains a Project row that runs `vega project doctor` in the project folder. The desktop adds the sidebar project card (folder, path, OS and React Native versions, or "No project" with the loaded .vpkg), drag-and-drop of a .vpkg anywhere in the window, and the Doctor Project row with "Open folder…" and Details listing every check, its fix hints, Copy output and Re-run. A subcommand missing an argument now exits 2.
+- f766c91: Inspect .vpkg files: `ovd pkg info [file]` shows a package's ID, title, version, build, architecture (`any` for pure-JS packages), build type and SHA-384, and `ovd pkg list` lists the open project's builds. The desktop app gets the Packages screen with a drop zone, recent builds and the Overview tab.
+- c947553: See the apps on a device: `ovd apps [--running] [--all]` lists the side-loaded and Appstore apps on the target with their version and running state (system apps with `--all`), and `ovd apps info [app]` shows one app with its components, by package or component ID, .vpkg or project folder. `ovd apps install` is the new name of `ovd install`, which stays as an alias. The desktop app gets the Apps screen (Installed and Running tabs, app detail with components) and a Running now card on each device.
+- c7a5554: Install a .vpkg behind the architecture guard: `ovd install [file]` compares the package's architecture with the target's before installing, blocks a mismatch with an error naming both and the matching recent build (exit 6), and installs anyway with `--force`. The desktop app's Install on target shows the mismatch block with a one-click switch to the matching build.
+
 ## 0.1.0
 
 ### Minor Changes
