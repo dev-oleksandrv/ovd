@@ -386,7 +386,11 @@ export function Gallery() {
       <GallerySection title="Toasts and CLI echo">
         <Button
           onClick={() =>
-            notify({ tone: 'ok', text: 'Installed Sample Player', cli: 'ovd install player.vpkg' })
+            notify({
+              tone: 'ok',
+              text: 'Installed Sample Player',
+              cli: 'ovd apps install player.vpkg'
+            })
           }
         >
           OK toast
@@ -396,7 +400,7 @@ export function Gallery() {
             notify({
               tone: 'error',
               text: 'Architecture mismatch',
-              cli: 'ovd install player-aarch64.vpkg'
+              cli: 'ovd apps install player-aarch64.vpkg'
             })
           }
         >

@@ -49,6 +49,10 @@ const api: OvdApi = {
     check: (path, device) => ipcRenderer.invoke(channels.installCheck, path, device),
     install: (path, device) => ipcRenderer.invoke(channels.install, path, device)
   },
+  apps: {
+    list: (device, running) => ipcRenderer.invoke(channels.appsList, device, running),
+    info: (app, device) => ipcRenderer.invoke(channels.appsInfo, app, device)
+  },
   setup: {
     signedIn: () => ipcRenderer.invoke(channels.setupSignedIn),
     login: () => ipcRenderer.invoke(channels.setupLogin),

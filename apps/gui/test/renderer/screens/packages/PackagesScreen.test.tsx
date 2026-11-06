@@ -152,7 +152,7 @@ describe('Packages screen', () => {
     // The status bar and both toasts carry it.
     expect(
       screen.getAllByText(
-        '$ ovd install ~/dev/player/build/armv7-release/player_armv7.vpkg --device G070000000000001'
+        '$ ovd apps install ~/dev/player/build/armv7-release/player_armv7.vpkg --device G070000000000001'
       ).length
     ).toBeGreaterThan(0)
   })

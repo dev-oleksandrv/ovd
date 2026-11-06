@@ -13,6 +13,7 @@ import { SearchButton } from '../frame/SearchButton'
 import { TargetPicker } from '../frame/TargetPicker'
 import { TargetStatus } from '../frame/TargetStatus'
 import { DevicesScreen } from '../screens/devices/DevicesScreen'
+import { AppsScreen } from '../screens/apps/AppsScreen'
 import { PackagesScreen } from '../screens/packages/PackagesScreen'
 import { PairWizard } from '../pairing/PairWizard'
 import { useFileDrop } from '../project/useFileDrop'
@@ -194,6 +195,12 @@ export function Shell() {
               onClick={() => go('devices')}
             />
             <NavItem
+              label="Apps"
+              icon="apps"
+              active={!gallery && screen === 'apps'}
+              onClick={() => go('apps')}
+            />
+            <NavItem
               label="Packages"
               icon="deployed_code"
               active={!gallery && screen === 'packages'}
@@ -226,6 +233,8 @@ export function Shell() {
           project={projectMode}
           onOpenFolder={() => void project.pickFolder()}
         />
+      ) : screen === 'apps' ? (
+        <AppsScreen onSwitchTarget={() => setMenu(true)} onGoPackages={() => go('packages')} />
       ) : screen === 'packages' ? (
         <PackagesScreen
           projectPath={projectMode?.path ?? null}
@@ -233,7 +242,11 @@ export function Shell() {
           onSwitchTarget={() => setMenu(true)}
         />
       ) : (
-        <DevicesScreen onSetup={() => setSettingUp(true)} onPair={() => setPairing(true)} />
+        <DevicesScreen
+          onSetup={() => setSettingUp(true)}
+          onPair={() => setPairing(true)}
+          onOpenApps={() => go('apps')}
+        />
       )}
       {palette && <CommandPalette items={items} onClose={() => setPalette(false)} />}
       {settingUp && (

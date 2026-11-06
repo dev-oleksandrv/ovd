@@ -1,4 +1,6 @@
 import type {
+  AppDetails,
+  AppList,
   ArchCheck,
   Check,
   Device,
@@ -110,6 +112,8 @@ export function stubOvd(opts: {
   // No builds unless a test says otherwise.
   packages?: Partial<OvdApi['packages']>
   install?: Partial<OvdApi['install']>
+  // Nothing installed unless a test says otherwise.
+  apps?: Partial<OvdApi['apps']>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
@@ -188,6 +192,16 @@ export function stubOvd(opts: {
       install: vi.fn(
         opts.install?.install ?? (async () => unexpected<InstallResult>('install.install'))
       )
+    },
+    apps: {
+      list: vi.fn(
+        opts.apps?.list ??
+          (async (device: string): Promise<IpcResult<AppList>> => ({
+            ok: true,
+            data: { target: { id: device, name: device }, apps: [] }
+          }))
+      ),
+      info: vi.fn(opts.apps?.info ?? (async () => unexpected<AppDetails>('apps.info')))
     },
     setup: {
       signedIn: vi.fn(opts.setup?.signedIn ?? (async () => unexpected<boolean>('setup.signedIn'))),

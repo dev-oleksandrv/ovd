@@ -3,6 +3,7 @@ import { join } from 'path'
 import { optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOvd } from '@ovd/core'
+import { registerAppsIpc } from './appsIpc'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerInstallIpc } from './installIpc'
 import { registerIpcHandlers } from './ipc'
@@ -79,6 +80,7 @@ app.whenReady().then(() => {
   registerProjectIpc(ovd, () => mainWindow)
   registerPackagesIpc(ovd, () => mainWindow)
   registerInstallIpc(ovd)
+  registerAppsIpc(ovd)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
 
   createWindow()

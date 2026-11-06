@@ -12,10 +12,12 @@ interface DevicesScreenProps {
   onSetup: () => void
   // Opens the pairing wizard.
   onPair: () => void
+  // "All apps →" in a device's Running now.
+  onOpenApps?: () => void
 }
 
 // Devices (Stage 1.3–1.7).
-export function DevicesScreen({ onSetup, onPair }: DevicesScreenProps) {
+export function DevicesScreen({ onSetup, onPair, onOpenApps }: DevicesScreenProps) {
   const { state, rescan, setTarget, vvd } = useDevicesContext()
   const { notify } = useFeedback()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -109,6 +111,7 @@ export function DevicesScreen({ onSetup, onPair }: DevicesScreenProps) {
           onReconnect={(device) => void reconnect(device)}
           onForget={(device) => void forget(device)}
           onSetup={onSetup}
+          {...(onOpenApps ? { onOpenApps } : {})}
         />
       )}
     </div>
