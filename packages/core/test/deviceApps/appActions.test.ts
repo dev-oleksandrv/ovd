@@ -644,3 +644,123 @@ describe('apps.reinstall', () => {
     expect(await activity()).toEqual([])
   })
 })
+
+describe('an app ID that isn’t one', () => {
+  const EVIL = 'x;rm -rf ~'
+  const ACTIONS = ['launch', 'terminate', 'restart', 'uninstall', 'reinstall'] as const
+  type Action = (typeof ACTIONS)[number]
+  type Apps = Awaited<ReturnType<typeof setup>>['apps']
+  const act = (apps: Apps, action: Action, ref: string | undefined) => apps[action](ref, VVD)
+
+  // A .vpkg whose package ID is EVIL: the recorded player package with its ID swapped.
+  function evilVpt(path: string) {
+    const info = fixture(`0.24/${RECORDED['player-aarch64'].info}`)
+    expect(info).toContain(`"id": "${PLAYER}"`)
+    return {
+      ...vpt(path, 'player-aarch64'),
+      [`vega exec vpt info --json ${path}`]: {
+        stdout: info.replace(`"id": "${PLAYER}"`, `"id": ${JSON.stringify(EVIL)}`)
+      }
+    }
+  }
+
+  // A cloned project whose manifest has EVIL as its package ID, built for the target.
+  async function evilProject(): Promise<{ folder: string; build: string }> {
+    const folder = join(home, 'dev', 'evil')
+    const build = join(folder, 'build', 'aarch64-debug', 'evil_aarch64.vpkg')
+    await mkdir(join(build, '..'), { recursive: true })
+    await writeFile(join(folder, 'manifest.toml'), `[package]\nid = ${JSON.stringify(EVIL)}\n`)
+    await writeFile(join(folder, 'package.json'), '{}\n')
+    await writeFile(build, 'vpkg')
+    return { folder, build }
+  }
+
+  test.each(ACTIONS)('%s: from the argument, refused before any SDK call', async (action) => {
+    const { apps, runner } = await setup(online)
+
+    const error = await failure(act(apps, action, EVIL))
+
+    expect(error).toMatchObject({
+      code: 'INVALID_APP_ID',
+      message: '"x;rm -rf ~" isn’t an app ID',
+      hint: 'An app ID is letters, digits, dots, hyphens and underscores, like com.example.player'
+    })
+    expect(runner.calls).toEqual([])
+    expect(await activity()).toEqual([])
+  })
+
+  test.each<[Action, string]>([
+    ['launch', 'The package ID in ~/dev/evil/manifest.toml isn’t an app ID: "x;rm -rf ~"'],
+    ['terminate', 'The package ID in ~/dev/evil/manifest.toml isn’t an app ID: "x;rm -rf ~"'],
+    ['restart', 'The package ID in ~/dev/evil/manifest.toml isn’t an app ID: "x;rm -rf ~"'],
+    ['uninstall', 'The package ID in ~/dev/evil/manifest.toml isn’t an app ID: "x;rm -rf ~"'],
+    // Reinstall sends the ID of the folder's build, not the manifest's.
+    ['reinstall', 'The package ID in evil_aarch64.vpkg isn’t an app ID: "x;rm -rf ~"']
+  ])('%s: from a project folder, refused before any device action', async (action, message) => {
+    const { folder, build } = await evilProject()
+    const { apps, runner } = await setup({ ...online, ...evilVpt(build) })
+
+    const error = await failure(act(apps, action, folder))
+
+    expect(error).toMatchObject({ code: 'INVALID_APP_ID', message })
+    expect(actionCalls(runner)).toEqual([])
+    if (action !== 'reinstall') expect(runner.calls).toEqual([])
+    expect(await activity()).toEqual([])
+  })
+
+  test.each(ACTIONS.filter((a) => a !== 'reinstall'))(
+    '%s: from the open project’s manifest, refused before any SDK call',
+    async (action) => {
+      const { folder } = await evilProject()
+      const { apps, runner } = await setup(online)
+      await createProject({
+        state: createStateStore(join(home, '.config', 'ovd')),
+        homedir: home,
+        cwd: home
+      }).open(folder)
+
+      expect((await failure(act(apps, action, undefined))).code).toBe('INVALID_APP_ID')
+      expect(runner.calls).toEqual([])
+    }
+  )
+
+  test.each(ACTIONS)('%s: from a .vpkg, refused before any device action', async (action) => {
+    const path = join(home, 'Downloads', 'evil.vpkg')
+    await mkdir(join(path, '..'), { recursive: true })
+    await writeFile(path, 'vpkg')
+    const { apps, runner } = await setup({ ...online, ...evilVpt(path) })
+
+    const error = await failure(act(apps, action, path))
+
+    expect(error).toMatchObject({
+      code: 'INVALID_APP_ID',
+      message: 'The package ID in evil.vpkg isn’t an app ID: "x;rm -rf ~"'
+    })
+    // Only the host reads the package (and, for reinstall, picks the target) first.
+    expect(actionCalls(runner)).toEqual([])
+    expect(runner.calls.filter((c) => c.display.startsWith('vega exec vda -s'))).toEqual([])
+    expect(await activity()).toEqual([])
+  })
+
+  const badPackageId = (b: string) =>
+    b.replace(`id:           ${PLAYER}\n`, 'id:           $(id)\n')
+  const badComponentId = (b: string) => b.replace(`\t${PLAYER}.main\n`, `\t${PLAYER}.$(id)\n`)
+  test.each<[string, Action, (block: string) => string]>([
+    ['package ID', 'terminate', badPackageId],
+    ['package ID', 'uninstall', badPackageId],
+    ['component ID', 'launch', badComponentId]
+  ])('a %s from the device that isn’t one: no %s, an error entry', async (_what, action, edit) => {
+    const block = fixture('0.24/vpm-info-package/player.txt')
+    expect(edit(block)).not.toBe(block)
+    const { apps, runner } = await setup({ ...online, [PKG_INFO]: { stdout: edit(block) } })
+
+    const error = await failure(act(apps, action, PLAYER))
+
+    expect(error.code).toBe('INVALID_APP_ID')
+    expect(error.message).toMatch(/^Vega Virtual Device reported an ID that isn’t an app ID: /)
+    expect(actionCalls(runner)).toEqual([PKG_INFO])
+    expect(await activity()).toMatchObject([
+      { action: `app.${action}`, result: 'error', errorCode: 'INVALID_APP_ID' }
+    ])
+  })
+})

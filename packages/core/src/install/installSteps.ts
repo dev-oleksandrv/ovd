@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises'
 import { basename, resolve as resolvePath } from 'node:path'
 import { parseInstallApp } from '../adapters/parseInstallApp.js'
 import type { PackageArch } from '../adapters/parseVptContents.js'
+import { assertAppId } from '../deviceApps/appId.js'
 import type { Devices } from '../devices/devices.js'
 import { onlineTarget } from '../devices/onlineTarget.js'
 import type { Device } from '../devices/types.js'
@@ -170,6 +171,8 @@ export function createInstallSteps(deps: InstallStepsDeps): InstallSteps {
       if (found?.isDirectory()) return pickBuild(await deps.packages.builds(path), path, targetOf)
       // A path, even a missing one: `packages.info` says what is wrong with it.
       if (found || ref.includes('/') || /\.vpkg$/i.test(ref)) return { path }
+      // A package ID: refused here when it isn't one, as every app action does (`appId.ts`).
+      assertAppId(ref, { from: 'argument' })
       if (mode?.kind === 'folder' && !mode.missing && mode.packageId === ref) {
         return pickBuild(await deps.packages.builds(), mode.path, targetOf)
       }

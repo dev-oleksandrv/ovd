@@ -220,3 +220,16 @@ describe('ovd apps reinstall', () => {
     expect(exitCode).toBe(exit)
   })
 })
+
+describe('an app ID that isn’t one', () => {
+  test.each(['launch', 'terminate', 'restart', 'uninstall', 'reinstall'] as const)(
+    'ovd apps %s prints INVALID_APP_ID and exits 2',
+    async (action) => {
+      const { stdout, exitCode } = await cli(['apps', action, 'x;rm -rf ~', '--json'], {
+        ovd: stubApps({ [action]: fail('INVALID_APP_ID') })
+      })
+      expect(JSON.parse(stdout)).toMatchObject({ ok: false, error: { code: 'INVALID_APP_ID' } })
+      expect(exitCode).toBe(2)
+    }
+  )
+})

@@ -274,6 +274,35 @@ describe('apps.info', () => {
     expect(runner.count(MAIN_INFO)).toBe(0)
   })
 
+  test('an ID that isn’t an app ID is refused before any SDK call', async () => {
+    const { apps, runner } = await setup(running)
+    const evil = join(home, 'dev', 'evil')
+    await mkdir(evil, { recursive: true })
+    await writeFile(join(evil, 'manifest.toml'), '[package]\nid = "x;rm -rf ~"\n')
+
+    expect(await failure(apps.info('x;rm -rf ~', VVD))).toMatchObject({
+      code: 'INVALID_APP_ID',
+      message: '"x;rm -rf ~" isn’t an app ID'
+    })
+    expect((await failure(apps.info(evil, VVD))).code).toBe('INVALID_APP_ID')
+    expect(runner.calls).toEqual([])
+  })
+
+  test('a component ID from the device that isn’t one: no vpm info for it', async () => {
+    const listing = fixture('0.24/vpm-info-package-all/virtual-device-player.txt')
+    expect(listing).toContain('\tcom.example.player.main\n')
+    const { apps, runner } = await setup({
+      ...running,
+      [ALL]: { stdout: listing.replace('\tcom.example.player.main\n', '\tcom.example.$(id)\n') }
+    })
+
+    expect(await failure(apps.info('com.example.player', VVD))).toMatchObject({
+      code: 'INVALID_APP_ID',
+      message: 'Vega Virtual Device reported an ID that isn’t an app ID: "com.example.$(id)"'
+    })
+    expect(runner.calls.some((c) => c.display.includes('vpm info com.example.$'))).toBe(false)
+  })
+
   test('uninstalled between the list and the component call', async () => {
     const { apps } = await setup({
       ...running,

@@ -29,6 +29,7 @@ export type ErrorCode =
   | 'ARCH_MISMATCH'
   | 'INSTALL_FAILED'
   | 'NO_APP'
+  | 'INVALID_APP_ID'
   | 'APP_NOT_INSTALLED'
   | 'NOT_SIDELOADED'
   | 'LAUNCH_FAILED'

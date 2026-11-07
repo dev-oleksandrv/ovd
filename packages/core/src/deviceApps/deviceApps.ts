@@ -16,11 +16,12 @@ import { OvdError } from '../errors/ovdError.js'
 import type { Packages } from '../packages/packages.js'
 import type { InstallSteps } from '../install/installSteps.js'
 import type { Project } from '../project/project.js'
-import { expandHome } from '../project/paths.js'
+import { expandHome, tildePath } from '../project/paths.js'
 import { readProject } from '../project/readProject.js'
 import { vdaCmd } from '../sdk/commands.js'
 import type { RunResult, Runner } from '../sdk/runner.js'
 import type { SdkLocator } from '../sdk/sdkLocator.js'
+import { assertAppId, type AppId } from './appId.js'
 import { createAppActions, type AppActions } from './appActions.js'
 
 export interface AppsDeps {
@@ -161,7 +162,7 @@ export function createApps(deps: AppsDeps): Apps {
   }
 
   // `vpm info <ref> --package`: a component ID prints the package that owns it (ARCHITECTURE §8).
-  async function findPackage(device: Device, ref: string): Promise<VpmPackage | undefined> {
+  async function findPackage(device: Device, ref: AppId): Promise<VpmPackage | undefined> {
     const run = await shell(device, ['vpm', 'info', ref, '--package'], 'the app')
     if (vpmNotFound(run.stdout)) return undefined
     const [pkg] = parseVpmPackages(run.stdout)
@@ -169,7 +170,7 @@ export function createApps(deps: AppsDeps): Apps {
     return pkg
   }
 
-  async function installedPackage(device: Device, ref: string): Promise<VpmPackage> {
+  async function installedPackage(device: Device, ref: AppId): Promise<VpmPackage> {
     const pkg = await findPackage(device, ref)
     if (!pkg) throw notInstalled(ref, device)
     return pkg
@@ -185,11 +186,14 @@ export function createApps(deps: AppsDeps): Apps {
     return packages.filter((p) => p.componentIds.length > 0).map((p) => toApp(p, running))
   }
 
-  async function packageIdOf(ref: string | undefined): Promise<string> {
+  // The app ID a ref stands for, checked before it reaches any SDK command (`appId.ts`).
+  async function packageIdOf(ref: string | undefined): Promise<AppId> {
     if (ref === undefined) {
       const mode = await deps.project.current()
-      if (mode?.kind === 'folder' && mode.packageId) return mode.packageId
-      if (mode?.kind === 'vpkg') return (await deps.packages.info(mode.path)).id
+      if (mode?.kind === 'folder' && mode.packageId) {
+        return assertAppId(mode.packageId, { from: 'manifest', folder: mode.displayPath })
+      }
+      if (mode?.kind === 'vpkg') return vpkgId(mode.path)
       throw new OvdError(
         'NO_APP',
         'No app given',
@@ -207,10 +211,18 @@ export function createApps(deps: AppsDeps): Apps {
           'Pass a Vega project folder, a .vpkg or a package ID'
         )
       }
-      return manifest.packageId
+      return assertAppId(manifest.packageId, {
+        from: 'manifest',
+        folder: tildePath(path, deps.homedir)
+      })
     }
-    if (found?.isFile()) return (await deps.packages.info(path)).id
-    return ref
+    if (found?.isFile()) return vpkgId(path)
+    return assertAppId(ref, { from: 'argument' })
+  }
+
+  async function vpkgId(path: string): Promise<AppId> {
+    const info = await deps.packages.info(path)
+    return assertAppId(info.id, { from: 'vpkg', file: info.file })
   }
 
   return {
@@ -234,7 +246,8 @@ export function createApps(deps: AppsDeps): Apps {
       if (!app) throw notInstalled(id, device)
       const components: AppComponent[] = []
       for (const component of app.components) {
-        const run = await shell(device, ['vpm', 'info', component.id], 'the app’s components')
+        const componentId = assertAppId(component.id, { from: 'device', device: device.name })
+        const run = await shell(device, ['vpm', 'info', componentId], 'the app’s components')
         // Uninstalled between the two calls: keep what the list showed.
         if (vpmNotFound(run.stdout)) {
           components.push(component)

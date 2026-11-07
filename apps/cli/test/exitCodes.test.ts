@@ -33,6 +33,7 @@ test.each<[ErrorCode, number]>([
   ['TERMINATE_FAILED', 1],
   ['UNINSTALL_FAILED', 1],
   ['NO_APP', 2],
+  ['INVALID_APP_ID', 2],
   ['NO_PACKAGE', 2]
 ])('%s → %i', (code, exit) => {
   expect(exitCodeFor(code)).toBe(exit)

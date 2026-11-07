@@ -9,6 +9,7 @@ import { OvdError } from '../errors/ovdError.js'
 import { once, packageOf, type InstallResult, type InstallTarget } from '../install/install.js'
 import { vegaDeviceCmd } from '../sdk/commands.js'
 import type { RunResult } from '../sdk/runner.js'
+import { assertAppId, type AppId } from './appId.js'
 import type { AppsDeps, AppsTarget } from './deviceApps.js'
 import { notInstalled, sourceOf } from './deviceApps.js'
 
@@ -74,9 +75,9 @@ export interface AppActionsContext {
   deps: AppsDeps
   deviceShell(device: Device, command: string[], timeoutMs?: number): Promise<RunResult>
   shell(device: Device, command: string[], what: string): Promise<RunResult>
-  findPackage(device: Device, ref: string): Promise<VpmPackage | undefined>
-  installedPackage(device: Device, ref: string): Promise<VpmPackage>
-  packageIdOf(ref: string | undefined): Promise<string>
+  findPackage(device: Device, ref: AppId): Promise<VpmPackage | undefined>
+  installedPackage(device: Device, ref: AppId): Promise<VpmPackage>
+  packageIdOf(ref: string | undefined): Promise<AppId>
 }
 
 // `launch-app` once returned 87 s after the app was up, waiting on the SDK's telemetry step
@@ -88,10 +89,15 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
   const { deps } = ctx
   const logged = createLogged(deps.activity)
 
-  async function interactiveComponent(device: Device, pkg: VpmPackage): Promise<string> {
-    const [only] = pkg.componentIds
-    if (only !== undefined && pkg.componentIds.length === 1) return only
-    for (const id of pkg.componentIds) {
+  // Package and component IDs read from the device are checked too before they reach a command.
+  const fromDevice = (id: string, device: Device): AppId =>
+    assertAppId(id, { from: 'device', device: device.name })
+
+  async function interactiveComponent(device: Device, pkg: VpmPackage): Promise<AppId> {
+    const ids = pkg.componentIds.map((id) => fromDevice(id, device))
+    const [only] = ids
+    if (only !== undefined && ids.length === 1) return only
+    for (const id of ids) {
       const run = await ctx.shell(device, ['vpm', 'info', id], 'the app’s components')
       if (vpmNotFound(run.stdout)) continue
       if (parseVpmComponent(run.stdout).type === 'interactive') return id
@@ -103,7 +109,7 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     )
   }
 
-  async function launchComponent(device: Device, pkg: VpmPackage): Promise<string> {
+  async function launchComponent(device: Device, pkg: VpmPackage): Promise<AppId> {
     const component = await interactiveComponent(device, pkg)
     const { vegaPath } = await deps.sdk.get()
     const run = await deps.runner.run(
@@ -128,7 +134,13 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
   async function terminatePackage(device: Device, pkg: VpmPackage, force: boolean) {
     const run = await ctx.deviceShell(
       device,
-      ['vlcm', 'terminate-app', ...(force ? ['--force'] : []), '--pkg-id', pkg.id],
+      [
+        'vlcm',
+        'terminate-app',
+        ...(force ? ['--force'] : []),
+        '--pkg-id',
+        fromDevice(pkg.id, device)
+      ],
       ACTION_TIMEOUT_MS
     )
     const result = parseVlcmTerminate(run)
@@ -156,7 +168,7 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     }
     const { vegaPath } = await deps.sdk.get()
     const run = await deps.runner.run(
-      vegaDeviceCmd(vegaPath, 'uninstall-app', ['-a', pkg.id], device.id, {
+      vegaDeviceCmd(vegaPath, 'uninstall-app', ['-a', fromDevice(pkg.id, device)], device.id, {
         timeoutMs: ACTION_TIMEOUT_MS
       })
     )
@@ -248,6 +260,8 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
       const resolved = await steps.resolve(ref, async () => (await targetOf()).target)
       const { device, target } = await targetOf()
       const info = await deps.packages.info(resolved.path)
+      // The ID that reaches the SDK is the package's, whatever the ref was.
+      const id = assertAppId(info.id, { from: 'vpkg', file: info.file })
       const args = { app: info.id, package: info.file, ...(force ? { force: 'true' } : {}) }
       return logged('app.reinstall', target.id, args, async () => {
         // The guard first: a blocked package uninstalls nothing.
@@ -256,7 +270,7 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
           command: 'reinstall',
           ...(resolved.builds ? { builds: resolved.builds } : {})
         })
-        const installed = await ctx.findPackage(device, info.id)
+        const installed = await ctx.findPackage(device, id)
         if (installed) await uninstallPackage(device, installed)
         await steps.run(info, target)
         return {

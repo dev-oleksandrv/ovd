@@ -26,6 +26,7 @@ const CODES: Partial<Record<ErrorCode, number>> = {
   NOT_A_VPKG: 2,
   NO_PACKAGE: 2,
   NO_APP: 2,
+  INVALID_APP_ID: 2,
   ARCH_MISMATCH: 6
 }
 

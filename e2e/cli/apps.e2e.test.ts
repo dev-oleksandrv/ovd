@@ -287,4 +287,44 @@ describe('ovd apps actions', () => {
     expect(appCalls(sandbox)).toEqual([])
     expect(sandbox.activity()).toEqual([])
   })
+
+  test.each(['launch', 'terminate', 'restart', 'uninstall', 'reinstall'])(
+    'an injection-shaped app ID: ovd apps %s exits 2 and runs no SDK command',
+    async (action) => {
+      const sandbox = createSandbox({ vvd: { running: true, developerMode: true } })
+      sandbox.installSdk()
+
+      const run = await ovd(sandbox, ['apps', action, 'x;touch pwned', ...VVD, '--json'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json<{ ok: false; error: { code: string; message: string } }>().error).toEqual(
+        expect.objectContaining({
+          code: 'INVALID_APP_ID',
+          message: '"x;touch pwned" isn’t an app ID'
+        })
+      )
+      expect(sandbox.calls()).toEqual([])
+      expect(sandbox.activity()).toEqual([])
+    }
+  )
+
+  test('a cloned project whose manifest has an injection-shaped ID exits 2 and runs nothing', async () => {
+    const sandbox = createSandbox({ vvd: { running: true, developerMode: true } })
+    sandbox.installSdk()
+    makeProject(sandbox.home, 'evil', {
+      manifest: PLAYER_MANIFEST.replace('id = "com.example.player"', 'id = "x;touch pwned"')
+    })
+
+    const run = await ovd(sandbox, ['apps', 'launch', '~/dev/evil', ...VVD, '--json'])
+
+    expect(run.exitCode).toBe(2)
+    expect(run.json<{ ok: false; error: { code: string; message: string } }>().error).toEqual(
+      expect.objectContaining({
+        code: 'INVALID_APP_ID',
+        message: 'The package ID in ~/dev/evil/manifest.toml isn’t an app ID: "x;touch pwned"'
+      })
+    )
+    expect(sandbox.calls()).toEqual([])
+    expect(sandbox.activity()).toEqual([])
+  })
 })
