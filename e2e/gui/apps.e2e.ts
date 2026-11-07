@@ -6,6 +6,8 @@ const SHELL = 'vega exec vda -s emulator-5554 shell'
 const ALL = `${SHELL} ${ALL_PACKAGES}`
 const VLCM = `${SHELL} vlcm list`
 const TITLE = 'Basic UI React Native Application for project player'
+const TERMINATE = `${SHELL} vlcm terminate-app --pkg-id com.example.player`
+const LAUNCH = 'vega device launch-app -a com.example.player.main --device VirtualDevice'
 
 function nav(page: Page, name: string) {
   return page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name })
@@ -15,13 +17,17 @@ function echo(page: Page) {
   return page.getByTitle('Copy CLI equivalent')
 }
 
+function toast(page: Page, text: string) {
+  return page.getByRole('status').filter({ hasText: text })
+}
+
 test.describe('Apps', () => {
   test('Running now lists the player; All apps shows it with its components, then it stops', async ({
     sandbox,
     launch
   }) => {
     sandbox.installSdk()
-    // The player installed on the Virtual Device and running (launches come in 2.4b).
+    // The player installed on the Virtual Device and running, started outside OVD.
     sandbox.update((w) => {
       w.vvd.running = true
       w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
@@ -102,5 +108,77 @@ test.describe('Apps', () => {
 
     await expect(page.getByText('No target device')).toBeVisible()
     expect(sandbox.calls().filter((c) => c.startsWith(SHELL))).toEqual([])
+  })
+
+  test('launch, stop, restart and uninstall the player, with Apps and Running now following', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+    })
+    const { page } = await launch()
+    await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    await expect(row).toContainText('Stopped')
+
+    await row.getByRole('button', { name: 'Launch' }).click()
+    await expect(toast(page, `Launched ${TITLE}`)).toBeVisible()
+    await expect(echo(page)).toContainText(
+      '$ ovd apps launch com.example.player --device VirtualDevice'
+    )
+    await expect(row).toContainText(/Running · \d+/)
+    await expect(page.getByRole('tab', { name: 'Running · 1' })).toBeVisible()
+
+    await nav(page, 'Devices').click()
+    await expect(page.getByRole('region', { name: 'Running now' }).getByText(TITLE)).toBeVisible()
+
+    await nav(page, 'Apps').click()
+    await row.getByRole('button', { name: 'Stop' }).click()
+    await expect(toast(page, `Stopped ${TITLE}`)).toBeVisible()
+    await expect(echo(page)).toContainText(
+      '$ ovd apps terminate com.example.player --device VirtualDevice'
+    )
+    await expect(row).toContainText('Stopped')
+    await expect(page.getByRole('tab', { name: 'Running · 0' })).toBeVisible()
+    await nav(page, 'Devices').click()
+    await expect(
+      page.getByRole('region', { name: 'Running now' }).getByText('No apps running')
+    ).toBeVisible()
+
+    await nav(page, 'Apps').click()
+    await row.getByRole('button', { name: 'Launch' }).click()
+    await expect(row).toContainText(/Running · \d+/)
+    const detail = page.getByRole('complementary', { name: `${TITLE} details` })
+    await detail.getByRole('button', { name: 'Restart' }).click()
+    await expect(toast(page, `Restarted ${TITLE}`)).toBeVisible()
+    await expect(echo(page)).toContainText(
+      '$ ovd apps restart com.example.player --device VirtualDevice'
+    )
+    const calls = sandbox.calls()
+    expect(calls.lastIndexOf(TERMINATE)).toBeGreaterThan(-1)
+    expect(calls.lastIndexOf(TERMINATE)).toBeLessThan(calls.lastIndexOf(LAUNCH))
+
+    await detail.getByRole('button', { name: 'Uninstall', exact: true }).click()
+    await expect(toast(page, `Uninstalled ${TITLE}`)).toBeVisible()
+    await expect(echo(page)).toContainText(
+      '$ ovd apps uninstall com.example.player --device VirtualDevice'
+    )
+    await expect(page.getByText('No apps you installed on Vega Virtual Device')).toBeVisible()
+
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.surface === 'desktop')
+        .map((a) => [a.action, a.result])
+    ).toEqual([
+      ['app.launch', 'ok'],
+      ['app.terminate', 'ok'],
+      ['app.launch', 'ok'],
+      ['app.restart', 'ok'],
+      ['app.uninstall', 'ok']
+    ])
   })
 })
