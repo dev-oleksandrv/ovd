@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'vitest'
+import type { InstalledApp, LaunchResult, TerminateResult } from '@ovd/core'
 import {
+  actionToast,
+  appActionCli,
   appInfoCli,
   appsBlocker,
+  canUninstall,
+  detailActions,
+  withDetail,
   appsCli,
   componentRows,
   infoRows,
@@ -86,5 +92,95 @@ describe('appsView', () => {
     ['an online stick', stick, 'No apps running']
   ])('Running now when empty: %s', (_name, device, text) => {
     expect(runningNowEmpty(device)).toBe(text)
+  })
+
+  test.each([
+    ['launch', 'ovd apps launch com.example.player --device VirtualDevice'],
+    ['terminate', 'ovd apps terminate com.example.player --device VirtualDevice'],
+    ['force-stop', 'ovd apps terminate com.example.player --force --device VirtualDevice'],
+    ['restart', 'ovd apps restart com.example.player --device VirtualDevice'],
+    ['uninstall', 'ovd apps uninstall com.example.player --device VirtualDevice'],
+    ['reinstall', 'ovd apps reinstall com.example.player --device VirtualDevice']
+  ] as const)('the CLI echo of %s', (action, cli) => {
+    expect(appActionCli(action, 'com.example.player', 'VirtualDevice')).toBe(cli)
+  })
+
+  test.each([
+    ['a running app', player, ['restart', 'terminate', 'force-stop']],
+    ['a stopped app', hello, ['launch']]
+  ])('detail actions of %s', (_name, app, actions) => {
+    expect(detailActions(app)).toEqual(actions)
+  })
+
+  test.each([
+    ['sideloaded', true],
+    ['store', false],
+    ['system', false]
+  ] as const)('a %s app can be uninstalled: %s', (source, can) => {
+    expect(canUninstall({ ...player, source })).toBe(can)
+  })
+
+  const target = { id: 'VirtualDevice', name: 'Vega Virtual Device' }
+  const app = { packageId: player.packageId, title: player.title }
+  const launched: LaunchResult = {
+    target,
+    app: { ...app, componentId: 'com.example.player.main' },
+    launched: true
+  }
+  const stopped: TerminateResult = { target, app, forced: false, wasRunning: true }
+
+  test.each([
+    ['launch', launched, { tone: 'ok', text: 'Launched Sample Player' }],
+    ['terminate', stopped, { tone: 'ok', text: 'Stopped Sample Player' }],
+    [
+      'terminate',
+      { ...stopped, wasRunning: false },
+      { tone: 'info', text: 'Sample Player wasn’t running' }
+    ],
+    [
+      'force-stop',
+      { ...stopped, forced: true, wasRunning: null },
+      { tone: 'ok', text: 'Force stopped Sample Player' }
+    ],
+    ['restart', { ...launched, wasRunning: true }, { tone: 'ok', text: 'Restarted Sample Player' }],
+    [
+      'uninstall',
+      { target, app, uninstalled: true },
+      { tone: 'ok', text: 'Uninstalled Sample Player' }
+    ]
+  ] as const)('toast after %s', (action, result, toast) => {
+    expect(actionToast(action, player, result)).toEqual(toast)
+  })
+
+  test('withDetail keeps the list’s running state and takes the detail’s component types', () => {
+    const cached: InstalledApp = {
+      ...hello,
+      components: [
+        { id: 'com.example.hellovega.main', type: 'interactive', launchType: 'singleton' }
+      ]
+    }
+    const fresh: InstalledApp = {
+      ...hello,
+      status: { state: 'running', pid: 5120, lifespan: 'PERMANENT' },
+      components: [
+        {
+          id: 'com.example.hellovega.main',
+          running: { pid: 5120, state: 'VISIBLE', lifespan: 'PERMANENT', container: 'c' }
+        }
+      ]
+    }
+    expect(withDetail(fresh, cached)).toEqual({
+      ...fresh,
+      components: [
+        {
+          id: 'com.example.hellovega.main',
+          type: 'interactive',
+          launchType: 'singleton',
+          running: { pid: 5120, state: 'VISIBLE', lifespan: 'PERMANENT', container: 'c' }
+        }
+      ]
+    })
+    expect(withDetail(fresh, undefined)).toBe(fresh)
+    expect(withDetail(fresh, player)).toBe(fresh)
   })
 })

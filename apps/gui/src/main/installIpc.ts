@@ -17,4 +17,10 @@ export function registerInstallIpc(ovd: Ovd): void {
       ovd.install.install(requireText(path, 'path'), { device: requireText(device, 'device') })
     )
   )
+  // The package `ovd apps reinstall <app>` would install, for the desktop's reinstall button.
+  ipcMain.handle(channels.installResolve, (_event, ref: unknown, device: unknown) =>
+    toResult(() =>
+      ovd.install.resolve(requireText(ref, 'app'), { device: requireText(device, 'device') })
+    )
+  )
 }
