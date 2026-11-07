@@ -1,6 +1,7 @@
-import type { Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { ALL_PACKAGES } from '../fake-sdk/world.ts'
 import { expect, test } from '../harness/gui.ts'
+import { MANIFEST, makeProject, makeRecordedVpkg } from '../harness/project.ts'
 
 const SHELL = 'vega exec vda -s emulator-5554 shell'
 const ALL = `${SHELL} ${ALL_PACKAGES}`
@@ -8,6 +9,11 @@ const VLCM = `${SHELL} vlcm list`
 const TITLE = 'Basic UI React Native Application for project player'
 const TERMINATE = `${SHELL} vlcm terminate-app --pkg-id com.example.player`
 const LAUNCH = 'vega device launch-app -a com.example.player.main --device VirtualDevice'
+const PKG_INFO = `${SHELL} vpm info com.example.player --package`
+const UNINSTALL = 'vega device uninstall-app -a com.example.player --device VirtualDevice'
+const AARCH64 = 'dev/player/build/aarch64-debug/player_aarch64.vpkg'
+// The player's own manifest: the project the recorded player packages were built from.
+const PLAYER_MANIFEST = MANIFEST.replaceAll('hellovega', 'player')
 
 function nav(page: Page, name: string) {
   return page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name })
@@ -19,6 +25,13 @@ function echo(page: Page) {
 
 function toast(page: Page, text: string) {
   return page.getByRole('status').filter({ hasText: text })
+}
+
+// The native picker can't be driven, so the next one answers with `path`.
+async function nextPick(app: ElectronApplication, path: string): Promise<void> {
+  await app.evaluate(({ dialog }, picked) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] })
+  }, path)
 }
 
 test.describe('Apps', () => {
@@ -179,6 +192,74 @@ test.describe('Apps', () => {
       ['app.launch', 'ok'],
       ['app.restart', 'ok'],
       ['app.uninstall', 'ok']
+    ])
+  })
+
+  test('install the player from Packages, then uninstall & reinstall it from its detail', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+    })
+    makeProject(sandbox.home, 'player', { manifest: PLAYER_MANIFEST })
+    const aarch64 = makeRecordedVpkg(
+      sandbox.home,
+      AARCH64,
+      'player-aarch64-debug',
+      new Date('2026-10-13T09:00:00Z')
+    )
+    const install = `vega device install-app -p ${aarch64} --device VirtualDevice`
+    const { app, page } = await launch()
+    await nextPick(app, `${sandbox.home}/dev/player`)
+    await page
+      .getByRole('region', { name: 'Project' })
+      .getByRole('button', { name: 'Open a project folder…' })
+      .click()
+    await expect(toast(page, 'Opened player')).toBeVisible()
+
+    await nav(page, 'Packages').click()
+    await expect(page.getByText(`~/${AARCH64}`)).toBeVisible()
+    await page.getByRole('button', { name: 'Install on target' }).click()
+    const installCli = `$ ovd apps install ~/${AARCH64} --device VirtualDevice`
+    await expect(toast(page, 'Installed on Vega Virtual Device')).toContainText(installCli)
+    await expect(echo(page)).toContainText(installCli)
+    expect(sandbox.world().installed).toEqual([
+      { device: 'VirtualDevice', package: 'player-aarch64-debug' }
+    ])
+
+    await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    await expect(row).toContainText('com.example.player')
+    await expect(row).toContainText('Stopped')
+    await row.click()
+    const detail = page.getByRole('complementary', { name: `${TITLE} details` })
+    const before = sandbox.calls().length
+
+    await detail.getByRole('button', { name: 'Uninstall & reinstall' }).click()
+
+    await expect(toast(page, `Reinstalled ${TITLE}`)).toBeVisible()
+    await expect(echo(page)).toContainText(
+      '$ ovd apps reinstall com.example.player --device VirtualDevice'
+    )
+    const calls = sandbox
+      .calls()
+      .slice(before)
+      .filter((c) => c === PKG_INFO || c === UNINSTALL || c === install)
+    expect(calls).toEqual([PKG_INFO, UNINSTALL, install])
+    await expect(row).toContainText('Stopped')
+    expect(sandbox.world().installed).toEqual([
+      { device: 'VirtualDevice', package: 'player-aarch64-debug' }
+    ])
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.surface === 'desktop')
+        .map((a) => [a.action, a.result])
+    ).toEqual([
+      ['app.install', 'ok'],
+      ['app.reinstall', 'ok']
     ])
   })
 })
