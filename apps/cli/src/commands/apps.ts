@@ -3,10 +3,12 @@ import type { CliDeps } from '../program.js'
 import { appRows, appsTable } from '../format/apps.js'
 import { report } from '../report.js'
 import { reportContext } from './context.js'
+import { addAppActionCommands } from './appActions.js'
 import { addInstallCommand } from './install.js'
 
-// Apps (Stage 2.4a): what is installed and running on the target. `ovd apps install` is 2.3's
-// install under the name the desktop echoes (`ovd install` stays as an alias).
+// Apps (Stage 2.4): what is installed and running on the target, and the actions on it.
+// `ovd apps install` is 2.3's install under the name the desktop echoes (`ovd install` stays as
+// an alias).
 export function registerApps(
   program: Command,
   deps: CliDeps,
@@ -14,7 +16,7 @@ export function registerApps(
 ): void {
   const apps = program
     .command('apps')
-    .description('List the apps on the target, inspect and install them')
+    .description('List the apps on the target, inspect, install, launch and stop them')
     .option('--running', 'only apps that are running')
     .option('--all', 'include system apps')
     .action(async (opts: { running?: boolean; all?: boolean }, cmd: Command) => {
@@ -59,4 +61,5 @@ export function registerApps(
     })
 
   addInstallCommand(apps, deps, setExitCode)
+  addAppActionCommands(apps, deps, setExitCode)
 }

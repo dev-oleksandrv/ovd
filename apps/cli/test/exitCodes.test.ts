@@ -26,7 +26,14 @@ test.each<[ErrorCode, number]>([
   ['UNEXPECTED_OUTPUT', 1],
   ['VVD_START_FAILED', 1],
   ['ARCH_MISMATCH', 6],
-  ['INSTALL_FAILED', 1]
+  ['INSTALL_FAILED', 1],
+  ['APP_NOT_INSTALLED', 1],
+  ['NOT_SIDELOADED', 1],
+  ['LAUNCH_FAILED', 1],
+  ['TERMINATE_FAILED', 1],
+  ['UNINSTALL_FAILED', 1],
+  ['NO_APP', 2],
+  ['NO_PACKAGE', 2]
 ])('%s → %i', (code, exit) => {
   expect(exitCodeFor(code)).toBe(exit)
 })
