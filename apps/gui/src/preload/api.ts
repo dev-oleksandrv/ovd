@@ -9,10 +9,15 @@ import type {
   ErrorJson,
   ForgetResult,
   InstallResult,
+  LaunchResult,
   LoginPrompt,
   PackageBuild,
   PackageInfo,
   ProjectMode,
+  ReinstallResult,
+  RestartResult,
+  TerminateResult,
+  UninstallResult,
   VvdState
 } from '@ovd/core'
 
@@ -87,12 +92,27 @@ export interface OvdApi {
     check(path: string, device: string): Promise<IpcResult<ArchCheck>>
     // Installs behind the guard, as `ovd apps install <path> --device <id>` does.
     install(path: string, device: string): Promise<IpcResult<InstallResult>>
+    // The package `ovd apps reinstall <app> --device <id>` would install, without installing it.
+    resolve(
+      app: string,
+      device: string
+    ): Promise<IpcResult<Pick<PackageBuild, 'path' | 'displayPath' | 'file'>>>
   }
   apps: {
     // Side-loaded and Appstore apps on a device with their running state, as `ovd apps --device <id>` lists them.
     list(device: string, running?: boolean): Promise<IpcResult<AppList>>
     // One app with its components, as `ovd apps info <app> --device <id>` shows it.
     info(app: string, device: string): Promise<IpcResult<AppDetails>>
+    // `ovd apps launch <app> --device <id>`.
+    launch(app: string, device: string): Promise<IpcResult<LaunchResult>>
+    // `ovd apps terminate <app> --device <id>`, with `--force` when `force` is set.
+    terminate(app: string, device: string, force?: boolean): Promise<IpcResult<TerminateResult>>
+    // `ovd apps restart <app> --device <id>`.
+    restart(app: string, device: string): Promise<IpcResult<RestartResult>>
+    // `ovd apps uninstall <app> --device <id>`.
+    uninstall(app: string, device: string): Promise<IpcResult<UninstallResult>>
+    // `ovd apps reinstall <app> --device <id>`.
+    reinstall(app: string, device: string): Promise<IpcResult<ReinstallResult>>
   }
   setup: {
     // Asks `vega devmode login --json` without waiting for a sign-in.
@@ -132,8 +152,14 @@ export const channels = {
   packagesPick: 'ovd:packages:pick',
   installCheck: 'ovd:install:check',
   install: 'ovd:install',
+  installResolve: 'ovd:install:resolve',
   appsList: 'ovd:apps:list',
   appsInfo: 'ovd:apps:info',
+  appsLaunch: 'ovd:apps:launch',
+  appsTerminate: 'ovd:apps:terminate',
+  appsRestart: 'ovd:apps:restart',
+  appsUninstall: 'ovd:apps:uninstall',
+  appsReinstall: 'ovd:apps:reinstall',
   setupSignedIn: 'ovd:setup:signed-in',
   setupLogin: 'ovd:setup:login',
   setupLoginPrompt: 'ovd:setup:login-prompt',

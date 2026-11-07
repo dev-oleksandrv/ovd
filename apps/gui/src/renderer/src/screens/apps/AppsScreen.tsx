@@ -11,65 +11,87 @@ import { StatusPill } from '../../ui/StatusPill'
 import { Table, type Column } from '../../ui/Table'
 import { Tabs } from '../../ui/Tabs'
 import { AppAvatar } from './AppAvatar'
+import type { ReinstallPackage } from './AppActions'
 import { AppDetail } from './AppDetail'
 import {
   appInfoCli,
   appsBlocker,
   appsCli,
+  canUninstall,
   statusView,
   tabCounts,
   visibleApps,
+  withDetail,
+  type AppAction,
   type AppTab
 } from './appsView'
+import { RowAction } from './RowAction'
+import { useAppActions } from './useAppActions'
 import { useApps } from './useApps'
 
 interface AppsScreenProps {
   // Opens the title bar's target picker.
   onSwitchTarget: () => void
   onGoPackages: () => void
+  // The open project folder or .vpkg: what "Uninstall & reinstall" installs from.
+  projectPath: string | null
 }
 
-const columns: Array<Column<InstalledApp>> = [
-  {
-    key: 'app',
-    header: 'App',
-    width: 'minmax(0,2.2fr)',
-    render: (a) => (
-      <div className="flex min-w-0 items-center gap-3">
-        <AppAvatar packageId={a.packageId} title={a.title} />
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="truncate font-semibold">{a.title}</div>
-          <div className="truncate font-mono text-label text-muted">{a.packageId}</div>
+// The table's columns; the last one holds each row's Launch / Stop.
+function appColumns(
+  busy: Readonly<Record<string, AppAction>>,
+  onAction: (action: AppAction, app: InstalledApp) => void
+): Array<Column<InstalledApp>> {
+  return [
+    {
+      key: 'app',
+      header: 'App',
+      width: 'minmax(0,2.2fr)',
+      render: (a) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <AppAvatar packageId={a.packageId} title={a.title} />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <div className="truncate font-semibold">{a.title}</div>
+            <div className="truncate font-mono text-label text-muted">{a.packageId}</div>
+          </div>
         </div>
-      </div>
-    )
-  },
-  {
-    key: 'version',
-    header: 'Version',
-    width: '90px',
-    render: (a) => <span className="font-mono text-small text-text-soft">{a.version || '—'}</span>
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    width: '140px',
-    render: (a) => {
-      const s = statusView(a)
-      return <StatusPill tone={s.tone}>{s.label}</StatusPill>
+      )
+    },
+    {
+      key: 'version',
+      header: 'Version',
+      width: '90px',
+      render: (a) => <span className="font-mono text-small text-text-soft">{a.version || '—'}</span>
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: '140px',
+      render: (a) => {
+        const s = statusView(a)
+        return <StatusPill tone={s.tone}>{s.label}</StatusPill>
+      }
+    },
+    {
+      key: 'action',
+      header: '',
+      width: '90px',
+      align: 'right',
+      render: (a) => <RowAction app={a} busy={busy[a.packageId]} onAction={onAction} />
     }
-  }
-]
+  ]
+}
 
-// Apps (Stage 2.4a): the side-loaded and Appstore apps on the target and what runs. Read-only; the
-// actions come in 2.4b.
-export function AppsScreen({ onSwitchTarget, onGoPackages }: AppsScreenProps) {
+// Apps (Stage 2.4): the side-loaded and Appstore apps on the target, what runs, and the actions
+// on them. Each action echoes its `ovd apps …` and reloads the list when it is done.
+export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsScreenProps) {
   const { echo } = useFeedback()
   const { state: devices } = useDevicesContext()
   const target = targetDevice(devices)
   const blocker = appsBlocker(target)
   const device = blocker === null && target ? target.id : null
-  const { state } = useApps(device)
+  const { state, reload } = useApps(device)
+  const { busy, run } = useAppActions(device, reload)
   const [tab, setTab] = useState<AppTab>('installed')
   const [selected, setSelected] = useState<string | null>(null)
   // Component details (`vpm info` per component), by package ID and update time.
@@ -97,6 +119,30 @@ export function AppsScreen({ onSwitchTarget, onGoPackages }: AppsScreenProps) {
       live = false
     }
   }, [detailKey, device, current, detail])
+
+  // The package "Uninstall & reinstall" would install, looked up again after every list read
+  // (`list` changes then), so a build made since shows up. The last answer stays meanwhile.
+  const resolveId = current && canUninstall(current) ? current.packageId : null
+  const resolveKey =
+    resolveId !== null && device !== null ? `${device}\n${resolveId}\n${projectPath ?? ''}` : null
+  const [reinstall, setReinstall] = useState<{ key: string; value: ReinstallPackage } | null>(null)
+  useEffect(() => {
+    if (resolveKey === null || resolveId === null || device === null || !list) return
+    let live = true
+    void window.ovd.install.resolve(resolveId, device).then((result) => {
+      if (!live) return
+      setReinstall({
+        key: resolveKey,
+        value: result.ok
+          ? { ok: true, file: result.data.file }
+          : { ok: false, reason: result.error.message }
+      })
+    })
+    return () => {
+      live = false
+    }
+  }, [resolveKey, resolveId, device, list])
+  const reinstallPackage = reinstall?.key === resolveKey ? reinstall.value : undefined
 
   const select = (app: InstalledApp): void => {
     setSelected(app.packageId)
@@ -157,7 +203,7 @@ export function AppsScreen({ onSwitchTarget, onGoPackages }: AppsScreenProps) {
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
           <div className="overflow-auto">
             <Table
-              columns={columns}
+              columns={appColumns(busy, (action, app) => void run(action, app))}
               rows={shown}
               rowKey={(a) => a.packageId}
               {...(current ? { selectedKey: current.packageId } : {})}
@@ -169,7 +215,15 @@ export function AppsScreen({ onSwitchTarget, onGoPackages }: AppsScreenProps) {
               </div>
             )}
           </div>
-          {current && <AppDetail app={detail ?? current} now={new Date()} />}
+          {current && (
+            <AppDetail
+              app={withDetail(current, detail)}
+              now={new Date()}
+              busy={busy[current.packageId]}
+              onAction={(action, app) => void run(action, app)}
+              reinstall={reinstallPackage}
+            />
+          )}
         </div>
       )}
     </div>

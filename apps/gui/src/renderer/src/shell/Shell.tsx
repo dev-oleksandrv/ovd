@@ -234,7 +234,11 @@ export function Shell() {
           onOpenFolder={() => void project.pickFolder()}
         />
       ) : screen === 'apps' ? (
-        <AppsScreen onSwitchTarget={() => setMenu(true)} onGoPackages={() => go('packages')} />
+        <AppsScreen
+          onSwitchTarget={() => setMenu(true)}
+          onGoPackages={() => go('packages')}
+          projectPath={projectMode?.path ?? null}
+        />
       ) : screen === 'packages' ? (
         <PackagesScreen
           projectPath={projectMode?.path ?? null}

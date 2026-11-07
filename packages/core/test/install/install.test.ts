@@ -113,8 +113,17 @@ async function setup(script: ConstructorParameters<typeof FakeRunner>[0]) {
   const projects = createProject({ state, homedir: home, cwd: home })
   await projects.open(project)
   const packages = createPackages({ runner, sdk, project: projects, homedir: home, cwd: home })
-  const install = createInstall({ runner, sdk, devices, packages, activity })
-  return { install, devices, runner }
+  const install = createInstall({
+    runner,
+    sdk,
+    devices,
+    packages,
+    project: projects,
+    activity,
+    homedir: home,
+    cwd: home
+  })
+  return { install, devices, runner, projects }
 }
 
 async function activity(): Promise<Pick<ActivityEntry, 'action' | 'result' | 'errorCode'>[]> {
@@ -371,5 +380,152 @@ describe('Install.check', () => {
 
     expect(check).toMatchObject({ allowed: false, fix: { path: aarch64 } })
     expect(runner.calls.map((c) => c.display)).not.toContain(`vega exec vpt show-contents ${x86}`)
+  })
+})
+
+describe('Install.install: refs', () => {
+  test.each([
+    [STICK, () => armv7],
+    ['VirtualDevice', () => aarch64]
+  ] as const)('a project folder installs its build that matches %s', async (device, path) => {
+    const { install, runner } = await setup({
+      ...bothOnline,
+      ...vpt(armv7, 'player-armv7'),
+      ...vpt(aarch64, 'player-aarch64'),
+      [installCmd(path(), device)]: out('vega-device-install-app/installed.txt')
+    })
+
+    const result = await install.install('~/dev/player', { device })
+
+    expect(result).toMatchObject({ installed: true, forced: false, package: { path: path() } })
+    expect(runner.count(installCmd(path(), device))).toBe(1)
+  })
+
+  test('a folder with only a build for another architecture is blocked; --force installs it', async () => {
+    await rm(armv7)
+    const script = {
+      ...bothOnline,
+      ...vpt(aarch64, 'player-aarch64'),
+      [installCmd(aarch64, STICK)]: out('vega-device-install-app/installed-wrong-arch.txt')
+    }
+    const blockedRun = await setup(script)
+
+    const error = await failure(blockedRun.install.install(project, { device: STICK }))
+
+    expect(error.code).toBe('ARCH_MISMATCH')
+    expect(blockedRun.runner.count(installCmd(aarch64, STICK))).toBe(0)
+
+    const forced = await (
+      await setup(script)
+    ).install.install(project, {
+      device: STICK,
+      force: true
+    })
+    expect(forced).toMatchObject({ installed: true, forced: true, package: { path: aarch64 } })
+  })
+
+  test('a folder without a build: NO_PACKAGE, before any device call', async () => {
+    const empty = join(home, 'dev', 'empty')
+    await mkdir(empty, { recursive: true })
+    const { install, runner } = await setup(bothOnline)
+
+    const error = await failure(install.install(empty, { device: STICK }))
+
+    expect(error).toMatchObject({
+      code: 'NO_PACKAGE',
+      message: 'No build in ~/dev/empty/build/',
+      hint: 'Build the app, then retry, or pass a .vpkg'
+    })
+    expect(runner.calls).toEqual([])
+  })
+
+  test('no ref, with an open folder that has no build: NO_PACKAGE', async () => {
+    await rm(join(project, 'build'), { recursive: true })
+    const { install } = await setup(bothOnline)
+
+    const error = await failure(install.install(undefined, { device: STICK }))
+
+    expect(error.code).toBe('NO_PACKAGE')
+    expect(error.message).toBe('No build in ~/dev/player/build/')
+  })
+
+  test('a package ID of an open folder that has no build: NO_PACKAGE', async () => {
+    await rm(join(project, 'build'), { recursive: true })
+    const { install } = await setup(bothOnline)
+
+    const error = await failure(install.install('com.example.player', { device: STICK }))
+
+    expect(error.code).toBe('NO_PACKAGE')
+  })
+
+  test('a package ID installs the open project’s matching build', async () => {
+    const { install } = await setup({
+      ...bothOnline,
+      ...vpt(aarch64, 'player-aarch64'),
+      [installCmd(aarch64, 'VirtualDevice')]: out('vega-device-install-app/installed.txt')
+    })
+
+    const result = await install.install('com.example.player', { device: 'VirtualDevice' })
+
+    expect(result.package).toMatchObject({ path: aarch64, id: 'com.example.player' })
+  })
+
+  test('an unknown package ID: NO_PACKAGE', async () => {
+    const { install, runner } = await setup(bothOnline)
+
+    const error = await failure(install.install('com.example.hellovega', { device: STICK }))
+
+    expect(error).toMatchObject({
+      code: 'NO_PACKAGE',
+      message: 'No package for com.example.hellovega',
+      hint: 'Open its project with ovd open <folder>, or pass a .vpkg'
+    })
+    expect(runner.calls).toEqual([])
+  })
+
+  test('no ref, with a folder open: its build that matches the target', async () => {
+    const { install } = await setup({
+      ...bothOnline,
+      ...vpt(armv7, 'player-armv7'),
+      [installCmd(armv7, STICK)]: out('vega-device-install-app/installed.txt')
+    })
+
+    const result = await install.install(undefined, { device: STICK })
+
+    expect(result.package.path).toBe(armv7)
+  })
+
+  test('a missing .vpkg still says the path doesn’t exist', async () => {
+    const { install } = await setup(bothOnline)
+
+    const error = await failure(install.install('foo.vpkg', { device: STICK }))
+
+    expect(error.code).toBe('PATH_NOT_FOUND')
+  })
+})
+
+describe('Install.resolve', () => {
+  test('the build install would pick, without installing it', async () => {
+    const { install, runner } = await setup({ ...bothOnline, ...vpt(aarch64, 'player-aarch64') })
+
+    const build = await install.resolve('com.example.player', { device: 'VirtualDevice' })
+
+    expect(build).toEqual({
+      path: aarch64,
+      displayPath: '~/dev/player/build/aarch64-debug/player_aarch64.vpkg',
+      file: 'player_aarch64.vpkg'
+    })
+    expect(runner.calls.some((c) => c.args.includes('install-app'))).toBe(false)
+  })
+
+  test('a .vpkg path as it is; a missing one fails', async () => {
+    const { install } = await setup(bothOnline)
+
+    expect(await install.resolve(armv7)).toEqual({
+      path: armv7,
+      displayPath: '~/dev/player/build/armv7-release/player_armv7.vpkg',
+      file: 'player_armv7.vpkg'
+    })
+    expect((await failure(install.resolve('~/nope.vpkg'))).code).toBe('PATH_NOT_FOUND')
   })
 })

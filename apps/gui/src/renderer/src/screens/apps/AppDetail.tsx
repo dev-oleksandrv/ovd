@@ -2,16 +2,20 @@ import type { InstalledApp } from '@ovd/core'
 import { KeyValueGrid } from '../../ui/KeyValueGrid'
 import { cx } from '../../ui/cx'
 import { AppAvatar } from './AppAvatar'
-import { componentRows, infoRows } from './appsView'
+import { AppActions, type ReinstallPackage } from './AppActions'
+import { componentRows, infoRows, type AppAction } from './appsView'
 
 interface AppDetailProps {
   app: InstalledApp
   now: Date
+  // The action running on this app, if any.
+  busy: AppAction | undefined
+  onAction: (action: AppAction, app: InstalledApp) => void
+  reinstall: ReinstallPackage
 }
 
-// The right-hand panel: what the device reports about one app. Launch, Restart, Terminate,
-// Force stop and the uninstall actions come in 2.4b.
-export function AppDetail({ app, now }: AppDetailProps) {
+// The right-hand panel: what the device reports about one app, and the actions on it.
+export function AppDetail({ app, now, busy, onAction, reinstall }: AppDetailProps) {
   return (
     <aside
       aria-label={`${app.title} details`}
@@ -24,6 +28,7 @@ export function AppDetail({ app, now }: AppDetailProps) {
           <div className="truncate font-mono text-label text-muted">{app.packageId}</div>
         </div>
       </div>
+      <AppActions app={app} busy={busy} onAction={onAction} reinstall={reinstall} />
       <KeyValueGrid items={infoRows(app, now)} />
       <section aria-label="Components" className="flex flex-col gap-2">
         <div className="text-label tracking-[.06em] text-subtle uppercase">

@@ -53,6 +53,18 @@ describe('ovd install', () => {
     expect(install).toHaveBeenCalledWith(undefined, {})
   })
 
+  test.each(['~/dev/player', 'com.example.player'])(
+    'a project folder or a package ID reaches core unchanged: %s',
+    async (ref) => {
+      const install = vi.fn(async () => result)
+      const { exitCode } = await cli(['apps', 'install', ref, '--json'], {
+        ovd: stubInstall({ install })
+      })
+      expect(exitCode).toBe(0)
+      expect(install).toHaveBeenCalledWith(ref, {})
+    }
+  )
+
   test('a mismatch exits 6 with the error naming both architectures', async () => {
     const { stdout, exitCode } = await cli(['install', 'player_aarch64.vpkg', '--json'], {
       ovd: stubInstall({ install: mismatch })

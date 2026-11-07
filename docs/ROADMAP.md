@@ -16,7 +16,7 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
 | 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
 
-**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 work (2.1–2.3) is on `main`, not yet released.
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 work (2.1–2.4) is on `main`, not yet released.
 
 The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
@@ -175,7 +175,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** an `aarch64` package on an `armv7` stick is blocked in both surfaces, and the fix offers `player-1.4.2-armv7.vpkg`.
 
-### 2.4 Apps screen — next
+### 2.4 Apps screen — done (PR #31, #88)
 
 - CLI: `ovd apps [--running] [--all]`, `ovd apps info`, `ovd apps install | reinstall | uninstall | launch | terminate [--force] | restart`, each accepting a .vpkg, a package ID or a project folder (auto-finds the Debug or Release build). `ovd install` stays as an alias of `ovd apps install`.
 - Desktop: header "On <target> · launches are verified against running-apps and crash history"; tabs "Installed · N" / "Running · N"; table (avatar, title, ID, version, status Running · pid / Stopped / Verifying… / Crashed on launch, Launch/Stop); detail actions Launch, Restart, Terminate, Force stop; info rows incl. Lifespan and Running for; "Components · vpm info / vlcm list" table; Uninstall & reinstall (note: "clears app data (to be verified)"), Uninstall.
@@ -183,7 +183,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** every action works on a stick and the Virtual Device; Running and "Running now" update within one refresh.
 
-### 2.5 Launch verification
+### 2.5 Launch verification — next
 
 - After every launch, confirm with running apps and crash history (ADR 0012). Desktop: "Verifying launch…"; on failure "Launch reported success, but the app crashed" with the cause and "Logs around crash". CLI: non-zero exit, `"verified": false, "reason": "crashed"`.
 

@@ -1,0 +1,1 @@
+Force stopping pkg: com.example.player

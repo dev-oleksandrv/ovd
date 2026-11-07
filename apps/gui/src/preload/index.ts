@@ -47,11 +47,18 @@ const api: OvdApi = {
   },
   install: {
     check: (path, device) => ipcRenderer.invoke(channels.installCheck, path, device),
-    install: (path, device) => ipcRenderer.invoke(channels.install, path, device)
+    install: (path, device) => ipcRenderer.invoke(channels.install, path, device),
+    resolve: (app, device) => ipcRenderer.invoke(channels.installResolve, app, device)
   },
   apps: {
     list: (device, running) => ipcRenderer.invoke(channels.appsList, device, running),
-    info: (app, device) => ipcRenderer.invoke(channels.appsInfo, app, device)
+    info: (app, device) => ipcRenderer.invoke(channels.appsInfo, app, device),
+    launch: (app, device) => ipcRenderer.invoke(channels.appsLaunch, app, device),
+    terminate: (app, device, force) =>
+      ipcRenderer.invoke(channels.appsTerminate, app, device, force),
+    restart: (app, device) => ipcRenderer.invoke(channels.appsRestart, app, device),
+    uninstall: (app, device) => ipcRenderer.invoke(channels.appsUninstall, app, device),
+    reinstall: (app, device) => ipcRenderer.invoke(channels.appsReinstall, app, device)
   },
   setup: {
     signedIn: () => ipcRenderer.invoke(channels.setupSignedIn),

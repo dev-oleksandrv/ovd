@@ -28,6 +28,7 @@ export interface ActivityLine {
   surface: string
   action: string
   target: string | null
+  args: Record<string, string | number | boolean>
   result: 'ok' | 'error'
   errorCode?: string
 }

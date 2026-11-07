@@ -288,7 +288,60 @@ function vvdApps(w: World, sub: string): Reply | null {
       ? { stdout: fixture('vpm-info-component/player-main.txt') }
       : { stdout: fixture('vpm-info-component/missing.txt'), exitCode: 248 }
   }
+  if (sub === `shell vpm info ${PLAYER} --package`) {
+    return installed
+      ? { stdout: fixture('vpm-info-package/player.txt') }
+      : { stdout: fixture('vpm-info-package/missing.txt'), exitCode: 248 }
+  }
+  // Graceful: exit 255 when nothing runs (or nothing is installed); `--force` exits 0 either way.
+  if (sub === `shell vlcm terminate-app --pkg-id ${PLAYER}`) {
+    if (!installed || !playerRunning(w)) {
+      return { stdout: fixture('vlcm-terminate-app/not-running.txt'), exitCode: 255 }
+    }
+    stopPlayer(w)
+    return { stdout: fixture('vlcm-terminate-app/stopped.txt') }
+  }
+  if (sub === `shell vlcm terminate-app --force --pkg-id ${PLAYER}`) {
+    stopPlayer(w)
+    return { stdout: fixture('vlcm-terminate-app/force-stopped.txt') }
+  }
   return null
+}
+
+function playerRunning(w: World): boolean {
+  return w.running.some((r) => r.device === 'VirtualDevice' && r.app === PLAYER)
+}
+
+function stopPlayer(w: World): void {
+  w.running = w.running.filter((r) => r.device !== 'VirtualDevice' || r.app !== PLAYER)
+}
+
+// `vega device launch-app -a <component> --device <id>` and `uninstall-app -a <package> …`.
+// Recorded for the player only; the stick is recorded with nothing side-loaded, so it has no
+// answer. An unknown or offline device prints the same as for `install-app`.
+function deviceAppCommand(w: World, verb: 'launch' | 'uninstall', rest: string[]): Reply | null {
+  const [a, id, flag, device] = rest
+  if (a !== '-a' || flag !== '--device' || id === undefined || device === undefined) return null
+  if (rest.length !== 4) return null
+  const folder = verb === 'launch' ? 'vega-device-launch-app' : 'vega-device-uninstall-app'
+  if (onlineArch(w, device) === null) {
+    return { stderr: fixture(`${folder}/device-not-found.stderr.txt`), exitCode: 2 }
+  }
+  if (device !== 'VirtualDevice') return null
+  if (id !== (verb === 'launch' ? `${PLAYER}.main` : PLAYER)) return null
+  if (!playerInstalled(w)) {
+    return { stderr: fixture(`${folder}/not-installed.stderr.txt`), exitCode: 3 }
+  }
+  stopPlayer(w)
+  if (verb === 'launch') {
+    // `launch-app` force-stops the app first, so a relaunch is still one running entry.
+    w.running.push({ device: 'VirtualDevice', app: PLAYER })
+    return { stdout: fixture('vega-device-launch-app/launched.txt') }
+  }
+  w.installed = w.installed.filter(
+    (i) => i.device !== 'VirtualDevice' || !i.package.startsWith('player-')
+  )
+  return { stdout: fixture('vega-device-uninstall-app/uninstalled.txt') }
 }
 
 function virtualDevice(w: World, sub: string | undefined): Reply | null {
@@ -451,6 +504,10 @@ async function answer(w: World): Promise<Reply | null> {
     return deviceInfo(w, rest[1] as string)
   }
   if (first === 'device' && second === 'install-app') return installApp(w, rest)
+  if (first === 'device' && second === 'launch-app') return deviceAppCommand(w, 'launch', rest)
+  if (first === 'device' && second === 'uninstall-app') {
+    return deviceAppCommand(w, 'uninstall', rest)
+  }
   if (first === 'device' && second === 'is-port-forwarded') {
     return { stdout: fixture('vega-device-is-port-forwarded/false.txt') }
   }

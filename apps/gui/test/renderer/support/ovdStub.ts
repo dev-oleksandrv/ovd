@@ -9,10 +9,15 @@ import type {
   EnableResult,
   ForgetResult,
   InstallResult,
+  LaunchResult,
   LoginPrompt,
   PackageBuild,
   PackageInfo,
   ProjectMode,
+  ReinstallResult,
+  RestartResult,
+  TerminateResult,
+  UninstallResult,
   VvdState
 } from '@ovd/core'
 import { vi } from 'vitest'
@@ -191,6 +196,20 @@ export function stubOvd(opts: {
       check: vi.fn(opts.install?.check ?? (async () => unexpected<ArchCheck>('install.check'))),
       install: vi.fn(
         opts.install?.install ?? (async () => unexpected<InstallResult>('install.install'))
+      ),
+      // As in the app with nothing open: no package to reinstall.
+      resolve: vi.fn(
+        opts.install?.resolve ??
+          (async (
+            app: string
+          ): Promise<IpcResult<Pick<PackageBuild, 'path' | 'displayPath' | 'file'>>> => ({
+            ok: false,
+            error: {
+              code: 'NO_PACKAGE',
+              message: `No package for ${app}`,
+              hint: 'Open its project with ovd open <folder>, or pass a .vpkg'
+            }
+          }))
       )
     },
     apps: {
@@ -201,7 +220,18 @@ export function stubOvd(opts: {
             data: { target: { id: device, name: device }, apps: [] }
           }))
       ),
-      info: vi.fn(opts.apps?.info ?? (async () => unexpected<AppDetails>('apps.info')))
+      info: vi.fn(opts.apps?.info ?? (async () => unexpected<AppDetails>('apps.info'))),
+      launch: vi.fn(opts.apps?.launch ?? (async () => unexpected<LaunchResult>('apps.launch'))),
+      terminate: vi.fn(
+        opts.apps?.terminate ?? (async () => unexpected<TerminateResult>('apps.terminate'))
+      ),
+      restart: vi.fn(opts.apps?.restart ?? (async () => unexpected<RestartResult>('apps.restart'))),
+      uninstall: vi.fn(
+        opts.apps?.uninstall ?? (async () => unexpected<UninstallResult>('apps.uninstall'))
+      ),
+      reinstall: vi.fn(
+        opts.apps?.reinstall ?? (async () => unexpected<ReinstallResult>('apps.reinstall'))
+      )
     },
     setup: {
       signedIn: vi.fn(opts.setup?.signedIn ?? (async () => unexpected<boolean>('setup.signedIn'))),

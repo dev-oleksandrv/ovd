@@ -16,7 +16,7 @@ How core calls the Vega SDK. What the SDK actually does, quirks included, is in 
 - `vega sdk` and `vega devmode` only through the Vega CLI (`~/vega/bin/vega`), never the `vega` bundled inside an SDK.
 - Device tools (`vpm`, `vlcm`, `vmsgr`, `loggingctl`, `inputd-cli`, `gwsi-tool-screenshooter`, `ace_memusage`) run through `vega exec vda shell` (or `shell -c <component>` when scoped to a component).
 - Target one device per call: `vega device …` takes `--device <id>`; `vega exec vda` takes `-s <serial>` (the `IP:port` over Wi‑Fi).
-- Judge success by what a tool reports, not by its exit code alone, wherever §8 says the exit code lies (`install-app`, `launch-app`, `vda connect`, `virtual-device start`).
+- Judge success by what a tool reports, not by its exit code alone, wherever §8 says the exit code lies (`install-app`, `launch-app`, `vlcm terminate-app`, `vda connect`, `virtual-device start`).
 - Use JSON modes wherever they exist: `vega device info` (JSON by default, no `--json` flag), `vpt info --json`, `loggingctl vault --json-dump`, `vega sdk … --json`, `vega devmode … --json`. Parse text only when there is no JSON mode, and keep that parser small.
 - One SDK command at a time per core: every call goes through the serial runner.
 - Never run `vega platform doctor`: it prints the whole environment, secrets included.

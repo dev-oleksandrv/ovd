@@ -1,4 +1,12 @@
-import type { AppDetails, AppList } from '@ovd/core'
+import type {
+  AppDetails,
+  AppList,
+  LaunchResult,
+  ReinstallResult,
+  RestartResult,
+  TerminateResult,
+  UninstallResult
+} from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import { ALL_PACKAGES } from '../fake-sdk/world.ts'
 import { ovd } from '../harness/cli.ts'
@@ -47,7 +55,7 @@ describe('ovd apps', () => {
     // One round trip for every package, one for what runs.
     expect(appCalls(sandbox)).toEqual([ALL, VLCM])
 
-    // Started outside OVD: launches come in 2.4b.
+    // Started outside OVD.
     sandbox.update((w) => {
       w.running.push({ device: 'VirtualDevice', app: 'com.example.player' })
     })
@@ -140,5 +148,183 @@ describe('ovd apps info', () => {
 
     expect(run.exitCode).toBe(2)
     expect(run.json<{ ok: false; error: { code: string } }>().error.code).toBe('NO_APP')
+  })
+})
+
+const PLAYER = 'com.example.player'
+const PKG_INFO = `${SHELL} vpm info ${PLAYER} --package`
+const LAUNCH = `vega device launch-app -a ${PLAYER}.main --device VirtualDevice`
+const TERMINATE = `${SHELL} vlcm terminate-app --pkg-id ${PLAYER}`
+const FORCE = `${SHELL} vlcm terminate-app --force --pkg-id ${PLAYER}`
+const UNINSTALL = `vega device uninstall-app -a ${PLAYER} --device VirtualDevice`
+
+type Ok<T> = { ok: true } & T
+
+describe('ovd apps actions', () => {
+  test('install, launch, stop, restart and uninstall, each logged', async () => {
+    const sandbox = await withPlayerProject()
+    expect(
+      (await ovd(sandbox, ['apps', 'install', `~/${AARCH64}`, ...VVD, '--json'])).exitCode
+    ).toBe(0)
+
+    const launch = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD, '--json'])
+    expect(launch.exitCode, launch.stdout).toBe(0)
+    expect(launch.json<Ok<{ launch: LaunchResult }>>().launch.app.componentId).toBe(
+      `${PLAYER}.main`
+    )
+    expect(sandbox.calls()).toEqual(expect.arrayContaining([PKG_INFO, LAUNCH]))
+    expect(sandbox.world().running).toEqual([{ device: 'VirtualDevice', app: PLAYER }])
+    const running = await ovd(sandbox, ['apps', '--running', ...VVD, '--json'])
+    expect(running.json<Ok<AppList>>().apps.map((a) => a.packageId)).toEqual([PLAYER])
+
+    const stop = await ovd(sandbox, ['apps', 'terminate', PLAYER, ...VVD, '--json'])
+    expect(stop.json<Ok<{ terminate: TerminateResult }>>().terminate.wasRunning).toBe(true)
+    expect(sandbox.world().running).toEqual([])
+
+    // Nothing runs now: the tool exits 255, which is no error for OVD.
+    const again = await ovd(sandbox, ['apps', 'terminate', PLAYER, ...VVD, '--json'])
+    expect(again.exitCode).toBe(0)
+    expect(again.json<Ok<{ terminate: TerminateResult }>>().terminate.wasRunning).toBe(false)
+
+    sandbox.clearCalls()
+    const started = await ovd(sandbox, ['apps', 'restart', PLAYER, ...VVD, '--json'])
+    expect(started.json<Ok<{ restart: RestartResult }>>().restart.wasRunning).toBe(false)
+    expect(sandbox.calls()).not.toContain(TERMINATE)
+    expect(sandbox.calls()).toContain(LAUNCH)
+
+    sandbox.clearCalls()
+    const restarted = await ovd(sandbox, ['apps', 'restart', PLAYER, ...VVD, '--json'])
+    expect(restarted.json<Ok<{ restart: RestartResult }>>().restart.wasRunning).toBe(true)
+    const calls = sandbox.calls()
+    expect(calls.indexOf(TERMINATE)).toBeGreaterThan(-1)
+    expect(calls.indexOf(TERMINATE)).toBeLessThan(calls.indexOf(LAUNCH))
+
+    const removed = await ovd(sandbox, ['apps', 'uninstall', PLAYER, ...VVD, '--json'])
+    expect(removed.json<Ok<{ uninstall: UninstallResult }>>().uninstall.uninstalled).toBe(true)
+    expect(sandbox.calls()).toContain(UNINSTALL)
+    expect(sandbox.world().installed).toEqual([])
+    expect((await ovd(sandbox, ['apps', ...VVD, '--json'])).json<Ok<AppList>>().apps).toEqual([])
+
+    expect(sandbox.activity().map((a) => [a.action, a.result])).toEqual([
+      ['app.install', 'ok'],
+      ['app.launch', 'ok'],
+      ['app.terminate', 'ok'],
+      ['app.terminate', 'ok'],
+      ['app.restart', 'ok'],
+      ['app.restart', 'ok'],
+      ['app.uninstall', 'ok']
+    ])
+  })
+
+  test('terminate --force force stops, and the entry says so', async () => {
+    const sandbox = await withPlayerProject()
+    await ovd(sandbox, ['apps', 'install', `~/${AARCH64}`, ...VVD])
+    await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD])
+
+    const run = await ovd(sandbox, ['apps', 'terminate', PLAYER, '--force', ...VVD, '--json'])
+
+    expect(run.exitCode).toBe(0)
+    expect(run.json<Ok<{ terminate: TerminateResult }>>().terminate).toMatchObject({
+      forced: true,
+      wasRunning: null
+    })
+    expect(sandbox.calls()).toContain(FORCE)
+    expect(sandbox.world().running).toEqual([])
+    expect(sandbox.activity().at(-1)).toMatchObject({
+      action: 'app.terminate',
+      args: { app: PLAYER, force: 'true' },
+      result: 'ok'
+    })
+  })
+
+  test('reinstall a project folder: uninstall, then install its build for the target', async () => {
+    const sandbox = await withPlayerProject()
+    await ovd(sandbox, ['apps', 'install', `~/${AARCH64}`, ...VVD])
+    sandbox.clearCalls()
+
+    const run = await ovd(sandbox, ['apps', 'reinstall', '~/dev/player', ...VVD, '--json'])
+
+    expect(run.exitCode, run.stdout).toBe(0)
+    expect(run.json<Ok<{ reinstall: ReinstallResult }>>().reinstall).toMatchObject({
+      uninstalled: true,
+      package: { id: PLAYER, file: 'player_aarch64.vpkg' },
+      forced: false
+    })
+    const calls = sandbox.calls()
+    const install = `vega device install-app -p ${sandbox.home}/${AARCH64} --device VirtualDevice`
+    expect(calls.indexOf(UNINSTALL)).toBeGreaterThan(-1)
+    expect(calls.indexOf(UNINSTALL)).toBeLessThan(calls.indexOf(install))
+    expect(sandbox.world().installed).toEqual([
+      { device: 'VirtualDevice', package: 'player-aarch64-debug' }
+    ])
+    expect(sandbox.activity().filter((a) => a.action === 'app.reinstall')).toMatchObject([
+      { result: 'ok' }
+    ])
+  })
+
+  test('launching an app that isn’t installed exits 1 and launches nothing', async () => {
+    const sandbox = createSandbox({ vvd: { running: true, developerMode: true } })
+    sandbox.installSdk()
+
+    const run = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD, '--json'])
+
+    expect(run.exitCode).toBe(1)
+    expect(run.json<{ ok: false; error: { code: string } }>().error.code).toBe('APP_NOT_INSTALLED')
+    expect(sandbox.calls()).not.toContain(LAUNCH)
+    expect(sandbox.activity()).toMatchObject([
+      { action: 'app.launch', result: 'error', errorCode: 'APP_NOT_INSTALLED' }
+    ])
+  })
+
+  test('a stopped Virtual Device exits 4, asks it nothing and logs nothing', async () => {
+    const sandbox = createSandbox()
+    sandbox.installSdk()
+
+    const run = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD, '--json'])
+
+    expect(run.exitCode).toBe(4)
+    expect(run.json<{ ok: false; error: { code: string } }>().error.code).toBe('TARGET_OFFLINE')
+    expect(appCalls(sandbox)).toEqual([])
+    expect(sandbox.activity()).toEqual([])
+  })
+
+  test.each(['launch', 'terminate', 'restart', 'uninstall', 'reinstall'])(
+    'an injection-shaped app ID: ovd apps %s exits 2 and runs no SDK command',
+    async (action) => {
+      const sandbox = createSandbox({ vvd: { running: true, developerMode: true } })
+      sandbox.installSdk()
+
+      const run = await ovd(sandbox, ['apps', action, 'x;touch pwned', ...VVD, '--json'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json<{ ok: false; error: { code: string; message: string } }>().error).toEqual(
+        expect.objectContaining({
+          code: 'INVALID_APP_ID',
+          message: '"x;touch pwned" isn’t an app ID'
+        })
+      )
+      expect(sandbox.calls()).toEqual([])
+      expect(sandbox.activity()).toEqual([])
+    }
+  )
+
+  test('a cloned project whose manifest has an injection-shaped ID exits 2 and runs nothing', async () => {
+    const sandbox = createSandbox({ vvd: { running: true, developerMode: true } })
+    sandbox.installSdk()
+    makeProject(sandbox.home, 'evil', {
+      manifest: PLAYER_MANIFEST.replace('id = "com.example.player"', 'id = "x;touch pwned"')
+    })
+
+    const run = await ovd(sandbox, ['apps', 'launch', '~/dev/evil', ...VVD, '--json'])
+
+    expect(run.exitCode).toBe(2)
+    expect(run.json<{ ok: false; error: { code: string; message: string } }>().error).toEqual(
+      expect.objectContaining({
+        code: 'INVALID_APP_ID',
+        message: 'The package ID in ~/dev/evil/manifest.toml isn’t an app ID: "x;touch pwned"'
+      })
+    )
+    expect(sandbox.calls()).toEqual([])
+    expect(sandbox.activity()).toEqual([])
   })
 })

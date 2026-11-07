@@ -16,6 +16,11 @@ export type ActivityAction =
   | 'connect'
   | 'forget'
   | 'app.install'
+  | 'app.launch'
+  | 'app.terminate'
+  | 'app.restart'
+  | 'app.uninstall'
+  | 'app.reinstall'
 
 export interface ActivityEntry {
   time: string

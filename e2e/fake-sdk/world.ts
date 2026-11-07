@@ -22,6 +22,7 @@ export interface World {
   installed: { device: string; package: string }[]
   // Apps running on a device, by device ID and package ID (`com.example.player`). Recordings
   // exist for the player on the Virtual Device; the stick is recorded with nothing side-loaded.
+  // `launch-app` adds the player, `vlcm terminate-app` and `uninstall-app` remove it.
   running: { device: string; app: string }[]
 }
 

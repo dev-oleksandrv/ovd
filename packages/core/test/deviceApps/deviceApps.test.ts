@@ -12,6 +12,7 @@ import {
   createStateStore,
   type OvdError
 } from '../../src/index.js'
+import { createInstallSteps } from '../../src/install/installSteps.js'
 import { FakeRunner } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
 
@@ -77,7 +78,26 @@ async function setup(script: ConstructorParameters<typeof FakeRunner>[0]) {
   const devices = createDevices({ runner, sdk, state, activity, env: {} })
   const project = createProject({ state, homedir: home, cwd: home })
   const packages = createPackages({ runner, sdk, project, homedir: home, cwd: home })
-  const apps = createApps({ runner, sdk, devices, project, packages, homedir: home, cwd: home })
+  const install = createInstallSteps({
+    runner,
+    sdk,
+    devices,
+    packages,
+    project,
+    homedir: home,
+    cwd: home
+  })
+  const apps = createApps({
+    runner,
+    sdk,
+    devices,
+    project,
+    packages,
+    activity,
+    install,
+    homedir: home,
+    cwd: home
+  })
   return { apps, project, runner }
 }
 
@@ -252,6 +272,35 @@ describe('apps.info', () => {
     expect(error.code).toBe('APP_NOT_INSTALLED')
     expect(error.message).toBe('com.example.player isn’t installed on Vega Virtual Device')
     expect(runner.count(MAIN_INFO)).toBe(0)
+  })
+
+  test('an ID that isn’t an app ID is refused before any SDK call', async () => {
+    const { apps, runner } = await setup(running)
+    const evil = join(home, 'dev', 'evil')
+    await mkdir(evil, { recursive: true })
+    await writeFile(join(evil, 'manifest.toml'), '[package]\nid = "x;rm -rf ~"\n')
+
+    expect(await failure(apps.info('x;rm -rf ~', VVD))).toMatchObject({
+      code: 'INVALID_APP_ID',
+      message: '"x;rm -rf ~" isn’t an app ID'
+    })
+    expect((await failure(apps.info(evil, VVD))).code).toBe('INVALID_APP_ID')
+    expect(runner.calls).toEqual([])
+  })
+
+  test('a component ID from the device that isn’t one: no vpm info for it', async () => {
+    const listing = fixture('0.24/vpm-info-package-all/virtual-device-player.txt')
+    expect(listing).toContain('\tcom.example.player.main\n')
+    const { apps, runner } = await setup({
+      ...running,
+      [ALL]: { stdout: listing.replace('\tcom.example.player.main\n', '\tcom.example.$(id)\n') }
+    })
+
+    expect(await failure(apps.info('com.example.player', VVD))).toMatchObject({
+      code: 'INVALID_APP_ID',
+      message: 'Vega Virtual Device reported an ID that isn’t an app ID: "com.example.$(id)"'
+    })
+    expect(runner.calls.some((c) => c.display.includes('vpm info com.example.$'))).toBe(false)
   })
 
   test('uninstalled between the list and the component call', async () => {
