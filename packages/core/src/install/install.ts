@@ -1,22 +1,20 @@
+import { stat } from 'node:fs/promises'
 import type { ActivityLog } from '../activity/activityLog.js'
 import { createLogged } from '../activity/logged.js'
-import { parseInstallApp } from '../adapters/parseInstallApp.js'
 import type { PackageArch } from '../adapters/parseVptContents.js'
-import type { Devices } from '../devices/devices.js'
-import { onlineTarget } from '../devices/onlineTarget.js'
-import { OvdError } from '../errors/ovdError.js'
-import type { PackageBuild, PackageInfo, Packages } from '../packages/packages.js'
-import { vegaDeviceCmd } from '../sdk/commands.js'
-import type { Runner } from '../sdk/runner.js'
-import type { SdkLocator } from '../sdk/sdkLocator.js'
-import { compareArch, type ArchVerdict } from './archGuard.js'
+import type { PackageBuild, PackageInfo } from '../packages/packages.js'
+import type { ArchVerdict } from './archGuard.js'
+import {
+  createInstallSteps,
+  describeResolved,
+  type InstallSteps,
+  type InstallStepsDeps
+} from './installSteps.js'
 
-export interface InstallDeps {
-  runner: Runner
-  sdk: SdkLocator
-  devices: Devices
-  packages: Packages
+export interface InstallDeps extends InstallStepsDeps {
   activity: ActivityLog
+  // Shared with reinstall (`apps.reinstall`); built from the other deps when not given.
+  steps?: InstallSteps
 }
 
 export interface InstallTarget {
@@ -53,131 +51,88 @@ export interface InstallOptions {
   force?: boolean
 }
 
-// Install a .vpkg on the target behind the architecture guard (Stage 2.3, ADR 0008). The SDK
+// Install a package on the target behind the architecture guard (Stage 2.3, ADR 0008). The SDK
 // installs a package built for another architecture without a word
 // (fixtures/0.24/vega-device-install-app/installed-wrong-arch.txt), so the guard is the only
-// check. Package IDs, project folders and the Apps screen come in 2.4.
+// check. A ref is a .vpkg, a project folder (its build that matches the target) or a package ID
+// (the open project's or .vpkg's), as for every app action (Stage 2.4).
 export interface Install {
   check(path: string, opts?: { device?: string }): Promise<ArchCheck>
-  // Without a path, installs the .vpkg open in no-project mode.
-  install(path?: string, opts?: InstallOptions): Promise<InstallResult>
+  // Without a ref, installs the open .vpkg, or the open project's build.
+  install(ref?: string, opts?: InstallOptions): Promise<InstallResult>
+  // The .vpkg `install` and `reinstall` would pick for a ref, without installing it.
+  resolve(
+    ref?: string,
+    opts?: { device?: string }
+  ): Promise<Pick<PackageBuild, 'path' | 'displayPath' | 'file'>>
 }
-
-// One install took about 1 s on the Virtual Device; a large package over Wi‑Fi takes longer.
-const INSTALL_TIMEOUT_MS = 180_000
-// Each candidate costs one `vpt show-contents`; the newest few are enough to find a fix.
-const MAX_FIX_READS = 5
 
 export function createInstall(deps: InstallDeps): Install {
   const logged = createLogged(deps.activity)
-
-  async function installTarget(override?: string): Promise<InstallTarget> {
-    const device = await onlineTarget(deps.devices, override)
-    if (!device.info) {
-      throw new OvdError(
-        'DEVICE_INFO_UNAVAILABLE',
-        `Couldn’t read the architecture of ${device.name}`,
-        'The device may still be booting. Wait a few seconds and retry'
-      )
-    }
-    return { id: device.id, name: device.name, architecture: device.info.architecture }
-  }
-
-  async function findFix(path: string, arch: string): Promise<PackageBuild | undefined> {
-    const candidates = (await deps.packages.builds())
-      .filter((b) => b.path !== path && (b.folderArch === undefined || b.folderArch === arch))
-      .slice(0, MAX_FIX_READS)
-    for (const build of candidates) {
-      const found = await deps.packages.architecture(build.path).catch(() => 'unknown' as const)
-      if (compareArch(found, arch) === 'match') return build
-    }
-    return undefined
-  }
-
-  async function check(path: string, target: InstallTarget, arch: PackageArch): Promise<ArchCheck> {
-    const verdict = compareArch(arch, target.architecture)
-    const fix = verdict === 'match' ? undefined : await findFix(path, target.architecture)
-    return {
-      allowed: verdict === 'match',
-      verdict,
-      package: { path, architecture: arch },
-      target,
-      ...(fix ? { fix } : {})
-    }
-  }
+  const steps = deps.steps ?? createInstallSteps(deps)
 
   return {
     async check(path, opts = {}) {
-      const target = await installTarget(opts.device)
-      return check(path, target, await deps.packages.architecture(path))
+      const target = await steps.target(opts.device)
+      return steps.check(path, target, await deps.packages.architecture(path))
     },
 
-    async install(input, opts = {}) {
-      const target = await installTarget(opts.device)
-      const info = await deps.packages.info(input)
+    async install(ref, opts = {}) {
+      const targetOf = once(() => steps.target(opts.device))
+      const resolved = await steps.resolve(ref, targetOf)
+      // The target before the package: no `vpt` read for a target that isn't there.
+      const target = await targetOf()
+      const info = await deps.packages.info(resolved.path)
       const force = opts.force ?? false
       const args = { package: info.file, ...(force ? { force: 'true' } : {}) }
       return logged('app.install', target.id, args, async () => {
-        const guard = await check(info.path, target, info.architecture)
-        if (!guard.allowed && !force) throw blocked(guard, info.file)
-
-        const { vegaPath } = await deps.sdk.get()
-        const run = await deps.runner.run(
-          vegaDeviceCmd(vegaPath, 'install-app', ['-p', info.path], target.id, {
-            timeoutMs: INSTALL_TIMEOUT_MS
-          })
-        )
-        const result = parseInstallApp(run)
-        if (!result.installed) {
-          if (result.kind === 'device-not-found') {
-            throw new OvdError(
-              'TARGET_OFFLINE',
-              `${target.name} is offline`,
-              'Reconnect it, then check with ovd devices'
-            )
-          }
-          throw new OvdError(
-            'INSTALL_FAILED',
-            `Install failed: ${result.reason}`,
-            result.kind === 'missing-dependency'
-              ? 'The device lacks a module the package needs. The Virtual Device lacks some that sticks have: try a stick'
-              : 'Check the package with ovd pkg info, then retry',
-            { exitCode: run.exitCode }
-          )
-        }
+        const guard = await steps.guard(info, target, {
+          force,
+          command: 'install',
+          ...(resolved.builds ? { builds: resolved.builds } : {})
+        })
+        await steps.run(info, target)
         return {
           installed: true,
-          package: {
-            path: info.path,
-            displayPath: info.displayPath,
-            file: info.file,
-            id: info.id,
-            title: info.title,
-            version: info.version,
-            buildNumber: info.buildNumber,
-            architecture: info.architecture
-          },
+          package: packageOf(info),
           target,
           forced: !guard.allowed
         }
       })
+    },
+
+    async resolve(ref, opts = {}) {
+      const resolved = await steps.resolve(
+        ref,
+        once(() => steps.target(opts.device))
+      )
+      if (!resolved.build) {
+        const found = await stat(resolved.path).catch(() => undefined)
+        // Missing or not a .vpkg: `packages.info` throws the error that says so.
+        if (!found?.isFile() || !/\.vpkg$/i.test(resolved.path)) {
+          await deps.packages.info(resolved.path)
+        }
+      }
+      return describeResolved(resolved, deps.homedir)
     }
   }
 }
 
-// "Architecture mismatch: package is aarch64, Fire TV Stick 4K Select is armv7" (design copy).
-function blocked(guard: ArchCheck, file: string): OvdError {
-  const { target, fix } = guard
-  const message =
-    guard.verdict === 'unknown'
-      ? `Architecture unknown: ${file} has native code for several or unrecognized architectures, ${target.name} is ${target.architecture}`
-      : `Architecture mismatch: package is ${guard.package.architecture}, ${target.name} is ${target.architecture}`
-  const hint = fix
-    ? `Install the ${target.architecture} build instead: ovd apps install ${fix.displayPath}. Or pass --force to install anyway`
-    : `Build the app for ${target.architecture} or switch the target. Or pass --force to install anyway`
-  return new OvdError('ARCH_MISMATCH', message, hint, {
-    package: guard.package.architecture,
-    target: target.architecture,
-    ...(fix ? { fix: fix.path } : {})
-  })
+export function packageOf(info: PackageInfo): InstallResult['package'] {
+  return {
+    path: info.path,
+    displayPath: info.displayPath,
+    file: info.file,
+    id: info.id,
+    title: info.title,
+    version: info.version,
+    buildNumber: info.buildNumber,
+    architecture: info.architecture
+  }
+}
+
+// Reads the target at most once, and only when asked.
+export function once<T>(read: () => Promise<T>): () => Promise<T> {
+  let value: Promise<T> | undefined
+  return () => (value ??= read())
 }

@@ -1,0 +1,2 @@
+Stopping pkg: com.example.player
+Failed to stop app

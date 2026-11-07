@@ -42,6 +42,10 @@ export type { BuildType } from './adapters/parseAppConfig.js'
 export { parseVptChecksum } from './adapters/parseVptChecksum.js'
 export { parseInstallApp } from './adapters/parseInstallApp.js'
 export type { InstallApp } from './adapters/parseInstallApp.js'
+export { parseDeviceAppCommand } from './adapters/parseDeviceAppCommand.js'
+export type { DeviceAppCommand } from './adapters/parseDeviceAppCommand.js'
+export { parseVlcmTerminate } from './adapters/parseVlcmTerminate.js'
+export type { VlcmTerminate } from './adapters/parseVlcmTerminate.js'
 export { parseProjectDoctor } from './adapters/parseProjectDoctor.js'
 export type {
   ProjectCheck,
@@ -127,6 +131,7 @@ export type {
   InstallResult,
   InstallTarget
 } from './install/install.js'
+export type { InstallSteps, InstallStepsDeps, ResolvedPackage } from './install/installSteps.js'
 export { createApps } from './deviceApps/deviceApps.js'
 export type {
   AppComponent,
@@ -141,3 +146,12 @@ export type {
   InstalledApp,
   RunningComponent
 } from './deviceApps/deviceApps.js'
+export type {
+  ActionApp,
+  AppActions,
+  LaunchResult,
+  ReinstallResult,
+  RestartResult,
+  TerminateResult,
+  UninstallResult
+} from './deviceApps/appActions.js'

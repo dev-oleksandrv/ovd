@@ -274,4 +274,36 @@ describe('Packages.builds', () => {
     const { packages } = setup()
     expect(await packages.builds()).toEqual([])
   })
+
+  test('a given folder’s builds, newest first, whatever is open', async () => {
+    const other = join(home, 'dev', 'hellovega')
+    await makeFile(
+      'dev/hellovega/build/armv7-release/hello_armv7.vpkg',
+      new Date('2026-11-01T10:00:00Z')
+    )
+    await makeFile(
+      'dev/hellovega/build/aarch64-release/hello_aarch64.vpkg',
+      new Date('2026-11-01T11:00:00Z')
+    )
+    const opened = await makeFile('Downloads/player-1.4.3-dev-armv7.vpkg')
+    const { packages, project, runner } = setup()
+    await project.open(opened)
+
+    expect(await packages.builds(other)).toEqual([
+      expect.objectContaining({
+        file: 'hello_aarch64.vpkg',
+        folder: 'build/aarch64-release/',
+        displayPath: '~/dev/hellovega/build/aarch64-release/hello_aarch64.vpkg',
+        folderArch: 'aarch64'
+      }),
+      expect.objectContaining({ file: 'hello_armv7.vpkg', folder: 'build/armv7-release/' })
+    ])
+    expect(runner.calls).toEqual([])
+  })
+
+  test('a given folder without a build folder has no builds', async () => {
+    await mkdir(join(home, 'dev', 'empty'), { recursive: true })
+    const { packages } = setup()
+    expect(await packages.builds(join(home, 'dev', 'empty'))).toEqual([])
+  })
 })

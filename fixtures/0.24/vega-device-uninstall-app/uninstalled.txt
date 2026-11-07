@@ -1,0 +1,1 @@
+Uninstalling 'com.example.player' ...success

@@ -1,6 +1,8 @@
 import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import type { ActivityLog } from '../activity/activityLog.js'
 import { parseVlcmList, type VlcmEntry } from '../adapters/parseVlcmList.js'
+import { unexpectedOutput } from '../adapters/unexpectedOutput.js'
 import {
   parseVpmComponent,
   parseVpmPackages,
@@ -12,12 +14,14 @@ import { onlineTarget } from '../devices/onlineTarget.js'
 import type { Device } from '../devices/types.js'
 import { OvdError } from '../errors/ovdError.js'
 import type { Packages } from '../packages/packages.js'
+import type { InstallSteps } from '../install/installSteps.js'
 import type { Project } from '../project/project.js'
 import { expandHome } from '../project/paths.js'
 import { readProject } from '../project/readProject.js'
 import { vdaCmd } from '../sdk/commands.js'
 import type { RunResult, Runner } from '../sdk/runner.js'
 import type { SdkLocator } from '../sdk/sdkLocator.js'
+import { createAppActions, type AppActions } from './appActions.js'
 
 export interface AppsDeps {
   runner: Runner
@@ -25,6 +29,9 @@ export interface AppsDeps {
   devices: Devices
   project: Project
   packages: Packages
+  activity: ActivityLog
+  // Reinstall's install half, shared with `ovd apps install`.
+  install: InstallSteps
   homedir: string
   cwd: string
 }
@@ -87,8 +94,9 @@ export interface AppDetails {
   app: InstalledApp
 }
 
-// Apps → read (Stage 2.4a): what is installed and running on the target. Actions come in 2.4b.
-export interface Apps {
+// Apps (Stage 2.4): what is installed and running on the target, and the actions on it
+// (`appActions.ts`). Launch verification against running apps and crash history comes in 2.5.
+export interface Apps extends AppActions {
   list(opts?: AppsListOptions): Promise<AppList>
   // `ref`: a package or component ID, a .vpkg or a project folder. Without one, the open
   // project's or .vpkg's app.
@@ -118,10 +126,15 @@ const READ_TIMEOUT_MS = 30_000
 const GONE = /device '[^']*' not found|device offline|no devices\/emulators found/
 
 export function createApps(deps: AppsDeps): Apps {
-  async function shell(device: Device, command: string[], what: string): Promise<RunResult> {
+  // A device shell call, whatever its exit code. Only a device that left is an error here.
+  async function deviceShell(
+    device: Device,
+    command: string[],
+    timeoutMs = READ_TIMEOUT_MS
+  ): Promise<RunResult> {
     const { vegaPath } = await deps.sdk.get()
     const run = await deps.runner.run(
-      vdaCmd(vegaPath, ['shell', ...command], device.vdaSerial, { timeoutMs: READ_TIMEOUT_MS })
+      vdaCmd(vegaPath, ['shell', ...command], device.vdaSerial, { timeoutMs })
     )
     if (GONE.test(run.stderr) || GONE.test(run.stdout)) {
       throw new OvdError(
@@ -132,6 +145,12 @@ export function createApps(deps: AppsDeps): Apps {
           : 'Reconnect it, then check with ovd devices'
       )
     }
+    return run
+  }
+
+  // A read: any exit code but `vpm`'s "no info available" is a failure.
+  async function shell(device: Device, command: string[], what: string): Promise<RunResult> {
+    const run = await deviceShell(device, command)
     if (run.exitCode !== 0 && !vpmNotFound(run.stdout)) {
       throw new OvdError('COMMAND_FAILED', `Couldn’t read ${what} on ${device.name}`, 'Retry', {
         exitCode: run.exitCode,
@@ -139,6 +158,21 @@ export function createApps(deps: AppsDeps): Apps {
       })
     }
     return run
+  }
+
+  // `vpm info <ref> --package`: a component ID prints the package that owns it (ARCHITECTURE §8).
+  async function findPackage(device: Device, ref: string): Promise<VpmPackage | undefined> {
+    const run = await shell(device, ['vpm', 'info', ref, '--package'], 'the app')
+    if (vpmNotFound(run.stdout)) return undefined
+    const [pkg] = parseVpmPackages(run.stdout)
+    if (!pkg) throw unexpectedOutput('vpm info', run.stdout)
+    return pkg
+  }
+
+  async function installedPackage(device: Device, ref: string): Promise<VpmPackage> {
+    const pkg = await findPackage(device, ref)
+    if (!pkg) throw notInstalled(ref, device)
+    return pkg
   }
 
   async function read(device: Device): Promise<InstalledApp[]> {
@@ -180,6 +214,8 @@ export function createApps(deps: AppsDeps): Apps {
   }
 
   return {
+    ...createAppActions({ deps, deviceShell, shell, findPackage, installedPackage, packageIdOf }),
+
     async list(opts = {}) {
       const device = await onlineTarget(deps.devices, opts.device)
       const apps = (await read(device))
@@ -195,13 +231,7 @@ export function createApps(deps: AppsDeps): Apps {
       const app = (await read(device)).find(
         (a) => a.packageId === id || a.components.some((c) => c.id === id)
       )
-      if (!app) {
-        throw new OvdError(
-          'APP_NOT_INSTALLED',
-          `${id} isn’t installed on ${device.name}`,
-          'Install it with ovd apps install, or list what is installed with ovd apps'
-        )
-      }
+      if (!app) throw notInstalled(id, device)
       const components: AppComponent[] = []
       for (const component of app.components) {
         const run = await shell(device, ['vpm', 'info', component.id], 'the app’s components')
@@ -257,7 +287,15 @@ function bySourceThenTitle(a: InstalledApp, b: InstalledApp): number {
   return bySource !== 0 ? bySource : a.title.localeCompare(b.title)
 }
 
-function sourceOf(installerId: string): AppSource {
+export function notInstalled(id: string, device: Device): OvdError {
+  return new OvdError(
+    'APP_NOT_INSTALLED',
+    `${id} isn’t installed on ${device.name}`,
+    'Install it with ovd apps install, or list what is installed with ovd apps'
+  )
+}
+
+export function sourceOf(installerId: string): AppSource {
   if (installerId === SIDELOADED) return 'sideloaded'
   return installerId.startsWith(STORE) ? 'store' : 'system'
 }

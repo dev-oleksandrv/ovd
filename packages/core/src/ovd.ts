@@ -9,6 +9,7 @@ import { defaultDiscoverOptions, discoverSdk, type SdkInfo } from './sdk/discove
 import { createExecaRunner, type Runner } from './sdk/runner.js'
 import { createPackages, type Packages } from './packages/packages.js'
 import { createInstall, type Install } from './install/install.js'
+import { createInstallSteps } from './install/installSteps.js'
 import { createApps, type Apps } from './deviceApps/deviceApps.js'
 import { createPairing, type Pairing } from './pairing/pairing.js'
 import { createProject, type Project } from './project/project.js'
@@ -73,16 +74,31 @@ export function createOvd(opts: OvdOptions): Ovd {
   })
   const pairing = createPairing({ runner, sdk, devices, state, activity })
   const devmode = createDevmode({ runner, sdk, devices, activity })
-  const packages = createPackages({ runner, sdk, project, homedir, cwd: opts.cwd ?? process.cwd() })
-  const install = createInstall({ runner, sdk, devices, packages, activity })
+  const cwd = opts.cwd ?? process.cwd()
+  const packages = createPackages({ runner, sdk, project, homedir, cwd })
+  // One set of install steps: `install` and `apps.reinstall` resolve and guard alike.
+  const steps = createInstallSteps({ runner, sdk, devices, packages, project, homedir, cwd })
+  const install = createInstall({
+    runner,
+    sdk,
+    devices,
+    packages,
+    project,
+    activity,
+    homedir,
+    cwd,
+    steps
+  })
   const apps = createApps({
     runner,
     sdk,
     devices,
     project,
     packages,
+    activity,
+    install: steps,
     homedir,
-    cwd: opts.cwd ?? process.cwd()
+    cwd
   })
   return { sdk, devices, doctor, vvd, pairing, devmode, project, packages, install, apps }
 }

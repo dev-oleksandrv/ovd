@@ -63,7 +63,8 @@ export interface PackagesDeps {
 export interface Packages {
   // Without a path, reads the .vpkg open in no-project mode.
   info(path?: string): Promise<PackageInfo>
-  builds(): Promise<PackageBuild[]>
+  // The open project's builds, newest first; with a folder, that folder's (`<folder>/build/`).
+  builds(folder?: string): Promise<PackageBuild[]>
   // Only the architecture, from `vpt show-contents`: the guard reads it for each candidate fix.
   architecture(path: string): Promise<PackageArch>
 }
@@ -140,21 +141,26 @@ export function createPackages(deps: PackagesDeps): Packages {
       return parseVptContents(contents.stdout).architecture
     },
 
-    async builds() {
+    async builds(folder) {
+      if (folder !== undefined) return folderBuilds(folder)
       const mode = await deps.project.current()
       if (mode === null || mode.missing) return []
       if (mode.kind === 'vpkg') {
         const build = await describeBuild(mode.path, `${tilde(dirname(mode.path))}/`)
         return build ? [build] : []
       }
-      const paths = await findVpkgs(join(mode.path, 'build'), 1)
-      const builds = await Promise.all(
-        paths.map((path) => describeBuild(path, `${relative(mode.path, dirname(path))}/`))
-      )
-      return builds
-        .filter((b): b is PackageBuild => b !== undefined)
-        .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
+      return folderBuilds(mode.path)
     }
+  }
+
+  async function folderBuilds(folder: string): Promise<PackageBuild[]> {
+    const paths = await findVpkgs(join(folder, 'build'), 1)
+    const builds = await Promise.all(
+      paths.map((path) => describeBuild(path, `${relative(folder, dirname(path))}/`))
+    )
+    return builds
+      .filter((b): b is PackageBuild => b !== undefined)
+      .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
   }
 
   async function describeBuild(path: string, folder: string): Promise<PackageBuild | undefined> {

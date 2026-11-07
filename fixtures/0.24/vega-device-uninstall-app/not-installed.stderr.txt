@@ -1,0 +1,2 @@
+Vega operation FAILED due to an irrecoverable error: Failed: App could not be determined
+Additional logs can be found at ~/vega/sdk/vega-sdk/main/0.24.12112/logs

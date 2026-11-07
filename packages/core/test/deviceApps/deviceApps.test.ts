@@ -12,6 +12,7 @@ import {
   createStateStore,
   type OvdError
 } from '../../src/index.js'
+import { createInstallSteps } from '../../src/install/installSteps.js'
 import { FakeRunner } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
 
@@ -77,7 +78,26 @@ async function setup(script: ConstructorParameters<typeof FakeRunner>[0]) {
   const devices = createDevices({ runner, sdk, state, activity, env: {} })
   const project = createProject({ state, homedir: home, cwd: home })
   const packages = createPackages({ runner, sdk, project, homedir: home, cwd: home })
-  const apps = createApps({ runner, sdk, devices, project, packages, homedir: home, cwd: home })
+  const install = createInstallSteps({
+    runner,
+    sdk,
+    devices,
+    packages,
+    project,
+    homedir: home,
+    cwd: home
+  })
+  const apps = createApps({
+    runner,
+    sdk,
+    devices,
+    project,
+    packages,
+    activity,
+    install,
+    homedir: home,
+    cwd: home
+  })
   return { apps, project, runner }
 }
 

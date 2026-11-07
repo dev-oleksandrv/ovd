@@ -1,0 +1,2 @@
+Vega operation FAILED due to an irrecoverable error: Device not found: Cannot find the device G070000000000001. Verify the device is connected and powered on, and that you've turned on developer mode. Follow the instructions in [Run Your Apps on Fire TV Stick](https://developer.amazon.com/docs/vega/latest/run-apps.html#ftv-tab), or launch the Vega Virtual Device.
+Additional logs can be found at ~/vega/sdk/vega-sdk/main/0.24.12112/logs
