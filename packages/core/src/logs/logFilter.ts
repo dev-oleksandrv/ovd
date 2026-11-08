@@ -32,6 +32,10 @@ export function isAppIdentity(identity: string | null): boolean {
   return identity !== null && APP_IDENTITY.test(identity)
 }
 
+// A user regex can backtrack badly on a long line and block the log view, so it only sees the
+// start of each message and tag. Plain-text search sees the whole text.
+export const REGEX_SLICE_CHARS = 4_096
+
 // Validates everything before any SDK call: a bad filter is a usage error.
 export function compileLogFilter(input: LogFilterInput, now: Date): LogFilter {
   const args: Record<string, string> = {}
@@ -79,7 +83,8 @@ export function compileLogFilter(input: LogFilterInput, now: Date): LogFilter {
           'Fix the expression, or drop --regex to search for the text as is'
         )
       }
-      test = (text) => pattern.test(text)
+      test = (text) =>
+        pattern.test(text.length > REGEX_SLICE_CHARS ? text.slice(0, REGEX_SLICE_CHARS) : text)
     } else {
       const needle = search.toLowerCase()
       test = (text) => text.toLowerCase().includes(needle)

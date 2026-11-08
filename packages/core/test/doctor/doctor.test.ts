@@ -538,3 +538,68 @@ describe('Doctor.run: Project row', () => {
     })
   })
 })
+
+describe('Doctor.run: the abort signal', () => {
+  const PROJECT_DOCTOR = 'vega project doctor'
+  const folder: ProjectMode = {
+    kind: 'folder',
+    path: '/home/dev/dev/hellovega',
+    displayPath: '~/dev/hellovega',
+    name: 'hellovega',
+    osTarget: '1.2',
+    rnVersion: '0.83'
+  }
+  const withProject = () =>
+    setup({
+      script: { ...healthy(), [PROJECT_DOCTOR]: out('vega-project-doctor/one-warning.txt') },
+      project: folder
+    })
+
+  test('the sign-in probe gets the run’s signal', async () => {
+    const { doctor, runner } = setup()
+    const { signal } = new AbortController()
+
+    await doctor.run({ signal })
+
+    expect(runner.calls.find((c) => c.display === DEVMODE)?.signal).toBe(signal)
+  })
+
+  test('every command doctor runs carries the signal', async () => {
+    const { doctor, runner } = withProject()
+    const { signal } = new AbortController()
+
+    await doctor.run({ signal })
+
+    expect(runner.calls.map((c) => c.display)).toEqual(
+      expect.arrayContaining([
+        SDK_DOCTOR,
+        VDA_VERSION,
+        forwarded(stick.id, 8081),
+        forwarded(stick.id, 8097),
+        DEVMODE,
+        PROJECT_DOCTOR,
+        NODE
+      ])
+    )
+    expect(runner.calls.every((c) => c.signal === signal)).toBe(true)
+  })
+
+  test('without a signal, no command carries one', async () => {
+    const { doctor, runner } = withProject()
+
+    await doctor.run()
+
+    expect(runner.calls.length).toBeGreaterThan(0)
+    expect(runner.calls.every((c) => c.signal === undefined)).toBe(true)
+  })
+
+  test('an aborted signal rejects with an AbortError', async () => {
+    const { doctor } = setup()
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(doctor.run({ signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError'
+    })
+  })
+})

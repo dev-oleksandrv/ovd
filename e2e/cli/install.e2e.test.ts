@@ -153,7 +153,7 @@ describe('ovd install', () => {
     })
   })
 
-  test('without a device, nothing is read or installed (exit 4)', async () => {
+  test('without a device, nothing is read or installed, one entry with target null (exit 4)', async () => {
     const sandbox = createSandbox()
     await playerProject(sandbox)
 
@@ -162,6 +162,8 @@ describe('ovd install', () => {
     expect(run.exitCode).toBe(4)
     expect(run.json()).toMatchObject({ ok: false, error: { code: 'NO_TARGET' } })
     expect(sandbox.calls().some((c) => c.includes('vpt'))).toBe(false)
-    expect(sandbox.activity()).toEqual([])
+    expect(sandbox.activity()).toMatchObject([
+      { action: 'app.install', target: null, args: {}, result: 'error', errorCode: 'NO_TARGET' }
+    ])
   })
 })

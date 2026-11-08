@@ -178,7 +178,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 ### 2.4 Apps screen — done (PR #31, #88)
 
 - CLI: `ovd apps [--running] [--all]`, `ovd apps info`, `ovd apps install | reinstall | uninstall | launch | terminate [--force] | restart`, each accepting a .vpkg, a package ID or a project folder (auto-finds the Debug or Release build). `ovd install` stays as an alias of `ovd apps install`.
-- Desktop: header "On <target> · launches are verified against running-apps and crash history"; tabs "Installed · N" / "Running · N"; table (avatar, title, ID, version, status Running · pid / Stopped / Verifying… / Crashed on launch, Launch/Stop); detail actions Launch, Restart, Terminate, Force stop; info rows incl. Lifespan and Running for; "Components · vpm info / vlcm list" table; Uninstall & reinstall (note: "clears app data (to be verified)"), Uninstall.
+- Desktop: header "On <target> · launches are verified against running-apps and crash history"; tabs "Installed · N" / "Running · N"; table (avatar, title, ID, version, status Running · pid / Stopped / Verifying… / Crashed on launch, Launch/Stop); detail actions Launch, Restart, Terminate, Force stop; info rows incl. Lifespan and Running for; "Components · vpm info / vlcm list" table; Uninstall & reinstall (note: "clears app data"), Uninstall.
 - Devices → "Running now" fills in.
 
 **Expected:** every action works on a stick and the Virtual Device; Running and "Running now" update within one refresh.
@@ -338,7 +338,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 ## Stage 9 — Power-user extras
 
-Independent items, shipped one by one. **Hardware checks:** uninstall removes app data; Virtual Device snapshots save and load; `vda pull` / shell access to app data on a production stick.
+Independent items, shipped one by one. **Hardware checks:** uninstall removes app data (verified 2026-11-08: it does); Virtual Device snapshots save and load; `vda pull` / shell access to app data on a production stick.
 
 | Item                                                                             | Desktop                         |
 | -------------------------------------------------------------------------------- | ------------------------------- |
@@ -430,7 +430,7 @@ About an hour each, done just before the stage that needs them.
 | Screenshot rate on a stick with `gwsi-tool-screenshooter`   | Stage 4 (stick live view in 9) |
 | `vpt validate` output format (line numbers?)                | Stage 5.3                      |
 | `perf record` category names                                | Stage 8                        |
-| Uninstall removes app data                                  | Stage 9                        |
+| Uninstall removes app data (verified 2026-11-08: it does)   | Stage 9                        |
 | Virtual Device snapshots save and load                      | Stage 9                        |
 | `vda pull` / shell access to app data on a production stick | Stage 9                        |
 | `network speed` / `network delay` throttle app traffic      | Stage 10.1                     |

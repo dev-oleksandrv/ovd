@@ -15,6 +15,9 @@ export interface CommandSpec {
   cwd?: string
   // For commands that print an answer and then wait (`vega devmode login --json` when signed
   // out): once this returns true the runner stops the process and returns what it printed.
+  // Such a command runs in its own process group, and a match, a timeout or an abort signals
+  // the whole group (SIGTERM, then SIGKILL after a grace period): signalling only the top
+  // `vega` leaves its children behind.
   stopWhen?: (stdout: string) => boolean
   // Called with everything printed so far on each new chunk, for commands that print a prompt
   // and then wait (`vega devmode login --json` waiting for the browser sign-in).
@@ -58,6 +61,7 @@ export function createExecaRunner(): Runner {
   return {
     async run(spec) {
       if (spec.stream) return runStream(spec, spec.stream)
+      if (spec.stopWhen) return runStopWhen(spec, spec.stopWhen)
       const started = Date.now()
       const subprocess = execa(spec.file, spec.args, {
         reject: false,
@@ -68,48 +72,19 @@ export function createExecaRunner(): Runner {
         cwd: spec.cwd,
         stdin: 'ignore'
       })
-      let stopped = false
-      const { stopWhen, onStdout } = spec
-      if (stopWhen || onStdout) {
+      const { onStdout } = spec
+      if (onStdout) {
         let seen = ''
         subprocess.stdout.on('data', (chunk: Buffer) => {
           seen += chunk.toString()
-          onStdout?.(seen)
-          if (stopWhen && !stopped && stopWhen(seen)) {
-            stopped = true
-            subprocess.kill()
-          }
+          onStdout(seen)
         })
       }
       const result = await subprocess
       const command = spec.display
-      if (stopped && !result.isCanceled && !result.timedOut) {
-        return {
-          stdout: result.stdout,
-          stderr: result.stderr,
-          exitCode: result.exitCode ?? STOPPED_EXIT_CODE,
-          durationMs: Date.now() - started,
-          command,
-          stopped: true
-        }
-      }
       if (result.isCanceled) throw abortError(spec.signal)
-      if (result.timedOut) {
-        throw new OvdError(
-          'COMMAND_FAILED',
-          `${command} did not finish in time`,
-          'Check that the device is reachable and the Vega SDK works, then retry',
-          { command, timedOut: true }
-        )
-      }
-      if (result.exitCode === undefined) {
-        throw new OvdError(
-          'COMMAND_FAILED',
-          `${command} could not be started`,
-          'Check that the Vega SDK is installed (run ovd doctor)',
-          { command, cause: result.originalMessage }
-        )
-      }
+      if (result.timedOut) throw timedOut(command)
+      if (result.exitCode === undefined) throw notStarted(command, result.originalMessage)
       return {
         stdout: result.stdout,
         stderr: result.stderr,
@@ -119,6 +94,94 @@ export function createExecaRunner(): Runner {
       }
     }
   }
+}
+
+// A command that prints an answer and then waits (`vega devmode login --json`): it runs in its
+// own process group, and a match, the timeout or an abort stops the whole group.
+async function runStopWhen(
+  spec: CommandSpec,
+  stopWhen: (stdout: string) => boolean
+): Promise<RunResult> {
+  const started = Date.now()
+  const command = spec.display
+  // No `timeout`, `cancelSignal` or `forceKillAfterDelay`, as for streams: they signal only the
+  // top pid, and a detached child's group isn't killed with it.
+  const subprocess = execa(spec.file, spec.args, {
+    reject: false,
+    detached: true,
+    stdin: 'ignore',
+    env: spec.env,
+    cwd: spec.cwd
+  })
+
+  let reason: 'matched' | 'timeout' | 'abort' | undefined
+  let stopping: Promise<void> | undefined
+  const exited = subprocess.then(() => undefined)
+  const stop = (why: 'matched' | 'timeout' | 'abort') => {
+    if (reason) return
+    reason = why
+    stopping = stopGroup(subprocess.pid, exited, STREAM_GRACE_MS)
+  }
+
+  let seen = ''
+  const onData = (chunk: Buffer) => {
+    seen += chunk.toString()
+    spec.onStdout?.(seen)
+    if (stopWhen(seen)) stop('matched')
+  }
+  subprocess.stdout.on('data', onData)
+
+  const timeoutMs = spec.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const timer = timeoutMs > 0 ? setTimeout(() => stop('timeout'), timeoutMs) : undefined
+  const { signal } = spec
+  const onAbort = () => stop('abort')
+  if (signal?.aborted) onAbort()
+  else signal?.addEventListener('abort', onAbort, { once: true })
+
+  const result = await subprocess
+  clearTimeout(timer)
+  signal?.removeEventListener('abort', onAbort)
+  subprocess.stdout.off('data', onData)
+  if (stopping) await stopping
+
+  if (reason === 'abort') throw abortError(signal)
+  if (reason === 'timeout') throw timedOut(command)
+  if (reason === 'matched') {
+    return {
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode ?? STOPPED_EXIT_CODE,
+      durationMs: Date.now() - started,
+      command,
+      stopped: true
+    }
+  }
+  if (result.exitCode === undefined) throw notStarted(command, result.originalMessage)
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    exitCode: result.exitCode,
+    durationMs: Date.now() - started,
+    command
+  }
+}
+
+function timedOut(command: string): OvdError {
+  return new OvdError(
+    'COMMAND_FAILED',
+    `${command} did not finish in time`,
+    'Check that the device is reachable and the Vega SDK works, then retry',
+    { command, timedOut: true }
+  )
+}
+
+function notStarted(command: string, cause: string | undefined): OvdError {
+  return new OvdError(
+    'COMMAND_FAILED',
+    `${command} could not be started`,
+    'Check that the Vega SDK is installed (run ovd doctor)',
+    { command, cause }
+  )
 }
 
 async function runStream(
@@ -177,12 +240,7 @@ async function runStream(
     }
   }
   if (result.exitCode === undefined && !result.isTerminated) {
-    throw new OvdError(
-      'COMMAND_FAILED',
-      `${command} could not be started`,
-      'Check that the Vega SDK is installed (run ovd doctor)',
-      { command, cause: result.originalMessage }
-    )
+    throw notStarted(command, result.originalMessage)
   }
   // Ended by a signal OVD didn't send (SIGHUP, an OOM kill): reported as a shell would.
   const exitCode =

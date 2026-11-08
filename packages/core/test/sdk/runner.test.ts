@@ -210,3 +210,83 @@ describe('createExecaRunner streams', () => {
     expect(result).not.toHaveProperty('stopped')
   })
 })
+
+describe('createExecaRunner stopWhen', () => {
+  const runner = createExecaRunner()
+
+  // A child that starts a grandchild, prints both pids, then the sign-in probe's answer, and
+  // waits, as `vega devmode login --json` does when signed out.
+  const probe = node(
+    "const { spawn } = require('node:child_process');" +
+      "const g = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });" +
+      "process.stdout.write(process.pid + ' ' + g.pid + '\\n');" +
+      'setTimeout(() => console.log(\'{"status":"pending"}\'), 50);setInterval(() => {}, 1000)'
+  )
+  const pidsOf = (stdout: string) => {
+    const [child = 0, grandchild = 0] = (stdout.split('\n')[0] ?? '').split(' ').map(Number)
+    return { child, grandchild }
+  }
+  const gone = (pid: number) => {
+    try {
+      process.kill(pid, 0)
+      return false
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === 'ESRCH'
+    }
+  }
+  const groupGone = (pid: number) => gone(-pid)
+
+  test('a match stops the whole group and returns the output so far', async () => {
+    const result = await runner.run({
+      ...probe,
+      stopWhen: (stdout) => stdout.includes('"pending"')
+    })
+
+    expect(result).toMatchObject({ stopped: true })
+    expect(result.stdout).toContain('{"status":"pending"}')
+    const { child, grandchild } = pidsOf(result.stdout)
+    expect(grandchild).toBeGreaterThan(0)
+    await expect.poll(() => gone(grandchild)).toBe(true)
+    await expect.poll(() => groupGone(child)).toBe(true)
+  })
+
+  test('a timeout rejects with COMMAND_FAILED and leaves no grandchild', async () => {
+    let seen = ''
+    const run = runner.run({
+      ...probe,
+      timeoutMs: 300,
+      onStdout: (stdout) => (seen = stdout),
+      stopWhen: () => false
+    })
+
+    await expect(run).rejects.toMatchObject({ code: 'COMMAND_FAILED', details: { timedOut: true } })
+    const { child, grandchild } = pidsOf(seen)
+    expect(grandchild).toBeGreaterThan(0)
+    await expect.poll(() => gone(grandchild)).toBe(true)
+    await expect.poll(() => groupGone(child)).toBe(true)
+  })
+
+  test('an abort rejects with an AbortError and leaves no grandchild', async () => {
+    const controller = new AbortController()
+    let seen = ''
+    let printed = (): void => undefined
+    const first = new Promise<void>((resolve) => (printed = resolve))
+    const run = runner.run({
+      ...probe,
+      signal: controller.signal,
+      onStdout: (stdout) => {
+        seen = stdout
+        printed()
+      },
+      stopWhen: () => false
+    })
+    await first
+    controller.abort()
+
+    await expect(run).rejects.toMatchObject({ name: 'AbortError' })
+    const { child, grandchild } = pidsOf(seen)
+    expect(grandchild).toBeGreaterThan(0)
+    await expect.poll(() => gone(grandchild)).toBe(true)
+    await expect.poll(() => groupGone(child)).toBe(true)
+  })
+})

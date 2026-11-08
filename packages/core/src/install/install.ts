@@ -1,6 +1,6 @@
 import { stat } from 'node:fs/promises'
 import type { ActivityLog } from '../activity/activityLog.js'
-import { createLogged } from '../activity/logged.js'
+import { createLogged, createPreflight } from '../activity/logged.js'
 import type { PackageArch } from '../adapters/parseVptContents.js'
 import type { PackageBuild, PackageInfo } from '../packages/packages.js'
 import type { ArchVerdict } from './archGuard.js'
@@ -69,6 +69,7 @@ export interface Install {
 
 export function createInstall(deps: InstallDeps): Install {
   const logged = createLogged(deps.activity)
+  const preflight = createPreflight(deps.activity)
   const steps = deps.steps ?? createInstallSteps(deps)
 
   return {
@@ -78,12 +79,23 @@ export function createInstall(deps: InstallDeps): Install {
     },
 
     async install(ref, opts = {}) {
-      const targetOf = once(() => steps.target(opts.device))
-      const resolved = await steps.resolve(ref, targetOf)
-      // The target before the package: no `vpt` read for a target that isn't there.
-      const target = await targetOf()
-      const info = await deps.packages.info(resolved.path)
       const force = opts.force ?? false
+      // Failures before the target is known (no package, no target, an offline target, an
+      // invalid app ID) are logged once, with `target: null` (ADR 0011). Only `force` is
+      // recorded before `packages.info` read the file: a raw ref is never logged.
+      const { resolved, target, info } = await preflight('app.install', async (known) => {
+        if (force) known.args.force = 'true'
+        const targetOf = once(async () => {
+          const read = await steps.target(opts.device)
+          known.target = read.id
+          return read
+        })
+        const resolved = await steps.resolve(ref, targetOf)
+        // The target before the package: no `vpt` read for a target that isn't there.
+        const target = await targetOf()
+        const info = await deps.packages.info(resolved.path)
+        return { resolved, target, info }
+      })
       const args = { package: info.file, ...(force ? { force: 'true' } : {}) }
       return logged('app.install', target.id, args, async () => {
         const guard = await steps.guard(info, target, {

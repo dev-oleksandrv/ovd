@@ -17,7 +17,8 @@ const APP = 'package or component ID, .vpkg or project folder (default: the open
 
 // The app actions (Stage 2.4): launch, terminate, restart, uninstall, reinstall. Each one is a
 // device action, logged by core (ADR 0011). Launch and restart are verified (ADR 0012): an app
-// that crashed or isn't running afterwards exits 7, with the launch next to the error.
+// that crashed or isn't running afterwards exits 7, with the launch next to the error. Launch
+// leaves an app that already runs as it is and exits 0 (`"wasRunning": true`).
 export function addAppActionCommands(
   apps: Command,
   deps: CliDeps,
@@ -93,7 +94,7 @@ export function addAppActionCommands(
 
   apps
     .command('reinstall')
-    .description('Uninstall an app, then install it again; clears app data (to be verified)')
+    .description('Uninstall an app, then install it again; clears app data')
     .argument('[app]', '.vpkg, project folder or package ID (default: the open .vpkg or project)')
     .option('--force', 'install even when the package and target architectures differ')
     .action(async (app: string | undefined, opts: { force?: boolean }, cmd: Command) => {

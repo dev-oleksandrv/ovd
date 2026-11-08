@@ -91,6 +91,47 @@ describe('createLogBatcher', () => {
     expect(sent).toHaveLength(1)
   })
 
+  test('a reset of 12,001 entries goes out as a reset and two appends, in order', () => {
+    const { batcher, sent } = setup()
+    const entries = Array.from({ length: 12_001 }, (_, i) => entry(i))
+
+    batcher.reset(1, entries, counts(12_001), ['com.example.player'])
+
+    expect(sent.map((u) => u.kind)).toEqual(['reset', 'append', 'append'])
+    expect(sent.map((u) => (u.kind === 'state' ? 0 : u.entries.length))).toEqual([
+      5_000, 5_000, 2_001
+    ])
+    const seqs = sent.flatMap((u) => (u.kind === 'state' ? [] : u.entries.map((e) => e.seq)))
+    expect(seqs).toEqual(Array.from({ length: 12_001 }, (_, i) => i))
+    expect(sent.every((u) => u.kind !== 'state' && u.session === 1)).toBe(true)
+    expect(
+      sent.every(
+        (u) =>
+          u.kind !== 'state' &&
+          u.counts.lines === 12_001 &&
+          u.apps.length === 1 &&
+          u.apps[0] === 'com.example.player'
+      )
+    ).toBe(true)
+  })
+
+  test('an append made right after a reset comes after the reset’s messages', () => {
+    const { batcher, sent } = setup()
+    batcher.reset(
+      1,
+      Array.from({ length: 6_000 }, (_, i) => entry(i)),
+      counts(6_000),
+      []
+    )
+    batcher.append(1, [entry(6_000)], counts(6_001), [])
+    expect(sent).toHaveLength(2)
+
+    vi.advanceTimersByTime(100)
+
+    expect(sent.map((u) => u.kind)).toEqual(['reset', 'append', 'append'])
+    expect(sent[2]).toMatchObject({ entries: [entry(6_000)], counts: counts(6_001) })
+  })
+
   test('a state is sent at once', () => {
     const { batcher, sent } = setup()
     batcher.state(2, { status: 'idle' })

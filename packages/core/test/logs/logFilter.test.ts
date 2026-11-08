@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { createLogStreamParser } from '../../src/adapters/parseLogStream.js'
-import { compileLogFilter, isAppIdentity, type LogFilterInput } from '../../src/logs/logFilter.js'
+import {
+  compileLogFilter,
+  isAppIdentity,
+  REGEX_SLICE_CHARS,
+  type LogFilterInput
+} from '../../src/logs/logFilter.js'
+import type { LogEntry } from '../../src/logs/types.js'
 import { fixture } from '../support/fixtures.js'
 
 const NOW = new Date('2026-11-08T12:00:00Z')
@@ -120,4 +126,52 @@ test.each([
   [null, false]
 ])('isAppIdentity(%j) is %s', (identity, expected) => {
   expect(isAppIdentity(identity)).toBe(expected)
+})
+
+describe('compileLogFilter: the regex slice', () => {
+  const entry = (fields: Partial<LogEntry>): LogEntry => ({
+    seq: 0,
+    time: '2026-11-08T11:59:00.000Z',
+    deviceTime: null,
+    level: 'I',
+    priority: 'info',
+    facility: null,
+    process: PLAYER,
+    pid: 3571,
+    tid: 3571,
+    tag: 'js',
+    message: '',
+    parsed: true,
+    ...fields
+  })
+  const matches = (input: LogFilterInput, e: LogEntry) => compileLogFilter(input, NOW).matches(e)
+  const far = 'x'.repeat(REGEX_SLICE_CHARS + 904) + 'needle'
+  const near = 'needle' + 'x'.repeat(REGEX_SLICE_CHARS + 904)
+
+  test('a regex match only past the slice isn’t found', () => {
+    expect(matches({ search: 'needle', regex: true }, entry({ message: far }))).toBe(false)
+  })
+
+  test('a regex match inside the slice is found', () => {
+    expect(matches({ search: 'needle', regex: true }, entry({ message: near }))).toBe(true)
+  })
+
+  test('plain-text search still sees the whole message', () => {
+    expect(matches({ search: 'needle' }, entry({ message: far }))).toBe(true)
+  })
+
+  test('the tag is sliced the same way', () => {
+    expect(matches({ search: 'needle', regex: true }, entry({ tag: far }))).toBe(false)
+    expect(matches({ search: 'needle', regex: true }, entry({ tag: near }))).toBe(true)
+    expect(matches({ search: 'needle' }, entry({ tag: far }))).toBe(true)
+  })
+
+  test('a pathological pattern on a long line returns quickly', () => {
+    const filter = compileLogFilter({ search: 'a*b', regex: true }, NOW)
+    const started = Date.now()
+
+    expect(filter.matches(entry({ message: 'a'.repeat(200_000) }))).toBe(false)
+
+    expect(Date.now() - started).toBeLessThan(1_000)
+  })
 })

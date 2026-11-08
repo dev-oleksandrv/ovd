@@ -48,3 +48,39 @@ export function createLogged(activity: ActivityLog): Logged {
     return value
   }
 }
+
+// What a preflight knew when it failed: filled in as each value passes validation.
+export interface PreflightKnown {
+  target: string | null
+  args: Record<string, string>
+}
+
+export type Preflight = <T>(
+  action: ActivityAction,
+  run: (known: PreflightKnown) => Promise<T>
+) => Promise<T>
+
+// The part of a device action before its target is known (resolving the app, reading the
+// target). A failure there is still an attempt at a device action, so it is logged once, with
+// `target: null` until the target is known (ADR 0011). It wraps only that part, never the later
+// `logged` call, so a failure inside `logged` still writes exactly one entry. As in
+// `createLogged`, a throw that isn't an `OvdError` (a bug, an abort) isn't logged.
+export function createPreflight(activity: ActivityLog): Preflight {
+  return async (action, run) => {
+    const known: PreflightKnown = { target: null, args: {} }
+    try {
+      return await run(known)
+    } catch (error) {
+      if (error instanceof OvdError) {
+        await activity.append({
+          action,
+          target: known.target,
+          args: { ...known.args },
+          result: 'error',
+          errorCode: error.code
+        })
+      }
+      throw error
+    }
+  }
+}

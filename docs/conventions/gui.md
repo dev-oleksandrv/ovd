@@ -39,5 +39,5 @@ Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/g
 
 ## Performance
 
-- Log view: virtualized list over a ring buffer (~100k lines). Filter in core where possible. The UI must not freeze under a log flood.
+- Log view: virtualized list over a ring buffer (~100k lines, ~64 MiB); a reset of the list crosses IPC in batches. Filter in core where possible. The UI must not freeze under a log flood.
 - Polling intervals come from the design (devices 2 s, crashes 5 s, memory 1 Hz). Stop polling when the screen is hidden.

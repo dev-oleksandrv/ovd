@@ -40,8 +40,8 @@ interface FakeSession {
   setFilter: ReturnType<typeof vi.fn>
 }
 
-// A `logs.start` that resolves at once with a session holding `entries`.
-function fakeLogs(opts: { failWith?: OvdError } = {}) {
+// A `logs.start` that resolves at once with a session holding `entries` (two by default).
+function fakeLogs(opts: { failWith?: OvdError; entries?: number } = {}) {
   const sessions: FakeSession[] = []
   const start = vi.fn(async (start: LogStartOptions = {}): Promise<LogSession> => {
     if (opts.failWith) throw opts.failWith
@@ -53,8 +53,14 @@ function fakeLogs(opts: { failWith?: OvdError } = {}) {
         resolve(end)
       }
     })
-    let entries = [entry(0), entry(1, 'E')]
-    let counts: LogCounts = { lines: 2, errors: 1, shown: 2 }
+    let entries =
+      opts.entries === undefined
+        ? [entry(0), entry(1, 'E')]
+        : Array.from({ length: opts.entries }, (_, i) => entry(i))
+    let counts: LogCounts =
+      opts.entries === undefined
+        ? { lines: 2, errors: 1, shown: 2 }
+        : { lines: opts.entries, errors: 0, shown: opts.entries }
     const setFilter = vi.fn((input: { level?: string }) => {
       if (input.level === 'loud') {
         throw new OvdError('INVALID_LOG_FILTER', '--level "loud" isn’t a log level', 'hint')
@@ -87,7 +93,7 @@ function fakeLogs(opts: { failWith?: OvdError } = {}) {
 
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve))
 
-function setup(opts: { failWith?: OvdError } = {}) {
+function setup(opts: { failWith?: OvdError; entries?: number } = {}) {
   const fake = fakeLogs(opts)
   const sent: LogsUpdate[] = []
   const controller = createLogsController({ logs: fake.logs, send: (u) => sent.push(u) })
@@ -245,6 +251,23 @@ describe('createLogsController', () => {
     expect(start).toHaveBeenCalledTimes(1)
     await controller.restart(STICK)
     expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ filter: { level: 'e' } }))
+  })
+
+  test('setFilter on 12,001 entries goes out as a reset and two appends, then live entries', async () => {
+    const { controller, sessions, sent } = setup({ entries: 12_001 })
+    await controller.open(STICK)
+    await settle()
+    sent.length = 0
+
+    await controller.setFilter({ search: 'tick' })
+
+    expect(sent.map((u) => u.kind)).toEqual(['reset', 'append', 'append'])
+    const seqs = sent.flatMap((u) => (u.kind === 'state' ? [] : u.entries.map((e) => e.seq)))
+    expect(seqs).toEqual(Array.from({ length: 12_001 }, (_, i) => i))
+    sessions[0]?.opts.onEntries?.([entry(12_001)], { lines: 12_002, errors: 0, shown: 12_002 }, [])
+    vi.advanceTimersByTime(100)
+    expect(sent).toHaveLength(4)
+    expect(sent.at(-1)).toMatchObject({ kind: 'append', entries: [{ seq: 12_001 }] })
   })
 
   test('an invalid filter returns INVALID_LOG_FILTER', async () => {

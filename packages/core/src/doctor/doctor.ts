@@ -29,9 +29,10 @@ export interface DoctorDeps {
   portInUse: (port: number) => Promise<boolean>
 }
 
-// Doctor only reports (spec C9): it never writes state or the activity log.
+// Doctor only reports (spec C9): it never writes state or the activity log. `signal` ends the
+// command in flight and the run (Ctrl+C in `ovd doctor`): it rejects with an AbortError.
 export interface Doctor {
-  run(): Promise<DoctorReport>
+  run(opts?: { signal?: AbortSignal }): Promise<DoctorReport>
 }
 
 const NAMES: Record<CheckId, string> = {
@@ -76,6 +77,11 @@ function ran(id: CheckId, result: Result): Result {
   return command === undefined ? result : { ...result, command }
 }
 
+// The signal for a command's options, only when there is one.
+function withSignal(signal: AbortSignal | undefined): { signal?: AbortSignal } {
+  return signal ? { signal } : {}
+}
+
 function skipped(detail: string): Result {
   return { status: 'skipped', detail }
 }
@@ -94,7 +100,9 @@ export function createDoctor(deps: DoctorDeps): Doctor {
   const tilde = (path: string) =>
     path.startsWith(`${deps.homedir}/`) ? `~${path.slice(deps.homedir.length)}` : path
 
-  async function sdkCheck(): Promise<{ result: Result; sdk?: SdkInfo }> {
+  async function sdkCheck(
+    signal: AbortSignal | undefined
+  ): Promise<{ result: Result; sdk?: SdkInfo }> {
     let sdk: SdkInfo
     try {
       // Re-check must see an SDK installed while the app was open.
@@ -118,7 +126,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     }
     const result = await guarded(async () => {
       const run = await deps.runner.run(
-        vegaCmd(sdk.vegaPath, ['sdk', 'config', 'doctor', '--json'])
+        vegaCmd(sdk.vegaPath, ['sdk', 'config', 'doctor', '--json'], withSignal(signal))
       )
       const health = parseSdkConfigDoctor(run.stdout)
       const broken = health.corrupted + health.removed
@@ -137,14 +145,16 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     return { sdk, result: ran('sdk', result) }
   }
 
-  async function vdaCheck(sdk: SdkInfo): Promise<Result> {
+  async function vdaCheck(sdk: SdkInfo, signal: AbortSignal | undefined): Promise<Result> {
     const failed: Result = {
       status: 'fail',
       detail: 'vega exec vda version didn’t respond',
       hint: 'Start it with vega exec vda start-server, then re-check'
     }
     try {
-      const run = await deps.runner.run(vdaCmd(sdk.vegaPath, ['version']))
+      const run = await deps.runner.run(
+        vdaCmd(sdk.vegaPath, ['version'], undefined, withSignal(signal))
+      )
       if (run.exitCode !== 0) return failed
       parseVdaVersion(run.stdout)
       return { status: 'ok', detail: 'Checked with vega exec vda version' }
@@ -189,14 +199,16 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     }
   }
 
-  async function devmodeCheck(sdk: SdkInfo): Promise<Result> {
+  async function devmodeCheck(sdk: SdkInfo, signal: AbortSignal | undefined): Promise<Result> {
     const unknown: Result = { status: 'info', detail: 'Couldn’t check sign-in' }
     try {
       const run = await deps.runner.run({
         ...vegaCmd(sdk.vegaPath, ['devmode', 'login', '--json'], {
-          timeoutMs: DEVMODE_TIMEOUT_MS
+          timeoutMs: DEVMODE_TIMEOUT_MS,
+          ...withSignal(signal)
         }),
-        // Stop at the pending answer: doctor must not leave a sign-in waiting.
+        // Stop at the pending answer: doctor must not leave a sign-in waiting. The runner stops
+        // the probe's whole process group, also on the timeout or an abort.
         stopWhen: (stdout) => /"status"\s*:\s*"pending"/.test(stdout)
       })
       const login = parseDevmodeLogin(run.stdout)
@@ -218,7 +230,11 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     }
   }
 
-  async function metroCheck(sdk: SdkInfo, snapshot: { devices: Device[]; target: string | null }) {
+  async function metroCheck(
+    sdk: SdkInfo,
+    snapshot: { devices: Device[]; target: string | null },
+    signal: AbortSignal | undefined
+  ) {
     const inUse = (
       await Promise.all(METRO_PORTS.map(async (p) => ((await deps.portInUse(p)) ? p : null)))
     ).filter((p): p is number => p !== null)
@@ -239,7 +255,8 @@ export function createDoctor(deps: DoctorDeps): Doctor {
             sdk.vegaPath,
             'is-port-forwarded',
             ['--port', String(port), '--forward', 'false'],
-            target.id
+            target.id,
+            withSignal(signal)
           )
         )
         if (run.exitCode !== 0) throw new OvdError('COMMAND_FAILED', run.stderr, '')
@@ -262,7 +279,10 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     return ran('metro', { status: 'info', detail: `${host} · ${where}` })
   }
 
-  async function projectCheck(sdk: SdkInfo | undefined): Promise<Result> {
+  async function projectCheck(
+    sdk: SdkInfo | undefined,
+    signal: AbortSignal | undefined
+  ): Promise<Result> {
     const open = await deps.project.current()
     if (open === null) return { status: 'info', detail: 'No project open' }
     if (open.kind === 'vpkg') {
@@ -288,7 +308,8 @@ export function createDoctor(deps: DoctorDeps): Doctor {
         const run = await deps.runner.run(
           vegaCmd(sdk.vegaPath, ['project', 'doctor'], {
             cwd: open.path,
-            timeoutMs: PROJECT_TIMEOUT_MS
+            timeoutMs: PROJECT_TIMEOUT_MS,
+            ...withSignal(signal)
           })
         )
         const parsed = parseProjectDoctor(run.stdout)
@@ -315,14 +336,17 @@ export function createDoctor(deps: DoctorDeps): Doctor {
 
   // An app started from Finder or the Dock doesn't get the shell PATH, so `node` from the
   // app's own PATH would miss an nvm/fnm/Volta install; `-i` because nvm loads from ~/.zshrc.
-  async function nodeCheck(): Promise<{ result: Result; node?: string }> {
+  async function nodeCheck(
+    signal: AbortSignal | undefined
+  ): Promise<{ result: Result; node?: string }> {
     const hint = `Install Node ${NODE_MAJOR} or newer`
     const node = await deps.runner
       .run({
         file: deps.shell,
         args: ['-ilc', 'node --version'],
         display: 'node --version',
-        timeoutMs: NODE_TIMEOUT_MS
+        timeoutMs: NODE_TIMEOUT_MS,
+        ...withSignal(signal)
       })
       .then((run) => (run.exitCode === 0 ? parseNodeVersion(run.stdout).version : undefined))
       // Not started, timed out, or no version line: all mean no Node this shell can run.
@@ -343,8 +367,13 @@ export function createDoctor(deps: DoctorDeps): Doctor {
   }
 
   return {
-    async run() {
-      const [host, { result: sdkResult, sdk }] = await Promise.all([deps.host(), sdkCheck()])
+    async run(opts = {}) {
+      const { signal } = opts
+      // Every command gets the signal. The reads that take none (SDK discovery, the device
+      // list, the Virtual Device's Developer Mode) are followed by a check, so an abort during
+      // them doesn't let doctor run on.
+      const [host, { result: sdkResult, sdk }] = await Promise.all([deps.host(), sdkCheck(signal)])
+      signal?.throwIfAborted()
       const results: Partial<Record<CheckId, Result>> = { sdk: sdkResult }
       let devices: Device[] = []
       if (!sdk) {
@@ -352,7 +381,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
           results[id] = skipped('Waiting for the Vega SDK')
         }
       } else {
-        results.vda = ran('vda', await vdaCheck(sdk))
+        results.vda = ran('vda', await vdaCheck(sdk, signal))
         if (results.vda.status === 'fail') {
           results.devices = skipped('Waiting for VDA')
           results.metro = skipped('Waiting for VDA')
@@ -374,17 +403,21 @@ export function createDoctor(deps: DoctorDeps): Doctor {
           } else {
             devices = snapshot.devices
             results.devices = ran('devices', devicesCheck(snapshot.devices))
-            results.metro = await metroCheck(sdk, snapshot)
+            results.metro = await metroCheck(sdk, snapshot, signal)
           }
         }
+        signal?.throwIfAborted()
         results.devmode =
           (await vvdDevmodeCheck(devices)) ??
           (sdk.cli === 'manager'
-            ? ran('devmode', await devmodeCheck(sdk))
+            ? ran('devmode', await devmodeCheck(sdk, signal))
             : skipped('Needs the Vega CLI (SDK Manager)'))
+        signal?.throwIfAborted()
       }
-      results.project = await projectCheck(sdk)
-      const { result: nodeResult, node } = await nodeCheck()
+      results.project = await projectCheck(sdk, signal)
+      signal?.throwIfAborted()
+      const { result: nodeResult, node } = await nodeCheck(signal)
+      signal?.throwIfAborted()
       results.node = nodeResult
       const order: CheckId[] = ['sdk', 'vda', 'project', 'devices', 'devmode', 'metro', 'node']
       return {

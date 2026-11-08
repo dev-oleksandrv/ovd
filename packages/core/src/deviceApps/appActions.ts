@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises'
-import { createLogged } from '../activity/logged.js'
+import { createLogged, createPreflight, type PreflightKnown } from '../activity/logged.js'
 import { parseDeviceAppCommand } from '../adapters/parseDeviceAppCommand.js'
 import { parseVlcmList } from '../adapters/parseVlcmList.js'
 import { parseVlcmTerminate } from '../adapters/parseVlcmTerminate.js'
@@ -26,13 +26,25 @@ export interface ActionApp {
   componentId?: string
 }
 
-// What `launch-app` reported, and whether the app runs afterwards: the running component and
-// the crash history decide (ADR 0012, `launchVerification.ts`).
-export type LaunchResult = {
-  target: AppsTarget
-  app: ActionApp & { componentId: string }
-  launched: true
-} & LaunchVerification
+// Launch first reads `vlcm list --app-id`: an app that already runs is returned as it is, with
+// its pid, and nothing is launched. Otherwise what `launch-app` reported, and whether the app
+// runs afterwards: the running component and the crash history decide (ADR 0012,
+// `launchVerification.ts`).
+export type LaunchResult =
+  | ({
+      target: AppsTarget
+      app: ActionApp & { componentId: string }
+      launched: true
+      wasRunning: false
+    } & LaunchVerification)
+  | {
+      target: AppsTarget
+      app: ActionApp & { componentId: string }
+      launched: false
+      wasRunning: true
+      verified: true
+      pid: number
+    }
 
 export interface TerminateResult {
   target: AppsTarget
@@ -128,6 +140,7 @@ function notVerifiedOutcome(result: LaunchVerification) {
 export function createAppActions(ctx: AppActionsContext): AppActions {
   const { deps } = ctx
   const logged = createLogged(deps.activity)
+  const preflight = createPreflight(deps.activity)
   const verifiedLaunch = createLaunchVerifier(ctx, deps.sleep ?? ((ms) => delay(ms)))
 
   // Package and component IDs read from the device are checked too before they reach a command.
@@ -150,14 +163,14 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     )
   }
 
-  // `launch-app`, verified. The interactive component comes first: a package without one
-  // reads and starts nothing on the device.
+  // `launch-app` of the interactive component, verified. The caller reads the component first
+  // (`interactiveComponent`): a package without one reads and starts nothing on the device.
   async function launchComponent(
     device: Device,
     pkg: VpmPackage,
+    component: AppId,
     onVerifying: (() => void) | undefined
-  ): Promise<{ componentId: AppId; verification: LaunchVerification }> {
-    const component = await interactiveComponent(device, pkg)
+  ): Promise<LaunchVerification> {
     const launch = async () => {
       const { vegaPath } = await deps.sdk.get()
       const run = await deps.runner.run(
@@ -177,8 +190,7 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
         )
       }
     }
-    const verification = await verifiedLaunch(device, pkg, component, launch, onVerifying)
-    return { componentId: component, verification }
+    return verifiedLaunch(device, pkg, component, launch, onVerifying)
   }
 
   async function terminatePackage(device: Device, pkg: VpmPackage, force: boolean) {
@@ -235,28 +247,57 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     }
   }
 
-  // The app and the target come before `logged`, as for `install`: a failure there (no app,
-  // no target, an offline target) writes no activity entry.
-  async function prepare(ref: string | undefined, override: string | undefined) {
+  // The app and the target come before `logged`, as for `install`, inside `preflight`: a
+  // failure there (no app, an invalid app ID, no target, an offline target) is logged once, with
+  // `target: null` until the target is known (ADR 0011).
+  async function prepare(
+    ref: string | undefined,
+    override: string | undefined,
+    known: PreflightKnown
+  ) {
     const id = await ctx.packageIdOf(ref)
+    known.args.app = id
     const device = await onlineTarget(deps.devices, override)
+    known.target = device.id
     return { id, device, target: { id: device.id, name: device.name } }
   }
 
   return {
     async launch(ref, opts = {}) {
-      const { id, device, target } = await prepare(ref, opts.device)
+      const { id, device, target } = await preflight('app.launch', (known) =>
+        prepare(ref, opts.device, known)
+      )
       return logged(
         'app.launch',
         device.id,
         { app: id },
         async (): Promise<LaunchResult> => {
           const pkg = await ctx.installedPackage(device, id)
-          const { componentId, verification } = await launchComponent(device, pkg, opts.onVerifying)
+          const component = await interactiveComponent(device, pkg)
+          const app = { packageId: pkg.id, title: pkg.title, componentId: component }
+          // The same read as the verifier's: an app that already runs is left as it is.
+          const listed = parseVlcmList(
+            (await ctx.shell(device, ['vlcm', 'list', '--app-id', component], 'the running app'))
+              .stdout
+          )
+          // pid 0 is `IDLE` (just starting), not running (ARCHITECTURE §8).
+          const running = listed.find((r) => r.application === component && r.pid > 0)
+          if (running) {
+            return {
+              target,
+              app,
+              launched: false as const,
+              wasRunning: true as const,
+              verified: true as const,
+              pid: running.pid
+            }
+          }
+          const verification = await launchComponent(device, pkg, component, opts.onVerifying)
           return {
             target,
-            app: { packageId: pkg.id, title: pkg.title, componentId },
+            app,
             launched: true as const,
+            wasRunning: false as const,
             ...verification
           }
         },
@@ -266,7 +307,10 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
 
     async terminate(ref, opts = {}) {
       const force = opts.force ?? false
-      const { id, device, target } = await prepare(ref, opts.device)
+      const { id, device, target } = await preflight('app.terminate', (known) => {
+        if (force) known.args.force = 'true'
+        return prepare(ref, opts.device, known)
+      })
       const args = { app: id, ...(force ? { force: 'true' } : {}) }
       return logged('app.terminate', device.id, args, async () => {
         const pkg = await ctx.installedPackage(device, id)
@@ -281,7 +325,9 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     },
 
     async restart(ref, opts = {}) {
-      const { id, device, target } = await prepare(ref, opts.device)
+      const { id, device, target } = await preflight('app.restart', (known) =>
+        prepare(ref, opts.device, known)
+      )
       return logged(
         'app.restart',
         device.id,
@@ -294,10 +340,11 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
           const wasRunning = running.some((r) => pkg.componentIds.includes(r.application))
           // Graceful stop only when the app runs (`launch-app` itself force-stops it).
           if (wasRunning) await terminatePackage(device, pkg, false)
-          const { componentId, verification } = await launchComponent(device, pkg, opts.onVerifying)
+          const component = await interactiveComponent(device, pkg)
+          const verification = await launchComponent(device, pkg, component, opts.onVerifying)
           return {
             target,
-            app: { packageId: pkg.id, title: pkg.title, componentId },
+            app: { packageId: pkg.id, title: pkg.title, componentId: component },
             wasRunning,
             launched: true as const,
             ...verification
@@ -308,7 +355,9 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     },
 
     async uninstall(ref, opts = {}) {
-      const { id, device, target } = await prepare(ref, opts.device)
+      const { id, device, target } = await preflight('app.uninstall', (known) =>
+        prepare(ref, opts.device, known)
+      )
       return logged('app.uninstall', device.id, { app: id }, async () => {
         const pkg = await ctx.installedPackage(device, id)
         await uninstallPackage(device, pkg)
@@ -319,13 +368,28 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     async reinstall(ref, opts = {}) {
       const force = opts.force ?? false
       const steps = deps.install
-      const targetOf = once(() => steps.targetDevice(opts.device))
-      // As for `install`: the package and the target before `logged`.
-      const resolved = await steps.resolve(ref, async () => (await targetOf()).target)
-      const { device, target } = await targetOf()
-      const info = await deps.packages.info(resolved.path)
-      // The ID that reaches the SDK is the package's, whatever the ref was.
-      const id = assertAppId(info.id, { from: 'vpkg', file: info.file })
+      // As for `install`: the package and the target before `logged`. A failure there is logged
+      // once, with `target: null` until the target is read (ADR 0011). A package ID read from
+      // the .vpkg comes after the target, so its entry carries the target.
+      const { resolved, device, target, info, id } = await preflight(
+        'app.reinstall',
+        async (known) => {
+          if (force) known.args.force = 'true'
+          const targetOf = once(async () => {
+            const read = await steps.targetDevice(opts.device)
+            known.target = read.target.id
+            return read
+          })
+          const resolved = await steps.resolve(ref, async () => (await targetOf()).target)
+          const { device, target } = await targetOf()
+          const info = await deps.packages.info(resolved.path)
+          known.args.package = info.file
+          // The ID that reaches the SDK is the package's, whatever the ref was.
+          const id = assertAppId(info.id, { from: 'vpkg', file: info.file })
+          known.args.app = info.id
+          return { resolved, device, target, info, id }
+        }
+      )
       const args = { app: info.id, package: info.file, ...(force ? { force: 'true' } : {}) }
       return logged('app.reinstall', target.id, args, async () => {
         // The guard first: a blocked package uninstalls nothing.

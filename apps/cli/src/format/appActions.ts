@@ -10,6 +10,9 @@ import type {
 import { installedLine } from './install.js'
 
 export function launchedLine(result: LaunchResult): string {
+  if (!result.launched) {
+    return `${result.app.componentId} is already running on ${result.target.name} · pid ${result.pid}\n`
+  }
   return `Launched ${result.app.componentId} on ${result.target.name}${verifiedSuffix(result)}\n`
 }
 

@@ -1,5 +1,5 @@
 import { OvdError, type DoctorReport, type Ovd } from '@ovd/core'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { cli } from '../support/runCli.js'
 
 const host = { os: 'macOS', osVersion: '26.6', arch: 'arm64', node: '24.2.0' }
@@ -40,7 +40,7 @@ const noSdk: DoctorReport = {
   ]
 }
 
-const withReport = (run: () => Promise<DoctorReport>): Partial<Ovd> => ({ doctor: { run } })
+const withReport = (run: Ovd['doctor']['run']): Partial<Ovd> => ({ doctor: { run } })
 
 describe('ovd doctor', () => {
   test('--json prints the report and exits 0 when nothing fails', async () => {
@@ -74,6 +74,37 @@ describe('ovd doctor', () => {
       )
     })
     expect(JSON.parse(stdout)).toMatchObject({ ok: false, error: { code: 'UNEXPECTED_OUTPUT' } })
+    expect(exitCode).toBe(1)
+  })
+
+  test('doctor.run gets an abort signal', async () => {
+    const run = vi.fn(async (_opts?: { signal?: AbortSignal }) => healthy)
+    await cli(['doctor', '--json'], { ovd: withReport(run) })
+    expect(run).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) })
+  })
+
+  test('Ctrl+C aborts the run: Cancelled, exit 1', async () => {
+    let interrupt = (): void => undefined
+    let signal: AbortSignal | undefined
+    const run = (opts?: { signal?: AbortSignal }) =>
+      new Promise<DoctorReport>((_resolve, reject) => {
+        signal = opts?.signal
+        signal?.addEventListener('abort', () => {
+          const abort = new Error('The operation was aborted')
+          abort.name = 'AbortError'
+          reject(abort)
+        })
+        interrupt()
+      })
+    const { stdout, exitCode } = await cli(['doctor', '--json'], {
+      ovd: withReport(run),
+      onInterrupt: (abort) => (interrupt = abort)
+    })
+    expect(signal?.aborted).toBe(true)
+    expect(JSON.parse(stdout)).toMatchObject({
+      ok: false,
+      error: { code: 'COMMAND_FAILED', message: 'Cancelled', hint: 'Run ovd doctor again' }
+    })
     expect(exitCode).toBe(1)
   })
 })

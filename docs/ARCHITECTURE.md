@@ -85,7 +85,7 @@ docs/
 - Discovers the Vega CLI (SDK Manager) and the active SDK version: `OVD_VEGA`, then every `vega` on `PATH`, then `~/vega/bin/vega` (a desktop app doesn't inherit the shell `PATH`). The manager wins over a `vega` bundled inside an SDK, which lacks `vega sdk` and `vega devmode`. Device commands fail with an install hint when none is found.
 - Every call goes through one runner: target injection (`--device <id>` for `vega device …`, `-s <serial>` for `vega exec vda …`), timeout, `AbortSignal`, captured stdout/stderr/exit code.
 - VDA runs as `vega exec vda …`. Device tools run through `vega exec vda shell` (`shell -c <component>` for component scope).
-- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. The log stream (`loggingctl log -f`) is built: it runs in its own process group and is stopped by signalling the group; reconnecting comes in 3.2. Planned: the input console (Stage 4) and memory polling (Stage 6).
+- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. The log stream (`loggingctl log -f`) is built: it runs in its own process group and is stopped by signalling the group; reconnecting comes in 3.2. Probes stopped by `stopWhen` (the `vega devmode login --json` sign-in probe) run in their own process group too, and are stopped as a group on a match, a timeout or an abort. Planned: the input console (Stage 4) and memory polling (Stage 6).
 
 ### 4.2 Adapters
 
@@ -99,7 +99,7 @@ docs/
 
 ### 4.4 Activity log
 
-Every device action is appended to a host-side, append-only log: time, surface, action, target, arguments, result. The desktop's Logs timeline and "Recent agent calls" read it (ADR 0011).
+Every device action is appended to a host-side, append-only log: time, surface, action, target, arguments, result. The desktop's Logs timeline and "Recent agent calls" read it (ADR 0011). Failures before the target is known (no app, no target, an offline target, an invalid app ID) are logged too, with `target: null`.
 
 ### 4.5 Errors
 
@@ -124,14 +124,14 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 | 6    | Architecture mismatch: the package doesn't match the target (ADR 0008)     |
 | 7    | Launch not verified: the app crashed or isn't running after launch         |
 
-The app commands exit 1 for an app that isn't installed (`APP_NOT_INSTALLED`) or isn't side-loaded (`NOT_SIDELOADED`) and for an install, launch, terminate or uninstall the SDK refuses (`INSTALL_FAILED`, `LAUNCH_FAILED`, `TERMINATE_FAILED`, `UNINSTALL_FAILED`), which scripts tell apart by `error.code` in `--json`, and exit 2 for an invalid app ID (`INVALID_APP_ID`) or no app given with nothing open (`NO_APP`). `ovd apps launch` and `ovd apps restart` exit 7 (`LAUNCH_NOT_VERIFIED`) for both `"reason": "crashed"` and `"reason": "not-running"`.
+The app commands exit 1 for an app that isn't installed (`APP_NOT_INSTALLED`) or isn't side-loaded (`NOT_SIDELOADED`) and for an install, launch, terminate or uninstall the SDK refuses (`INSTALL_FAILED`, `LAUNCH_FAILED`, `TERMINATE_FAILED`, `UNINSTALL_FAILED`), which scripts tell apart by `error.code` in `--json`, and exit 2 for an invalid app ID (`INVALID_APP_ID`) or no app given with nothing open (`NO_APP`). `ovd apps launch` and `ovd apps restart` exit 7 (`LAUNCH_NOT_VERIFIED`) for both `"reason": "crashed"` and `"reason": "not-running"`. `ovd apps launch` on an app that already runs does nothing and exits 0 with `"wasRunning": true` and `"launched": false`.
 
 `ovd logs` exits 0 on Ctrl+C and when `--until` is reached, 1 when the stream ends by itself (`LOG_STREAM_ENDED`: the device may have disconnected or rebooted), 2 for an invalid filter (`INVALID_LOG_FILTER`, `INVALID_APP_ID`, `--app` with `--system`), 3 without an SDK and 4 without an online target; with `--json` it prints one JSON object per entry (`time`, `level`, `priority`, `facility`, `process`, `pid`, `tid`, `tag`, `message`, `parsed`) and ends a failed stream with the `{"ok": false, "error": …}` line.
 
 ## 6. Desktop
 
 - Electron + React + Vite (`electron-vite`), packaged with `electron-builder` (ADR 0004).
-- **Main** runs core and exposes typed IPC handlers; batches high-volume data (logs) before IPC.
+- **Main** runs core and exposes typed IPC handlers; batches high-volume data (logs) before IPC, and sends a reset of the log list (filter change, Clear, open) in bounded batches.
 - **Preload** exposes one typed bridge; `contextIsolation` on, `nodeIntegration` off.
 - **Renderer** is React UI: tokens, base components, screens.
 - **Frame:** title bar (logo, version, target picker, palette search, later Run and Watch), sidebar (groups Device, Debug, Analyze, Automate, Setup), main area, status bar (SDK version, target, CLI echo with Copy).
@@ -206,7 +206,7 @@ OVD designs around these. This list is the one home for SDK behavior: add new fi
 - `vega device is-app-installed` and `is-app-running` exit 0 either way; only the text differs. `is-app-installed` needs the component ID: with a package ID it says "not installed". `launch-app` and `uninstall-app` also accept the package ID (launch then starts the main component); `vlcm terminate-app` and `vpm … --package` take package IDs.
 - `vega device launch-app` runs `vpm list packages`, `vlcm terminate-app --force --pkg-id <package>` and `vmsgr send pkg://<component>`: it always restarts the app, and a relaunched app gets a new pid. It prints `Sending: pkg://<id>` (2 s on a stick, 1 s on the Virtual Device); once it returned 87 s after the app was up, waiting on the SDK's telemetry step. `vega device terminate-app` is a force stop with no graceful mode: it prints `Force stopping pkg: <package>` and exits 0 either way. `vlcm terminate-app --pkg-id <package>` without `--force` is the graceful one: it exits 0 with `Stopping pkg: …` when the app runs, and **255** with `Stopping pkg: …` and `Failed to stop app` when nothing runs or the package isn't installed. With `--force` it exits 0 with `Force stopping pkg: …` whatever the state.
 - `launch-app` and `uninstall-app` exit 3 with `Failed: App could not be determined` for an app that isn't installed, and 2 with `Device not found: …` for a `--device` that isn't connected (the same text as `install-app`). Uninstall takes 4 s on a stick and 1 s on the Virtual Device; afterwards `vpm info <package> --package` exits 248.
-- Installing over a running app stops it, and it isn't started again. Uninstalling a running app works. The data path `vpm info <component>` reports (`/home/app_user/packages/<package>/data`) isn't visible to the shell user, so whether an uninstall and reinstall clears app data is unverified.
+- Installing over a running app stops it, and it isn't started again. Uninstalling a running app works. The data path `vpm info <component>` reports (`/home/app_user/packages/<package>/data`) isn't visible to the shell user. On a stick (2026-11-08), uninstalling and installing again cleared the app's data, while installing over the installed app kept it.
 - `vlcm crash-history` has no JSON mode. It prints `AppCrashInfoBuffer:` with `Capacity: 10` and `Size: N`, then up to 10 entries (its capacity), one per crash, newest first, of every package, system ones included: pid, packageId, timestamp (device uptime), version, buildNumber, hadCompInFg and metadata (`LCM_KILLREASON` empty, `LCM_KILLTIME` in UTC with its epoch ms). Entries survive an uninstall. An entry is there about 1 s after `launch-app` returned. Why a crashing launch has once shown no entry at all is unexplained; OVD then reports the launch as not running.
 - `loggingctl vault --ls SYSTEM_TOMBSTONE/acr` prints JSON (`artifacts`, `status`), not sorted, one name per crash report: `<index>#crash_<epoch s>_<uid>_<gid>_<pid>_<signal>_<package, dots as _>.acr`. A report is enrolled about 0.6 s after the crash. `loggingctl vault --cat SYSTEM_TOMBSTONE <index>` of a package that is no longer installed prints `Insufficient permissions` with status -7, and an unknown index `No entry found for tag …` with status -8; both exit 0.
 - A crash report (ACR) is about 350 KB: a `Key: Value` header (`CrashLang`, `CrashReason`, `Process`, `Source`…), the JS stack in a `<non_native_stack_trace>` section, then meminfo, a minidump and a core dump. OVD reads only the header and the stack, through `sed -n -e "1,/^\$/p" -e "/<non_native_stack_trace>/,/<\/non_native_stack_trace>/p"` on the device.
