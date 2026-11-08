@@ -38,7 +38,13 @@ export function parseVlcmCrashHistory(stdout: string): CrashEntry[] {
     const timestamp = TIMESTAMP.exec(block)?.[1]
     const killTime = KILL_TIME.exec(block)?.[1]
     if (!packageId || !timestamp || !killTime) throw unexpectedOutput('vlcm crash-history', stdout)
-    return { pid, packageId, timestamp, killTimeMs: Number(killTime) }
+    // The verifier turns it into an ISO time; a number outside the date range would throw a
+    // plain RangeError there, past the activity log, so it is a format change here.
+    const killTimeMs = Number(killTime)
+    if (!Number.isSafeInteger(killTimeMs) || Number.isNaN(new Date(killTimeMs).getTime())) {
+      throw unexpectedOutput('vlcm crash-history', stdout)
+    }
+    return { pid, packageId, timestamp, killTimeMs }
   })
   if (entries.length !== Number(size[1])) throw unexpectedOutput('vlcm crash-history', stdout)
   return entries

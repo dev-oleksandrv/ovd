@@ -41,12 +41,20 @@ describe('parseVlcmCrashHistory', () => {
   // The stick-one entry with its count, cut to a header that promises two.
   const oneOfTwo = history('stick-one').replace('Size: 1', 'Size: 2')
   const noKillTime = history('stick-one').replace(/^.*LCM_KILLTIME.*\n/m, '')
+  // The stick-one entry with only its epoch ms replaced: past the date range (±8.64e15) but a
+  // safe integer, and past the safe integers.
+  const killTime = (ms: string) =>
+    history('stick-one').replace('epoch ms: 1794090974796', `epoch ms: ${ms}`)
+  const pastDates = killTime('8640000000000001')
+  const pastSafeIntegers = killTime('99999999999999999999')
 
   test.each([
     ['empty output', ''],
     ['an error', 'vda: device offline'],
     ['a size that doesn’t match the entries', oneOfTwo],
-    ['an entry without its epoch ms', noKillTime]
+    ['an entry without its epoch ms', noKillTime],
+    ['an epoch ms past the date range', pastDates],
+    ['an epoch ms past the safe integers', pastSafeIntegers]
   ])('%s', (_name, out) => {
     expect(() => parseVlcmCrashHistory(out)).toThrow(
       expect.objectContaining({ code: 'UNEXPECTED_OUTPUT' })
