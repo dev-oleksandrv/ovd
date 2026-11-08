@@ -22,12 +22,13 @@ const build = (
 }
 
 describe('paletteItems', () => {
-  test('lists Devices, Apps, Packages, Doctor, a switch per other device, then every later screen', () => {
+  test('lists Devices, Apps, Packages, Logs, Doctor, a switch per other device, then every later screen', () => {
     const { items } = build(stick.id)
     expect(items.map((i) => [i.label, i.kind])).toEqual([
       ['Go to Devices', 'Screen'],
       ['Go to Apps', 'Screen'],
       ['Go to Packages', 'Screen'],
+      ['Go to Logs', 'Screen'],
       ['Go to Doctor', 'Screen'],
       ['Set up a new stick (Developer Mode)', 'Action'],
       ['Pair a device over Wi‑Fi…', 'Action'],
@@ -49,8 +50,8 @@ describe('paletteItems', () => {
     const { opts, items } = build(stick.id)
     items.find((i) => i.label === 'Switch target to Bedroom stick')?.run()
     expect(opts.switchTarget).toHaveBeenCalledWith(wifiOffline)
-    items.find((i) => i.label === 'Logs')?.run()
-    expect(opts.later).toHaveBeenCalledWith('Logs')
+    items.find((i) => i.label === 'Crashes')?.run()
+    expect(opts.later).toHaveBeenCalledWith('Crashes')
     items[0]?.run()
     expect(opts.go).toHaveBeenCalledWith('devices')
     items[1]?.run()
@@ -58,12 +59,14 @@ describe('paletteItems', () => {
     items[2]?.run()
     expect(opts.go).toHaveBeenCalledWith('packages')
     items[3]?.run()
-    expect(opts.go).toHaveBeenCalledWith('doctor')
+    expect(opts.go).toHaveBeenCalledWith('logs')
     items[4]?.run()
-    expect(opts.setup).toHaveBeenCalled()
+    expect(opts.go).toHaveBeenCalledWith('doctor')
     items[5]?.run()
+    expect(opts.setup).toHaveBeenCalled()
+    items[6]?.run()
     expect(opts.pair).toHaveBeenCalled()
-    items[7]?.run()
+    items[8]?.run()
     expect(opts.runDoctor).toHaveBeenCalled()
   })
 

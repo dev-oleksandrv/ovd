@@ -21,7 +21,7 @@ import type {
   VvdState
 } from '@ovd/core'
 import { vi } from 'vitest'
-import type { IpcResult, OvdApi, SdkSummary } from '../../../src/preload/api'
+import type { IpcResult, LogsState, LogsUpdate, OvdApi, SdkSummary } from '../../../src/preload/api'
 
 export interface OvdStub {
   api: OvdApi
@@ -29,6 +29,8 @@ export interface OvdStub {
   push: (update: DevicesUpdate) => void
   // Shows the sign-in link and code as main does while `vega devmode login` waits.
   prompt: (prompt: LoginPrompt) => void
+  // Pushes a log session update as main's batcher would.
+  pushLogs: (update: LogsUpdate) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -119,8 +121,15 @@ export function stubOvd(opts: {
   install?: Partial<OvdApi['install']>
   // Nothing installed unless a test says otherwise.
   apps?: Partial<OvdApi['apps']>
+  // A session that starts and sends nothing unless a test says otherwise.
+  logs?: Partial<Omit<OvdApi['logs'], 'onUpdate'>>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
+  let logsListener: ((update: LogsUpdate) => void) | undefined
+  const starting = (device: string): IpcResult<LogsState> => ({
+    ok: true,
+    data: { status: 'starting', device, name: device }
+  })
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
   const api: OvdApi = {
@@ -249,12 +258,31 @@ export function stubOvd(opts: {
         opts.setup?.waitForStick ?? (async () => unexpected<Device>('setup.waitForStick'))
       ),
       cancel: vi.fn(opts.setup?.cancel ?? (async () => undefined))
+    },
+    logs: {
+      open: vi.fn(opts.logs?.open ?? (async (device: string) => starting(device))),
+      restart: vi.fn(opts.logs?.restart ?? (async (device: string) => starting(device))),
+      setFilter: vi.fn(
+        opts.logs?.setFilter ?? (async (): Promise<IpcResult<null>> => ({ ok: true, data: null }))
+      ),
+      clear: vi.fn(opts.logs?.clear ?? (async () => undefined)),
+      export: vi.fn(
+        opts.logs?.export ??
+          (async () => unexpected<{ path: string; lines: number } | null>('logs.export'))
+      ),
+      onUpdate: (l) => {
+        logsListener = l
+        return () => {
+          logsListener = undefined
+        }
+      }
     }
   }
   window.ovd = api
   return {
     api,
     push: (update) => listener?.(update),
-    prompt: (p) => promptListener?.(p)
+    prompt: (p) => promptListener?.(p),
+    pushLogs: (u) => logsListener?.(u)
   }
 }
