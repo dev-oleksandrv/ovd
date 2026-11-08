@@ -296,7 +296,7 @@ describe('ovd apps actions', () => {
     ])
   })
 
-  test('a stopped Virtual Device exits 4, asks it nothing and logs nothing', async () => {
+  test('a stopped Virtual Device exits 4, asks it nothing, one entry with target null', async () => {
     const sandbox = createSandbox()
     sandbox.installSdk()
 
@@ -305,7 +305,71 @@ describe('ovd apps actions', () => {
     expect(run.exitCode).toBe(4)
     expect(run.json<{ ok: false; error: { code: string } }>().error.code).toBe('TARGET_OFFLINE')
     expect(appCalls(sandbox)).toEqual([])
-    expect(sandbox.activity()).toEqual([])
+    expect(sandbox.activity()).toMatchObject([
+      {
+        action: 'app.launch',
+        target: null,
+        args: { app: PLAYER },
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
+  })
+
+  test('no target: exit 4, one app.launch entry with target null', async () => {
+    const sandbox = createSandbox()
+    sandbox.installSdk()
+
+    const run = await ovd(sandbox, ['apps', 'launch', PLAYER, '--json'])
+
+    expect(run.exitCode).toBe(4)
+    expect(run.json<{ ok: false; error: { code: string } }>().error.code).toBe('NO_TARGET')
+    expect(appCalls(sandbox)).toEqual([])
+    expect(sandbox.activity()).toMatchObject([
+      {
+        action: 'app.launch',
+        target: null,
+        args: { app: PLAYER },
+        result: 'error',
+        errorCode: 'NO_TARGET'
+      }
+    ])
+  })
+
+  test('launching the running player does nothing: exit 0, wasRunning true, no launch-app', async () => {
+    const sandbox = await withPlayerProject()
+    expect(
+      (await ovd(sandbox, ['apps', 'install', `~/${AARCH64}`, ...VVD, '--json'])).exitCode
+    ).toBe(0)
+    // Started outside OVD.
+    sandbox.update((w) => {
+      w.running.push({ device: 'VirtualDevice', app: PLAYER })
+    })
+    sandbox.clearCalls()
+
+    const run = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD, '--json'])
+
+    expect(run.exitCode, run.stdout).toBe(0)
+    expect(run.json<Ok<{ launch: LaunchResult }>>().launch).toMatchObject({
+      app: { componentId: `${PLAYER}.main` },
+      launched: false,
+      wasRunning: true,
+      verified: true,
+      pid: 3571
+    })
+    expect(sandbox.calls()).toContain(APP_LIST)
+    expect(sandbox.calls()).not.toContain(LAUNCH)
+    expect(sandbox.calls()).not.toContain(CRASH_HISTORY)
+    expect(sandbox.activity().at(-1)).toMatchObject({ action: 'app.launch', result: 'ok' })
+    expect(sandbox.world().running).toEqual([{ device: 'VirtualDevice', app: PLAYER }])
+
+    const human = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD])
+    expect(human.exitCode).toBe(0)
+    expect(human.stdout).toContain(
+      `${PLAYER}.main is already running on Vega Virtual Device · pid 3571`
+    )
+    expect(human.stderr).not.toContain('Verifying launch…')
+    expect(sandbox.calls()).not.toContain(LAUNCH)
   })
 
   test.each(['launch', 'terminate', 'restart', 'uninstall', 'reinstall'])(
@@ -324,7 +388,16 @@ describe('ovd apps actions', () => {
         })
       )
       expect(sandbox.calls()).toEqual([])
-      expect(sandbox.activity()).toEqual([])
+      // The raw argument is never recorded.
+      expect(sandbox.activity()).toMatchObject([
+        {
+          action: `app.${action}`,
+          target: null,
+          args: {},
+          result: 'error',
+          errorCode: 'INVALID_APP_ID'
+        }
+      ])
     }
   )
 
@@ -345,7 +418,15 @@ describe('ovd apps actions', () => {
       })
     )
     expect(sandbox.calls()).toEqual([])
-    expect(sandbox.activity()).toEqual([])
+    expect(sandbox.activity()).toMatchObject([
+      {
+        action: 'app.launch',
+        target: null,
+        args: {},
+        result: 'error',
+        errorCode: 'INVALID_APP_ID'
+      }
+    ])
   })
 })
 
@@ -396,7 +477,8 @@ describe('ovd apps launch verification', () => {
       calls.indexOf(CRASH_HISTORY),
       calls.findIndex((c) => scriptOf(c)?.startsWith('f=$(mktemp)') ?? false),
       calls.indexOf(LAUNCH),
-      calls.indexOf(APP_LIST),
+      // The first poll after the launch (launch reads the list once before, too).
+      calls.indexOf(APP_LIST, calls.indexOf(LAUNCH)),
       calls.lastIndexOf(CRASH_HISTORY),
       calls.indexOf(TOMBSTONES),
       calls.findIndex(
@@ -409,6 +491,9 @@ describe('ovd apps launch verification', () => {
       steps.join(',')
     ).toBe(true)
     expect(steps).toEqual([...steps].sort((a, b) => a - b))
+    // The read before the launch: the player wasn't running.
+    expect(calls.indexOf(APP_LIST)).toBeGreaterThan(-1)
+    expect(calls.indexOf(APP_LIST)).toBeLessThan(calls.indexOf(CRASH_HISTORY))
     expect(sandbox.world().running).toEqual([])
   })
 
@@ -430,5 +515,42 @@ describe('ovd apps launch verification', () => {
     const launched = calls.indexOf(LAUNCH)
     expect(launched).toBeGreaterThan(-1)
     expect(calls.findIndex((c) => isStop(c, 3200))).toBeGreaterThan(launched)
+  })
+
+  test('not running after launch exits 7, reason not-running', async () => {
+    const sandbox = await withPlayerProject()
+    expect(
+      (await ovd(sandbox, ['apps', 'install', `~/${AARCH64}`, ...VVD, '--json'])).exitCode
+    ).toBe(0)
+    sandbox.update((w) => {
+      w.playerStopsOnLaunch = true
+    })
+    sandbox.clearCalls()
+
+    const run = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD, '--json'])
+
+    expect(run.exitCode, run.stdout).toBe(7)
+    const doc = run.json<NotVerified<{ launch: LaunchResult }>>()
+    expect(doc.error).toEqual({
+      code: 'LAUNCH_NOT_VERIFIED',
+      message: 'Launch reported success, but the app isn’t running',
+      hint: 'Check the app with ovd apps info, then launch it again'
+    })
+    expect(doc.launch).toMatchObject({
+      launched: true,
+      wasRunning: false,
+      verified: false,
+      reason: 'not-running'
+    })
+    expect(doc.launch).not.toHaveProperty('crash')
+    expect(sandbox.activity().at(-1)).toMatchObject({
+      action: 'app.launch',
+      result: 'error',
+      errorCode: 'LAUNCH_NOT_VERIFIED',
+      args: { app: PLAYER, reason: 'not-running' }
+    })
+    expect(sandbox.calls()).toContain(LAUNCH)
+    expect(sandbox.world().running).toEqual([])
+    expect(sandbox.world().playerCrashed).toBe(false)
   })
 })

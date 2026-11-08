@@ -368,4 +368,74 @@ test.describe('Apps', () => {
     expect(stop).toContain(String.raw`'\[3200\]'`)
     expect(sandbox.world().running).toEqual([])
   })
+
+  test('Launch on the player that isn’t running afterwards shows the not-running callout', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+      w.playerStopsOnLaunch = true
+    })
+    const { page } = await launch()
+    await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    const detail = page.getByRole('complementary', { name: `${TITLE} details` })
+    await expect(row).toContainText('Stopped')
+
+    await row.getByRole('button', { name: 'Launch' }).click()
+    await verified(row)
+
+    const message = 'Launch reported success, but the app isn’t running'
+    const cli = '$ ovd apps launch com.example.player --device VirtualDevice'
+    await expect(toast(page, message)).toContainText(cli)
+    await expect(echo(page)).toContainText(cli)
+    await expect(detail.getByRole('alert')).toContainText(message)
+    await expect(row).toContainText('Stopped')
+
+    const activity = sandbox.activity().filter((a) => a.surface === 'desktop')
+    expect(activity.map((a) => [a.action, a.result])).toEqual([['app.launch', 'error']])
+    expect(activity[0]).toMatchObject({
+      errorCode: 'LAUNCH_NOT_VERIFIED',
+      args: { app: 'com.example.player', reason: 'not-running' }
+    })
+    expect(sandbox.calls()).toContain(LAUNCH)
+    expect(sandbox.world().running).toEqual([])
+  })
+
+  test('Launch on a player started outside OVD says it is already running', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+    })
+    const { page } = await launch()
+    await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    await expect(row).toContainText('Stopped')
+
+    // Started outside OVD after the list was read: Apps doesn't poll, so the row still offers
+    // Launch.
+    sandbox.update((w) => {
+      w.running.push({ device: 'VirtualDevice', app: 'com.example.player' })
+    })
+    await row.getByRole('button', { name: 'Launch' }).click()
+
+    const cli = '$ ovd apps launch com.example.player --device VirtualDevice'
+    await expect(toast(page, `${TITLE} is already running`)).toContainText(cli)
+    await expect(echo(page)).toContainText(cli)
+    await expect(row).toContainText(/Running · \d+/)
+    expect(sandbox.calls()).not.toContain(LAUNCH)
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.surface === 'desktop')
+        .map((a) => [a.action, a.result])
+    ).toEqual([['app.launch', 'ok']])
+  })
 })
