@@ -426,6 +426,8 @@ function deviceAppCommand(w: World, verb: 'launch' | 'uninstall', rest: string[]
   }
   stopPlayer(w)
   if (verb === 'launch') {
+    // Launched, but the player isn't running afterwards, and didn't crash.
+    if (w.playerStopsOnLaunch) return { stdout: fixture('vega-device-launch-app/launched.txt') }
     // The SDK reports success either way (ADR 0012); a crashing player never runs.
     if (w.playerCrashesOnLaunch) {
       w.playerCrashed = true

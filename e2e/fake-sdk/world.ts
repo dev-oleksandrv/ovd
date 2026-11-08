@@ -28,6 +28,12 @@ export interface World {
   // (ADR 0012): it never joins `running` (fixtures/0.24/README.md, row
   // `vlcm-crash-history/virtual-device-after.txt`: "the app never shows in `vlcm list`").
   playerCrashesOnLaunch: boolean
+  // The Virtual Device player neither runs nor crashes after `launch-app`, which still reports
+  // success (`vega-device-launch-app/launched.txt`): it never joins `running`, so
+  // `vlcm list --app-id` answers `vlcm-list/app-missing.txt`, and the crash history keeps
+  // `vlcm-crash-history/virtual-device-before.txt`. A sequence synthesized from recordings
+  // (fixtures/0.24/README.md, Synthesized sequences). Not combined with `playerCrashesOnLaunch`.
+  playerStopsOnLaunch: boolean
   // The player crashed: the crash history, the vault and the capture answer with their "after"
   // recordings (`vlcm-crash-history/virtual-device-after.txt`,
   // `loggingctl-vault-ls/virtual-device-tombstones-after.json`, `log-capture/virtual-device-crashed.txt`).
@@ -82,6 +88,7 @@ export function defaultWorld(): World {
     installed: [],
     running: [],
     playerCrashesOnLaunch: false,
+    playerStopsOnLaunch: false,
     playerCrashed: false,
     logStream: { ends: false, holdAfterLine: null }
   }
