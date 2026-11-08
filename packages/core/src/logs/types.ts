@@ -35,3 +35,6 @@ export interface LogCounts {
 
 // The desktop keeps this many entries (~100k lines, gui.md, Performance).
 export const LOG_BUFFER_SIZE = 100_000
+// And at most about this many bytes of them: it bounds memory when lines are huge (a JSON dump
+// on one line), where the entry count alone doesn't.
+export const LOG_BUFFER_BYTES = 64 * 1024 * 1024

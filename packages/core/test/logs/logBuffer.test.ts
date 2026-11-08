@@ -1,5 +1,5 @@
-import { expect, test } from 'vitest'
-import { createLogBuffer } from '../../src/logs/logBuffer.js'
+import { describe, expect, test } from 'vitest'
+import { createLogBuffer, ENTRY_OVERHEAD_BYTES, entryBytes } from '../../src/logs/logBuffer.js'
 import type { LogEntry } from '../../src/logs/types.js'
 
 const entry = (seq: number, over: Partial<LogEntry> = {}): LogEntry => ({
@@ -64,4 +64,61 @@ test('capacity 0 keeps counts and apps, no entries', () => {
   expect(buffer.filtered()).toEqual([])
   expect(buffer.counts()).toEqual({ lines: 4, errors: 1, shown: 0 })
   expect(buffer.apps()).toEqual(['com.example.hellovega', 'com.example.player'])
+})
+
+describe('the byte budget', () => {
+  // Every entry built by `entry` has the same size.
+  const each = entryBytes(entry(10))
+  const budget = 3 * each
+
+  test('evicts the oldest entries, in order, once the budget is used', () => {
+    const buffer = createLogBuffer(100, () => true, budget)
+    buffer.add(range(10, 15))
+    expect(buffer.filtered().map((e) => e.seq)).toEqual([12, 13, 14])
+    expect(buffer.counts()).toMatchObject({ lines: 5, shown: 3 })
+  })
+
+  test('shown stays right after evictions under a filter', () => {
+    const buffer = createLogBuffer(100, (e) => e.process === 'com.example.player', budget)
+    buffer.add(range(10, 16))
+    // 13, 14, 15 are kept; only 14 is the player's.
+    expect(buffer.filtered().map((e) => e.seq)).toEqual([14])
+    expect(buffer.counts().shown).toBe(1)
+    buffer.setMatches(() => true)
+    expect(buffer.counts().shown).toBe(3)
+  })
+
+  test('an entry bigger than the budget is kept alone, then evicted by the next one', () => {
+    const buffer = createLogBuffer(100, () => true, budget)
+    buffer.add(range(10, 12))
+    buffer.add([entry(12, { message: 'x'.repeat(budget) })])
+    expect(buffer.filtered().map((e) => e.seq)).toEqual([12])
+    expect(buffer.counts().shown).toBe(1)
+    buffer.add([entry(13)])
+    expect(buffer.filtered().map((e) => e.seq)).toEqual([13])
+    expect(buffer.counts().shown).toBe(1)
+  })
+
+  test('clear resets the bytes counted', () => {
+    const buffer = createLogBuffer(100, () => true, budget)
+    buffer.add(range(10, 13))
+    buffer.clear()
+    buffer.add(range(13, 16))
+    expect(buffer.filtered().map((e) => e.seq)).toEqual([13, 14, 15])
+  })
+
+  test('entryBytes is deterministic and grows with the message', () => {
+    expect(entryBytes(entry(10))).toBe(entryBytes(entry(10)))
+    expect(entryBytes(entry(10, { message: 'm 10 longer' }))).toBe(
+      entryBytes(entry(10)) + 2 * ' longer'.length
+    )
+    expect(entryBytes(entry(10))).toBeGreaterThan(ENTRY_OVERHEAD_BYTES)
+  })
+
+  test('capacity 0 still keeps nothing', () => {
+    const buffer = createLogBuffer(0, () => true, budget)
+    buffer.add(range(10, 15))
+    expect(buffer.filtered()).toEqual([])
+    expect(buffer.counts()).toEqual({ lines: 5, errors: 1, shown: 0 })
+  })
 })
