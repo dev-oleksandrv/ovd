@@ -46,6 +46,14 @@ export { parseDeviceAppCommand } from './adapters/parseDeviceAppCommand.js'
 export type { DeviceAppCommand } from './adapters/parseDeviceAppCommand.js'
 export { parseVlcmTerminate } from './adapters/parseVlcmTerminate.js'
 export type { VlcmTerminate } from './adapters/parseVlcmTerminate.js'
+export { parseVlcmCrashHistory } from './adapters/parseVlcmCrashHistory.js'
+export type { CrashEntry } from './adapters/parseVlcmCrashHistory.js'
+export { parseTombstones, signalName } from './adapters/parseTombstones.js'
+export type { Tombstone } from './adapters/parseTombstones.js'
+export { parseAcr } from './adapters/parseAcr.js'
+export type { AcrSummary } from './adapters/parseAcr.js'
+export { parseLogCapture } from './adapters/parseLogCapture.js'
+export type { LogCapture } from './adapters/parseLogCapture.js'
 export { parseProjectDoctor } from './adapters/parseProjectDoctor.js'
 export type {
   ProjectCheck,
@@ -146,12 +154,15 @@ export type {
   InstalledApp,
   RunningComponent
 } from './deviceApps/deviceApps.js'
+export { launchNotVerified } from './deviceApps/appActions.js'
 export type {
   ActionApp,
   AppActions,
+  LaunchOptions,
   LaunchResult,
   ReinstallResult,
   RestartResult,
   TerminateResult,
   UninstallResult
 } from './deviceApps/appActions.js'
+export type { LaunchCrash, LaunchVerification } from './deviceApps/launchVerification.js'
