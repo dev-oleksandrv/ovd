@@ -13,10 +13,10 @@ A `loggingctl` session only sees apps that were installed before it started. Aft
 - The stream reconnects when a device drops, with an inline note.
 - Each restart is written to the activity log and shown as an OVD line in the log viewer (ADR 0011).
 - What reaches the stream, as seen on a stick (ARCHITECTURE §8, `fixtures/0.24/loggingctl-log/`):
-  - A Release build still sends its `console.log`, `info`, `warn` and `error` lines; a Debug build sends each one twice.
-  - `console.debug` never reaches the stream.
-  - No `console` call made before `AppRegistry.registerComponent` reaches the stream.
-  - A build that strips its `console` calls (for example with `transform-remove-console`) has none left to send.
+  - Release builds send `console.log`, `info`, `warn` and `error`.
+  - Debug builds send each line twice.
+  - `console.debug` never shows up, and neither does anything logged before `AppRegistry.registerComponent`.
+  - A bundler config such as Babel `transform-remove-console` may still strip logs.
 
 ## Consequences
 
@@ -26,4 +26,4 @@ A `loggingctl` session only sees apps that were installed before it started. Aft
 
 ## Amendments
 
-- 2026-11-08: Amended 2026-11-08. A stick check showed that a Release build still sends its `console.log`, `info`, `warn` and `error` lines, so the claim that a Release build hides its JS logs was wrong: the last sentence of Context and the last Decision bullet were edited in place to say what reaches the stream (ARCHITECTURE §8).
+- 2026-11-08: Amended 2026-11-08. A stick check showed that Release builds do send `console.log`, `info`, `warn` and `error`, so the Context sentence and the last Decision bullet (a Release build "hides its JS logs") now say what the stick showed, and the Release-build banner is no longer planned.
