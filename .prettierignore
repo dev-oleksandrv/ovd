@@ -8,3 +8,4 @@ LICENSE
 fixtures
 .changeset/*.md
 CHANGELOG.md
+.work/
