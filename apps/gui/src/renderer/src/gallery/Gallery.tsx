@@ -1,4 +1,4 @@
-import type { Check, Device } from '@ovd/core'
+import type { Check, Device, LaunchCrash } from '@ovd/core'
 import { useState } from 'react'
 import { useFeedback } from '../feedback/feedbackContext'
 import { CommandPalette } from '../frame/CommandPalette'
@@ -7,6 +7,8 @@ import { NavItem } from '../frame/NavItem'
 import { SearchButton } from '../frame/SearchButton'
 import { TargetPicker } from '../frame/TargetPicker'
 import { DoctorRow } from '../screens/environment/DoctorRow'
+import { LaunchCallout } from '../screens/apps/LaunchCallout'
+import { LaunchStatus } from '../screens/apps/LaunchStatus'
 import { paletteItems } from '../shell/paletteItems'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -35,6 +37,22 @@ import { GallerySection } from './GallerySection'
 
 // Dev-only page with every base component in every state (Stage 0.2). Sample data uses the
 // neutral set (ADR 0016).
+
+// A crash right after launch, as the Virtual Device's recordings show it (ADR 0016 sample data).
+const SAMPLE_CRASH: LaunchCrash = {
+  pid: 3200,
+  time: '2026-11-08T01:51:44.657Z',
+  signal: 'SIGABRT',
+  language: 'JavaScript',
+  message: 'Error: player: deliberate crash right after launch',
+  stack: ['at anonymous (index.bundle:652:20)'],
+  logs: [
+    'Nov 08 01:51:43.602 lcm_service[1035]: I lcm-server: Received launch request for pkg://com.example.player.main',
+    'Nov 08 01:51:43.719 lcm_service[1035]: I lcm-server: appInst[38](com.example.player.main)<F>: Launched in pid 3200',
+    "Nov 08 01:51:44.657 acr_core_dump[3242]: Process 'com.example.player' (PID=3200) crashed with signal 6"
+  ]
+}
+const GALLERY_NOW = new Date('2026-11-08T09:00:00.000Z')
 
 const DOCTOR_ROWS: Check[] = [
   {
@@ -280,6 +298,22 @@ export function Gallery() {
           Verifying…
         </StatusPill>
         <StatusPill tone="warning">Release build</StatusPill>
+      </GallerySection>
+
+      <GallerySection title="Launch verification">
+        <StatusPill tone="error">Crashed on launch</StatusPill>
+        <div className="flex w-full flex-col gap-3">
+          <LaunchStatus outcome={{ state: 'verifying' }} now={GALLERY_NOW} />
+          <LaunchCallout outcome={{ state: 'crashed', crash: SAMPLE_CRASH }} now={GALLERY_NOW} />
+          <LaunchCallout
+            outcome={{
+              state: 'crashed',
+              crash: { pid: 3200, time: SAMPLE_CRASH.time, stack: [], logs: [] }
+            }}
+            now={GALLERY_NOW}
+          />
+          <LaunchCallout outcome={{ state: 'not-running' }} now={GALLERY_NOW} />
+        </div>
       </GallerySection>
 
       <GallerySection title="Tabs">

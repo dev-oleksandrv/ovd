@@ -12,6 +12,7 @@ describe('Gallery', () => {
     )
     for (const section of [
       'Buttons',
+      'Launch verification',
       'Tabs',
       'Table',
       'Screen states',

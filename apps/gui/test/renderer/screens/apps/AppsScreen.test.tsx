@@ -7,19 +7,23 @@ import type {
   PackageBuild,
   TerminateResult
 } from '@ovd/core'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, test, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { IpcResult, OvdApi } from '../../../../src/preload/api'
 import { DevicesProvider } from '../../../../src/renderer/src/devices/DevicesProvider'
 import { FeedbackProvider } from '../../../../src/renderer/src/feedback/FeedbackProvider'
 import { ToastViewport } from '../../../../src/renderer/src/feedback/ToastViewport'
 import { StatusBar } from '../../../../src/renderer/src/frame/StatusBar'
 import { AppsScreen } from '../../../../src/renderer/src/screens/apps/AppsScreen'
+import { resetLaunchOutcomes } from '../../../../src/renderer/src/screens/apps/launchOutcomes'
 import { ready, stubOvd } from '../../support/ovdStub'
 import { stick } from '../devices/sample'
 import { hello, listFor, player } from './sample'
 
 const both = listFor(stick.id, stick.name, [player, hello])
+
+// The launch outcomes are a session store shared by every render in this file.
+afterEach(resetLaunchOutcomes)
 
 function stub(
   opts: {
@@ -102,6 +106,11 @@ function pending<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 }
 
 const target = { id: stick.id, name: stick.name }
+const helloApp = {
+  packageId: hello.packageId,
+  title: hello.title,
+  componentId: 'com.example.hellovega.main'
+}
 const launchedHello: IpcResult<LaunchResult> = {
   ok: true,
   data: {
@@ -111,9 +120,34 @@ const launchedHello: IpcResult<LaunchResult> = {
       title: hello.title,
       componentId: 'com.example.hellovega.main'
     },
-    launched: true
+    launched: true,
+    verified: true,
+    pid: 5120
   }
 }
+const helloCrash = {
+  pid: 5120,
+  time: '2026-11-05T14:02:00.000Z',
+  signal: 'SIGABRT',
+  language: 'JavaScript',
+  message: 'Error: hello: deliberate crash right after launch',
+  stack: ['at anonymous (index.bundle:652:20)'],
+  logs: [
+    "Nov 05 14:02:00.120 acr_core_dump[3811]: Process 'com.example.hellovega' (PID=5120) crashed with signal 6"
+  ]
+}
+const crashedHello: IpcResult<LaunchResult> = {
+  ok: true,
+  data: {
+    target,
+    app: helloApp,
+    launched: true,
+    verified: false,
+    reason: 'crashed',
+    crash: helloCrash
+  }
+}
+const CRASHED = 'Launch reported success, but the app crashed'
 const stoppedPlayer: IpcResult<TerminateResult> = {
   ok: true,
   data: {
@@ -240,7 +274,7 @@ describe('Apps screen actions', () => {
 
     fireEvent.click(within(await row('Hello Vega')).getByRole('button', { name: 'Launch' }))
 
-    expect(await screen.findByText('Launched Hello Vega')).toBeTruthy()
+    expect(await screen.findByText('Launched Hello Vega · verified')).toBeTruthy()
     expect(api.apps.launch).toHaveBeenCalledWith('com.example.hellovega', stick.id)
     expect(echoed()).toContain(`$ ovd apps launch com.example.hellovega --device ${stick.id}`)
     expect(detail('Sample Player')).toBeTruthy()
@@ -309,7 +343,7 @@ describe('Apps screen actions', () => {
     fireEvent.click(within(await row('Hello Vega')).getByRole('button', { name: 'Launch' }))
     fireEvent.click(within(await row('Sample Player')).getByRole('button', { name: 'Stop' }))
     await act(async () => launch.resolve(launchedHello))
-    expect(await screen.findByText('Launched Hello Vega')).toBeTruthy()
+    expect(await screen.findByText('Launched Hello Vega · verified')).toBeTruthy()
 
     const stop = within(await row('Sample Player')).getByRole('button', { name: 'Stop' })
     expect(stop.getAttribute('aria-busy')).toBe('true')
@@ -477,5 +511,163 @@ describe('Apps screen actions', () => {
     const after = detail('Hello Vega')
     expect(within(after).getByRole('button', { name: 'Restart' })).toBeTruthy()
     expect(within(after).queryByRole('button', { name: 'Launch' })).toBeNull()
+  })
+})
+
+describe('Apps screen launch verification', () => {
+  async function launchHello(): Promise<HTMLElement> {
+    fireEvent.click(await screen.findByText('Hello Vega'))
+    const panel = await screen.findByRole('complementary', { name: 'Hello Vega details' })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Launch' }))
+    return panel
+  }
+
+  test('while a launch is verified: Verifying… in the row and the detail', async () => {
+    const launch = pending<IpcResult<LaunchResult>>()
+    stub({ actions: { launch: () => launch.promise } })
+    renderScreen()
+
+    const panel = await launchHello()
+
+    expect(await within(await row('Hello Vega')).findByText('Verifying…')).toBeTruthy()
+    expect(within(panel).getByText('Verifying launch…')).toBeTruthy()
+    expect(within(panel).getByText('Verifying…')).toBeTruthy()
+    await act(async () => launch.resolve(launchedHello))
+    expect(await screen.findByText('Launched Hello Vega · verified')).toBeTruthy()
+    expect(within(await row('Hello Vega')).queryByText('Verifying…')).toBeNull()
+  })
+
+  test('a crash: Crashed on launch, the callout with its cause and logs, an error toast', async () => {
+    stub({ actions: { launch: async () => crashedHello } })
+    renderScreen()
+
+    const panel = await launchHello()
+
+    expect(await within(await row('Hello Vega')).findByText('Crashed on launch')).toBeTruthy()
+    expect(within(panel).getByText('Crashed on launch')).toBeTruthy()
+    const callout = within(panel).getByRole('alert')
+    expect(within(callout).getByText(CRASHED)).toBeTruthy()
+    expect(callout.textContent).toContain(
+      'SIGABRT · Error: hello: deliberate crash right after launch'
+    )
+    expect(callout.textContent).toContain('pid 5120')
+    const toast = (await screen.findAllByRole('status')).find((t) =>
+      t.textContent?.includes(CRASHED)
+    )
+    expect(toast?.textContent).toContain(
+      `$ ovd apps launch com.example.hellovega --device ${stick.id}`
+    )
+    expect(echoed()).toContain(`$ ovd apps launch com.example.hellovega --device ${stick.id}`)
+
+    const logs = within(callout).getByRole('button', { name: 'Logs around crash' })
+    expect(logs.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(logs)
+    expect(logs.getAttribute('aria-expanded')).toBe('true')
+    expect(within(callout).getByText(/crashed with signal 6/)).toBeTruthy()
+  })
+
+  test('a crash without logs says so', async () => {
+    stub({
+      actions: {
+        launch: async () =>
+          crashedHello.ok
+            ? { ok: true, data: { ...crashedHello.data, crash: { ...helloCrash, logs: [] } } }
+            : crashedHello
+      }
+    })
+    renderScreen()
+
+    const panel = await launchHello()
+
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Logs around crash' }))
+    expect(within(panel).getByText('No log lines were captured')).toBeTruthy()
+  })
+
+  test('not running after launch: the callout and an error toast, the status stays Stopped', async () => {
+    stub({
+      actions: {
+        launch: async () => ({
+          ok: true,
+          data: {
+            target,
+            app: helloApp,
+            launched: true,
+            verified: false,
+            reason: 'not-running'
+          }
+        })
+      }
+    })
+    renderScreen()
+
+    const panel = await launchHello()
+
+    const callout = await within(panel).findByRole('alert')
+    expect(
+      within(callout).getByText('Launch reported success, but the app isn’t running')
+    ).toBeTruthy()
+    expect(
+      (await screen.findAllByRole('status')).some((t) =>
+        t.textContent?.includes('Launch reported success, but the app isn’t running')
+      )
+    ).toBe(true)
+    expect(within(await row('Hello Vega')).getByText('Stopped')).toBeTruthy()
+  })
+
+  test('Crashed on launch survives leaving the screen and coming back', async () => {
+    stub({ actions: { launch: async () => crashedHello } })
+    renderScreen()
+    await launchHello()
+    expect(await within(await row('Hello Vega')).findByText('Crashed on launch')).toBeTruthy()
+
+    cleanup()
+    renderScreen()
+
+    expect(await within(await row('Hello Vega')).findByText('Crashed on launch')).toBeTruthy()
+  })
+
+  test('the next action on the app clears it', async () => {
+    let calls = 0
+    stub({
+      actions: {
+        launch: async () => {
+          calls += 1
+          return calls === 1 ? crashedHello : launchedHello
+        }
+      }
+    })
+    renderScreen()
+    const panel = await launchHello()
+    expect(await within(panel).findByText('Crashed on launch')).toBeTruthy()
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Launch' }))
+
+    expect(await screen.findByText('Launched Hello Vega · verified')).toBeTruthy()
+    expect(within(await row('Hello Vega')).queryByText('Crashed on launch')).toBeNull()
+    expect(within(panel).queryByRole('alert')).toBeNull()
+  })
+
+  test('a reload that lists the app running clears it', async () => {
+    const helloRunning: InstalledApp = {
+      ...hello,
+      status: { state: 'running', pid: 5130, lifespan: 'PERMANENT' }
+    }
+    let up = false
+    stub({
+      list: async () => ({
+        ok: true,
+        data: listFor(stick.id, stick.name, [player, up ? helloRunning : hello])
+      }),
+      actions: { launch: async () => crashedHello }
+    })
+    renderScreen()
+    await launchHello()
+    expect(await within(await row('Hello Vega')).findByText('Crashed on launch')).toBeTruthy()
+
+    up = true
+    fireEvent.focus(window)
+
+    expect(await within(await row('Hello Vega')).findByText('Running · 5130')).toBeTruthy()
+    expect(within(await row('Hello Vega')).queryByText('Crashed on launch')).toBeNull()
   })
 })
