@@ -7,6 +7,7 @@ import { NavItem } from '../frame/NavItem'
 import { SearchButton } from '../frame/SearchButton'
 import { TargetPicker } from '../frame/TargetPicker'
 import { DoctorRow } from '../screens/environment/DoctorRow'
+import { ConfirmUninstall } from '../screens/apps/ConfirmUninstall'
 import { LaunchCallout } from '../screens/apps/LaunchCallout'
 import { LaunchStatus } from '../screens/apps/LaunchStatus'
 import { LogRow } from '../screens/logs/LogRow'
@@ -628,21 +629,14 @@ export function Gallery() {
       </GallerySection>
 
       {modal && (
-        <Modal
-          title="Uninstall Sample Player?"
-          subtitle="com.example.player on Fire TV Stick 4K Select"
-          onClose={() => setModal(false)}
-          footer={
-            <>
-              <Button onClick={() => setModal(false)}>Cancel</Button>
-              <Button variant="primary" onClick={() => setModal(false)}>
-                Uninstall
-              </Button>
-            </>
-          }
-        >
-          <div className="px-5 py-4.5 text-muted">This removes the app and its data.</div>
-        </Modal>
+        <ConfirmUninstall
+          action="uninstall"
+          appTitle="Sample Player"
+          packageId="com.example.player"
+          deviceName="Fire TV Stick 4K Select"
+          onCancel={() => setModal(false)}
+          onConfirm={() => setModal(false)}
+        />
       )}
       {wideModal && (
         <Modal

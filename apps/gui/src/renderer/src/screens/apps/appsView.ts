@@ -160,6 +160,33 @@ export function canUninstall(app: InstalledApp): boolean {
   return app.source === 'sideloaded'
 }
 
+// The actions the desktop confirms before it runs them.
+export type ConfirmAction = Extract<AppAction, 'uninstall' | 'reinstall'>
+
+// Both remove the app's data (stick check, PR B), so the desktop asks first; the CLI does not.
+export function needsConfirm(action: AppAction): action is ConfirmAction {
+  return action === 'uninstall' || action === 'reinstall'
+}
+
+// The wording of the confirmation dialog for an uninstall or a reinstall.
+export function confirmView(
+  action: ConfirmAction,
+  appTitle: string,
+  deviceName: string
+): { title: string; body: string; confirm: string } {
+  return action === 'uninstall'
+    ? {
+        title: `Uninstall ${appTitle} from ${deviceName}?`,
+        body: 'Its app data is removed.',
+        confirm: 'Uninstall'
+      }
+    : {
+        title: `Uninstall & reinstall ${appTitle} on ${deviceName}?`,
+        body: 'Its app data is removed, then the build is installed again.',
+        confirm: 'Uninstall & reinstall'
+      }
+}
+
 const DONE: Record<AppAction, string> = {
   launch: 'Launched',
   terminate: 'Stopped',

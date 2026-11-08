@@ -18,14 +18,17 @@ import {
   appsBlocker,
   appsCli,
   canUninstall,
+  needsConfirm,
   seenRunning,
   statusView,
   tabCounts,
   visibleApps,
   withDetail,
   type AppAction,
-  type AppTab
+  type AppTab,
+  type ConfirmAction
 } from './appsView'
+import { ConfirmUninstall } from './ConfirmUninstall'
 import {
   launchOutcomes as launchOutcomesNow,
   outcomeKey,
@@ -110,6 +113,12 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
     device === null ? undefined : outcomes[outcomeKey(device, app.packageId)]
   const [tab, setTab] = useState<AppTab>('installed')
   const [selected, setSelected] = useState<string | null>(null)
+  // The Uninstall or Uninstall & reinstall waiting for confirmation, and where it was asked.
+  const [confirm, setConfirm] = useState<{
+    action: ConfirmAction
+    app: InstalledApp
+    device: string
+  } | null>(null)
   // Component details (`vpm info` per component), by package ID and update time.
   const [details, setDetails] = useState<Record<string, InstalledApp>>({})
 
@@ -119,6 +128,17 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
 
   const list = 'list' in state ? state.list : undefined
   const apps = list && list.target.id === device ? list.apps : []
+  // The dialog stays only while its device is the target and its app is still on the list (the
+  // whole list, not the tab's), so a target change or a vanished app closes it.
+  const asking =
+    confirm !== null &&
+    confirm.device === device &&
+    apps.some((a) => a.packageId === confirm.app.packageId)
+      ? confirm
+      : null
+  // Cleared during render (as in Shell), for good: the dialog doesn't come back when the
+  // target switches back or the app is listed again.
+  if (confirm !== null && asking === null) setConfirm(null)
   const shown = visibleApps(apps, tab)
   const current = shown.find((a) => a.packageId === selected) ?? shown[0]
 
@@ -171,6 +191,13 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
     }
   }, [resolveKey, resolveId, device, list])
   const reinstallPackage = reinstall?.key === resolveKey ? reinstall.value : undefined
+
+  // Uninstall and Uninstall & reinstall ask first; the other actions run at once.
+  const onDetailAction = (action: AppAction, app: InstalledApp): void => {
+    if (needsConfirm(action)) {
+      if (device !== null) setConfirm({ action, app, device })
+    } else void run(action, app)
+  }
 
   const select = (app: InstalledApp): void => {
     setSelected(app.packageId)
@@ -249,11 +276,25 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
               now={new Date()}
               busy={busy[current.packageId]}
               outcome={outcomeFor(current)}
-              onAction={(action, app) => void run(action, app)}
+              onAction={onDetailAction}
               reinstall={reinstallPackage}
             />
           )}
         </div>
+      )}
+      {asking && (
+        <ConfirmUninstall
+          action={asking.action}
+          appTitle={asking.app.title}
+          packageId={asking.app.packageId}
+          deviceName={name}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            setConfirm(null)
+            // `run` acts on the hook's device, which is `asking.device` while the dialog shows.
+            void run(asking.action, asking.app)
+          }}
+        />
       )}
     </div>
   )

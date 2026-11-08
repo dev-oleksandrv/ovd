@@ -10,7 +10,9 @@ import {
   appInfoCli,
   appsBlocker,
   canUninstall,
+  confirmView,
   detailActions,
+  needsConfirm,
   withDetail,
   appsCli,
   componentRows,
@@ -182,6 +184,38 @@ describe('appsView', () => {
     ['system', false]
   ] as const)('a %s app can be uninstalled: %s', (source, can) => {
     expect(canUninstall({ ...player, source })).toBe(can)
+  })
+
+  test.each([
+    ['launch', false],
+    ['terminate', false],
+    ['force-stop', false],
+    ['restart', false],
+    ['uninstall', true],
+    ['reinstall', true]
+  ] as const)('%s needs a confirmation: %s', (action, needs) => {
+    expect(needsConfirm(action)).toBe(needs)
+  })
+
+  test.each([
+    [
+      'uninstall',
+      {
+        title: 'Uninstall Sample Player from Fire TV Stick 4K Select?',
+        body: 'Its app data is removed.',
+        confirm: 'Uninstall'
+      }
+    ],
+    [
+      'reinstall',
+      {
+        title: 'Uninstall & reinstall Sample Player on Fire TV Stick 4K Select?',
+        body: 'Its app data is removed, then the build is installed again.',
+        confirm: 'Uninstall & reinstall'
+      }
+    ]
+  ] as const)('the %s confirmation', (action, view) => {
+    expect(confirmView(action, 'Sample Player', 'Fire TV Stick 4K Select')).toEqual(view)
   })
 
   const target = { id: 'VirtualDevice', name: 'Vega Virtual Device' }
