@@ -49,6 +49,64 @@ describe('report', () => {
     })
   })
 
+  describe('a returned failure', () => {
+    const notVerified = new OvdError(
+      'LAUNCH_NOT_VERIFIED',
+      'Launch reported success, but the app crashed',
+      'Launch it again'
+    )
+    async function returned(json: boolean, failureHuman?: (v: { n: number }) => string) {
+      let stdout = ''
+      let stderr = ''
+      let exitCode = 0
+      await report(
+        {
+          output: { stdout: (t) => (stdout += t), stderr: (t) => (stderr += t) },
+          json,
+          setExitCode: (c) => (exitCode = c)
+        },
+        async () => ({ n: 0 }),
+        {
+          json: (v) => ({ launch: { n: v.n } }),
+          human: (v) => `${v.n} things\n`,
+          failure: (v) => (v.n === 0 ? notVerified : undefined),
+          ...(failureHuman ? { failureHuman } : {})
+        }
+      )
+      return { stdout, stderr, exitCode }
+    }
+
+    test('JSON: one document with the error and the result, and the error’s exit code', async () => {
+      const { stdout, stderr, exitCode } = await returned(true)
+      expect(stdout.trim().split('\n')).toHaveLength(1)
+      expect(JSON.parse(stdout)).toEqual({
+        ok: false,
+        error: {
+          code: 'LAUNCH_NOT_VERIFIED',
+          message: 'Launch reported success, but the app crashed',
+          hint: 'Launch it again'
+        },
+        launch: { n: 0 }
+      })
+      expect(stderr).toBe('')
+      expect(exitCode).toBe(7)
+    })
+
+    test('human: the message and hint on stderr, nothing on stdout', async () => {
+      expect(await returned(false)).toEqual({
+        stdout: '',
+        stderr: 'Error: Launch reported success, but the app crashed\nLaunch it again\n',
+        exitCode: 7
+      })
+    })
+
+    test('human: its own text when given', async () => {
+      const { stdout, stderr } = await returned(false, (v) => `crashed ${v.n}\n`)
+      expect(stdout).toBe('')
+      expect(stderr).toBe('crashed 0\n')
+    })
+  })
+
   test('any other error is UNEXPECTED_ERROR, exit 1', async () => {
     const { stdout, exitCode } = await run(true, () => Promise.reject(new Error('boom')))
     expect(JSON.parse(stdout)).toMatchObject({

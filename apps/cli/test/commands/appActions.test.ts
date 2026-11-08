@@ -13,9 +13,37 @@ const target = { id: 'VirtualDevice', name: 'Vega Virtual Device' }
 const app = { packageId: 'com.example.player', title: 'Sample Player' }
 const main = { ...app, componentId: 'com.example.player.main' }
 
-const launched: LaunchResult = { target, app: main, launched: true }
+const launched: LaunchResult = { target, app: main, launched: true, verified: true, pid: 3571 }
 const stopped: TerminateResult = { target, app, forced: false, wasRunning: true }
-const restarted: RestartResult = { target, app: main, wasRunning: true, launched: true }
+const restarted: RestartResult = {
+  target,
+  app: main,
+  wasRunning: true,
+  launched: true,
+  verified: true,
+  pid: 3571
+}
+const crash = {
+  pid: 3200,
+  time: '2026-11-08T01:51:44.657Z',
+  signal: 'SIGABRT',
+  language: 'JavaScript',
+  message: 'Error: player: deliberate crash right after launch',
+  stack: ['at anonymous (index.bundle:652:20)'],
+  logs: [
+    'Nov 08 01:53:24.202327 lcm_service[1035]: Launched in pid 3200',
+    "Nov 08 01:53:24.532295 acr_core_dump[3811]: Process 'com.example.player' (PID=3200) crashed with signal 6"
+  ]
+}
+const crashed: LaunchResult = {
+  target,
+  app: main,
+  launched: true,
+  verified: false,
+  reason: 'crashed',
+  crash
+}
+const CRASHED_HINT = 'See the cause and the logs around the crash, then launch it again'
 const uninstalled: UninstallResult = { target, app, uninstalled: true }
 const reinstalled: ReinstallResult = {
   target: { ...target, architecture: 'aarch64' },
@@ -36,6 +64,14 @@ const reinstalled: ReinstallResult = {
 
 const VVD = ['--device', 'VirtualDevice']
 
+// A launch stub that calls `onVerifying` as core does once `launch-app` returned.
+function verifying<T>(result: T) {
+  return async (_app?: string, opts?: { onVerifying?: () => void }) => {
+    opts?.onVerifying?.()
+    return result
+  }
+}
+
 describe('ovd apps launch', () => {
   test('--json prints the launch; --device reaches core', async () => {
     const launch = vi.fn(async () => launched)
@@ -45,21 +81,91 @@ describe('ovd apps launch', () => {
     )
     expect(JSON.parse(stdout)).toEqual({ ok: true, launch: launched })
     expect(exitCode).toBe(0)
-    expect(launch).toHaveBeenCalledWith('com.example.player', { device: 'VirtualDevice' })
+    expect(launch).toHaveBeenCalledWith('com.example.player', {
+      device: 'VirtualDevice',
+      onVerifying: expect.any(Function)
+    })
   })
 
   test('without an app, the open one', async () => {
     const launch = vi.fn(async () => launched)
     await cli(['apps', 'launch', '--json'], { ovd: stubApps({ launch }) })
-    expect(launch).toHaveBeenCalledWith(undefined, {})
+    expect(launch).toHaveBeenCalledWith(undefined, { onVerifying: expect.any(Function) })
   })
 
   test('human output', async () => {
     const { stdout, stderr } = await cli(['apps', 'launch', 'com.example.player'], {
-      ovd: stubApps({ launch: async () => launched })
+      ovd: stubApps({ launch: verifying(launched) })
     })
-    expect(stdout).toBe('Launched com.example.player.main on Vega Virtual Device\n')
-    expect(stderr).toBe('Launching com.example.player…\n')
+    expect(stdout).toBe(
+      'Launched com.example.player.main on Vega Virtual Device · verified, pid 3571\n'
+    )
+    expect(stderr).toBe('Launching com.example.player…\nVerifying launch…\n')
+  })
+
+  test('a crash right after launch: one document with the error and the launch, exit 7', async () => {
+    const { stdout, exitCode } = await cli(['apps', 'launch', 'com.example.player', '--json'], {
+      ovd: stubApps({ launch: async () => crashed })
+    })
+    expect(JSON.parse(stdout)).toEqual({
+      ok: false,
+      error: {
+        code: 'LAUNCH_NOT_VERIFIED',
+        message: 'Launch reported success, but the app crashed',
+        hint: CRASHED_HINT
+      },
+      launch: { ...crashed, verified: false, reason: 'crashed', crash }
+    })
+    expect(exitCode).toBe(7)
+  })
+
+  test('a crash in human mode: the cause and the logs on stderr, nothing on stdout', async () => {
+    const { stdout, stderr, exitCode } = await cli(['apps', 'launch', 'com.example.player'], {
+      ovd: stubApps({ launch: verifying(crashed) })
+    })
+    expect(stdout).toBe('')
+    expect(stderr).toBe(
+      'Launching com.example.player…\n' +
+        'Verifying launch…\n' +
+        'Error: Launch reported success, but the app crashed\n' +
+        'Cause: SIGABRT · Error: player: deliberate crash right after launch (pid 3200, 2026-11-08T01:51:44.657Z)\n' +
+        'Logs around crash:\n' +
+        `  ${crash.logs[0]}\n` +
+        `  ${crash.logs[1]}\n` +
+        `${CRASHED_HINT}\n`
+    )
+    expect(exitCode).toBe(7)
+  })
+
+  test('a crash without logs or a cause says so', async () => {
+    const bare = { ...crashed, crash: { pid: 3200, time: crash.time, stack: [], logs: [] } }
+    const { stderr } = await cli(['apps', 'launch', 'com.example.player'], {
+      ovd: stubApps({ launch: async () => bare })
+    })
+    expect(stderr).toContain('Cause: (pid 3200, 2026-11-08T01:51:44.657Z)\n')
+    expect(stderr).toContain('No log lines were captured\n')
+  })
+
+  test('not running after launch: exit 7', async () => {
+    const notRunning: LaunchResult = {
+      target,
+      app: main,
+      launched: true,
+      verified: false,
+      reason: 'not-running'
+    }
+    const { stdout, exitCode } = await cli(['apps', 'launch', 'com.example.player', '--json'], {
+      ovd: stubApps({ launch: async () => notRunning })
+    })
+    expect(JSON.parse(stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: 'LAUNCH_NOT_VERIFIED',
+        message: 'Launch reported success, but the app isn’t running'
+      },
+      launch: { verified: false, reason: 'not-running' }
+    })
+    expect(exitCode).toBe(7)
   })
 
   test.each([
@@ -131,14 +237,29 @@ describe('ovd apps restart', () => {
     })
     expect(JSON.parse(stdout)).toEqual({ ok: true, restart: restarted })
     expect(exitCode).toBe(0)
-    expect(restart).toHaveBeenCalledWith(undefined, { device: 'VirtualDevice' })
+    expect(restart).toHaveBeenCalledWith(undefined, {
+      device: 'VirtualDevice',
+      onVerifying: expect.any(Function)
+    })
+  })
+
+  test('a restart that crashes: the restart next to the error, exit 7', async () => {
+    const { stdout, exitCode } = await cli(['apps', 'restart', '--json'], {
+      ovd: stubApps({ restart: async () => ({ ...crashed, wasRunning: true }) })
+    })
+    expect(JSON.parse(stdout)).toMatchObject({
+      ok: false,
+      error: { code: 'LAUNCH_NOT_VERIFIED' },
+      restart: { wasRunning: true, verified: false, reason: 'crashed', crash: { pid: 3200 } }
+    })
+    expect(exitCode).toBe(7)
   })
 
   test.each([
-    [restarted, 'Restarted com.example.player.main on Vega Virtual Device\n'],
+    [restarted, 'Restarted com.example.player.main on Vega Virtual Device · verified, pid 3571\n'],
     [
       { ...restarted, wasRunning: false },
-      'Started com.example.player.main on Vega Virtual Device (it wasn’t running)\n'
+      'Started com.example.player.main on Vega Virtual Device (it wasn’t running) · verified, pid 3571\n'
     ]
   ])('human output %#', async (result, line) => {
     const { stdout } = await cli(['apps', 'restart'], {
