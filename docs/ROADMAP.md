@@ -6,7 +6,7 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | ----- | --------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- | -------- | ------------- |
 | 0     | Setup                       | Work on a ready repo with agent instructions                             | Empty app frame, design tokens                                      | Fixed    | Done (v0.0.1) |
 | 1     | Connect my devices          | See every stick and the Virtual Device, set up a new stick               | App shell, Doctor (first run), Devices, setup and pairing wizards   | Fixed    | Done (v0.1.0) |
-| 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | In progress   |
+| 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | Done          |
 | 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Next          |
 | 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Planned       |
 | 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Planned       |
@@ -16,7 +16,7 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
 | 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
 
-**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 work (2.1–2.5) is on `main`, not yet released.
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 is done on `main`; its release isn’t tagged yet.
 
 The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
