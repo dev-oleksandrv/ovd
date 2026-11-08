@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { createSerialRunner, type CommandSpec, type Runner } from '../../src/index.js'
 
 const spec = (display: string): CommandSpec => ({ file: 'vega', args: [], display })
@@ -45,4 +45,56 @@ test('a command with onStdout holds the queue only until its first output', asyn
   finishLogin()
   await login
   expect(order).toEqual(['start login', 'start devices', 'end devices', 'end login'])
+})
+
+test('a stream holds the queue only until its first chunk', async () => {
+  let finishStream = (): void => undefined
+  const order: string[] = []
+  const inner: Runner = {
+    async run(s) {
+      order.push(`start ${s.display}`)
+      if (s.display === 'logs') {
+        s.stream?.onChunk('Nov 08 07:27:00.257342 …\n')
+        await new Promise<void>((resolve) => (finishStream = resolve))
+      }
+      order.push(`end ${s.display}`)
+      return { stdout: '', stderr: '', exitCode: 0, durationMs: 0, command: s.display }
+    }
+  }
+  const runner = createSerialRunner(inner)
+  const logs = runner.run({ ...spec('logs'), stream: { onChunk: () => undefined } })
+  await runner.run(spec('devices'))
+  finishStream()
+  await logs
+  expect(order).toEqual(['start logs', 'start devices', 'end devices', 'end logs'])
+})
+
+test('a stream that prints nothing releases the queue after 5 s', async () => {
+  vi.useFakeTimers()
+  try {
+    let finishStream = (): void => undefined
+    const order: string[] = []
+    const inner: Runner = {
+      async run(s) {
+        order.push(`start ${s.display}`)
+        if (s.display === 'logs') {
+          await new Promise<void>((resolve) => (finishStream = resolve))
+        }
+        order.push(`end ${s.display}`)
+        return { stdout: '', stderr: '', exitCode: 0, durationMs: 0, command: s.display }
+      }
+    }
+    const runner = createSerialRunner(inner)
+    const logs = runner.run({ ...spec('logs'), stream: { onChunk: () => undefined } })
+    const devices = runner.run(spec('devices'))
+    await vi.advanceTimersByTimeAsync(4_999)
+    expect(order).toEqual(['start logs'])
+    await vi.advanceTimersByTimeAsync(1)
+    await devices
+    expect(order).toEqual(['start logs', 'start devices', 'end devices'])
+    finishStream()
+    await logs
+  } finally {
+    vi.useRealTimers()
+  }
 })

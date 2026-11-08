@@ -1,16 +1,44 @@
-import type { Runner, RunResult } from './runner.js'
+import { STREAM_START_MS, type Runner, type RunResult } from './runner.js'
 
 // Two `vega` processes started together can break each other: the SDK relinks its workspace
 // and rewrites `dependencies.pkl` on start, and the loser fails with
 // `No such file or directory: 'vda'` or `EOFError` (seen with Vega CLI 1.4.5, SDK 0.24).
 // So each core runs one SDK command at a time. A command with `onStdout` prints and then
 // waits, for minutes (`vega devmode login` until the browser sign-in): it holds the queue
-// only until its first output, once its start is over, so device polls keep running.
+// only until its first output, once its start is over, so device polls keep running. A
+// `stream` (the log stream, `loggingctl log -f`, which runs for hours) holds it until its first
+// chunk, or for at most `STREAM_START_MS`, so a quiet device can't hold every device poll.
 export function createSerialRunner(inner: Runner): Runner {
   let queue: Promise<unknown> = Promise.resolve()
   return {
     run(spec) {
-      const { onStdout } = spec
+      const { onStdout, stream } = spec
+      if (stream) {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        let release = (): void => undefined
+        const started = new Promise<void>((resolve) => {
+          release = () => {
+            if (timer !== undefined) clearTimeout(timer)
+            resolve()
+          }
+        })
+        const result: Promise<RunResult> = queue.then(() => {
+          timer = setTimeout(release, STREAM_START_MS)
+          return inner.run({
+            ...spec,
+            stream: {
+              ...stream,
+              onChunk: (chunk) => {
+                release()
+                stream.onChunk(chunk)
+              }
+            }
+          })
+        })
+        queue = Promise.race([started, result.catch(() => undefined)])
+        void result.then(release, release)
+        return result
+      }
       if (!onStdout) {
         const result: Promise<RunResult> = queue.then(() => inner.run(spec))
         queue = result.catch(() => undefined)
