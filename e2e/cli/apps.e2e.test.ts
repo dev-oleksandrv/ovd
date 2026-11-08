@@ -188,6 +188,9 @@ describe('ovd apps actions', () => {
       verified: true,
       pid: 3571
     })
+    // The stop printed the launch's lines (log-capture/virtual-device-verified.txt); none is kept.
+    expect(launch.json<Ok<{ launch: LaunchResult }>>().launch).not.toHaveProperty('crash')
+    expect(launch.stdout).not.toContain('lcm_service')
     expect(sandbox.calls()).toEqual(expect.arrayContaining([PKG_INFO, LAUNCH]))
     expect(sandbox.calls().some((c) => isStop(c, 0))).toBe(true)
     expect(sandbox.world().running).toEqual([{ device: 'VirtualDevice', app: PLAYER }])

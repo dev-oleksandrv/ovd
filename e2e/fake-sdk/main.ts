@@ -362,12 +362,9 @@ function launchVerification(w: World, sub: string, installed: boolean): Reply | 
     if (crashPid === CRASH_PID && w.playerCrashed) {
       return { stdout: fixture('log-capture/virtual-device-crashed.txt') }
     }
-    // Not a recording: there is none of a capture stopped without a crash, and replaying the
-    // crash's would be false data. This departs from spec AC 8 and docs/conventions/testing.md
-    // ("answers only with recorded fixtures"); core discards this output on a verified launch.
-    // An open question for the maintainer. Not the same case as `virtual-device stop` below,
-    // whose output core never reads.
-    if (crashPid === 0) return {}
+    // The stop after a launch that stayed up (its README row); core discards these lines on a
+    // verified launch.
+    if (crashPid === 0) return { stdout: fixture('log-capture/virtual-device-verified.txt') }
   }
   return null
 }

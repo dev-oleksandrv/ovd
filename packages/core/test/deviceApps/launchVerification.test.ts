@@ -73,9 +73,10 @@ const online = {
   [STK.START]: out('log-capture/started.txt'),
   [VVD.LAUNCH]: out('vega-device-launch-app/launched.txt'),
   [STK.LAUNCH]: out('vega-device-launch-app/launched.txt'),
-  // No recording of a capture stopped without a crash: its output is discarded.
-  [VVD.stop(0)]: {},
-  [STK.stop(0)]: {}
+  // A capture stopped after a launch that stayed up; the Virtual Device's recording stands in
+  // for the stick's. A verified launch discards these lines.
+  [VVD.stop(0)]: out('log-capture/virtual-device-verified.txt'),
+  [STK.stop(0)]: out('log-capture/virtual-device-verified.txt')
 }
 
 // The Virtual Device player that survives its launch.
@@ -180,6 +181,8 @@ describe('launch verification', () => {
 
     expect(result).toMatchObject({ launched: true, verified: true, pid: 3571 })
     expect(result).not.toHaveProperty('crash')
+    // The stop printed the launch's lines (log-capture/virtual-device-verified.txt); none is kept.
+    expect(JSON.stringify(result)).not.toContain('lcm_service')
     expect(sleep.mock.calls.map(([ms]) => ms)).toEqual([1000, 1000, 1000, 1000, 1000])
     expect(calls()).toContain(VVD.stop(0))
     expect(calls().filter((c) => c === VVD.APP_LIST)).toHaveLength(5)
@@ -334,6 +337,23 @@ describe('launch verification', () => {
 
     expect(await apps.launch(PLAYER, DEVICE)).toMatchObject({ verified: true, pid: 3571 })
     expect(calls().some((c) => decoded(c)?.startsWith('pkill'))).toBe(false)
+  })
+
+  test('control characters in the captured lines are removed, a tab kept', async () => {
+    const recorded = fixture('0.24/log-capture/virtual-device-crashed.txt')
+    const logged =
+      'com.example.player[3200]: I\tjs: \u001b]0;pwned\u0007\u001b[31mred\u009b2J\u0000'
+    const { apps } = setup({
+      ...crashes,
+      [VVD.stop(3200)]: { stdout: `${recorded}${logged}\r\n\u001b\n`, exitCode: 0 }
+    })
+
+    const { logs } = crashOf(await apps.launch(PLAYER, DEVICE))
+
+    expect(logs).toEqual([
+      ...lines('log-capture/virtual-device-crashed.txt'),
+      'com.example.player[3200]: I\tjs: ]0;pwned[31mred2J'
+    ])
   })
 
   test('no capture and a crash: the crash without logs', async () => {
