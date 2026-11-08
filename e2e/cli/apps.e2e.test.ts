@@ -8,6 +8,7 @@ import type {
   UninstallResult
 } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
+import { decodeScript } from '../fake-sdk/scripts.ts'
 import { ALL_PACKAGES } from '../fake-sdk/world.ts'
 import { ovd } from '../harness/cli.ts'
 import { MANIFEST, makeProject, makeRecordedVpkg } from '../harness/project.ts'
@@ -159,6 +160,19 @@ const FORCE = `${SHELL} vlcm terminate-app --force --pkg-id ${PLAYER}`
 const UNINSTALL = `vega device uninstall-app -a ${PLAYER} --device VirtualDevice`
 
 type Ok<T> = { ok: true } & T
+type NotVerified<T> = { ok: false; error: { code: string; message: string; hint: string } } & T
+
+const CRASH_HISTORY = `${SHELL} vlcm crash-history`
+const APP_LIST = `${SHELL} vlcm list --app-id ${PLAYER}.main`
+const TOMBSTONES = `${SHELL} loggingctl vault --ls SYSTEM_TOMBSTONE/acr`
+// The device script a `… shell echo <base64> | base64 -d | sh` call ran, or null.
+const scriptOf = (call: string): string | null =>
+  call.startsWith(`${SHELL} `) ? decodeScript(`shell ${call.slice(SHELL.length + 1)}`) : null
+// The capture stop (fixtures/0.24/log-capture/started.txt: timeout pid 2056) with its crash pid.
+const isStop = (call: string, crashPid: number): boolean => {
+  const script = scriptOf(call) ?? ''
+  return script.startsWith('pkill -P 2056;') && script.includes(String.raw`'\[${crashPid}\]'`)
+}
 
 describe('ovd apps actions', () => {
   test('install, launch, stop, restart and uninstall, each logged', async () => {
@@ -169,10 +183,13 @@ describe('ovd apps actions', () => {
 
     const launch = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD, '--json'])
     expect(launch.exitCode, launch.stdout).toBe(0)
-    expect(launch.json<Ok<{ launch: LaunchResult }>>().launch.app.componentId).toBe(
-      `${PLAYER}.main`
-    )
+    expect(launch.json<Ok<{ launch: LaunchResult }>>().launch).toMatchObject({
+      app: { componentId: `${PLAYER}.main` },
+      verified: true,
+      pid: 3571
+    })
     expect(sandbox.calls()).toEqual(expect.arrayContaining([PKG_INFO, LAUNCH]))
+    expect(sandbox.calls().some((c) => isStop(c, 0))).toBe(true)
     expect(sandbox.world().running).toEqual([{ device: 'VirtualDevice', app: PLAYER }])
     const running = await ovd(sandbox, ['apps', '--running', ...VVD, '--json'])
     expect(running.json<Ok<AppList>>().apps.map((a) => a.packageId)).toEqual([PLAYER])
@@ -326,5 +343,89 @@ describe('ovd apps actions', () => {
     )
     expect(sandbox.calls()).toEqual([])
     expect(sandbox.activity()).toEqual([])
+  })
+})
+
+describe('ovd apps launch verification', () => {
+  // The player installed on the running Virtual Device, crashing right after each launch.
+  async function crashingPlayer(): Promise<Sandbox> {
+    const sandbox = await withPlayerProject()
+    expect(
+      (await ovd(sandbox, ['apps', 'install', `~/${AARCH64}`, ...VVD, '--json'])).exitCode
+    ).toBe(0)
+    sandbox.update((w) => {
+      w.playerCrashesOnLaunch = true
+    })
+    sandbox.clearCalls()
+    return sandbox
+  }
+
+  test('a crash right after launch exits 7, verified false', async () => {
+    const sandbox = await crashingPlayer()
+
+    const run = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD, '--json'])
+
+    expect(run.exitCode, run.stdout).toBe(7)
+    const doc = run.json<NotVerified<{ launch: LaunchResult }>>()
+    expect(doc.error).toEqual({
+      code: 'LAUNCH_NOT_VERIFIED',
+      message: 'Launch reported success, but the app crashed',
+      hint: 'See the cause and the logs around the crash, then launch it again'
+    })
+    expect(doc.launch).toMatchObject({
+      launched: true,
+      verified: false,
+      reason: 'crashed',
+      crash: { pid: 3200, signal: 'SIGABRT', language: 'JavaScript' }
+    })
+    const logs = 'crash' in doc.launch ? doc.launch.crash.logs : []
+    expect(logs.length).toBeGreaterThan(0)
+    expect(logs.some((l) => l.includes('crashed with signal 6'))).toBe(true)
+
+    expect(sandbox.activity().at(-1)).toMatchObject({
+      action: 'app.launch',
+      result: 'error',
+      errorCode: 'LAUNCH_NOT_VERIFIED',
+      args: { app: PLAYER, reason: 'crashed', pid: '3200', signal: 'SIGABRT' }
+    })
+    const calls = sandbox.calls()
+    const steps = [
+      calls.indexOf(CRASH_HISTORY),
+      calls.findIndex((c) => scriptOf(c)?.startsWith('f=$(mktemp)') ?? false),
+      calls.indexOf(LAUNCH),
+      calls.indexOf(APP_LIST),
+      calls.lastIndexOf(CRASH_HISTORY),
+      calls.indexOf(TOMBSTONES),
+      calls.findIndex(
+        (c) => scriptOf(c)?.startsWith('loggingctl vault --cat SYSTEM_TOMBSTONE 37') ?? false
+      ),
+      calls.findIndex((c) => isStop(c, 3200))
+    ]
+    expect(
+      steps.every((i) => i >= 0),
+      steps.join(',')
+    ).toBe(true)
+    expect(steps).toEqual([...steps].sort((a, b) => a - b))
+    expect(sandbox.world().running).toEqual([])
+  })
+
+  test('the same crash without --json: the cause and logs on stderr, nothing on stdout', async () => {
+    const sandbox = await crashingPlayer()
+
+    const run = await ovd(sandbox, ['apps', 'launch', PLAYER, ...VVD])
+
+    expect(run.exitCode).toBe(7)
+    expect(run.stdout).toBe('')
+    expect(run.stderr).toContain('Verifying launch…')
+    expect(run.stderr).toContain('Error: Launch reported success, but the app crashed')
+    expect(run.stderr).toContain('Logs around crash:')
+    expect(run.stderr).toContain('crashed with signal 6')
+    expect(run.stderr).toContain(
+      'See the cause and the logs around the crash, then launch it again'
+    )
+    const calls = sandbox.calls()
+    const launched = calls.indexOf(LAUNCH)
+    expect(launched).toBeGreaterThan(-1)
+    expect(calls.findIndex((c) => isStop(c, 3200))).toBeGreaterThan(launched)
   })
 })

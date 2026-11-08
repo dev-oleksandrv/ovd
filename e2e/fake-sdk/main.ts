@@ -17,6 +17,7 @@ import {
   type Stick,
   type World
 } from './world.ts'
+import { ACR, CAPTURE_START, captureStop, decodeScript } from './scripts.ts'
 
 interface Reply {
   stdout?: string
@@ -305,6 +306,69 @@ function vvdApps(w: World, sub: string): Reply | null {
     stopPlayer(w)
     return { stdout: fixture('vlcm-terminate-app/force-stopped.txt') }
   }
+  return launchVerification(w, sub, installed)
+}
+
+// The capture the recordings started (fixtures/0.24/log-capture/started.txt).
+const CAPTURE_FILE = '/tmp/tmp.XXXXHeBy6l'
+const CAPTURE_PID = 2056
+// The player's crash in `vlcm-crash-history/virtual-device-after.txt` and its vault index in
+// `loggingctl-vault-ls/virtual-device-tombstones-after.json`.
+const CRASH_PID = 3200
+const CRASH_INDEX = 37
+
+// What core reads around a launch on the Virtual Device (ADR 0012): the crash history, the
+// running component, the vault, the crash report and the bounded log capture.
+function launchVerification(w: World, sub: string, installed: boolean): Reply | null {
+  if (sub === 'shell vlcm crash-history') {
+    return {
+      stdout: fixture(
+        w.playerCrashed
+          ? 'vlcm-crash-history/virtual-device-after.txt'
+          : 'vlcm-crash-history/virtual-device-before.txt'
+      )
+    }
+  }
+  if (sub === `shell vlcm list --app-id ${PLAYER}.main`) {
+    return {
+      stdout: fixture(
+        installed && playerRunning(w) ? 'vlcm-list/app-running.txt' : 'vlcm-list/app-missing.txt'
+      )
+    }
+  }
+  if (sub === 'shell loggingctl vault --ls SYSTEM_TOMBSTONE/acr') {
+    return {
+      stdout: fixture(
+        w.playerCrashed
+          ? 'loggingctl-vault-ls/virtual-device-tombstones-after.json'
+          : 'loggingctl-vault-ls/virtual-device-tombstones-before.json'
+      )
+    }
+  }
+  const script = decodeScript(sub)
+  if (script === null) return null
+  if (CAPTURE_START.test(script)) return { stdout: fixture('log-capture/started.txt') }
+  const acr = ACR.exec(script)
+  if (acr) {
+    return w.playerCrashed && Number(acr[1]) === CRASH_INDEX
+      ? { stdout: fixture('loggingctl-vault-acr/virtual-device-crashed.txt') }
+      : null
+  }
+  const stop = captureStop(CAPTURE_FILE, CAPTURE_PID).exec(script)
+  if (stop && stop[1] === PLAYER) {
+    const crashPid = Number(stop[2])
+    // A later crash than virtual-device-after.txt's (its README row); e2e asserts its lines,
+    // not the pid inside them.
+    if (crashPid === CRASH_PID && w.playerCrashed) {
+      return { stdout: fixture('log-capture/virtual-device-crashed.txt') }
+    }
+    // Not a recording: there is none of a capture stopped without a crash, and replaying the
+    // crash's would be false data. This departs from spec AC 8 and docs/conventions/testing.md
+    // ("answers only with recorded fixtures"); core discards this output on a verified launch.
+    // An open question for the maintainer. Not the same case as `virtual-device stop` below,
+    // whose output core never reads.
+    if (crashPid === 0) return {}
+  }
   return null
 }
 
@@ -334,6 +398,11 @@ function deviceAppCommand(w: World, verb: 'launch' | 'uninstall', rest: string[]
   }
   stopPlayer(w)
   if (verb === 'launch') {
+    // The SDK reports success either way (ADR 0012); a crashing player never runs.
+    if (w.playerCrashesOnLaunch) {
+      w.playerCrashed = true
+      return { stdout: fixture('vega-device-launch-app/launched.txt') }
+    }
     // `launch-app` force-stops the app first, so a relaunch is still one running entry.
     w.running.push({ device: 'VirtualDevice', app: PLAYER })
     return { stdout: fixture('vega-device-launch-app/launched.txt') }

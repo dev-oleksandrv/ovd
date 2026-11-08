@@ -1,4 +1,5 @@
-import type { ElectronApplication, Page } from '@playwright/test'
+import type { ElectronApplication, Locator, Page } from '@playwright/test'
+import { decodeScript } from '../fake-sdk/scripts.ts'
 import { ALL_PACKAGES } from '../fake-sdk/world.ts'
 import { expect, test } from '../harness/gui.ts'
 import { MANIFEST, makeProject, makeRecordedVpkg } from '../harness/project.ts'
@@ -25,6 +26,19 @@ function echo(page: Page) {
 
 function toast(page: Page, text: string) {
   return page.getByRole('status').filter({ hasText: text })
+}
+
+// A launch is verified for about 5 s (ADR 0012) while the 2 s device polls share the serial
+// runner, so wait for "Verifying…" to show and then to go before the toast: no single wait has
+// to cover the whole verification.
+async function verified(row: Locator): Promise<void> {
+  await expect(row).toContainText('Verifying…')
+  await expect(row).not.toContainText('Verifying…')
+}
+
+// The device script a `… shell echo <base64> | base64 -d | sh` call ran, or null.
+function scriptOf(call: string): string | null {
+  return call.startsWith(`${SHELL} `) ? decodeScript(`shell ${call.slice(SHELL.length + 1)}`) : null
 }
 
 // The native picker can't be driven, so the next one answers with `path`.
@@ -138,6 +152,7 @@ test.describe('Apps', () => {
     await expect(row).toContainText('Stopped')
 
     await row.getByRole('button', { name: 'Launch' }).click()
+    await verified(row)
     await expect(toast(page, `Launched ${TITLE}`)).toBeVisible()
     await expect(echo(page)).toContainText(
       '$ ovd apps launch com.example.player --device VirtualDevice'
@@ -163,9 +178,11 @@ test.describe('Apps', () => {
 
     await nav(page, 'Apps').click()
     await row.getByRole('button', { name: 'Launch' }).click()
+    await verified(row)
     await expect(row).toContainText(/Running · \d+/)
     const detail = page.getByRole('complementary', { name: `${TITLE} details` })
     await detail.getByRole('button', { name: 'Restart' }).click()
+    await verified(row)
     await expect(toast(page, `Restarted ${TITLE}`)).toBeVisible()
     await expect(echo(page)).toContainText(
       '$ ovd apps restart com.example.player --device VirtualDevice'
@@ -261,5 +278,55 @@ test.describe('Apps', () => {
       ['app.install', 'ok'],
       ['app.reinstall', 'ok']
     ])
+  })
+
+  test('Launch on the crashing player shows Verifying…, then Crashed on launch with its cause and logs', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+      w.playerCrashesOnLaunch = true
+    })
+    const { page } = await launch()
+    await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    const detail = page.getByRole('complementary', { name: `${TITLE} details` })
+    await expect(row).toContainText('Stopped')
+
+    await row.getByRole('button', { name: 'Launch' }).click()
+
+    await expect(row).toContainText('Verifying…')
+    await expect(detail.getByText('Verifying launch…')).toBeVisible()
+    await expect(row).toContainText('Crashed on launch')
+    await expect(detail.getByText('Crashed on launch')).toBeVisible()
+    const cli = '$ ovd apps launch com.example.player --device VirtualDevice'
+    await expect(toast(page, 'Launch reported success, but the app crashed')).toContainText(cli)
+    await expect(echo(page)).toContainText(cli)
+    const callout = detail.getByRole('alert')
+    await expect(callout).toContainText('Launch reported success, but the app crashed')
+    await expect(callout).toContainText('SIGABRT')
+    await expect(callout).toContainText('pid 3200')
+    await callout.getByRole('button', { name: 'Logs around crash' }).click()
+    await expect(callout).toContainText('crashed with signal 6')
+
+    await nav(page, 'Devices').click()
+    await nav(page, 'Apps').click()
+    await expect(row).toContainText('Crashed on launch')
+
+    const activity = sandbox.activity().filter((a) => a.surface === 'desktop')
+    expect(activity.map((a) => [a.action, a.result])).toEqual([['app.launch', 'error']])
+    expect(activity[0]).toMatchObject({
+      errorCode: 'LAUNCH_NOT_VERIFIED',
+      args: { app: 'com.example.player', reason: 'crashed', pid: '3200', signal: 'SIGABRT' }
+    })
+    const stop = sandbox
+      .calls()
+      .map(scriptOf)
+      .find((script) => script?.startsWith('pkill -P 2056;'))
+    expect(stop).toContain(String.raw`'\[3200\]'`)
+    expect(sandbox.world().running).toEqual([])
   })
 })
