@@ -34,26 +34,44 @@ export function levelName(level: string | undefined): string | null {
 // The `ovd logs …` that shows what the screen shows (ADR 0005), in the CLI's flag order.
 export function logsCli(filter: LogsFilter, device: string): string {
   const parts = ['ovd logs']
-  if (filter.app) parts.push(`--app ${filter.app}`)
+  if (filter.app) parts.push(`--app ${shellQuote(filter.app)}`)
   else if (filter.system) parts.push('--system')
   const level = levelName(filter.level)
   if (level) parts.push(`--level ${level}`)
   if (filter.search) {
-    parts.push(`--grep ${quote(filter.search)}`)
+    // The search is always quoted, so the echo reads `--grep "tick"` (e2e asserts it).
+    parts.push(`--grep ${doubleQuote(filter.search)}`)
     if (filter.regex) parts.push('--regex')
   }
-  parts.push(`--device ${device}`)
+  parts.push(`--device ${shellQuote(device)}`)
   return parts.join(' ')
 }
 
+// Characters a shell never expands or splits on in a word: app IDs, serials, `IP:port`.
+const SHELL_SAFE = /^[A-Za-z0-9._:/@%+=,-]+$/
+
+// One word for a copyable command: a safe value as it is, anything else in single quotes
+// (nothing expands inside them; a `'` closes, adds an escaped one and reopens).
+export function shellQuote(text: string): string {
+  if (SHELL_SAFE.test(text)) return text
+  return `'${text.replaceAll("'", `'\\''`)}'`
+}
+
 // Double quotes, with what a shell expands inside them escaped.
-function quote(text: string): string {
+function doubleQuote(text: string): string {
   return `"${text.replace(/[\\"$`]/g, (c) => `\\${c}`)}"`
 }
 
-// All, each app seen in the log plus the open project's app, then System.
+// Core's app-ID rule (packages/core/src/deviceApps/appId.ts); the renderer can't import core
+// runtime code (docs/conventions/gui.md).
+const APP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+
+// All, each app seen in the log plus the open project's app, then System. The project's ID
+// comes from a manifest.toml anyone could have written, so it is offered only when it is an
+// app ID.
 export function packageChoices(apps: string[], projectAppId: string | null): SelectOption[] {
-  const ids = [...new Set(projectAppId ? [...apps, projectAppId] : apps)].sort()
+  const project = projectAppId !== null && APP_ID.test(projectAppId) ? [projectAppId] : []
+  const ids = [...new Set([...apps, ...project])].sort()
   return [
     { value: ALL_PACKAGES, label: 'All' },
     ...ids.map((id) => ({ value: id, label: id })),

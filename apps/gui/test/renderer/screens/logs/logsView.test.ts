@@ -7,6 +7,7 @@ import {
   packageChoices,
   regexError,
   sessionLabel,
+  shellQuote,
   timeOfDay,
   withPackage
 } from '../../../../src/renderer/src/screens/logs/logsView'
@@ -28,9 +29,38 @@ describe('logsCli', () => {
     [
       { search: 'say "hi" $HOME `x` \\' },
       `ovd logs --grep "say \\"hi\\" \\$HOME \\\`x\\\` \\\\" --device ${STICK}`
-    ]
+    ],
+    [{ search: "it's" }, `ovd logs --grep "it's" --device ${STICK}`],
+    [
+      { app: 'com.example.player;touch /tmp/x' },
+      `ovd logs --app 'com.example.player;touch /tmp/x' --device ${STICK}`
+    ],
+    [{ app: "x'$(id)'" }, `ovd logs --app 'x'\\''$(id)'\\''' --device ${STICK}`]
   ])('%o → %s', (filter, cli) => {
     expect(logsCli(filter, STICK)).toBe(cli)
+  })
+
+  test.each([
+    ['192.0.2.10:5555', 'ovd logs --device 192.0.2.10:5555'],
+    ['VirtualDevice', 'ovd logs --device VirtualDevice'],
+    ['a b', "ovd logs --device 'a b'"],
+    ['$(reboot)', "ovd logs --device '$(reboot)'"]
+  ])('quotes the device %s only when it needs it', (device, cli) => {
+    expect(logsCli({}, device)).toBe(cli)
+  })
+})
+
+describe('shellQuote', () => {
+  test.each([
+    ['com.example.player', 'com.example.player'],
+    ['G070000000000001', 'G070000000000001'],
+    ['', "''"],
+    ['~/x', "'~/x'"],
+    ['a;b', "'a;b'"],
+    ['a\nb', "'a\nb'"],
+    ["'", `''\\'''`]
+  ])('%j → %s', (text, quoted) => {
+    expect(shellQuote(text)).toBe(quoted)
   })
 })
 
@@ -46,6 +76,17 @@ describe('packageChoices', () => {
     ])
     expect(packageChoices([], null).map((c) => c.label)).toEqual(['All', 'System'])
   })
+
+  test.each(['com.example.player;touch /tmp/x', "x'$(id)'", '.hidden', '-rf', ''])(
+    'leaves out a project ID that is not an app ID: %j',
+    (projectAppId) => {
+      expect(packageChoices(['com.example.hellovega'], projectAppId)).toEqual([
+        { value: 'all', label: 'All' },
+        { value: 'com.example.hellovega', label: 'com.example.hellovega' },
+        { value: 'system', label: 'System' }
+      ])
+    }
+  )
 
   test.each([
     ['all', {}],
