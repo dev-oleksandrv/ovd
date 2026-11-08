@@ -6,8 +6,8 @@ interface ButtonProps {
   children: ReactNode
   onClick?: () => void
   // `blocked` looks disabled but still answers a click, to say why (design: Install on target
-  // under an architecture mismatch).
-  variant?: 'primary' | 'secondary' | 'dashed' | 'blocked'
+  // under an architecture mismatch). `danger` is for destructive confirms (Uninstall).
+  variant?: 'primary' | 'secondary' | 'dashed' | 'blocked' | 'danger'
   size?: 'md' | 'sm'
   icon?: string
   loading?: boolean
@@ -16,13 +16,16 @@ interface ButtonProps {
   disabledReason?: string
   // For a button that shows or hides something (`aria-expanded`).
   expanded?: boolean
+  // Focuses the button on mount: a dialog's safe default (Cancel).
+  autoFocus?: boolean
 }
 
 const variants = {
   primary: 'bg-accent text-accent-ink font-semibold hover:bg-accent-hover',
   secondary: 'border border-line-strong bg-control hover:bg-control-hover',
   dashed: 'border border-dashed border-line-dashed bg-row-hover text-text-soft hover:border-accent',
-  blocked: 'bg-line-strong font-semibold text-faint'
+  blocked: 'bg-line-strong font-semibold text-faint',
+  danger: 'bg-error text-error-ink font-semibold hover:bg-error-soft'
 }
 
 const sizes = {
@@ -39,7 +42,8 @@ export function Button({
   loading = false,
   disabled = false,
   disabledReason,
-  expanded
+  expanded,
+  autoFocus = false
 }: ButtonProps) {
   const inactive = disabled || loading
   return (
@@ -49,6 +53,7 @@ export function Button({
       disabled={disabled}
       aria-busy={loading || undefined}
       aria-expanded={expanded}
+      autoFocus={autoFocus}
       title={disabled ? disabledReason : undefined}
       className={cx(
         'inline-flex shrink-0 cursor-pointer items-center whitespace-nowrap',

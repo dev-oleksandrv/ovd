@@ -5,7 +5,8 @@ import type {
   InstalledApp,
   LaunchResult,
   PackageBuild,
-  TerminateResult
+  TerminateResult,
+  UninstallResult
 } from '@ovd/core'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -16,8 +17,8 @@ import { ToastViewport } from '../../../../src/renderer/src/feedback/ToastViewpo
 import { StatusBar } from '../../../../src/renderer/src/frame/StatusBar'
 import { AppsScreen } from '../../../../src/renderer/src/screens/apps/AppsScreen'
 import { resetLaunchOutcomes } from '../../../../src/renderer/src/screens/apps/launchOutcomes'
-import { ready, stubOvd } from '../../support/ovdStub'
-import { stick } from '../devices/sample'
+import { ready, stubOvd, type OvdStub } from '../../support/ovdStub'
+import { stick, vvd } from '../devices/sample'
 import { hello, listFor, player } from './sample'
 
 const both = listFor(stick.id, stick.name, [player, hello])
@@ -25,15 +26,16 @@ const both = listFor(stick.id, stick.name, [player, hello])
 // The launch outcomes are a session store shared by every render in this file.
 afterEach(resetLaunchOutcomes)
 
-function stub(
-  opts: {
-    devices?: Device[]
-    list?: OvdApi['apps']['list']
-    info?: OvdApi['apps']['info']
-    actions?: Partial<Omit<OvdApi['apps'], 'list' | 'info'>>
-    resolve?: OvdApi['install']['resolve']
-  } = {}
-): OvdApi {
+interface StubOptions {
+  devices?: Device[]
+  list?: OvdApi['apps']['list']
+  info?: OvdApi['apps']['info']
+  actions?: Partial<Omit<OvdApi['apps'], 'list' | 'info'>>
+  resolve?: OvdApi['install']['resolve']
+}
+
+// The whole stub, for tests that push device updates.
+function stubAll(opts: StubOptions = {}): OvdStub {
   const devices = opts.devices ?? [stick]
   return stubOvd({
     list: async () => ready(devices, devices[0]?.id ?? null),
@@ -58,7 +60,11 @@ function stub(
           }
         })
     }
-  }).api
+  })
+}
+
+function stub(opts: StubOptions = {}): OvdApi {
+  return stubAll(opts).api
 }
 
 function renderScreen(handlers: { onSwitchTarget?: () => void; onGoPackages?: () => void } = {}) {
@@ -90,6 +96,12 @@ async function row(title: string): Promise<HTMLElement> {
 
 function detail(title: string): HTMLElement {
   return screen.getByRole('complementary', { name: `${title} details` })
+}
+
+// The confirmation dialog with that title. The panel keeps its own Uninstall button, so dialog
+// buttons are queried within it.
+function dialog(name: string): HTMLElement {
+  return screen.getByRole('dialog', { name })
 }
 
 function echoed(): string {
@@ -159,6 +171,16 @@ const stoppedPlayer: IpcResult<TerminateResult> = {
     wasRunning: true
   }
 }
+const uninstalled: IpcResult<UninstallResult> = {
+  ok: true,
+  data: {
+    target,
+    app: { packageId: player.packageId, title: player.title },
+    uninstalled: true
+  }
+}
+const UNINSTALL_ASK = `Uninstall Sample Player from ${stick.name}?`
+const REINSTALL_ASK = `Uninstall & reinstall Sample Player on ${stick.name}?`
 const found: IpcResult<Pick<PackageBuild, 'path' | 'displayPath' | 'file'>> = {
   ok: true,
   data: {
@@ -426,7 +448,7 @@ describe('Apps screen actions', () => {
     expect(within(panel).getByText('clears app data')).toBeTruthy()
   })
 
-  test('with a package, Uninstall & reinstall reinstalls', async () => {
+  test('with a package, Uninstall & reinstall asks, then reinstalls', async () => {
     const api = stub({
       resolve: async () => found,
       actions: {
@@ -459,9 +481,132 @@ describe('Apps screen actions', () => {
 
     fireEvent.click(button)
 
+    const ask = dialog(REINSTALL_ASK)
+    expect(
+      within(ask).getByText('Its app data is removed, then the build is installed again.')
+    ).toBeTruthy()
+    expect(api.apps.reinstall).not.toHaveBeenCalled()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Uninstall & reinstall' }))
+
     expect(await screen.findByText('Reinstalled Sample Player')).toBeTruthy()
     expect(api.apps.reinstall).toHaveBeenCalledWith('com.example.player', stick.id)
     expect(echoed()).toContain(`ovd apps reinstall com.example.player --device ${stick.id}`)
+  })
+
+  test('Uninstall asks first: the dialog names the app and the target, Cancel has focus', async () => {
+    const api = stub()
+    renderScreen()
+    await row('Sample Player')
+
+    fireEvent.click(within(detail('Sample Player')).getByRole('button', { name: 'Uninstall' }))
+
+    const ask = dialog(UNINSTALL_ASK)
+    expect(within(ask).getByText('Its app data is removed.')).toBeTruthy()
+    expect(within(ask).getByText('com.example.player')).toBeTruthy()
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Cancel' }))
+    expect(api.apps.uninstall).not.toHaveBeenCalled()
+  })
+
+  test.each([['Cancel'], ['Close'], ['Esc']])(
+    'closing the Uninstall dialog with %s runs nothing',
+    async (how) => {
+      const api = stub()
+      renderScreen()
+      await row('Sample Player')
+      const before = echoed()
+      const lists = vi.mocked(api.apps.list).mock.calls.length
+
+      fireEvent.click(within(detail('Sample Player')).getByRole('button', { name: 'Uninstall' }))
+      const ask = dialog(UNINSTALL_ASK)
+      if (how === 'Esc') fireEvent.keyDown(window, { key: 'Escape' })
+      else fireEvent.click(within(ask).getByRole('button', { name: how }))
+
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(api.apps.uninstall).not.toHaveBeenCalled()
+      expect(echoed()).toBe(before)
+      expect(screen.queryByText('Uninstalled Sample Player')).toBeNull()
+      expect(
+        within(detail('Sample Player'))
+          .getByRole('button', { name: 'Uninstall' })
+          .getAttribute('aria-busy')
+      ).toBeNull()
+      expect(api.apps.list).toHaveBeenCalledTimes(lists)
+    }
+  )
+
+  test('confirming Uninstall uninstalls, echoes, toasts and reloads', async () => {
+    const api = stub({ actions: { uninstall: async () => uninstalled } })
+    renderScreen()
+    await row('Sample Player')
+
+    fireEvent.click(within(detail('Sample Player')).getByRole('button', { name: 'Uninstall' }))
+    fireEvent.click(within(dialog(UNINSTALL_ASK)).getByRole('button', { name: 'Uninstall' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(await screen.findByText('Uninstalled Sample Player')).toBeTruthy()
+    expect(api.apps.uninstall).toHaveBeenCalledWith('com.example.player', stick.id)
+    expect(echoed()).toContain(`ovd apps uninstall com.example.player --device ${stick.id}`)
+    await waitFor(() => expect(api.apps.list).toHaveBeenCalledTimes(2))
+  })
+
+  test('cancelling Uninstall & reinstall runs nothing', async () => {
+    const api = stub({ resolve: async () => found })
+    renderScreen()
+    await row('Sample Player')
+    const button = within(detail('Sample Player')).getByRole('button', {
+      name: 'Uninstall & reinstall'
+    }) as HTMLButtonElement
+    await waitFor(() => expect(button.disabled).toBe(false))
+
+    fireEvent.click(button)
+
+    const ask = dialog(REINSTALL_ASK)
+    expect(
+      within(ask).getByText('Its app data is removed, then the build is installed again.')
+    ).toBeTruthy()
+    const cancel = within(ask).getByRole('button', { name: 'Cancel' })
+    expect(document.activeElement).toBe(cancel)
+    fireEvent.click(cancel)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(api.apps.reinstall).not.toHaveBeenCalled()
+  })
+
+  test('a target change while the dialog is open closes it for good', async () => {
+    const devices = [stick, { ...vvd, status: 'online' as const }]
+    const { api, push } = stubAll({ devices })
+    renderScreen()
+    await row('Sample Player')
+    fireEvent.click(within(detail('Sample Player')).getByRole('button', { name: 'Uninstall' }))
+    expect(dialog(UNINSTALL_ASK)).toBeTruthy()
+
+    act(() => push(ready(devices, vvd.id)))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    // Back on the stick, the dialog doesn't come back.
+    act(() => push(ready(devices, stick.id)))
+    await row('Sample Player')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(api.apps.uninstall).not.toHaveBeenCalled()
+  })
+
+  test('the app leaving the list while the dialog is open closes it', async () => {
+    let listed = [player, hello]
+    const api = stub({
+      list: async () => ({ ok: true, data: listFor(stick.id, stick.name, listed) })
+    })
+    renderScreen()
+    await row('Sample Player')
+    fireEvent.click(within(detail('Sample Player')).getByRole('button', { name: 'Uninstall' }))
+    expect(dialog(UNINSTALL_ASK)).toBeTruthy()
+
+    listed = [hello]
+    fireEvent.focus(window)
+
+    await waitFor(() => {
+      expect(api.apps.list).toHaveBeenCalledTimes(2)
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+    expect(api.apps.uninstall).not.toHaveBeenCalled()
   })
 
   test('a package built since the last read is found after the list reloads', async () => {

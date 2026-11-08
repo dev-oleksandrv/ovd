@@ -64,6 +64,8 @@
   --color-error: #ff7a7a;
   --color-error-soft: #ff9a9a;
   --color-error-text: #e3c4c4;
+  /* Dark ink on the error background, for the destructive (danger) button. */
+  --color-error-ink: #2a0b0b;
   --color-info: #7ab8ff;
 
   /* Log levels (V, D, I, W, E) */

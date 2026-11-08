@@ -178,7 +178,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 ### 2.4 Apps screen — done (PR #31, #88)
 
 - CLI: `ovd apps [--running] [--all]`, `ovd apps info`, `ovd apps install | reinstall | uninstall | launch | terminate [--force] | restart`, each accepting a .vpkg, a package ID or a project folder (auto-finds the Debug or Release build). `ovd install` stays as an alias of `ovd apps install`.
-- Desktop: header "On <target> · launches are verified against running-apps and crash history"; tabs "Installed · N" / "Running · N"; table (avatar, title, ID, version, status Running · pid / Stopped / Verifying… / Crashed on launch, Launch/Stop); detail actions Launch, Restart, Terminate, Force stop; info rows incl. Lifespan and Running for; "Components · vpm info / vlcm list" table; Uninstall & reinstall (note: "clears app data"), Uninstall.
+- Desktop: header "On <target> · launches are verified against running-apps and crash history"; tabs "Installed · N" / "Running · N"; table (avatar, title, ID, version, status Running · pid / Stopped / Verifying… / Crashed on launch, Launch/Stop); detail actions Launch, Restart, Terminate, Force stop; info rows incl. Lifespan and Running for; "Components · vpm info / vlcm list" table; Uninstall & reinstall (note: "clears app data") and Uninstall, each asking for confirmation first (Cancel is the default).
 - Devices → "Running now" fills in.
 
 **Expected:** every action works on a stick and the Virtual Device; Running and "Running now" update within one refresh.

@@ -13,6 +13,8 @@ const LAUNCH = 'vega device launch-app -a com.example.player.main --device Virtu
 const PKG_INFO = `${SHELL} vpm info com.example.player --package`
 const UNINSTALL = 'vega device uninstall-app -a com.example.player --device VirtualDevice'
 const AARCH64 = 'dev/player/build/aarch64-debug/player_aarch64.vpkg'
+const UNINSTALL_ASK = `Uninstall ${TITLE} from Vega Virtual Device?`
+const REINSTALL_ASK = `Uninstall & reinstall ${TITLE} on Vega Virtual Device?`
 // The player's own manifest: the project the recorded player packages were built from.
 const PLAYER_MANIFEST = MANIFEST.replaceAll('hellovega', 'player')
 
@@ -230,7 +232,25 @@ test.describe('Apps', () => {
     expect(calls.lastIndexOf(TERMINATE)).toBeGreaterThan(-1)
     expect(calls.lastIndexOf(TERMINATE)).toBeLessThan(calls.lastIndexOf(LAUNCH))
 
+    // Uninstall asks first, with Cancel focused; cancelling runs nothing.
     await detail.getByRole('button', { name: 'Uninstall', exact: true }).click()
+    const ask = page.getByRole('dialog', { name: UNINSTALL_ASK })
+    await expect(ask).toBeVisible()
+    await expect(ask.getByText('Its app data is removed.')).toBeVisible()
+    await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused()
+    await ask.getByRole('button', { name: 'Cancel' }).click()
+    await expect(ask).toBeHidden()
+    await expect(row).toContainText('com.example.player')
+    await expect(echo(page)).toContainText(
+      '$ ovd apps restart com.example.player --device VirtualDevice'
+    )
+    expect(sandbox.calls()).not.toContain(UNINSTALL)
+    expect(sandbox.activity().filter((a) => a.action === 'app.uninstall')).toEqual([])
+
+    await detail.getByRole('button', { name: 'Uninstall', exact: true }).click()
+    await expect(ask).toBeVisible()
+    await ask.getByRole('button', { name: 'Uninstall', exact: true }).click()
+    await expect(ask).toBeHidden()
     await expect(toast(page, `Uninstalled ${TITLE}`)).toBeVisible()
     await expect(echo(page)).toContainText(
       '$ ovd apps uninstall com.example.player --device VirtualDevice'
@@ -249,6 +269,7 @@ test.describe('Apps', () => {
       ['app.restart', 'ok'],
       ['app.uninstall', 'ok']
     ])
+    expect(sandbox.calls().filter((c) => c === UNINSTALL)).toHaveLength(1)
   })
 
   test('install the player from Packages, then uninstall & reinstall it from its detail', async ({
@@ -294,6 +315,13 @@ test.describe('Apps', () => {
     const before = sandbox.calls().length
 
     await detail.getByRole('button', { name: 'Uninstall & reinstall' }).click()
+    const ask = page.getByRole('dialog', { name: REINSTALL_ASK })
+    await expect(ask).toBeVisible()
+    await expect(
+      ask.getByText('Its app data is removed, then the build is installed again.')
+    ).toBeVisible()
+    await ask.getByRole('button', { name: 'Uninstall & reinstall' }).click()
+    await expect(ask).toBeHidden()
 
     await expect(toast(page, `Reinstalled ${TITLE}`)).toBeVisible()
     await expect(echo(page)).toContainText(
