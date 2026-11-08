@@ -11,6 +11,7 @@ import { createPackages, type Packages } from './packages/packages.js'
 import { createInstall, type Install } from './install/install.js'
 import { createInstallSteps } from './install/installSteps.js'
 import { createApps, type Apps } from './deviceApps/deviceApps.js'
+import { createLogs, type Logs } from './logs/logSession.js'
 import { createPairing, type Pairing } from './pairing/pairing.js'
 import { createProject, type Project } from './project/project.js'
 import { createSdkLocator, type SdkLocator } from './sdk/sdkLocator.js'
@@ -41,6 +42,7 @@ export interface Ovd {
   packages: Packages
   install: Install
   apps: Apps
+  logs: Logs
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -100,5 +102,6 @@ export function createOvd(opts: OvdOptions): Ovd {
     homedir,
     cwd
   })
-  return { sdk, devices, doctor, vvd, pairing, devmode, project, packages, install, apps }
+  const logs = createLogs({ runner, sdk, devices, activity, now: opts.now ?? (() => new Date()) })
+  return { sdk, devices, doctor, vvd, pairing, devmode, project, packages, install, apps, logs }
 }

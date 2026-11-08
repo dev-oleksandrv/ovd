@@ -7,6 +7,7 @@ import { registerAppsIpc } from './appsIpc'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerInstallIpc } from './installIpc'
 import { registerIpcHandlers } from './ipc'
+import { registerLogsIpc } from './logsIpc'
 import { registerPackagesIpc } from './packagesIpc'
 import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
@@ -17,7 +18,15 @@ import { registerVvdIpc } from './vvdIpc'
 // One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
 const ovd = createOvd({ surface: 'desktop' })
 let mainWindow: BrowserWindow | undefined
-const devices = registerDevicesIpc(ovd, () => mainWindow)
+// Before `devices`: main's log session follows every target change the device watcher sees.
+const logs = registerLogsIpc(ovd, () => mainWindow)
+const devices = registerDevicesIpc(
+  ovd,
+  () => mainWindow,
+  (update) => {
+    if (update.ok) logs.targetChanged(update.target)
+  }
+)
 
 function createWindow(): void {
   // Create the browser window.
@@ -46,6 +55,8 @@ function createWindow(): void {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = undefined
   })
+  // The log stream's process group goes with the window (no orphans on the host or device).
+  win.on('closed', () => void logs.stop())
 
   showWhenReady(win)
 
@@ -90,6 +101,15 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+// Quitting waits until the log stream's process group is gone.
+let quitting = false
+app.on('before-quit', (event) => {
+  if (quitting || !logs.running()) return
+  event.preventDefault()
+  quitting = true
+  void logs.stop().finally(() => app.quit())
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

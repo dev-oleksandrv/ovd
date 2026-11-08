@@ -1,0 +1,44 @@
+Nov 08 07:26:36.142790 firestick-0000000000000001 local0.warning com.example.player[26541]: 2837898144 WARNING com.amazon.keplerscript: [KeplerScript-JavaScript] player warn tick 1
+Nov 08 07:26:36.142961 firestick-0000000000000001 local0.err com.example.player[26541]: 2837898144 ERROR com.amazon.keplerscript: [KeplerScript-JavaScript] player error tick 1
+Nov 08 07:26:36.143136 firestick-0000000000000001 local0.err com.example.player[26541]: 2837898144 ERROR com.amazon.keplerscript: [KeplerScript-JavaScript] player error tick 1
+Nov 08 07:26:36.144912 firestick-0000000000000001 local0.warning com.example.player[26541]: 2837898144 WARNING Volta: Volta:Reporting exception:
+Nov 08 07:26:36.145138 firestick-0000000000000001 local0.warning com.example.player[26541]: 2837898144 WARNING Volta: Volta:console.error: player error tick 1
+    at construct (native)
+    at apply (native)
+    at _construct (/local/p4clients/pkgbuild-const/workspace/build/VegaUIReact-4/VegaUIReact-4-vodka.262746.0/AL2_x86_64/DEV.STD.PTHREAD/build/private/bundle-split/_amzn_react-native-kepler/node_modules/@babel/runtime/helpers/construct.js:4:65)
+    at Wrapper (/local/p4clients/pkgbuild-const/workspace/build/VegaUIReact-4/VegaUIReact-4-vodka.262746.0/AL2_x86_64/DEV.STD.PTHREAD/build/private/bundle-split/_amzn_react-native-kepler/node_modules/@babel/runtime/helpers/wrapNativeSuper.js:15:14)
+    at construct (native)
+    at SyntheticError (/local/p4clients/pkgbuild-const/workspace/build/VegaUIReact-4/VegaUIReact-4-vodka.262746.0/AL2_x86_64/DEV.STD.PTHREAD/build/private/bundle-split/_amzn_react-native-kepler/node_modules/@amzn/react-native-kepler/Libraries/Core/ExceptionsManager.js:23:39)
+    at reactConsoleErrorHandler (/local/p4clients/pkgbuild-const/workspace/build/VegaUIReact-4/VegaUIReact-4-vodka.262746.0/AL2_x86_64/DEV.STD.PTHREAD/build/private/bundle-split/_amzn_react-native-kepler/node_modules/@amzn/react-native-kepler/Libraries/Core/ExceptionsManager.js:244:31)
+    at apply (native)
+    at anonymous (/local/p4clients/pkgbuild-const/workspace/build/VegaUIReact-4/VegaUIReact-4-vodka.262746.0/AL2_x86_64/DEV.STD.PTHREAD/build/private/bundle-split/_amzn_react-native-kepler/node_modules/@amzn/react-native-kepler/Libraries/Core/setUpDeveloperTools.js:42:33)
+    at error (native)
+    at anonymous (/private/tmp/player/build/lib/rn-bundles/Debug/8d33744070fc29f149502b43f1cf56a43e82ffad1b68d06c51df3486a8e55bd3.bundle:685:18)
+Nov 08 07:26:36.515115 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_acquireResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0, pid=1727
+Nov 08 07:26:36.515508 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_flags_subsystem_vote: name=CPU, isDisable=F, state(last)=3(2), total_count(last)=5(4), NormalStateTransition happened!
+Nov 08 07:26:36.515684 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I acehal_power:acePwrHal_setFlagsPolicy CPU 3 1
+Nov 08 07:26:36.515825 firestick-0000000000000001 daemon.info powerd[1281]: 1404 I acehal_power:setPowerState set power state to CPU subsystem: powersave to normal, retval:0
+Nov 08 07:26:36.516133 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_releaseResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0
+Nov 08 07:26:36.516313 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_flags_subsystem_vote: name=CPU, isDisable=F, state(last)=2(3), total_count(last)=4(5), NormalStateTransition happened!
+Nov 08 07:26:36.516831 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I acehal_power:acePwrHal_setFlagsPolicy CPU 2 1
+Nov 08 07:26:36.517274 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_acquireResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0, pid=1727
+Nov 08 07:26:36.517444 firestick-0000000000000001 daemon.info powerd[1281]: 1404 I acehal_power:setPowerState set power state to CPU subsystem: normal to powersave, retval:0
+Nov 08 07:26:36.517598 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_flags_subsystem_vote: name=CPU, isDisable=F, state(last)=3(2), total_count(last)=5(4), NormalStateTransition happened!
+Nov 08 07:26:36.517862 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I acehal_power:acePwrHal_setFlagsPolicy CPU 3 1
+Nov 08 07:26:36.518021 firestick-0000000000000001 daemon.info powerd[1281]: 1404 I acehal_power:setPowerState set power state to CPU subsystem: powersave to normal, retval:0
+Nov 08 07:26:36.518174 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_releaseResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0
+Nov 08 07:26:36.518472 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I ACE_MW_POWER:ace_power_mgr_flags_subsystem_vote: name=CPU, isDisable=F, state(last)=2(3), total_count(last)=4(5), NormalStateTransition happened!
+Nov 08 07:26:36.518873 firestick-0000000000000001 daemon.info powerd[1281]: 1346 I acehal_power:acePwrHal_setFlagsPolicy CPU 2 1
+Nov 08 07:26:36.519186 firestick-0000000000000001 daemon.info powerd[1281]: 1404 I acehal_power:setPowerState set power state to CPU subsystem: normal to powersave, retval:0
+Nov 08 07:26:36.561760 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-app-launch-service:[LcmAppLaunchServiceImpl.cpp:347] Received request: 'launch scheduled task for result' (8) from (uid:512, gid:0, pid:1684, securityCtx:System)
+Nov 08 07:26:36.563786 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-server:[Lcm.cpp:4371] Received launch request for orpheus://com.amazon.appstorevegatv.native.onLcmLaunchTask
+Nov 08 07:26:36.563944 firestick-0000000000000001 local0.info pkgmgrd[900]: 2980422144 INFO com.amazon.vpm.default_registrar: [DefaultComponentRegistrar.cpp:400] Found single default component 'com.amazon.appstorevegatv.native.onLcmLaunchTask'
+Nov 08 07:26:36.568426 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-server:[Lcm.cpp:3694] Running process for com.amazon.appstorevegatv.native.onLcmLaunchTask with UUID bd0b43dc-7aa4-44a2-b45b-414c72a4cb76 and request id 982
+Nov 08 07:26:36.572512 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=ClientEvent}:client{pid=899}:request{type=LaunchComponent}: received launch request, rid=982, component="com.amazon.appstorevegatv.native.onLcmLaunchTask", extras=Some([])
+Nov 08 07:26:36.573964 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-server:[Lcm.cpp:4949] App record added with AppId com.amazon.appstorevegatv.native.onLcmLaunchTask; appInstId: 982; pid: Unassigned; initiator: 2; reqId: N/A; backstackRole: 0
+Nov 08 07:26:36.574390 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=ClientEvent}:client{pid=899}:request{type=LaunchComponent rid=982}: no eligible stems found. spawning a new stem
+Nov 08 07:26:36.576731 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=SpawnStem}:stem{rid=982}: spawning new stem, family="com.amazon.family.minimal", extras=None
+Nov 08 07:26:36.577476 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=SpawnStem}:stem{rid=982}: preparing to spawn stem, program=/usr/bin/stem-init, env=["STEMD_LAUNCH_ENABLE=true", "APMF_CONFIG_PATH=/mnt", "JS_BUNDLES_PATH=/usr/local/share/bundles", "LD_LIBRARY_PATH=/mnt:"], args=["sockfd=27"]
+Nov 08 07:26:36.579146 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=SpawnStem}:stem{rid=982}: successfully spawned stem, id=895, pid=26611, sockfd=27
+Nov 08 07:26:36.580136 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-server:[Lcm.cpp:3976] appInst[982](com.amazon.appstorevegatv.native.onLcmLaunchTask): Launched with parent pid 26611
+Nov 08 07:26:36.732530 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=26611 id=895 rid=982 state="Alive" state="Ready"}: stem is ready and associated with a component, id="com.amazon.appstorevegatv.native.onLcmLaunchTask"

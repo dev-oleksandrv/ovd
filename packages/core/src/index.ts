@@ -166,3 +166,9 @@ export type {
   UninstallResult
 } from './deviceApps/appActions.js'
 export type { LaunchCrash, LaunchVerification } from './deviceApps/launchVerification.js'
+export { LOG_BUFFER_SIZE } from './logs/types.js'
+export type { LogCounts, LogEntry, LogLevel } from './logs/types.js'
+export { logText, logTextAll } from './logs/logText.js'
+export { isAppIdentity } from './logs/logFilter.js'
+export type { LogFilterInput } from './logs/logFilter.js'
+export type { Logs, LogSession, LogSessionEnd, LogStartOptions } from './logs/logSession.js'

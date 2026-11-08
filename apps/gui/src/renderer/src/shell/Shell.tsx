@@ -14,6 +14,7 @@ import { TargetPicker } from '../frame/TargetPicker'
 import { TargetStatus } from '../frame/TargetStatus'
 import { DevicesScreen } from '../screens/devices/DevicesScreen'
 import { AppsScreen } from '../screens/apps/AppsScreen'
+import { LogsScreen } from '../screens/logs/LogsScreen'
 import { PackagesScreen } from '../screens/packages/PackagesScreen'
 import { PairWizard } from '../pairing/PairWizard'
 import { useFileDrop } from '../project/useFileDrop'
@@ -207,6 +208,14 @@ export function Shell() {
               onClick={() => go('packages')}
             />
           </NavGroup>
+          <NavGroup label="Debug">
+            <NavItem
+              label="Logs"
+              icon="subject"
+              active={!gallery && screen === 'logs'}
+              onClick={() => go('logs')}
+            />
+          </NavGroup>
           <NavGroup label="Setup">
             <NavItem
               label="Doctor"
@@ -238,6 +247,11 @@ export function Shell() {
           onSwitchTarget={() => setMenu(true)}
           onGoPackages={() => go('packages')}
           projectPath={projectMode?.path ?? null}
+        />
+      ) : screen === 'logs' ? (
+        <LogsScreen
+          onSwitchTarget={() => setMenu(true)}
+          projectAppId={projectMode?.kind === 'folder' ? (projectMode.packageId ?? null) : null}
         />
       ) : screen === 'packages' ? (
         <PackagesScreen

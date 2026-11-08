@@ -17,6 +17,8 @@ export async function cli(
     onInterrupt?: (abort: () => void) => void
     // Answers to prompts, in order; without it the CLI runs as if stdin weren't a terminal.
     answers?: string[]
+    // Runs as if stdout were a terminal.
+    tty?: boolean
   } = {}
 ): Promise<CliRun> {
   let stdout = ''
@@ -33,6 +35,7 @@ export async function cli(
       opts.onInterrupt?.(abort)
       return () => undefined
     },
+    ...(opts.tty ? { stdoutTty: true } : {}),
     ...(answers
       ? {
           prompt: async (question: string) => {

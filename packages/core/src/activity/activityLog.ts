@@ -21,6 +21,7 @@ export type ActivityAction =
   | 'app.restart'
   | 'app.uninstall'
   | 'app.reinstall'
+  | 'logs'
 
 export interface ActivityEntry {
   time: string

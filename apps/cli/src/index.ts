@@ -12,10 +12,20 @@ process.exitCode = await runCli(process.argv.slice(2), {
   },
   ovd: () => (ovd ??= createOvd({ surface: 'cli' })),
   env: process.env,
+  // A closed stdout pipe (`ovd logs | head`) stops a command like Ctrl+C, so its SDK process
+  // group is stopped instead of left running.
   onInterrupt: (abort) => {
+    const onPipeError = (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EPIPE') abort()
+    }
     process.once('SIGINT', abort)
-    return () => process.off('SIGINT', abort)
+    process.stdout.on('error', onPipeError)
+    return () => {
+      process.off('SIGINT', abort)
+      process.stdout.off('error', onPipeError)
+    }
   },
+  stdoutTty: process.stdout.isTTY === true,
   ...(process.stdin.isTTY ? { prompt } : {})
 })
 

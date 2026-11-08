@@ -81,13 +81,26 @@ test.describe('command palette', () => {
     // The palette shortcut is bound once the app has mounted; a key pressed earlier is lost.
     await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
 
-    await runCommand(page, 'Logs')
+    await runCommand(page, 'Crashes')
 
     await expect(
-      page.getByRole('status').filter({ hasText: 'Logs is coming in a later version' })
+      page.getByRole('status').filter({ hasText: 'Crashes is coming in a later version' })
     ).toBeVisible()
     await expect(
-      page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Logs' })
+      page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Crashes' })
     ).toHaveCount(0)
+  })
+
+  test('Go to Logs opens Logs, a shipped screen', async ({ sandbox, launch }) => {
+    sandbox.installSdk()
+    const { page } = await launch()
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
+
+    await runCommand(page, 'Go to Logs')
+
+    await expect(page.getByRole('heading', { name: 'Logs', level: 1 })).toBeVisible()
+    await expect(
+      page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Logs' })
+    ).toBeVisible()
   })
 })

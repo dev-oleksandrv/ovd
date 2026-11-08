@@ -27,6 +27,7 @@ How core calls the Vega SDK. What the SDK actually does, quirks included, is in 
 
 - Confirm every install with the architecture guard and every launch with `running-apps` and crash history (ADR 0008, ADR 0012).
 - Never trust `launch-app` alone: read a crash-history baseline before it, let the app settle, then read the crash history again. A new entry of the package is a crash; a listed pid 0 (`IDLE`) isn't running.
+- A long-running SDK stream (`loggingctl log -f`) runs in its own process group and is stopped by signalling the group (SIGTERM, then SIGKILL after a grace period); signalling the top `vega` alone orphans the chain (ARCHITECTURE §8).
 - A background device capture is always stopped in a `finally` with `pkill -P <timeout pid>` (plain `kill` orphans `loggingctl`), and runs under a `timeout` that outlives the action, so it ends even when OVD can't stop it.
 - Restart the log stream after every install OVD makes (ADR 0014). For a release build, say that it sends no `console.log` instead of showing an empty log.
 - On the Virtual Device, send keys and take screenshots through emulator gRPC, enabling it after every start (ADR 0010).

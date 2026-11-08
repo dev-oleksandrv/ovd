@@ -1,4 +1,4 @@
-import type { Check, Device, LaunchCrash } from '@ovd/core'
+import type { Check, Device, LaunchCrash, LogEntry } from '@ovd/core'
 import { useState } from 'react'
 import { useFeedback } from '../feedback/feedbackContext'
 import { CommandPalette } from '../frame/CommandPalette'
@@ -9,6 +9,7 @@ import { TargetPicker } from '../frame/TargetPicker'
 import { DoctorRow } from '../screens/environment/DoctorRow'
 import { LaunchCallout } from '../screens/apps/LaunchCallout'
 import { LaunchStatus } from '../screens/apps/LaunchStatus'
+import { LogRow } from '../screens/logs/LogRow'
 import { paletteItems } from '../shell/paletteItems'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -25,6 +26,8 @@ import { LoadingState } from '../ui/LoadingState'
 import { BlockedNotice } from '../ui/BlockedNotice'
 import { InlineError } from '../ui/InlineError'
 import { Modal } from '../ui/Modal'
+import { Segmented } from '../ui/Segmented'
+import { Select } from '../ui/Select'
 import { StepList } from '../ui/StepList'
 import { OfflineState } from '../ui/OfflineState'
 import { StatusDot } from '../ui/StatusDot'
@@ -32,6 +35,7 @@ import { StatusPill } from '../ui/StatusPill'
 import { Table, type Column } from '../ui/Table'
 import { Tabs } from '../ui/Tabs'
 import { TextField } from '../ui/TextField'
+import { ToggleButton } from '../ui/ToggleButton'
 import { Wizard } from '../ui/Wizard'
 import { GallerySection } from './GallerySection'
 
@@ -197,6 +201,38 @@ const devices: Device[] = [
   }
 ]
 
+// Log rows as the stick prints them (fixtures/0.24/loggingctl-log/stick-follow.txt).
+const LOG_ROWS: LogEntry[] = [
+  {
+    seq: 0,
+    time: '2026-11-08T07:27:00.257Z',
+    deviceTime: 'Nov 08 07:27:00.257342',
+    level: 'E',
+    priority: 'err',
+    facility: 'user',
+    process: 'com.example.player',
+    pid: 27178,
+    tid: 2842092448,
+    tag: 'com.amazon.keplerscript',
+    message: '[KeplerScript-JavaScript] player error tick 1',
+    parsed: true
+  },
+  {
+    seq: 1,
+    time: '2026-11-08T07:27:01.104Z',
+    deviceTime: 'Nov 08 07:27:01.104112',
+    level: 'I',
+    priority: 'info',
+    facility: 'user',
+    process: 'com.example.player',
+    pid: 27178,
+    tid: 2842092448,
+    tag: 'com.amazon.keplerscript',
+    message: '[KeplerScript-JavaScript] player multi\nline two\nline three',
+    parsed: true
+  }
+]
+
 const deviceInfo = JSON.stringify(
   { name: 'Fire TV Stick 4K Select', os: 'Vega OS 1.1', arch: 'armv7', profile: 'user' },
   null,
@@ -215,6 +251,9 @@ export function Gallery() {
   const [target, setTarget] = useState(devices[0])
   const [picker, setPicker] = useState(false)
   const [palette, setPalette] = useState(false)
+  const [level, setLevel] = useState<'v' | 'd' | 'i' | 'w' | 'e'>('v')
+  const [logPackage, setLogPackage] = useState('all')
+  const [regex, setRegex] = useState(false)
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-auto px-6 py-5">
@@ -547,6 +586,44 @@ export function Gallery() {
 
       <GallerySection title="Text field">
         <TextField label="Device name" value={name} onChange={setName} />
+      </GallerySection>
+
+      <GallerySection title="Log controls">
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented
+            label="Level"
+            options={[
+              { id: 'v', label: 'V', title: 'Verbose' },
+              { id: 'd', label: 'D', title: 'Debug' },
+              { id: 'i', label: 'I', title: 'Info' },
+              { id: 'w', label: 'W', title: 'Warn' },
+              { id: 'e', label: 'E', title: 'Error' }
+            ]}
+            value={level}
+            onChange={setLevel}
+          />
+          <Select
+            label="Package"
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'com.example.player', label: 'com.example.player' },
+              { value: 'system', label: 'System' }
+            ]}
+            value={logPackage}
+            onChange={setLogPackage}
+          />
+          <ToggleButton label="Regex" pressed={regex} onChange={setRegex} mono>
+            .*
+          </ToggleButton>
+        </div>
+      </GallerySection>
+
+      <GallerySection title="Log rows">
+        <div role="list" aria-label="Sample log lines" className="bg-sunken">
+          {LOG_ROWS.map((entry) => (
+            <LogRow key={entry.seq} entry={entry} search="tick" regex={false} />
+          ))}
+        </div>
       </GallerySection>
 
       {modal && (

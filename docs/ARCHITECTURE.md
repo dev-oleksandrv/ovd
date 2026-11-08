@@ -42,7 +42,7 @@ packages/
       packages/            # vpkg info and list
       install/             # install, architecture guard
       deviceApps/          # apps on the target: lists, details, launch, stop, restart, uninstall, reinstall; launch verification in 2.5
-      logs/                # (Stage 3) loggingctl stream, filters, restart-after-install
+      logs/                # loggingctl stream, parser, filters, session; restart after install comes in 3.2
       activity/            # activity log
       errors/              # typed errors: stable code, message, hint
       state/               # host state directory (ADR 0022)
@@ -85,7 +85,7 @@ docs/
 - Discovers the Vega CLI (SDK Manager) and the active SDK version: `OVD_VEGA`, then every `vega` on `PATH`, then `~/vega/bin/vega` (a desktop app doesn't inherit the shell `PATH`). The manager wins over a `vega` bundled inside an SDK, which lacks `vega sdk` and `vega devmode`. Device commands fail with an install hint when none is found.
 - Every call goes through one runner: target injection (`--device <id>` for `vega device …`, `-s <serial>` for `vega exec vda …`), timeout, `AbortSignal`, captured stdout/stderr/exit code.
 - VDA runs as `vega exec vda …`. Device tools run through `vega exec vda shell` (`shell -c <component>` for component scope).
-- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. Planned: the log stream (Stage 3), the input console (Stage 4) and memory polling (Stage 6).
+- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. The log stream (`loggingctl log -f`) is built: it runs in its own process group and is stopped by signalling the group; reconnecting comes in 3.2. Planned: the input console (Stage 4) and memory polling (Stage 6).
 
 ### 4.2 Adapters
 
@@ -125,6 +125,8 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 | 7    | Launch not verified: the app crashed or isn't running after launch         |
 
 The app commands exit 1 for an app that isn't installed (`APP_NOT_INSTALLED`) or isn't side-loaded (`NOT_SIDELOADED`) and for an install, launch, terminate or uninstall the SDK refuses (`INSTALL_FAILED`, `LAUNCH_FAILED`, `TERMINATE_FAILED`, `UNINSTALL_FAILED`), which scripts tell apart by `error.code` in `--json`, and exit 2 for an invalid app ID (`INVALID_APP_ID`) or no app given with nothing open (`NO_APP`). `ovd apps launch` and `ovd apps restart` exit 7 (`LAUNCH_NOT_VERIFIED`) for both `"reason": "crashed"` and `"reason": "not-running"`.
+
+`ovd logs` exits 0 on Ctrl+C and when `--until` is reached, 1 when the stream ends by itself (`LOG_STREAM_ENDED`: the device may have disconnected or rebooted), 2 for an invalid filter (`INVALID_LOG_FILTER`, `INVALID_APP_ID`, `--app` with `--system`), 3 without an SDK and 4 without an online target; with `--json` it prints one JSON object per entry (`time`, `level`, `priority`, `facility`, `process`, `pid`, `tid`, `tag`, `message`, `parsed`) and ends a failed stream with the `{"ok": false, "error": …}` line.
 
 ## 6. Desktop
 
@@ -166,7 +168,11 @@ OVD designs around these. This list is the one home for SDK behavior: add new fi
 - Fire TV sticks are `armv7`; the Virtual Device matches the host, `x86_64` or `aarch64` (ADR 0008).
 - `vega device install-app` installs a package built for another architecture without complaint (exit 0). Only the architecture guard stops it (ADR 0008).
 - `vega device launch-app` reports success for apps that crash (ADR 0012). The recorded crashes came about 1 s after it returned; on the Virtual Device the crashing app never showed in `vlcm list`. OVD reads the crash history before the launch, watches `vlcm list --app-id` for 5 s, then reads the crash history again.
-- A log session only sees apps installed before it started (ADR 0014). Release builds send no `console.log` output.
+- A log session only sees apps installed before it started (ADR 0014): on a stick, a session started before the install showed none of the app's lines, filtered or not, through two installs and launches. A Release build of the pure-JS template (`developmentEnabled: false`) still sent its `console.log`, `info`, `warn` and `error` lines on the stick; a Debug build sends each one twice. `console.debug` never reaches the journal, and neither does any `console` call made before `AppRegistry.registerComponent`.
+- `loggingctl log` has no JSON mode, and with no option it prints its help and exits 2. `-o short_concise` (the default) prints `<Mon DD HH:MM:SS.ffffff> <host> <facility>.<priority> <identity>[<pid>]: <tid> <message>`; `short_precise` drops the priority and the tid. The time has no year and is the device clock, UTC on the stick. A multi-line message continues on lines with no header; journald's own lines have no tid. Priorities seen are `info`, `warning` and `err`; no `debug` lines are kept. An app's lines carry its full package ID as identity (checked up to 33 characters); some native system processes show only its last 15 characters (`thouse.launcher`). The tag is part of the message (`<tid> I SmartBox:…`, `<tid> INFO com.amazon.keplerscript: …`), and `-a` matches it.
+- `loggingctl log -f` first prints what the journal still holds (30–60 s on a stick), then follows. `-v <package>` keeps the lines whose identity is that package, with their continuation lines; `-p <priority>` keeps exactly that priority (repeat it for several); `-S` and `-U` accept only `HH:MM:SS`. An unknown priority and every other time format are silently ignored (exit 0, nothing filtered).
+- The device drops an app's lines above 300 per second per tag and says so in the stream (`Process exceeds log limit of [300] lps for tag […]`, later `Last log suppression ended for tag […]. [N] logs suppressed`). Lines reach the host about 0.2 s after their timestamp.
+- `vega exec vda shell …` runs as a chain of about seven host processes (`vega`, bash, python, node, python, bash, then the native `vda`). SIGTERM to the top `vega` leaves the rest, and the device's `loggingctl`, running; a process started in the background of a non-interactive shell ignores SIGINT. SIGTERM to the whole process group, or to the native `vda`, ends every host process and the device's `loggingctl`. When the device drops (a reboot), a `loggingctl log -f` stream ends by itself with exit 0 and nothing on stderr.
 - On the Virtual Device, `inputd-cli` key presses report success but don't reach apps, and `gwsi-tool-screenshooter` fails. Emulator gRPC works: `sendKey` (OK = `kpenter`, Back = `KEY_BACK`, Home can't be sent) and `getScreenshot` (ADR 0010).
 - The emulator gRPC endpoint is off after every Virtual Device start. It is enabled through the emulator console (`grpc <port>`) with the token from `~/.emulator_console_auth_token`.
 - `vega device info` reports no uptime or storage. `vlcm` lifespan is a state, not a duration.

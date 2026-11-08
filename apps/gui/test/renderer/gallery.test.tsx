@@ -19,7 +19,9 @@ describe('Gallery', () => {
       'Doctor rows',
       'Modal and wizard',
       'Text field',
-      'Title bar controls'
+      'Title bar controls',
+      'Log controls',
+      'Log rows'
     ]) {
       expect(screen.getByText(section)).toBeTruthy()
     }

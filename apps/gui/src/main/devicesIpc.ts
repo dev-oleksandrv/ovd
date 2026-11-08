@@ -1,13 +1,16 @@
 import { ipcMain, type BrowserWindow } from 'electron'
-import { createDevicesWatcher, type Ovd } from '@ovd/core'
+import { createDevicesWatcher, type DevicesUpdate, type Ovd } from '@ovd/core'
 import { channels } from '../preload/api'
 import { requireText } from './guards'
 import { toResult } from './ipcResult'
 
 // Main owns device state (gui rules): it polls while the window is visible and pushes changes.
+// `onUpdate` hears of every change first, so main's log session follows a target change (from
+// the target menu, or one made in a terminal and picked up by a poll) before the renderer does.
 export function registerDevicesIpc(
   ovd: Ovd,
-  window: () => BrowserWindow | undefined
+  window: () => BrowserWindow | undefined,
+  onUpdate?: (update: DevicesUpdate) => void
 ): {
   watch(win: BrowserWindow): void
   // Polls now and pushes the result, after an action that changed the devices.
@@ -15,7 +18,10 @@ export function registerDevicesIpc(
 } {
   const watcher = createDevicesWatcher({
     list: () => ovd.devices.list(),
-    onUpdate: (update) => window()?.webContents.send(channels.devicesChanged, update)
+    onUpdate: (update) => {
+      onUpdate?.(update)
+      window()?.webContents.send(channels.devicesChanged, update)
+    }
   })
 
   // Launch and every Rescan first reconnect saved Wi‑Fi devices VDA has lost (spec C5). A

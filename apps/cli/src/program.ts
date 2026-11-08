@@ -6,6 +6,7 @@ import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerInstall } from './commands/install.js'
+import { registerLogs } from './commands/logs.js'
 import { registerPairing } from './commands/pair.js'
 import { registerPkg } from './commands/pkg.js'
 import { registerProject } from './commands/project.js'
@@ -29,6 +30,8 @@ export interface CliDeps {
   // Asks on stderr and resolves with the answer; absent when stdin isn't a terminal, so
   // commands that need input take it from flags instead.
   prompt?: (question: string) => Promise<string>
+  // stdout is a terminal: `ovd logs` colors the level letter only then.
+  stdoutTty?: boolean
 }
 
 export interface GlobalOptions {
@@ -71,5 +74,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerPkg(program, deps, setExitCode)
   registerApps(program, deps, setExitCode)
   registerInstall(program, deps, setExitCode)
+  registerLogs(program, deps, setExitCode)
   return program
 }

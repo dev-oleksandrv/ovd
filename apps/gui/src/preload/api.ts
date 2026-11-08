@@ -10,6 +10,9 @@ import type {
   ForgetResult,
   InstallResult,
   LaunchResult,
+  LogCounts,
+  LogEntry,
+  LogFilterInput,
   LoginPrompt,
   PackageBuild,
   PackageInfo,
@@ -28,6 +31,29 @@ export interface AppInfo {
 export interface SdkSummary {
   sdkVersion: string
 }
+
+// The filters the Logs screen sets; `since`/`until` are CLI-only.
+export type LogsFilter = Pick<LogFilterInput, 'app' | 'system' | 'level' | 'search' | 'regex'>
+
+// The log session main runs for the target (one at a time).
+export type LogsState =
+  | { status: 'idle' }
+  | { status: 'starting'; device: string; name: string }
+  | { status: 'running'; device: string; name: string; startedAt: string }
+  | { status: 'ended'; device: string; name: string; startedAt: string | null; error: ErrorJson }
+
+// What main pushes, tagged with the session number so a stale update is ignored. `reset`
+// replaces the renderer's list; `append` adds to it and may carry no entries, only fresh counts
+// and apps. At most one `append` goes out per ~100 ms.
+export type LogsUpdate =
+  | { kind: 'state'; session: number; state: LogsState }
+  | {
+      kind: 'reset' | 'append'
+      session: number
+      entries: LogEntry[]
+      counts: LogCounts
+      apps: string[]
+    }
 
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson }
@@ -126,6 +152,19 @@ export interface OvdApi {
     // Stops a sign-in or wait in progress (the wizard closed).
     cancel(): Promise<void>
   }
+  logs: {
+    // Starts `ovd logs --device <id>` for the device, or replays the running session's state
+    // and entries when it is already for that device.
+    open(device: string): Promise<IpcResult<LogsState>>
+    // Stops the session and starts a new one (buffer cleared, filters kept).
+    restart(device: string): Promise<IpcResult<LogsState>>
+    // Re-filters the buffer without restarting the stream; INVALID_LOG_FILTER for a bad regex.
+    setFilter(filter: LogsFilter): Promise<IpcResult<null>>
+    clear(): Promise<void>
+    // Saves the shown lines (up to `throughSeq`) as plain text; null when the user cancels.
+    export(throughSeq?: number): Promise<IpcResult<{ path: string; lines: number } | null>>
+    onUpdate(listener: (update: LogsUpdate) => void): () => void
+  }
 }
 
 export const channels = {
@@ -165,5 +204,11 @@ export const channels = {
   setupLoginPrompt: 'ovd:setup:login-prompt',
   setupEnable: 'ovd:setup:enable',
   setupWait: 'ovd:setup:wait',
-  setupCancel: 'ovd:setup:cancel'
+  setupCancel: 'ovd:setup:cancel',
+  logsOpen: 'ovd:logs:open',
+  logsRestart: 'ovd:logs:restart',
+  logsFilter: 'ovd:logs:filter',
+  logsClear: 'ovd:logs:clear',
+  logsExport: 'ovd:logs:export',
+  logsUpdate: 'ovd:logs:update'
 } as const
