@@ -107,6 +107,45 @@ test.describe('Apps', () => {
     expect(sandbox.activity()).toEqual([])
   })
 
+  test('Force stop on the running player stops it, and Apps and Running now follow', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+      w.running.push({ device: 'VirtualDevice', app: 'com.example.player' })
+    })
+    const { page } = await launch()
+    await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    await expect(row).toContainText(/Running · \d+/)
+
+    await row.click()
+    const detail = page.getByRole('complementary', { name: `${TITLE} details` })
+    await detail.getByRole('button', { name: 'Force stop' }).click()
+
+    const cli = '$ ovd apps terminate com.example.player --force --device VirtualDevice'
+    await expect(toast(page, `Force stopped ${TITLE}`)).toContainText(cli)
+    await expect(echo(page)).toContainText(cli)
+    await expect(row).toContainText('Stopped')
+    await expect(page.getByRole('tab', { name: 'Running · 0' })).toBeVisible()
+    expect(sandbox.calls()).toContain(
+      `${SHELL} vlcm terminate-app --force --pkg-id com.example.player`
+    )
+    expect(sandbox.world().running).toEqual([])
+
+    await nav(page, 'Devices').click()
+    await expect(
+      page.getByRole('region', { name: 'Running now' }).getByText('No apps running')
+    ).toBeVisible()
+
+    const activity = sandbox.activity().filter((a) => a.surface === 'desktop')
+    expect(activity.map((a) => [a.action, a.result])).toEqual([['app.terminate', 'ok']])
+    expect(activity[0]).toMatchObject({ args: { app: 'com.example.player', force: 'true' } })
+  })
+
   test('nothing installed points to Packages', async ({ sandbox, launch }) => {
     sandbox.installSdk()
     sandbox.update((w) => {
