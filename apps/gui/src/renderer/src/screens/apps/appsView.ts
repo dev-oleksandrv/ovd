@@ -177,6 +177,10 @@ export function actionToast(
   if (action === 'terminate' && 'wasRunning' in result && result.wasRunning === false) {
     return { tone: 'info', text: `${app.title} wasn’t running` }
   }
+  // Launch leaves an app that already runs as it is.
+  if (action === 'launch' && 'launched' in result && result.launched === false) {
+    return { tone: 'info', text: `${app.title} is already running` }
+  }
   if ('verified' in result) {
     if (!result.verified) return { tone: 'error', text: CALLOUT_TITLES[result.reason] }
     return { tone: 'ok', text: `${DONE[action]} ${app.title} · verified` }

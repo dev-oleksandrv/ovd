@@ -70,7 +70,8 @@ describe('appsView', () => {
     const base = {
       target: { id: 'VirtualDevice', name: 'Vega Virtual Device' },
       app: { packageId: player.packageId, title: player.title, componentId: 'c' },
-      launched: true as const
+      launched: true as const,
+      wasRunning: false as const
     }
     expect(outcomeOf({ ...base, verified: true, pid: 3571 })).toBeUndefined()
     expect(outcomeOf({ ...base, verified: false, reason: 'crashed', crash })).toEqual({
@@ -189,6 +190,7 @@ describe('appsView', () => {
     target,
     app: { ...app, componentId: 'com.example.player.main' },
     launched: true,
+    wasRunning: false,
     verified: true,
     pid: 3571
   }
@@ -196,6 +198,7 @@ describe('appsView', () => {
     target,
     app: { ...app, componentId: 'com.example.player.main' },
     launched: true,
+    wasRunning: false,
     verified: false,
     reason: 'crashed',
     crash
@@ -205,6 +208,18 @@ describe('appsView', () => {
   test.each([
     ['launch', launched, { tone: 'ok', text: 'Launched Sample Player · verified' }],
     ['launch', crashed, { tone: 'error', text: CALLOUT_TITLES.crashed }],
+    [
+      'launch',
+      {
+        target,
+        app: { ...app, componentId: 'com.example.player.main' },
+        launched: false,
+        wasRunning: true,
+        verified: true,
+        pid: 3571
+      },
+      { tone: 'info', text: 'Sample Player is already running' }
+    ],
     [
       'launch',
       { ...launched, verified: false, reason: 'not-running' },

@@ -50,7 +50,7 @@ export function AppActions({ app, busy, onAction, reinstall }: AppActionsProps) 
         <div className="flex flex-wrap items-start gap-2">
           <div className="flex flex-col gap-1">
             {button('reinstall', reinstallBlocked)}
-            <span className="text-meta text-muted">clears app data (to be verified)</span>
+            <span className="text-meta text-muted">clears app data</span>
           </div>
           {button('uninstall')}
         </div>

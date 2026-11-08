@@ -121,6 +121,7 @@ const launchedHello: IpcResult<LaunchResult> = {
       componentId: 'com.example.hellovega.main'
     },
     launched: true,
+    wasRunning: false,
     verified: true,
     pid: 5120
   }
@@ -142,6 +143,7 @@ const crashedHello: IpcResult<LaunchResult> = {
     target,
     app: helloApp,
     launched: true,
+    wasRunning: false,
     verified: false,
     reason: 'crashed',
     crash: helloCrash
@@ -281,6 +283,37 @@ describe('Apps screen actions', () => {
     await waitFor(() => expect(api.apps.list).toHaveBeenCalledTimes(2))
   })
 
+  test('a row’s Launch on an app that already runs says so, and echoes', async () => {
+    const api = stub({
+      actions: {
+        launch: async () => ({
+          ok: true,
+          data: {
+            target,
+            app: helloApp,
+            launched: false,
+            wasRunning: true,
+            verified: true,
+            pid: 5120
+          }
+        })
+      }
+    })
+    renderScreen()
+
+    fireEvent.click(within(await row('Hello Vega')).getByRole('button', { name: 'Launch' }))
+
+    const toast = (await screen.findAllByRole('status')).find((t) =>
+      t.textContent?.includes('Hello Vega is already running')
+    )
+    expect(toast?.textContent).toContain(
+      `$ ovd apps launch com.example.hellovega --device ${stick.id}`
+    )
+    expect(screen.queryByText('Launched Hello Vega · verified')).toBeNull()
+    expect(api.apps.launch).toHaveBeenCalledWith('com.example.hellovega', stick.id)
+    expect(echoed()).toContain(`$ ovd apps launch com.example.hellovega --device ${stick.id}`)
+  })
+
   test('a row’s Stop stops a running app gracefully', async () => {
     const api = stub({ actions: { terminate: async () => stoppedPlayer } })
     renderScreen()
@@ -390,7 +423,7 @@ describe('Apps screen actions', () => {
       expect(button.getAttribute('title')).toBe('No package for com.example.player')
     )
     expect(button.disabled).toBe(true)
-    expect(within(panel).getByText('clears app data (to be verified)')).toBeTruthy()
+    expect(within(panel).getByText('clears app data')).toBeTruthy()
   })
 
   test('with a package, Uninstall & reinstall reinstalls', async () => {
@@ -592,6 +625,7 @@ describe('Apps screen launch verification', () => {
             target,
             app: helloApp,
             launched: true,
+            wasRunning: false,
             verified: false,
             reason: 'not-running'
           }
