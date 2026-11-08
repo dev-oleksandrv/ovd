@@ -4,6 +4,7 @@ import { parseTombstones, signalName, type Tombstone } from '../adapters/parseTo
 import { parseVlcmCrashHistory, type CrashEntry } from '../adapters/parseVlcmCrashHistory.js'
 import { parseVlcmList, type VlcmEntry } from '../adapters/parseVlcmList.js'
 import type { VpmPackage } from '../adapters/parseVpmInfo.js'
+import { stripControl } from '../adapters/stripControl.js'
 import type { Device } from '../devices/types.js'
 import type { AppActionsContext } from './appActions.js'
 import { assertAppId, type AppId } from './appId.js'
@@ -99,9 +100,11 @@ export function createLaunchVerifier(
       const run = await ctx.deviceShell(device, [
         deviceScript(captureStopScript(capture, packageId, crashPid))
       ])
+      // Apps write these lines and the surfaces print them, so no escape sequence gets through.
       return run.stdout
         .replace(/\r\n/g, '\n')
         .split('\n')
+        .map(stripControl)
         .filter((l) => l.trim() !== '')
         .slice(-MAX_LOG_LINES)
     } catch {

@@ -24,4 +24,25 @@ describe('parseAcr', () => {
   ])('%s: undefined', (_name, out) => {
     expect(parseAcr(out)).toBeUndefined()
   })
+
+  // The recorded report with escape sequences the app could have put in its error and stack.
+  test('control characters are removed from the header, the message and the stack', () => {
+    const recorded = fixture('0.24/loggingctl-vault-acr/virtual-device-crashed.txt')
+    const tampered = recorded
+      .replace('CrashLang: JavaScript', 'CrashLang: Java\u0007Script')
+      .replace('CrashReason: SIGABRT', 'CrashReason: SIGABRT\u009b')
+      .replace(
+        'Error: player: deliberate crash right after launch',
+        'Error: player:\t\u001b]0;pwned\u0007\u001b[2Jdeliberate crash right after launch'
+      )
+      .replace(/^(\s+at anonymous) /m, '$1\u009d0;x\u009c ')
+    expect(tampered).not.toBe(recorded)
+
+    expect(parseAcr(tampered)).toEqual({
+      language: 'JavaScript',
+      signal: 'SIGABRT',
+      message: 'Error: player:\t]0;pwned[2Jdeliberate crash right after launch',
+      stack: [expect.stringMatching(/^at anonymous0;x \(.*\.bundle:652:20\)$/)]
+    })
+  })
 })

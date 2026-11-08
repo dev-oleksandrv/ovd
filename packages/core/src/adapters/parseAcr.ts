@@ -1,3 +1,5 @@
+import { stripControl } from './stripControl.js'
+
 // What OVD reads from a crash report (ACR): its header and its JS stack
 // (fixtures/0.24/loggingctl-vault-acr).
 export interface AcrSummary {
@@ -25,15 +27,17 @@ export function parseAcr(stdout: string): AcrSummary | undefined {
     const m = /^(\w+):\s*(.*)$/.exec(line)
     if (m?.[1] !== undefined && m[2] !== undefined) header.set(m[1], m[2].trim())
   }
-  const language = header.get('CrashLang') || undefined
-  const signal = header.get('CrashReason') || undefined
+  // The app writes the message and the stack; the surfaces print them (stripControl).
+  const language = stripControl(header.get('CrashLang') ?? '').trim() || undefined
+  const signal = stripControl(header.get('CrashReason') ?? '').trim() || undefined
   if (!language && !signal) return undefined
 
   const start = lines.indexOf(START)
   const end = lines.indexOf(END, start + 1)
   const section = start === -1 ? [] : lines.slice(start + 1, end === -1 ? undefined : end)
-  const message = section.find((l) => /^\w*Error: /.test(l))
-  const stack = section.filter((l) => /^\s+at /.test(l)).map((l) => l.trim())
+  const found = section.find((l) => /^\w*Error: /.test(l))
+  const message = found === undefined ? undefined : stripControl(found)
+  const stack = section.filter((l) => /^\s+at /.test(l)).map((l) => stripControl(l).trim())
   return {
     ...(language ? { language } : {}),
     ...(signal ? { signal } : {}),
