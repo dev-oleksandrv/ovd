@@ -183,7 +183,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** every action works on a stick and the Virtual Device; Running and "Running now" update within one refresh.
 
-### 2.5 Launch verification — done (PR #<n>)
+### 2.5 Launch verification — done (PR #89)
 
 - After every launch, confirm with running apps and crash history (ADR 0012). Desktop: "Verifying launch…"; on failure "Launch reported success, but the app crashed" with the cause and "Logs around crash". CLI: non-zero exit, `"verified": false, "reason": "crashed"`.
 
