@@ -214,7 +214,6 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 ### 3.2 Logs survive reinstall — next
 
 - Stream restarts after every install made through OVD; footer toggle "Restart session after install", on by default (ADR 0014). Reconnects when a device drops, with an inline note.
-- Release build banner: "<app> is a Release build: its JS logs are hidden…", with Dismiss.
 - OVD events inline (install, "Log session restarted", launch verified, crash detected, build folder changed), from the activity log.
 
 **Expected:** reinstall 10 times with logs open; logs keep arriving and each reinstall shows as an OVD line.
@@ -378,48 +377,48 @@ Plugin API · error explainer (log patterns → fix hints) · device farm view �
 
 ## Screen → stage map
 
-| Design element                                         | Stage                                                                                                          |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| Tokens, fonts, icons, base components, empty frame     | 0.2                                                                                                            |
-| Title bar: logo, target picker, palette search         | 1.1                                                                                                            |
-| Title bar: Run ▸ and steps dropdown                    | 3.4                                                                                                            |
-| Title bar: Watch toggle                                | 3.5                                                                                                            |
-| Sidebar navigation                                     | 1.1, grows each stage                                                                                          |
-| Sidebar project card / No project                      | 2.1                                                                                                            |
-| Status bar with CLI echo                               | 1.1                                                                                                            |
-| Command palette (+ "Coming in a later version")        | 1.1, updated each stage                                                                                        |
-| Toasts                                                 | 1.1                                                                                                            |
-| Environment → Doctor: first run                        | 1.2                                                                                                            |
-| Environment → Doctor: rows                             | 1.2 (SDK, VDA, Devices, Developer Mode, Metro report), 2.1 (Project), 4.1 (Emulator gRPC), 6.2 (Metro Connect) |
-| Environment → SDK versions                             | 6.5                                                                                                            |
-| Devices: list, empty state, detail, JSON               | 1.3                                                                                                            |
-| Devices: Virtual Device start / stop                   | 1.4                                                                                                            |
-| Devices: Running now                                   | 2.4                                                                                                            |
-| Devices: Reboot & wait                                 | 4.5                                                                                                            |
-| Devices: Shell button                                  | 6.3                                                                                                            |
-| Devices: Virtual Device → Network                      | 10.1                                                                                                           |
-| Set up a new stick wizard                              | 1.5                                                                                                            |
-| Pair over Wi‑Fi wizard                                 | 1.6                                                                                                            |
-| Packages: drop zone, recent builds, Overview           | 2.2                                                                                                            |
-| Packages: architecture mismatch block                  | 2.3                                                                                                            |
-| Packages: Manifest, Files, Validate                    | 5.3                                                                                                            |
-| Apps: tabs, table, detail, components                  | 2.4                                                                                                            |
-| Apps: verifying / crashed on launch                    | 2.5 (+ "Open crash report" in 5.1)                                                                             |
-| Logs: toolbar, rows, footer, Follow                    | 3.1                                                                                                            |
-| Logs: restart after install, Release banner, OVD lines | 3.2                                                                                                            |
-| Logs: Export                                           | 3.3                                                                                                            |
-| Logs: presets, Save filter, Bundle                     | 5.2                                                                                                            |
-| Crashes                                                | 5.1 (symbolication in 9)                                                                                       |
-| Remote & Screen: pad, Type into TV, input session      | 4.2                                                                                                            |
-| Remote & Screen: Screenshot, Captures                  | 4.3                                                                                                            |
-| Remote & Screen: live view / latest screenshot         | 4.4                                                                                                            |
-| Remote & Screen: Record                                | 9                                                                                                              |
-| Shell                                                  | 6.3                                                                                                            |
-| Deep links                                             | 6.1                                                                                                            |
-| Performance → Memory                                   | 6.4                                                                                                            |
-| Performance → Launch KPIs                              | 8.1                                                                                                            |
-| Performance → Traces & monitors                        | 8.2, 8.3                                                                                                       |
-| Scenarios & MCP → Scenarios / MCP server / CI          | 7.2 / 7.1 / 7.3                                                                                                |
+| Design element                                     | Stage                                                                                                          |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Tokens, fonts, icons, base components, empty frame | 0.2                                                                                                            |
+| Title bar: logo, target picker, palette search     | 1.1                                                                                                            |
+| Title bar: Run ▸ and steps dropdown                | 3.4                                                                                                            |
+| Title bar: Watch toggle                            | 3.5                                                                                                            |
+| Sidebar navigation                                 | 1.1, grows each stage                                                                                          |
+| Sidebar project card / No project                  | 2.1                                                                                                            |
+| Status bar with CLI echo                           | 1.1                                                                                                            |
+| Command palette (+ "Coming in a later version")    | 1.1, updated each stage                                                                                        |
+| Toasts                                             | 1.1                                                                                                            |
+| Environment → Doctor: first run                    | 1.2                                                                                                            |
+| Environment → Doctor: rows                         | 1.2 (SDK, VDA, Devices, Developer Mode, Metro report), 2.1 (Project), 4.1 (Emulator gRPC), 6.2 (Metro Connect) |
+| Environment → SDK versions                         | 6.5                                                                                                            |
+| Devices: list, empty state, detail, JSON           | 1.3                                                                                                            |
+| Devices: Virtual Device start / stop               | 1.4                                                                                                            |
+| Devices: Running now                               | 2.4                                                                                                            |
+| Devices: Reboot & wait                             | 4.5                                                                                                            |
+| Devices: Shell button                              | 6.3                                                                                                            |
+| Devices: Virtual Device → Network                  | 10.1                                                                                                           |
+| Set up a new stick wizard                          | 1.5                                                                                                            |
+| Pair over Wi‑Fi wizard                             | 1.6                                                                                                            |
+| Packages: drop zone, recent builds, Overview       | 2.2                                                                                                            |
+| Packages: architecture mismatch block              | 2.3                                                                                                            |
+| Packages: Manifest, Files, Validate                | 5.3                                                                                                            |
+| Apps: tabs, table, detail, components              | 2.4                                                                                                            |
+| Apps: verifying / crashed on launch                | 2.5 (+ "Open crash report" in 5.1)                                                                             |
+| Logs: toolbar, rows, footer, Follow                | 3.1                                                                                                            |
+| Logs: restart after install, OVD lines             | 3.2                                                                                                            |
+| Logs: Export                                       | 3.3                                                                                                            |
+| Logs: presets, Save filter, Bundle                 | 5.2                                                                                                            |
+| Crashes                                            | 5.1 (symbolication in 9)                                                                                       |
+| Remote & Screen: pad, Type into TV, input session  | 4.2                                                                                                            |
+| Remote & Screen: Screenshot, Captures              | 4.3                                                                                                            |
+| Remote & Screen: live view / latest screenshot     | 4.4                                                                                                            |
+| Remote & Screen: Record                            | 9                                                                                                              |
+| Shell                                              | 6.3                                                                                                            |
+| Deep links                                         | 6.1                                                                                                            |
+| Performance → Memory                               | 6.4                                                                                                            |
+| Performance → Launch KPIs                          | 8.1                                                                                                            |
+| Performance → Traces & monitors                    | 8.2, 8.3                                                                                                       |
+| Scenarios & MCP → Scenarios / MCP server / CI      | 7.2 / 7.1 / 7.3                                                                                                |
 
 ## Hardware checks
 
