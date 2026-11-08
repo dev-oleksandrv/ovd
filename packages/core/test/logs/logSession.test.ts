@@ -49,9 +49,11 @@ afterEach(async () => {
   await rm(home, { recursive: true, force: true })
 })
 
+// `logsDiscover` replaces the SDK only for the log session, so the target still resolves.
 function setup(
   script: ConstructorParameters<typeof FakeRunner>[0],
-  discover?: () => Promise<never>
+  discover?: () => Promise<never>,
+  logsDiscover?: () => Promise<never>
 ) {
   const runner = new FakeRunner(script)
   const sdk = createSdkLocator(
@@ -67,7 +69,8 @@ function setup(
   const state = createStateStore(ovdHome)
   const activity = createActivityLog({ home: ovdHome, surface: 'cli' })
   const devices = createDevices({ runner, sdk, state, activity, env: {} })
-  const logs = createLogs({ runner, sdk, devices, activity, now: () => new Date() })
+  const logsSdk = logsDiscover ? createSdkLocator(logsDiscover) : sdk
+  const logs = createLogs({ runner, sdk: logsSdk, devices, activity, now: () => new Date() })
   return { logs, runner }
 }
 
@@ -82,6 +85,10 @@ async function activity(): Promise<Partial<ActivityEntry>[]> {
       const { action, target, args, result, errorCode } = JSON.parse(l) as ActivityEntry
       return { action, target, args, result, ...(errorCode ? { errorCode } : {}) }
     })
+}
+
+const sdkMissing = async (): Promise<never> => {
+  throw new OvdError('SDK_NOT_FOUND', 'No Vega SDK found', 'Install the Vega SDK')
 }
 
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve))
@@ -193,13 +200,28 @@ describe('logs.start', () => {
     }
   )
 
-  test('refuses SDK_NOT_FOUND without any call', async () => {
-    const { logs, runner } = setup(online, async () => {
-      throw new OvdError('SDK_NOT_FOUND', 'No Vega SDK found', 'Install the Vega SDK')
-    })
+  test('refuses SDK_NOT_FOUND before the target without any call or activity entry', async () => {
+    const { logs, runner } = setup(online, sdkMissing)
     await expect(logs.start()).rejects.toMatchObject({ code: 'SDK_NOT_FOUND' })
     expect(runner.calls).toEqual([])
     expect(await activity()).toEqual([])
+  })
+
+  test('logs one error entry when the SDK goes missing after the target is known', async () => {
+    const { logs, runner } = setup({ ...online, [LOG]: new FakeStream() }, undefined, sdkMissing)
+    await expect(logs.start({ filter: { level: 'error' } })).rejects.toMatchObject({
+      code: 'SDK_NOT_FOUND'
+    })
+    expect(runner.count(LOG)).toBe(0)
+    expect(await activity()).toEqual([
+      {
+        action: 'logs',
+        target: STICK,
+        args: { level: 'error' },
+        result: 'error',
+        errorCode: 'SDK_NOT_FOUND'
+      }
+    ])
   })
 
   test.each<[string, LogStartOptions['filter'], string]>([

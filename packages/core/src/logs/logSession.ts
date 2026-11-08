@@ -71,164 +71,173 @@ export function createLogs(deps: LogsDeps): Logs {
       // Usage errors and the target come first: they write no activity entry.
       const startFilter = compileLogFilter(opts.filter ?? {}, deps.now())
       const device = await onlineTarget(deps.devices, opts.device)
-      if (device.vdaSerial === undefined) throw offline(device)
-      const { vegaPath } = await deps.sdk.get()
-      if (opts.signal?.aborted) throw abortError(opts.signal)
+      const vdaSerial = device.vdaSerial
+      if (vdaSerial === undefined) throw offline(device)
 
-      const until = startFilter.until
-      let filter: LogFilter = startFilter
-      const buffer = createLogBuffer(opts.capacity ?? LOG_BUFFER_SIZE, filter.matches)
-      const parser = createLogStreamParser({ now: deps.now })
-      const controller = new AbortController()
-      const abortFromCaller = () => controller.abort()
-      opts.signal?.addEventListener('abort', abortFromCaller, { once: true })
+      // Everything that can fail once the target is known is the start's outcome: one entry.
+      const open = async (): Promise<LogSession> => {
+        const { vegaPath } = await deps.sdk.get()
+        if (opts.signal?.aborted) throw abortError(opts.signal)
 
-      let reachedUntil = false
-      let finished = false
-      let idleTimer: ReturnType<typeof setTimeout> | undefined
-      let clockTimer: ReturnType<typeof setTimeout> | undefined
-      let markStarted = (): void => undefined
-      const firstChunk = new Promise<void>((resolve) => (markStarted = resolve))
+        const until = startFilter.until
+        let filter: LogFilter = startFilter
+        const buffer = createLogBuffer(opts.capacity ?? LOG_BUFFER_SIZE, filter.matches)
+        const parser = createLogStreamParser({ now: deps.now })
+        const controller = new AbortController()
+        const abortFromCaller = () => controller.abort()
+        opts.signal?.addEventListener('abort', abortFromCaller, { once: true })
 
-      const endAtUntil = () => {
-        if (finished) return
-        reachedUntil = true
-        finished = true
-        controller.abort()
-      }
+        let reachedUntil = false
+        let finished = false
+        let idleTimer: ReturnType<typeof setTimeout> | undefined
+        let clockTimer: ReturnType<typeof setTimeout> | undefined
+        let markStarted = (): void => undefined
+        const firstChunk = new Promise<void>((resolve) => (markStarted = resolve))
 
-      const deliver = (entries: LogEntry[]) => {
-        if (finished || entries.length === 0) return
-        let kept = entries
-        if (until !== undefined) {
-          const late = entries.findIndex((e) => e.deviceTime !== null && Date.parse(e.time) > until)
-          if (late !== -1) {
-            kept = entries.slice(0, late)
-            reachedUntil = true
-          }
-        }
-        if (kept.length > 0) {
-          buffer.add(kept)
-          opts.onEntries?.(kept.filter(filter.matches), buffer.counts(), buffer.apps())
-        }
-        if (reachedUntil) endAtUntil()
-      }
-
-      const armIdle = () => {
-        if (idleTimer !== undefined) clearTimeout(idleTimer)
-        idleTimer = setTimeout(() => {
-          idleTimer = undefined
-          deliver(parser.flush())
-        }, FLUSH_IDLE_MS)
-      }
-
-      const armClock = () => {
-        if (until === undefined) return
-        const left = until - deps.now().getTime()
-        if (left <= 0) return
-        clockTimer = setTimeout(
-          () => {
-            clockTimer = undefined
-            if (deps.now().getTime() >= until) endAtUntil()
-            else armClock()
-          },
-          Math.min(left, MAX_TIMER_MS)
-        )
-      }
-
-      const spec = vdaCmd(vegaPath, LOG_ARGS, device.vdaSerial)
-      const run: Promise<RunResult> = deps.runner.run({
-        ...spec,
-        signal: controller.signal,
-        stream: {
-          onChunk: (chunk) => {
-            markStarted()
-            armIdle()
-            deliver(parser.push(chunk))
-          }
-        }
-      })
-      const startedAt = deps.now().toISOString()
-      // An `until` already past arms no timer: the backlog is printed up to it, and the first
-      // later entry ends the session.
-      armClock()
-
-      const cleanUp = () => {
-        if (idleTimer !== undefined) clearTimeout(idleTimer)
-        if (clockTimer !== undefined) clearTimeout(clockTimer)
-        opts.signal?.removeEventListener('abort', abortFromCaller)
-      }
-
-      const ended = (exitCode: number, stderr: string) =>
-        new OvdError(
-          'LOG_STREAM_ENDED',
-          `${device.name}’s log stream ended`,
-          'The device may have disconnected or rebooted. Check it with ovd devices, then start ovd logs again',
-          { exitCode, stderr }
-        )
-
-      const done: Promise<LogSessionEnd> = run.then(
-        (result) => {
-          if (!result.stopped) deliver(parser.end())
-          finished = true
-          cleanUp()
-          if (reachedUntil) return { reason: 'until' }
-          if (result.stopped) return { reason: 'stopped' }
-          return { reason: 'ended', error: ended(result.exitCode, result.stderr) }
-        },
-        (error: unknown) => {
-          finished = true
-          cleanUp()
-          return {
-            reason: 'ended',
-            error:
-              error instanceof OvdError
-                ? error
-                : ended(1, error instanceof Error ? error.message : String(error))
-          }
-        }
-      )
-
-      // The start counts once the first chunk arrived, or the stream still runs after
-      // STREAM_START_MS. A run that fails or ends before that is the start's error.
-      let startTimer: ReturnType<typeof setTimeout> | undefined
-      const started = Promise.race([
-        firstChunk,
-        new Promise<void>((resolve) => (startTimer = setTimeout(resolve, STREAM_START_MS))),
-        run.then(
-          async (result) => {
-            if (reachedUntil) return
-            if (result.stopped) throw abortError(opts.signal)
-            throw ended(result.exitCode, result.stderr)
-          },
-          (error: unknown) => {
-            throw error
-          }
-        )
-      ]).finally(() => clearTimeout(startTimer))
-
-      await logged('logs', device.id, filter.args, () => started)
-
-      return {
-        target: { id: device.id, name: device.name },
-        command: spec.display,
-        startedAt,
-        done,
-        setFilter(input) {
-          const next = compileLogFilter(input, deps.now())
-          filter = next
-          buffer.setMatches(next.matches)
-        },
-        entries: (throughSeq) => buffer.filtered(throughSeq),
-        counts: () => buffer.counts(),
-        apps: () => buffer.apps(),
-        clear: () => buffer.clear(),
-        async stop() {
+        const endAtUntil = () => {
+          if (finished) return
+          reachedUntil = true
           finished = true
           controller.abort()
-          await done
+        }
+
+        const deliver = (entries: LogEntry[]) => {
+          if (finished || entries.length === 0) return
+          let kept = entries
+          if (until !== undefined) {
+            const late = entries.findIndex(
+              (e) => e.deviceTime !== null && Date.parse(e.time) > until
+            )
+            if (late !== -1) {
+              kept = entries.slice(0, late)
+              reachedUntil = true
+            }
+          }
+          if (kept.length > 0) {
+            buffer.add(kept)
+            opts.onEntries?.(kept.filter(filter.matches), buffer.counts(), buffer.apps())
+          }
+          if (reachedUntil) endAtUntil()
+        }
+
+        const armIdle = () => {
+          if (idleTimer !== undefined) clearTimeout(idleTimer)
+          idleTimer = setTimeout(() => {
+            idleTimer = undefined
+            deliver(parser.flush())
+          }, FLUSH_IDLE_MS)
+        }
+
+        const armClock = () => {
+          if (until === undefined) return
+          const left = until - deps.now().getTime()
+          if (left <= 0) return
+          clockTimer = setTimeout(
+            () => {
+              clockTimer = undefined
+              if (deps.now().getTime() >= until) endAtUntil()
+              else armClock()
+            },
+            Math.min(left, MAX_TIMER_MS)
+          )
+        }
+
+        const spec = vdaCmd(vegaPath, LOG_ARGS, vdaSerial)
+        const run: Promise<RunResult> = deps.runner.run({
+          ...spec,
+          signal: controller.signal,
+          stream: {
+            onChunk: (chunk) => {
+              markStarted()
+              armIdle()
+              deliver(parser.push(chunk))
+            }
+          }
+        })
+        const startedAt = deps.now().toISOString()
+        // An `until` already past arms no timer: the backlog is printed up to it, and the first
+        // later entry ends the session.
+        armClock()
+
+        const cleanUp = () => {
+          if (idleTimer !== undefined) clearTimeout(idleTimer)
+          if (clockTimer !== undefined) clearTimeout(clockTimer)
+          opts.signal?.removeEventListener('abort', abortFromCaller)
+        }
+
+        const ended = (exitCode: number, stderr: string) =>
+          new OvdError(
+            'LOG_STREAM_ENDED',
+            `${device.name}’s log stream ended`,
+            'The device may have disconnected or rebooted. Check it with ovd devices, then start ovd logs again',
+            { exitCode, stderr }
+          )
+
+        const done: Promise<LogSessionEnd> = run.then(
+          (result) => {
+            if (!result.stopped) deliver(parser.end())
+            finished = true
+            cleanUp()
+            if (reachedUntil) return { reason: 'until' }
+            if (result.stopped) return { reason: 'stopped' }
+            return { reason: 'ended', error: ended(result.exitCode, result.stderr) }
+          },
+          (error: unknown) => {
+            finished = true
+            cleanUp()
+            return {
+              reason: 'ended',
+              error:
+                error instanceof OvdError
+                  ? error
+                  : ended(1, error instanceof Error ? error.message : String(error))
+            }
+          }
+        )
+
+        // The start counts once the first chunk arrived, or the stream still runs after
+        // STREAM_START_MS. A run that fails or ends before that is the start's error.
+        let startTimer: ReturnType<typeof setTimeout> | undefined
+        const started = Promise.race([
+          firstChunk,
+          new Promise<void>((resolve) => (startTimer = setTimeout(resolve, STREAM_START_MS))),
+          run.then(
+            async (result) => {
+              if (reachedUntil) return
+              if (result.stopped) throw abortError(opts.signal)
+              throw ended(result.exitCode, result.stderr)
+            },
+            (error: unknown) => {
+              throw error
+            }
+          )
+        ]).finally(() => clearTimeout(startTimer))
+
+        await started
+
+        return {
+          target: { id: device.id, name: device.name },
+          command: spec.display,
+          startedAt,
+          done,
+          setFilter(input) {
+            const next = compileLogFilter(input, deps.now())
+            filter = next
+            buffer.setMatches(next.matches)
+          },
+          entries: (throughSeq) => buffer.filtered(throughSeq),
+          counts: () => buffer.counts(),
+          apps: () => buffer.apps(),
+          clear: () => buffer.clear(),
+          async stop() {
+            finished = true
+            controller.abort()
+            await done
+          }
         }
       }
+
+      return logged('logs', device.id, startFilter.args, open)
     }
   }
 }
