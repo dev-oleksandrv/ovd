@@ -93,11 +93,18 @@ const sdkMissing = async (): Promise<never> => {
 
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve))
 
+// The session's start waits on real file I/O (the activity log), which a slow CI runner can
+// take longer than a fixed number of event-loop turns to finish. So the budget is real time,
+// read from `process.hrtime`, which the fake timers leave alone.
+const WAIT_BUDGET_NS = 5_000_000_000n
+
 async function waitFor(condition: () => boolean): Promise<void> {
-  for (let i = 0; i < 500; i++) {
+  const started = process.hrtime.bigint()
+  while (process.hrtime.bigint() - started < WAIT_BUDGET_NS) {
     if (condition()) return
     await settle()
   }
+  if (condition()) return
   throw new Error('waitFor: condition never held')
 }
 
