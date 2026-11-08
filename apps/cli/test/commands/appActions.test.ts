@@ -13,7 +13,22 @@ const target = { id: 'VirtualDevice', name: 'Vega Virtual Device' }
 const app = { packageId: 'com.example.player', title: 'Sample Player' }
 const main = { ...app, componentId: 'com.example.player.main' }
 
-const launched: LaunchResult = { target, app: main, launched: true, verified: true, pid: 3571 }
+const launched: LaunchResult = {
+  target,
+  app: main,
+  launched: true,
+  wasRunning: false,
+  verified: true,
+  pid: 3571
+}
+const alreadyRunning: LaunchResult = {
+  target,
+  app: main,
+  launched: false,
+  wasRunning: true,
+  verified: true,
+  pid: 3571
+}
 const stopped: TerminateResult = { target, app, forced: false, wasRunning: true }
 const restarted: RestartResult = {
   target,
@@ -39,6 +54,7 @@ const crashed: LaunchResult = {
   target,
   app: main,
   launched: true,
+  wasRunning: false,
   verified: false,
   reason: 'crashed',
   crash
@@ -103,6 +119,25 @@ describe('ovd apps launch', () => {
     expect(stderr).toBe('Launching com.example.player…\nVerifying launch…\n')
   })
 
+  test('an app that already runs: --json says wasRunning, exit 0', async () => {
+    const { stdout, exitCode } = await cli(['apps', 'launch', 'com.example.player', '--json'], {
+      ovd: stubApps({ launch: async () => alreadyRunning })
+    })
+    expect(JSON.parse(stdout)).toEqual({ ok: true, launch: alreadyRunning })
+    expect(exitCode).toBe(0)
+  })
+
+  test('an app that already runs: human output says so, without verifying', async () => {
+    const { stdout, stderr, exitCode } = await cli(['apps', 'launch', 'com.example.player'], {
+      ovd: stubApps({ launch: async () => alreadyRunning })
+    })
+    expect(stdout).toBe(
+      'com.example.player.main is already running on Vega Virtual Device · pid 3571\n'
+    )
+    expect(stderr).toBe('Launching com.example.player…\n')
+    expect(exitCode).toBe(0)
+  })
+
   test('a crash right after launch: one document with the error and the launch, exit 7', async () => {
     const { stdout, exitCode } = await cli(['apps', 'launch', 'com.example.player', '--json'], {
       ovd: stubApps({ launch: async () => crashed })
@@ -151,6 +186,7 @@ describe('ovd apps launch', () => {
       target,
       app: main,
       launched: true,
+      wasRunning: false,
       verified: false,
       reason: 'not-running'
     }
