@@ -16,6 +16,16 @@ const TID = /^(\d+) (.*)$/
 // `<level word> <tag>:` after the tid (`I resmgr-app-registry:[…]`, `INFO com.amazon.keplerscript:`).
 const TAGGED = /^(?:V|D|I|W|E|F|VERBOSE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL) ([^\s:]+):(.*)$/
 
+// Device text must not grow host memory without bound: the session's ring buffer caps entries,
+// not their size. An unterminated line longer than this (UTF-16 code units) is taken as a
+// complete line, so `pending` stays small.
+export const MAX_LINE_LENGTH = 64 * 1024
+// An endless run of header-less lines would keep growing one held entry. Past either cap the
+// entry is emitted and the following lines continue as a new entry with the same header
+// fields, as after an idle flush.
+export const MAX_ENTRY_LINES = 1_000
+export const MAX_ENTRY_LENGTH = 256 * 1024
+
 export const LogEntrySchema = z.object({
   seq: z.number().int().nonnegative(),
   time: z.iso.datetime(),
@@ -47,6 +57,8 @@ type Draft = Omit<LogEntry, 'seq' | 'message'> & { lines: string[] }
 export function createLogStreamParser(opts: { now: () => Date }): LogStreamParser {
   let pending = ''
   let held: Draft | undefined
+  // The length of the held entry's message (its lines joined with newlines).
+  let heldLength = 0
   // The last emitted entry, for a continuation line that arrives after a flush.
   let last: Draft | undefined
   let seq = 0
@@ -73,7 +85,8 @@ export function createLogStreamParser(opts: { now: () => Date }): LogStreamParse
   const releaseHeld = (out: LogEntry[]) => {
     if (!held) return
     out.push(emit(held))
-    last = held
+    // Only the header fields are reused, so the emitted lines aren't kept alive.
+    last = { ...held, lines: [] }
     held = undefined
   }
 
@@ -83,14 +96,21 @@ export function createLogStreamParser(opts: { now: () => Date }): LogStreamParse
     if (header) {
       releaseHeld(out)
       held = header
+      heldLength = header.lines.join('\n').length
       return
     }
     if (held) {
-      held.lines.push(clean)
-      return
+      const length = heldLength + 1 + clean.length
+      if (held.lines.length < MAX_ENTRY_LINES && length <= MAX_ENTRY_LENGTH) {
+        held.lines.push(clean)
+        heldLength = length
+        return
+      }
+      releaseHeld(out)
     }
     if (last) {
       held = { ...last, lines: [clean] }
+      heldLength = clean.length
       return
     }
     out.push({ ...rawDraftEntry(clean, opts.now()), seq: seq++ })
@@ -102,6 +122,10 @@ export function createLogStreamParser(opts: { now: () => Date }): LogStreamParse
       const parts = (pending + chunk).split('\n')
       pending = parts.pop() ?? ''
       for (const part of parts) line(part, out)
+      if (pending.length > MAX_LINE_LENGTH) {
+        line(pending, out)
+        pending = ''
+      }
       return out
     },
     flush() {

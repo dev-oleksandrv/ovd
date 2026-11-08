@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { createLogStreamParser } from '../../src/adapters/parseLogStream.js'
+import {
+  createLogStreamParser,
+  MAX_ENTRY_LENGTH,
+  MAX_ENTRY_LINES,
+  MAX_LINE_LENGTH
+} from '../../src/adapters/parseLogStream.js'
 import type { LogEntry } from '../../src/logs/types.js'
 import { fixture } from '../support/fixtures.js'
 
@@ -238,5 +243,54 @@ describe('createLogStreamParser', () => {
     expect(parser.push(line)).toEqual([])
     expect(parser.flush()).toEqual([])
     expect(parser.end()).toMatchObject([{ process: 'systemd' }])
+  })
+
+  test('an unterminated line longer than the line cap is taken as a complete line', () => {
+    const parser = createLogStreamParser({ now })
+    const piece = 'x'.repeat(1024)
+    const out: LogEntry[] = []
+    for (let i = 0; i < MAX_LINE_LENGTH / 1024; i++) out.push(...parser.push(piece))
+    expect(out).toEqual([])
+    out.push(...parser.push(piece))
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ parsed: false, seq: 0 })
+    expect(out[0]?.message).toHaveLength(MAX_LINE_LENGTH + 1024)
+    expect([...parser.push('tail\n'), ...parser.end()]).toMatchObject([{ message: 'tail', seq: 1 }])
+  })
+
+  test('a held entry past the line cap is emitted and continued with the same header', () => {
+    const header = FOLLOW.split('\n')[195] ?? ''
+    const continuation = Array.from({ length: 2 * MAX_ENTRY_LINES }, (_, i) => `at frame ${i}`)
+    const entries = parseAll([`${header}\n${continuation.join('\n')}\n`])
+    expect(entries.map((e) => e.message.split('\n').length)).toEqual([
+      MAX_ENTRY_LINES,
+      MAX_ENTRY_LINES,
+      1
+    ])
+    const [first, second, third] = entries
+    expect(second?.message.split('\n')[0]).toBe(`at frame ${MAX_ENTRY_LINES - 1}`)
+    expect(third?.message).toBe(`at frame ${2 * MAX_ENTRY_LINES - 1}`)
+    for (const entry of [second, third]) {
+      expect(entry).toMatchObject({
+        time: first?.time,
+        deviceTime: first?.deviceTime,
+        process: 'com.example.player',
+        pid: 27178,
+        tag: 'com.amazon.keplerscript',
+        parsed: true
+      })
+    }
+  })
+
+  test('a held entry past the length cap is emitted and continued with the same header', () => {
+    const header = FOLLOW.split('\n')[195] ?? ''
+    const long = 'y'.repeat(10 * 1024)
+    const count = Math.ceil((2 * MAX_ENTRY_LENGTH) / long.length)
+    const entries = parseAll([`${header}\n${`${long}\n`.repeat(count)}`])
+    expect(entries.length).toBeGreaterThan(2)
+    expect(entries.every((e) => e.message.length <= MAX_ENTRY_LENGTH)).toBe(true)
+    expect(entries.slice(1).every((e) => e.process === 'com.example.player')).toBe(true)
+    const lines = entries.flatMap((e) => e.message.split('\n'))
+    expect(lines.filter((l) => l === long)).toHaveLength(count)
   })
 })
