@@ -201,7 +201,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Sidebar after (first public release):** Device → Devices, Apps, Packages · Debug → Logs · Setup → Doctor.
 
-### 3.1 Logs screen — next
+### 3.1 Logs screen — done
 
 - CLI `ovd logs [--app] [--level] [--since] [--until] [--grep] [--regex]`.
 - Toolbar: session label, search with regex toggle, level picker V/D/I/W/E, package filter (All / each app / System), Pause/Resume, Clear, Export.
@@ -211,7 +211,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** `ovd logs --app com.example.player --level error` streams only that app's errors; the desktop stays responsive under a flood; Follow sticks to the bottom until you scroll.
 
-### 3.2 Logs survive reinstall
+### 3.2 Logs survive reinstall — next
 
 - Stream restarts after every install made through OVD; footer toggle "Restart session after install", on by default (ADR 0014). Reconnects when a device drops, with an inline note.
 - Release build banner: "<app> is a Release build: its JS logs are hidden…", with Dismiss.

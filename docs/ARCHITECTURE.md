@@ -42,7 +42,7 @@ packages/
       packages/            # vpkg info and list
       install/             # install, architecture guard
       deviceApps/          # apps on the target: lists, details, launch, stop, restart, uninstall, reinstall; launch verification in 2.5
-      logs/                # (Stage 3) loggingctl stream, filters, restart-after-install
+      logs/                # loggingctl stream, parser, filters, session; restart after install comes in 3.2
       activity/            # activity log
       errors/              # typed errors: stable code, message, hint
       state/               # host state directory (ADR 0022)
@@ -85,7 +85,7 @@ docs/
 - Discovers the Vega CLI (SDK Manager) and the active SDK version: `OVD_VEGA`, then every `vega` on `PATH`, then `~/vega/bin/vega` (a desktop app doesn't inherit the shell `PATH`). The manager wins over a `vega` bundled inside an SDK, which lacks `vega sdk` and `vega devmode`. Device commands fail with an install hint when none is found.
 - Every call goes through one runner: target injection (`--device <id>` for `vega device …`, `-s <serial>` for `vega exec vda …`), timeout, `AbortSignal`, captured stdout/stderr/exit code.
 - VDA runs as `vega exec vda …`. Device tools run through `vega exec vda shell` (`shell -c <component>` for component scope).
-- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. Planned: the log stream (Stage 3), the input console (Stage 4) and memory polling (Stage 6).
+- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. The log stream (`loggingctl log -f`) is built: it runs in its own process group and is stopped by signalling the group; reconnecting comes in 3.2. Planned: the input console (Stage 4) and memory polling (Stage 6).
 
 ### 4.2 Adapters
 
@@ -125,6 +125,8 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 | 7    | Launch not verified: the app crashed or isn't running after launch         |
 
 The app commands exit 1 for an app that isn't installed (`APP_NOT_INSTALLED`) or isn't side-loaded (`NOT_SIDELOADED`) and for an install, launch, terminate or uninstall the SDK refuses (`INSTALL_FAILED`, `LAUNCH_FAILED`, `TERMINATE_FAILED`, `UNINSTALL_FAILED`), which scripts tell apart by `error.code` in `--json`, and exit 2 for an invalid app ID (`INVALID_APP_ID`) or no app given with nothing open (`NO_APP`). `ovd apps launch` and `ovd apps restart` exit 7 (`LAUNCH_NOT_VERIFIED`) for both `"reason": "crashed"` and `"reason": "not-running"`.
+
+`ovd logs` exits 0 on Ctrl+C and when `--until` is reached, 1 when the stream ends by itself (`LOG_STREAM_ENDED`: the device may have disconnected or rebooted), 2 for an invalid filter (`INVALID_LOG_FILTER`, `INVALID_APP_ID`, `--app` with `--system`), 3 without an SDK and 4 without an online target; with `--json` it prints one JSON object per entry (`time`, `level`, `priority`, `facility`, `process`, `pid`, `tid`, `tag`, `message`, `parsed`) and ends a failed stream with the `{"ok": false, "error": …}` line.
 
 ## 6. Desktop
 
