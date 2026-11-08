@@ -1,0 +1,21 @@
+Nov 08 07:27:01.314464 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 287
+Nov 08 07:27:01.314591 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 288
+Nov 08 07:27:01.314715 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 289
+Nov 08 07:27:01.314836 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 290
+Nov 08 07:27:01.314958 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 291
+Nov 08 07:27:01.315078 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 292
+Nov 08 07:27:01.315202 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 293
+Nov 08 07:27:01.315335 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 294
+Nov 08 07:27:01.315473 firestick-0000000000000001 local0.info com.example.player[27178]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player flood 295
+Nov 08 07:27:01.316036 firestick-0000000000000001 local0.warning com.example.player[27178]: 2842092448 WARNING apmf.core.logconfig.config_monitor: Process exceeds log limit of [300] lps for tag [com.amazon.keplerscript], logs will be temporarily suppressed for [1] sec
+Nov 08 07:27:01.341159 firestick-0000000000000001 local0.warning com.example.player[27178]: 2842092448 WARNING com.amazon.keplerscript: [KeplerScript-JavaScript] player flood done
+Nov 08 07:27:01.830643 firestick-0000000000000001 local0.warning lcm_service[899]: 899 W lcm-server:[Lcm.cpp:7046] Screensaver watchdog: idle but no screensaver visible, launching os://ambient-component?previouslyInFg=com.example.player.main
+Nov 08 07:27:01.831503 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-server:[Lcm.cpp:4371] Received launch request for os://ambient-component
+Nov 08 07:27:01.832308 firestick-0000000000000001 local0.err pkgmgrd[900]: 2976223744 ERROR com.amazon.vpm.registrar: [PackageRegistrarQueryHandler.cpp:202] Package for id 'ambient-component' not found
+Nov 08 07:27:01.833092 firestick-0000000000000001 local0.err pkgmgrd[900]: 2976223744 ERROR com.amazon.vpm.service_impl: [PackageManagerServiceImpl.cpp:345] Request error: 'package info' pid 2658. Error message: Indicated resource not found
+Nov 08 07:27:01.833346 firestick-0000000000000001 daemon.info comet_main[2658]:  [INFO] CoMet IMD Collector: could not find package name for app (ambient-component)
+Nov 08 07:27:01.834287 firestick-0000000000000001 local0.info pkgmgrd[900]: 2988818944 INFO com.amazon.vpm.default_registrar: [DefaultComponentRegistrar.cpp:400] Found single default component 'com.amazon.screensaver.main'
+Nov 08 07:27:01.845905 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-server:[Lcm.cpp:3694] Running process for com.amazon.screensaver.main with UUID 24be33cb-ad8d-4497-9e76-6dad08d387b3 and request id 994
+Nov 08 07:27:01.853353 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=ClientEvent}:client{pid=899}:request{type=LaunchComponent}: received launch request, rid=994, component="com.amazon.screensaver.main", extras=Some([])
+Nov 08 07:27:01.853892 firestick-0000000000000001 local0.info lcm_service[899]: 899 I lcm-server:[Lcm.cpp:4949] App record added with AppId com.amazon.screensaver.main; appInstId: 994; pid: Unassigned; initiator: 0; reqId: N/A; backstackRole: 0
+Nov 08 07:27:01.854230 firestick-0000000000000001 local0.info stemd[801]: 3069526048 INFO com.amazon.appfwk.stemd: loop:event{type=ClientEvent}:client{pid=899}:request{type=LaunchComponent rid=994}: found eligible stem, id=897, pid=26802
