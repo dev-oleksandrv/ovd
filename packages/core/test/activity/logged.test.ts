@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { OvdError, type ActivityEntry, type ActivityLog } from '../../src/index.js'
-import { createLogged } from '../../src/activity/logged.js'
+import { createLogged, createPreflight } from '../../src/activity/logged.js'
 
 function memoryLog() {
   const entries: Omit<ActivityEntry, 'time' | 'surface'>[] = []
@@ -9,7 +9,7 @@ function memoryLog() {
       entries.push(entry)
     }
   }
-  return { entries, logged: createLogged(log) }
+  return { entries, logged: createLogged(log), preflight: createPreflight(log) }
 }
 
 describe('createLogged', () => {
@@ -99,6 +99,70 @@ describe('createLogged', () => {
     abort.name = 'AbortError'
 
     await expect(logged('app.launch', null, {}, () => Promise.reject(abort))).rejects.toBe(abort)
+
+    expect(entries).toEqual([])
+  })
+})
+
+describe('createPreflight', () => {
+  test('an OvdError: one error entry with what was known at the throw, and the error', async () => {
+    const { entries, preflight } = memoryLog()
+    const error = new OvdError('TARGET_OFFLINE', 'Vega Virtual Device is offline', 'Start it')
+
+    await expect(
+      preflight('app.launch', async (known) => {
+        known.args.app = 'com.example.player'
+        throw error
+      })
+    ).rejects.toBe(error)
+
+    expect(entries).toEqual([
+      {
+        action: 'app.launch',
+        target: null,
+        args: { app: 'com.example.player' },
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
+  })
+
+  test('the target, once known, is in the entry', async () => {
+    const { entries, preflight } = memoryLog()
+
+    await expect(
+      preflight('app.reinstall', async (known) => {
+        known.target = 'VirtualDevice'
+        throw new OvdError('INVALID_APP_ID', 'Not an app ID', 'Check it')
+      })
+    ).rejects.toThrow('Not an app ID')
+
+    expect(entries).toEqual([
+      {
+        action: 'app.reinstall',
+        target: 'VirtualDevice',
+        args: {},
+        result: 'error',
+        errorCode: 'INVALID_APP_ID'
+      }
+    ])
+  })
+
+  test.each([
+    ['a plain Error', new Error('boom')],
+    ['an AbortError', Object.assign(new Error('The operation was aborted'), { name: 'AbortError' })]
+  ])('%s: not logged', async (_name, error) => {
+    const { entries, preflight } = memoryLog()
+
+    await expect(preflight('app.launch', () => Promise.reject(error))).rejects.toBe(error)
+
+    expect(entries).toEqual([])
+  })
+
+  test('success: no entry, and the value', async () => {
+    const { entries, preflight } = memoryLog()
+
+    expect(await preflight('app.launch', () => Promise.resolve(7))).toBe(7)
 
     expect(entries).toEqual([])
   })

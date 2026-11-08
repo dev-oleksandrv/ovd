@@ -75,7 +75,9 @@ const online = {
   // output is discarded.
   [CRASH_HISTORY]: out('vlcm-crash-history/virtual-device-before.txt'),
   [START]: out('log-capture/started.txt'),
-  [APP_LIST]: out('vlcm-list/app-running.txt'),
+  // A launch first reads the app stopped, then its polls see it running. Restart only uses
+  // the last poll.
+  [APP_LIST]: [out('vlcm-list/app-missing.txt'), out('vlcm-list/app-running.txt')],
   [STOP]: {}
 }
 // The Virtual Device stopped: VDA lists only the stick.
@@ -239,10 +241,11 @@ describe('apps.launch', () => {
       target: vvdTarget,
       app: { ...playerApp, componentId: `${PLAYER}.main` },
       launched: true,
+      wasRunning: false,
       verified: true,
       pid: 3571
     })
-    expect(actionCalls(runner)).toEqual([PKG_INFO, ...VERIFY])
+    expect(actionCalls(runner)).toEqual([PKG_INFO, APP_LIST, ...VERIFY])
     expect(runner.calls.find((c) => c.display === LAUNCH)?.timeoutMs).toBe(180_000)
     expect(await activity()).toEqual([
       { action: 'app.launch', target: 'VirtualDevice', args: { app: PLAYER }, result: 'ok' }
@@ -272,14 +275,49 @@ describe('apps.launch', () => {
     expect((await failure(apps.launch(PLAYER, VVD))).code).toBe('APP_NOT_INSTALLED')
   })
 
-  test('a stopped Virtual Device: no shell call and no activity entry', async () => {
+  test('a running app: one vlcm list read, no launch-app, verified with its pid', async () => {
+    const { apps, runner } = await setup({
+      ...online,
+      [APP_LIST]: out('vlcm-list/app-running.txt')
+    })
+    const onVerifying = vi.fn()
+
+    const result = await apps.launch(PLAYER, { ...VVD, onVerifying })
+
+    expect(result).toEqual({
+      target: vvdTarget,
+      app: { ...playerApp, componentId: `${PLAYER}.main` },
+      launched: false,
+      wasRunning: true,
+      verified: true,
+      pid: 3571
+    })
+    expect(actionCalls(runner)).toEqual([PKG_INFO, APP_LIST])
+    expect(runner.count(LAUNCH)).toBe(0)
+    expect(runner.count(CRASH_HISTORY)).toBe(0)
+    expect(runner.count(START)).toBe(0)
+    expect(onVerifying).not.toHaveBeenCalled()
+    expect(await activity()).toEqual([
+      { action: 'app.launch', target: 'VirtualDevice', args: { app: PLAYER }, result: 'ok' }
+    ])
+  })
+
+  test('a stopped Virtual Device: no shell call, one entry with target null', async () => {
     const { apps, runner } = await setup(vvdStopped)
 
     const error = await failure(apps.launch(PLAYER, VVD))
 
     expect(error.code).toBe('TARGET_OFFLINE')
     expect(actionCalls(runner)).toEqual([])
-    expect(await activity()).toEqual([])
+    expect(await activity()).toEqual([
+      {
+        action: 'app.launch',
+        target: null,
+        args: { app: PLAYER },
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
   })
 
   test('the SDK no longer finds the device: TARGET_OFFLINE, logged', async () => {
@@ -318,10 +356,12 @@ describe('apps.launch', () => {
     expect((await apps.launch(undefined, VVD)).app.packageId).toBe(PLAYER)
   })
 
-  test('without a ref and nothing open: NO_APP, not logged', async () => {
+  test('without a ref and nothing open: NO_APP, one entry with target null', async () => {
     const { apps } = await setup(online)
     expect((await failure(apps.launch(undefined, VVD))).code).toBe('NO_APP')
-    expect(await activity()).toEqual([])
+    expect(await activity()).toEqual([
+      { action: 'app.launch', target: null, args: {}, result: 'error', errorCode: 'NO_APP' }
+    ])
   })
 })
 
@@ -372,10 +412,18 @@ describe('apps.terminate', () => {
     expect(runner.count(TERMINATE)).toBe(0)
   })
 
-  test('a stopped Virtual Device: not logged', async () => {
+  test('a stopped Virtual Device: one entry with target null', async () => {
     const { apps } = await setup(vvdStopped)
     expect((await failure(apps.terminate(PLAYER, VVD))).code).toBe('TARGET_OFFLINE')
-    expect(await activity()).toEqual([])
+    expect(await activity()).toEqual([
+      {
+        action: 'app.terminate',
+        target: null,
+        args: { app: PLAYER },
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
   })
 
   test('the device leaves during the call: TARGET_OFFLINE, logged', async () => {
@@ -441,10 +489,18 @@ describe('apps.restart', () => {
     expect(runner.count(LAUNCH)).toBe(0)
   })
 
-  test('a stopped Virtual Device: not logged', async () => {
+  test('a stopped Virtual Device: one entry with target null', async () => {
     const { apps } = await setup(vvdStopped)
     expect((await failure(apps.restart(PLAYER, VVD))).code).toBe('TARGET_OFFLINE')
-    expect(await activity()).toEqual([])
+    expect(await activity()).toEqual([
+      {
+        action: 'app.restart',
+        target: null,
+        args: { app: PLAYER },
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
   })
 
   test('the stop fails: no launch', async () => {
@@ -517,10 +573,18 @@ describe('apps.uninstall', () => {
     expect((await failure(apps.uninstall(PLAYER, VVD))).code).toBe('APP_NOT_INSTALLED')
   })
 
-  test('a stopped Virtual Device: not logged', async () => {
+  test('a stopped Virtual Device: one entry with target null', async () => {
     const { apps } = await setup(vvdStopped)
     expect((await failure(apps.uninstall(PLAYER, VVD))).code).toBe('TARGET_OFFLINE')
-    expect(await activity()).toEqual([])
+    expect(await activity()).toEqual([
+      {
+        action: 'app.uninstall',
+        target: null,
+        args: { app: PLAYER },
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
   })
 
   test('the SDK no longer finds the device: TARGET_OFFLINE, logged', async () => {
@@ -649,7 +713,9 @@ describe('apps.reinstall', () => {
 
     expect(error.code).toBe('NO_PACKAGE')
     expect(runner.calls).toEqual([])
-    expect(await activity()).toEqual([])
+    expect(await activity()).toEqual([
+      { action: 'app.reinstall', target: null, args: {}, result: 'error', errorCode: 'NO_PACKAGE' }
+    ])
   })
 
   test('an installed Appstore app is refused before the uninstall', async () => {
@@ -676,10 +742,18 @@ describe('apps.reinstall', () => {
     expect(runner.count(installCmd(aarch64))).toBe(0)
   })
 
-  test('a stopped Virtual Device: not logged', async () => {
+  test('a stopped Virtual Device: one entry with target null', async () => {
     const { apps } = await setup(vvdStopped, { open: true })
     expect((await failure(apps.reinstall(PLAYER, VVD))).code).toBe('TARGET_OFFLINE')
-    expect(await activity()).toEqual([])
+    expect(await activity()).toEqual([
+      {
+        action: 'app.reinstall',
+        target: null,
+        args: {},
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
   })
 })
 
@@ -724,7 +798,16 @@ describe('an app ID that isn’t one', () => {
       hint: 'An app ID is letters, digits, dots, hyphens and underscores, like com.example.player'
     })
     expect(runner.calls).toEqual([])
-    expect(await activity()).toEqual([])
+    // The raw argument is never recorded.
+    expect(await activity()).toEqual([
+      {
+        action: `app.${action}`,
+        target: null,
+        args: {},
+        result: 'error',
+        errorCode: 'INVALID_APP_ID'
+      }
+    ])
   })
 
   test.each<[Action, string]>([
@@ -743,7 +826,17 @@ describe('an app ID that isn’t one', () => {
     expect(error).toMatchObject({ code: 'INVALID_APP_ID', message })
     expect(actionCalls(runner)).toEqual([])
     if (action !== 'reinstall') expect(runner.calls).toEqual([])
-    expect(await activity()).toEqual([])
+    // Reinstall reads the build's ID after it picked the target, so its entry carries it.
+    expect(await activity()).toEqual([
+      {
+        action: `app.${action}`,
+        ...(action === 'reinstall'
+          ? { target: 'VirtualDevice', args: { package: 'evil_aarch64.vpkg' } }
+          : { target: null, args: {} }),
+        result: 'error',
+        errorCode: 'INVALID_APP_ID'
+      }
+    ])
   })
 
   test.each(ACTIONS.filter((a) => a !== 'reinstall'))(
@@ -777,7 +870,17 @@ describe('an app ID that isn’t one', () => {
     // Only the host reads the package (and, for reinstall, picks the target) first.
     expect(actionCalls(runner)).toEqual([])
     expect(runner.calls.filter((c) => c.display.startsWith('vega exec vda -s'))).toEqual([])
-    expect(await activity()).toEqual([])
+    // Reinstall reads the package's ID after it picked the target, so its entry carries it.
+    expect(await activity()).toEqual([
+      {
+        action: `app.${action}`,
+        ...(action === 'reinstall'
+          ? { target: 'VirtualDevice', args: { package: 'evil.vpkg' } }
+          : { target: null, args: {} }),
+        result: 'error',
+        errorCode: 'INVALID_APP_ID'
+      }
+    ])
   })
 
   const badPackageId = (b: string) =>
@@ -799,6 +902,118 @@ describe('an app ID that isn’t one', () => {
     expect(actionCalls(runner)).toEqual([PKG_INFO])
     expect(await activity()).toMatchObject([
       { action: `app.${action}`, result: 'error', errorCode: 'INVALID_APP_ID' }
+    ])
+  })
+})
+
+describe('failures before the target is known (ADR 0011)', () => {
+  const EVIL = 'x;rm -rf ~'
+  // Nothing online, and no target set.
+  const noTarget = {
+    [VDA]: out('vda-devices/none.txt'),
+    [STATUS]: out('vega-virtual-device-status/stopped.json')
+  }
+  type Apps = Awaited<ReturnType<typeof setup>>['apps']
+  type Case = [
+    string,
+    (apps: Apps) => Promise<unknown>,
+    Record<string, ConstructorParameters<typeof FakeRunner>[0][string]>,
+    { action: string; errorCode: string; args: Record<string, string> },
+    // Reinstall by package ID picks the open project's build.
+    { open?: boolean }?
+  ]
+
+  test.each<Case>([
+    [
+      'launch, no app',
+      (apps) => apps.launch(undefined, VVD),
+      online,
+      { action: 'app.launch', errorCode: 'NO_APP', args: {} }
+    ],
+    [
+      'launch, no target',
+      (apps) => apps.launch(PLAYER),
+      noTarget,
+      { action: 'app.launch', errorCode: 'NO_TARGET', args: { app: PLAYER } }
+    ],
+    [
+      'launch, an offline target',
+      (apps) => apps.launch(PLAYER, VVD),
+      vvdStopped,
+      { action: 'app.launch', errorCode: 'TARGET_OFFLINE', args: { app: PLAYER } }
+    ],
+    [
+      'launch, an invalid app ID',
+      (apps) => apps.launch(EVIL, VVD),
+      online,
+      { action: 'app.launch', errorCode: 'INVALID_APP_ID', args: {} }
+    ],
+    [
+      'reinstall, no package',
+      (apps) => apps.reinstall(undefined, VVD),
+      online,
+      { action: 'app.reinstall', errorCode: 'NO_PACKAGE', args: {} }
+    ],
+    [
+      'reinstall, no target',
+      (apps) => apps.reinstall(PLAYER, { force: true }),
+      noTarget,
+      { action: 'app.reinstall', errorCode: 'NO_TARGET', args: { force: 'true' } },
+      { open: true }
+    ],
+    [
+      'reinstall, an offline target',
+      (apps) => apps.reinstall(PLAYER, VVD),
+      vvdStopped,
+      { action: 'app.reinstall', errorCode: 'TARGET_OFFLINE', args: {} },
+      { open: true }
+    ],
+    [
+      'reinstall, an invalid app ID',
+      (apps) => apps.reinstall(EVIL, VVD),
+      online,
+      { action: 'app.reinstall', errorCode: 'INVALID_APP_ID', args: {} }
+    ],
+    [
+      'terminate --force, an offline target',
+      (apps) => apps.terminate(PLAYER, { ...VVD, force: true }),
+      vvdStopped,
+      { action: 'app.terminate', errorCode: 'TARGET_OFFLINE', args: { app: PLAYER, force: 'true' } }
+    ],
+    [
+      'restart, no target',
+      (apps) => apps.restart(PLAYER),
+      noTarget,
+      { action: 'app.restart', errorCode: 'NO_TARGET', args: { app: PLAYER } }
+    ],
+    [
+      'uninstall, an invalid app ID',
+      (apps) => apps.uninstall(EVIL, VVD),
+      online,
+      { action: 'app.uninstall', errorCode: 'INVALID_APP_ID', args: {} }
+    ]
+  ])('%s: one entry with target null', async (_name, run, script, expected, opts = {}) => {
+    const { apps } = await setup(script, opts)
+
+    const error = await failure(run(apps))
+
+    expect(error.code).toBe(expected.errorCode)
+    expect(await activity()).toEqual([{ ...expected, target: null, result: 'error' }])
+  })
+
+  test('a failure inside the action (not installed) is still one entry', async () => {
+    const { apps } = await setup({ ...online, [PKG_INFO]: notInstalled })
+
+    expect((await failure(apps.launch(PLAYER, VVD))).code).toBe('APP_NOT_INSTALLED')
+
+    expect(await activity()).toEqual([
+      {
+        action: 'app.launch',
+        target: 'VirtualDevice',
+        args: { app: PLAYER },
+        result: 'error',
+        errorCode: 'APP_NOT_INSTALLED'
+      }
     ])
   })
 })

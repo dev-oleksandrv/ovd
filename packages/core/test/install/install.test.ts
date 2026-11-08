@@ -126,7 +126,9 @@ async function setup(script: ConstructorParameters<typeof FakeRunner>[0]) {
   return { install, devices, runner, projects }
 }
 
-async function activity(): Promise<Pick<ActivityEntry, 'action' | 'result' | 'errorCode'>[]> {
+async function activity(): Promise<
+  Pick<ActivityEntry, 'action' | 'target' | 'args' | 'result' | 'errorCode'>[]
+> {
   const text = await readFile(join(home, '.config', 'ovd', 'activity.jsonl'), 'utf8').catch(
     () => ''
   )
@@ -280,6 +282,9 @@ describe('Install.install', () => {
 
     expect(error.code).toBe('NO_TARGET')
     expect(runner.calls.some((c) => c.args.includes('vpt'))).toBe(false)
+    expect(await activity()).toEqual([
+      { action: 'app.install', target: null, args: {}, result: 'error', errorCode: 'NO_TARGET' }
+    ])
   })
 
   test('a stopped Virtual Device is offline', async () => {
@@ -296,6 +301,15 @@ describe('Install.install', () => {
       message: 'Vega Virtual Device is stopped',
       hint: 'Start it with ovd vvd start'
     })
+    expect(await activity()).toEqual([
+      {
+        action: 'app.install',
+        target: null,
+        args: {},
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
   })
 
   test('reports what the device said when the install fails', async () => {
@@ -527,5 +541,78 @@ describe('Install.resolve', () => {
       file: 'player_armv7.vpkg'
     })
     expect((await failure(install.resolve('~/nope.vpkg'))).code).toBe('PATH_NOT_FOUND')
+  })
+})
+
+describe('Install.install: failures before the target is known (ADR 0011)', () => {
+  const vvdStopped = {
+    [VDA]: out('vda-devices/stick-usb.txt'),
+    [STATUS]: out('vega-virtual-device-status/stopped.json'),
+    [STICK_INFO]: out('vega-device-info/stick-usb.json')
+  }
+
+  test('nothing open and no ref: NO_PACKAGE, one entry', async () => {
+    const { install, projects, runner } = await setup(bothOnline)
+    await projects.close()
+
+    expect((await failure(install.install())).code).toBe('NO_PACKAGE')
+
+    expect(runner.calls).toEqual([])
+    expect(await activity()).toEqual([
+      { action: 'app.install', target: null, args: {}, result: 'error', errorCode: 'NO_PACKAGE' }
+    ])
+  })
+
+  test('no target, forced: NO_TARGET, one entry with force', async () => {
+    const { install } = await setup(bothOnline)
+
+    expect((await failure(install.install(armv7, { force: true }))).code).toBe('NO_TARGET')
+
+    expect(await activity()).toEqual([
+      {
+        action: 'app.install',
+        target: null,
+        args: { force: 'true' },
+        result: 'error',
+        errorCode: 'NO_TARGET'
+      }
+    ])
+  })
+
+  test('an offline --device: TARGET_OFFLINE, one entry', async () => {
+    const { install } = await setup(vvdStopped)
+
+    expect((await failure(install.install(aarch64, { device: 'VirtualDevice' }))).code).toBe(
+      'TARGET_OFFLINE'
+    )
+
+    expect(await activity()).toEqual([
+      {
+        action: 'app.install',
+        target: null,
+        args: {},
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
+  })
+
+  test('an invalid app ID: INVALID_APP_ID, one entry without the raw ref', async () => {
+    const { install, runner } = await setup(bothOnline)
+
+    expect((await failure(install.install('x;rm -rf ~', { device: STICK }))).code).toBe(
+      'INVALID_APP_ID'
+    )
+
+    expect(runner.calls.some((c) => c.args.includes('install-app'))).toBe(false)
+    expect(await activity()).toEqual([
+      {
+        action: 'app.install',
+        target: null,
+        args: {},
+        result: 'error',
+        errorCode: 'INVALID_APP_ID'
+      }
+    ])
   })
 })

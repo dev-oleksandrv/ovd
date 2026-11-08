@@ -79,11 +79,12 @@ const online = {
   [STK.stop(0)]: out('log-capture/virtual-device-verified.txt')
 }
 
-// The Virtual Device player that survives its launch.
+// The Virtual Device player that survives its launch: stopped at the read before the launch,
+// running at the polls.
 const survives = {
   ...online,
   [VVD.CRASH_HISTORY]: out('vlcm-crash-history/virtual-device-before.txt'),
-  [VVD.APP_LIST]: out('vlcm-list/app-running.txt')
+  [VVD.APP_LIST]: [out('vlcm-list/app-missing.txt'), out('vlcm-list/app-running.txt')]
 }
 
 // The Virtual Device player that crashes right after launch, as recorded.
@@ -179,13 +180,14 @@ describe('launch verification', () => {
 
     const result = await apps.launch(PLAYER, DEVICE)
 
-    expect(result).toMatchObject({ launched: true, verified: true, pid: 3571 })
+    expect(result).toMatchObject({ launched: true, wasRunning: false, verified: true, pid: 3571 })
     expect(result).not.toHaveProperty('crash')
     // The stop printed the launch's lines (log-capture/virtual-device-verified.txt); none is kept.
     expect(JSON.stringify(result)).not.toContain('lcm_service')
     expect(sleep.mock.calls.map(([ms]) => ms)).toEqual([1000, 1000, 1000, 1000, 1000])
     expect(calls()).toContain(VVD.stop(0))
-    expect(calls().filter((c) => c === VVD.APP_LIST)).toHaveLength(5)
+    // The read before the launch, then the five polls.
+    expect(calls().filter((c) => c === VVD.APP_LIST)).toHaveLength(6)
     expect(await activity()).toEqual([
       { action: 'app.launch', args: { app: PLAYER }, result: 'ok' }
     ])
@@ -196,7 +198,12 @@ describe('launch verification', () => {
 
     const result = await apps.launch(PLAYER, DEVICE)
 
-    expect(result).toMatchObject({ launched: true, verified: false, reason: 'crashed' })
+    expect(result).toMatchObject({
+      launched: true,
+      wasRunning: false,
+      verified: false,
+      reason: 'crashed'
+    })
     expect(crashOf(result)).toEqual({
       pid: 3200,
       time: '2026-11-08T01:51:44.657Z',
@@ -229,6 +236,8 @@ describe('launch verification', () => {
         out('vlcm-crash-history/stick-two.txt')
       ],
       [STK.APP_LIST]: [
+        // The read before the launch, then the recorded polls.
+        out('vlcm-list/app-missing.txt'),
         out('vlcm-list/app-idle.txt'),
         out('vlcm-list/app-ready.txt'),
         out('vlcm-list/app-missing.txt')
@@ -367,7 +376,8 @@ describe('launch verification', () => {
 
     await expect(apps.launch(PLAYER, DEVICE)).rejects.toMatchObject({ code: 'LAUNCH_FAILED' })
     expect(runner.count(VVD.stop(0))).toBe(1)
-    expect(runner.count(VVD.APP_LIST)).toBe(0)
+    // Only the read before the launch: no poll.
+    expect(runner.count(VVD.APP_LIST)).toBe(1)
   })
 
   test('the second crash-history read is garbage: UNEXPECTED_OUTPUT, the capture stopped', async () => {
