@@ -20,6 +20,72 @@ export interface CliRun {
   jsonLines<T = Record<string, unknown>>(): T[]
 }
 
+export interface RunningOvd {
+  pid: number
+  // Resolves with stdout so far once `predicate` holds for it.
+  waitForStdout(predicate: (stdout: string) => boolean, timeoutMs?: number): Promise<string>
+  signal(name: NodeJS.Signals): void
+  done: Promise<CliRun>
+}
+
+// Starts `ovd` without waiting for it, for commands that run until stopped (`ovd logs`).
+export function startOvd(
+  sandbox: Sandbox,
+  args: string[],
+  opts: { env?: Record<string, string>; timeoutMs?: number } = {}
+): RunningOvd {
+  if (!existsSync(CLI_BIN)) {
+    throw new Error(`${CLI_BIN} is missing: build the CLI first (pnpm run test:e2e builds it)`)
+  }
+  const child = spawn(process.execPath, [CLI_BIN, ...args], {
+    cwd: sandbox.home,
+    env: { ...sandbox.env, ...opts.env },
+    stdio: ['ignore', 'pipe', 'pipe']
+  })
+  let stdout = ''
+  let stderr = ''
+  const waiters = new Set<() => void>()
+  child.stdout.on('data', (chunk: Buffer) => {
+    stdout += chunk.toString()
+    for (const check of waiters) check()
+  })
+  child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()))
+  const timeoutMs = opts.timeoutMs ?? 30_000
+  const done = new Promise<number>((resolveExit, fail) => {
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL')
+      fail(new Error(`ovd ${args.join(' ')} did not exit within ${timeoutMs} ms\n${stderr}`))
+    }, timeoutMs)
+    child.on('error', fail)
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      for (const check of waiters) check()
+      resolveExit(code ?? -1)
+    })
+  }).then((exitCode) => result(exitCode, stdout, stderr))
+  return {
+    pid: child.pid ?? -1,
+    waitForStdout(predicate, waitMs = 15_000) {
+      return new Promise((resolveWait, fail) => {
+        const timer = setTimeout(() => {
+          waiters.delete(check)
+          fail(new Error(`ovd ${args.join(' ')}: stdout never matched\n${stdout}\n${stderr}`))
+        }, waitMs)
+        const check = () => {
+          if (!predicate(stdout)) return
+          clearTimeout(timer)
+          waiters.delete(check)
+          resolveWait(stdout)
+        }
+        waiters.add(check)
+        check()
+      })
+    },
+    signal: (name) => void child.kill(name),
+    done
+  }
+}
+
 export async function ovd(
   sandbox: Sandbox,
   args: string[],
@@ -49,6 +115,10 @@ export async function ovd(
       done(code ?? -1)
     })
   })
+  return result(exitCode, stdout, stderr)
+}
+
+function result(exitCode: number, stdout: string, stderr: string): CliRun {
   const lines = (): unknown[] =>
     stdout
       .split('\n')

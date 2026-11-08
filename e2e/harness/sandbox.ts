@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import {
   callsFile,
   defaultWorld,
+  logStreamsFile,
   readWorld,
   writeWorld,
   type Call,
@@ -47,6 +48,8 @@ export interface Sandbox {
   calls(): string[]
   // Forgets the calls so far, so a test can check what one step ran.
   clearCalls(): void
+  // The pid of every log stream (`loggingctl log -f`) the fake SDK started.
+  logStreamPids(): number[]
   hostState(): unknown
   activity(): ActivityLine[]
   // Removes the sandbox; throws when a surface ran an SDK command the fake has no recording
@@ -116,6 +119,15 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     calls: () => readCalls().map((c) => c.command),
 
     clearCalls: () => writeFileSync(callsFile(sdkDir), ''),
+
+    logStreamPids() {
+      const file = logStreamsFile(sdkDir)
+      if (!existsSync(file)) return []
+      return readFileSync(file, 'utf8')
+        .split('\n')
+        .filter((l) => l !== '')
+        .map((l) => (JSON.parse(l) as { pid: number }).pid)
+    },
 
     hostState() {
       const file = join(ovdHome, 'state.json')

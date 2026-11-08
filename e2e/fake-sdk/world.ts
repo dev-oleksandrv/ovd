@@ -32,6 +32,12 @@ export interface World {
   // recordings (`vlcm-crash-history/virtual-device-after.txt`,
   // `loggingctl-vault-ls/virtual-device-tombstones-after.json`, `log-capture/virtual-device-crashed.txt`).
   playerCrashed: boolean
+  // The stick's `loggingctl log -f`. Both are read when a stream starts, so a test sets them
+  // before it opens Logs or runs `ovd logs`; afterwards only `holdAfterLine: null` is polled.
+  // `ends`: the stream prints the recording before a reboot and ends by itself (exit 0).
+  // `holdAfterLine`: print only that many lines of `stick-follow.txt`, then the rest once the
+  // test sets it back to null.
+  logStream: { ends: boolean; holdAfterLine: number | null }
 }
 
 export interface Stick {
@@ -76,7 +82,8 @@ export function defaultWorld(): World {
     installed: [],
     running: [],
     playerCrashesOnLaunch: false,
-    playerCrashed: false
+    playerCrashed: false,
+    logStream: { ends: false, holdAfterLine: null }
   }
 }
 
@@ -98,6 +105,11 @@ export function worldFile(dir: string): string {
 
 export function callsFile(dir: string): string {
   return join(dir, 'calls.jsonl')
+}
+
+// One `{ pid }` line per log stream the fake started, so a test can check none is left.
+export function logStreamsFile(dir: string): string {
+  return join(dir, 'log-streams.jsonl')
 }
 
 export function readWorld(dir: string): World {

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import {
   ALL_PACKAGES,
   callsFile,
+  logStreamsFile,
   readWorld,
   STICK_ADDRESS,
   STICK_IP,
@@ -140,6 +141,35 @@ async function devmodeLogin(w: World): Promise<Reply> {
   return { stdout: success ?? '' }
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// `loggingctl log -f` on the stick (fixtures/0.24/loggingctl-log): the recorded window in
+// three chunks cut mid-line, then it follows until its process group is signalled.
+async function logStream(w: World): Promise<Reply> {
+  const { ends, holdAfterLine } = w.logStream
+  if (ends) return { stdout: fixture('loggingctl-log/stick-follow-reboot.txt') }
+  // Logged now: the stream is stopped, never answers.
+  log(true)
+  appendFileSync(logStreamsFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
+  const lines = fixture('loggingctl-log/stick-follow.txt').split(/(?<=\n)/)
+  const writeInThirds = async (text: string) => {
+    const cuts = [0, Math.floor(text.length / 3), Math.floor((text.length * 2) / 3), text.length]
+    for (let i = 0; i < 3; i++) {
+      process.stdout.write(text.slice(cuts[i], cuts[i + 1]))
+      await sleep(50)
+    }
+  }
+  if (holdAfterLine === null) {
+    await writeInThirds(lines.join(''))
+  } else {
+    await writeInThirds(lines.slice(0, holdAfterLine).join(''))
+    while (readWorld(dir as string).logStream.holdAfterLine !== null) await sleep(100)
+    await writeInThirds(lines.slice(holdAfterLine).join(''))
+  }
+  // Default SIGTERM handling ends it when its group is signalled.
+  return new Promise(() => setInterval(() => undefined, 60_000))
+}
+
 function enableDevice(w: World, rest: string[]): Reply | null {
   const code = rest[1]
   if (rest[0] !== '--code' || code === undefined || rest.at(-1) !== '--json') return null
@@ -155,7 +185,7 @@ function enableDevice(w: World, rest: string[]): Reply | null {
   return { stdout: fixture('vega-devmode-enable-device/enabled.json') }
 }
 
-function vda(w: World, rest: string[]): Reply | null {
+function vda(w: World, rest: string[]): Reply | null | Promise<Reply> {
   const [first, ...more] = rest
   if (w.vda === 'broken') {
     return { stdout: fixture('vda-devices/vda-missing-errno.txt'), exitCode: 2 }
@@ -192,7 +222,7 @@ function connect(w: World, address: string): Reply | null {
   return null
 }
 
-function vdaOn(w: World, serial: string, rest: string[]): Reply | null {
+function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise<Reply> {
   const sub = rest.join(' ')
   if (serial === VVD_VDA_SERIAL && w.vvd.running) {
     if (sub === 'shell vsm developer-mode') {
@@ -223,6 +253,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null {
       return { stdout: fixture('vda-shell-fib-trie/stick.txt') }
     }
     if (!stickOnUsb(w)) return notFound(sub, 'vda-shell/stick-usb-not-found.stderr.txt')
+    if (sub === 'shell loggingctl log -f -o short_concise') return logStream(w)
     return stickApps(w, serial, sub)
   }
   if (serial === STICK_ADDRESS && sub === 'usb' && w.stick && stickOnWifi(w)) {
