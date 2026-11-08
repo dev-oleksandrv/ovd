@@ -124,6 +124,8 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 | 6    | Architecture mismatch: the package doesn't match the target (ADR 0008)     |
 | 7    | Launch not verified: the app crashed or isn't running after launch         |
 
+The app commands exit 1 for an app that isn't installed (`APP_NOT_INSTALLED`) or isn't side-loaded (`NOT_SIDELOADED`) and for an install, launch, terminate or uninstall the SDK refuses (`INSTALL_FAILED`, `LAUNCH_FAILED`, `TERMINATE_FAILED`, `UNINSTALL_FAILED`), which scripts tell apart by `error.code` in `--json`, and exit 2 for an invalid app ID (`INVALID_APP_ID`) or no app given with nothing open (`NO_APP`). `ovd apps launch` and `ovd apps restart` exit 7 (`LAUNCH_NOT_VERIFIED`) for both `"reason": "crashed"` and `"reason": "not-running"`.
+
 ## 6. Desktop
 
 - Electron + React + Vite (`electron-vite`), packaged with `electron-builder` (ADR 0004).
