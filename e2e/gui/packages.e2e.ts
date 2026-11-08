@@ -18,8 +18,8 @@ async function nextPick(app: ElectronApplication, path: string): Promise<void> {
   }, path)
 }
 
-// A file dropped from Finder has a path only the preload can read; Playwright can't create
-// one, so the drop itself is covered by the renderer tests and these flows use the picker.
+// A window drop is driven in project.e2e.ts with dropFile. These flows use the picker by
+// choice, and the drop zone's own drop handler stays covered by the renderer tests.
 test.describe('Packages → Overview', () => {
   test('the open project’s builds are listed and the newest is read with vpt', async ({
     sandbox,
