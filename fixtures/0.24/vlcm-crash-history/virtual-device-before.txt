@@ -1,0 +1,30 @@
+AppCrashInfoBuffer:
+  Capacity: 10
+  Size: 2
+  [0] pid: 2529
+      packageId: com.amazon.diode
+      timestamp: 25.909387094s
+      version: 1.0.57008.0
+      buildNumber: 57008
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-08 01:51:34.617 UTC (epoch ms: 1794102694617)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.amazon.keplerlauncherapp.main instId: 1
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [1] pid: 2925
+      packageId: com.example.player
+      timestamp: 23.334304884s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: true
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-08 01:51:32.041 UTC (epoch ms: 1794102692041)
+        LCM_APP_IN_FOREGROUND: true
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.player.main instId: 30
+        LCM_PROCESS_ACTIVITY_STATE: active
+

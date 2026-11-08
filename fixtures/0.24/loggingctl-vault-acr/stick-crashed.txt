@@ -1,0 +1,30 @@
+AppBuildNumber: 1
+AppVersion: 0.1.0
+BootId: 00000000000000000000000000000001
+BuildVariant: user
+CrashDescriptor: 3ba7e78c0fdb3e3566985fd9660d8881
+CrashLang: JavaScript
+CrashReason: SIGABRT
+CrashTimeUTC: 1794091010000
+DeviceGroup: Public
+DumpSuccess: true
+FileIndex: 2085
+FullUnwind: false
+LastModified: 1794091011
+LcmProcessActivityState: active
+LibraryName: N/A
+OsBuildNumber: 2602000053220
+Process: com.example.player
+Screen: On
+Size: 352069
+Source: /var/lib/data/acr/tombstones/crash_1794091010_5000_5000_20609_6_com_example_player.acr
+SystemVersion: 4.0.555992.0(3072cab629675a74)/532N:user/release-keys
+UpTimems: 4022000
+hasForegroundActivities: True
+
+<non_native_stack_trace>
+RuntimeException: KeplerScript
+
+Error: player: deliberate crash right after launch
+    at anonymous (/Users/dev/player/build/lib/rn-bundles/Release/283ad7a3cb2913d948eecb05ccdd8772096e993e6550e79cd13ef41a09eeb022.bundle:652:20)
+</non_native_stack_trace>
