@@ -1,4 +1,5 @@
 import type { LogEntry } from '@ovd/core'
+import type { ReactNode } from 'react'
 import { highlightSegments, timeOfDay } from './logsView'
 
 // Every row has the same height, so the list can place rows without measuring them.
@@ -37,24 +38,30 @@ export function LogRow({ entry, search, regex, top }: LogRowProps) {
       <span className={`w-2.5 shrink-0 font-semibold ${LEVEL_CLASS[entry.level]}`}>
         {entry.level}
       </span>
-      <span className="w-[180px] shrink-0 truncate text-muted">{entry.tag}</span>
-      <span className="w-[52px] shrink-0 text-right text-subtle">{entry.pid ?? '-'}</span>
-      <span className="min-w-0 truncate text-text-soft">
-        {highlightSegments(first, search, regex).map((segment, i) =>
-          segment.hit ? (
-            <mark key={i} className="rounded-chip bg-accent/25 text-text">
-              {segment.text}
-            </mark>
-          ) : (
-            <span key={i}>{segment.text}</span>
-          )
-        )}
+      <span className="w-[180px] shrink-0 truncate text-muted">
+        {highlighted(entry.tag, search, regex)}
       </span>
+      <span className="w-[52px] shrink-0 text-right text-subtle">{entry.pid ?? '-'}</span>
+      <span className="min-w-0 truncate text-text-soft">{highlighted(first, search, regex)}</span>
       {rest.length > 0 && (
         <span className="shrink-0 text-faint">
           +{rest.length} {rest.length === 1 ? 'line' : 'lines'}
         </span>
       )}
     </div>
+  )
+}
+
+// The search hits in a text marked. Core's filter matches the message and the tag, so both
+// show their hits the same way.
+function highlighted(text: string, search: string, regex: boolean): ReactNode[] {
+  return highlightSegments(text, search, regex).map((segment, i) =>
+    segment.hit ? (
+      <mark key={i} className="rounded-chip bg-accent/25 text-text">
+        {segment.text}
+      </mark>
+    ) : (
+      <span key={i}>{segment.text}</span>
+    )
   )
 }
