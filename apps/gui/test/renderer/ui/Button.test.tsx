@@ -35,4 +35,27 @@ describe('Button', () => {
     expect(onClick).not.toHaveBeenCalled()
     expect(button.getAttribute('aria-busy')).toBe('true')
   })
+
+  test('danger: renders and calls onClick', () => {
+    const onClick = vi.fn()
+    render(
+      <Button variant="danger" onClick={onClick}>
+        Uninstall
+      </Button>
+    )
+    const button = screen.getByRole('button', { name: 'Uninstall' })
+    button.click()
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(button.className).toContain('bg-error')
+  })
+
+  test('autoFocus: focuses the button on mount', () => {
+    render(
+      <>
+        <Button>Other</Button>
+        <Button autoFocus>Cancel</Button>
+      </>
+    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }))
+  })
 })

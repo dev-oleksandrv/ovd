@@ -312,6 +312,7 @@ export function Gallery() {
           Run
         </Button>
         <Button variant="blocked">Install on target</Button>
+        <Button variant="danger">Uninstall</Button>
         <Button size="sm" icon="play_arrow">
           Launch
         </Button>
