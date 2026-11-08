@@ -201,7 +201,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Sidebar after (first public release):** Device → Devices, Apps, Packages · Debug → Logs · Setup → Doctor.
 
-### 3.1 Logs screen — done
+### 3.1 Logs screen — done (PR #91)
 
 - CLI `ovd logs [--app] [--level] [--since] [--until] [--grep] [--regex]`.
 - Toolbar: session label, search with regex toggle, level picker V/D/I/W/E, package filter (All / each app / System), Pause/Resume, Clear, Export.
