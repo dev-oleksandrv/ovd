@@ -2,7 +2,14 @@ import type { InstalledApp } from '@ovd/core'
 import { useCallback, useState } from 'react'
 import type { IpcResult } from '../../../../preload/api'
 import { useFeedback } from '../../feedback/feedbackContext'
-import { actionToast, appActionCli, type AppAction, type AppActionResult } from './appsView'
+import {
+  actionToast,
+  appActionCli,
+  outcomeOf,
+  type AppAction,
+  type AppActionResult
+} from './appsView'
+import { outcomeKey, setLaunchOutcome } from './launchOutcomes'
 
 function call(action: AppAction, id: string, device: string): Promise<IpcResult<AppActionResult>> {
   const apps = window.ovd.apps
@@ -23,7 +30,8 @@ function call(action: AppAction, id: string, device: string): Promise<IpcResult<
 }
 
 // Runs an app action on `device`, echoes its `ovd apps …`, toasts the outcome and reloads the
-// list (`onDone`). Busy state is per app, so actions on two apps don't touch each other's
+// list (`onDone`). A launch or restart shows "Verifying…" while it runs and keeps a crash in the
+// session store (`launchOutcomes.ts`), which outlives the screen; any other action clears it. Busy state is per app, so actions on two apps don't touch each other's
 // buttons; core still runs their SDK calls one at a time.
 export function useAppActions(
   device: string | null,
@@ -40,9 +48,17 @@ export function useAppActions(
       const id = app.packageId
       if (device === null || busy[id] !== undefined) return
       setBusy((all) => ({ ...all, [id]: action }))
+      const key = outcomeKey(device, id)
+      const launches = action === 'launch' || action === 'restart'
+      setLaunchOutcome(key, launches ? { state: 'verifying' } : undefined)
       const cli = appActionCli(action, id, device)
       echo(cli)
       const result = await call(action, id, device)
+      // Written even if the screen unmounted meanwhile: the store outlives it.
+      setLaunchOutcome(
+        key,
+        result.ok && 'verified' in result.data ? outcomeOf(result.data) : undefined
+      )
       setBusy((all) => {
         const rest = { ...all }
         delete rest[id]

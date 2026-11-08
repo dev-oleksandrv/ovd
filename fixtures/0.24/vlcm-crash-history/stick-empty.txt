@@ -1,0 +1,4 @@
+AppCrashInfoBuffer:
+  Capacity: 10
+  Size: 0
+

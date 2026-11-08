@@ -18,6 +18,7 @@ import {
   appsBlocker,
   appsCli,
   canUninstall,
+  seenRunning,
   statusView,
   tabCounts,
   visibleApps,
@@ -25,6 +26,13 @@ import {
   type AppAction,
   type AppTab
 } from './appsView'
+import {
+  launchOutcomes as launchOutcomesNow,
+  outcomeKey,
+  setLaunchOutcome,
+  useLaunchOutcomes,
+  type LaunchOutcome
+} from './launchOutcomes'
 import { RowAction } from './RowAction'
 import { useAppActions } from './useAppActions'
 import { useApps } from './useApps'
@@ -40,6 +48,7 @@ interface AppsScreenProps {
 // The table's columns; the last one holds each row's Launch / Stop.
 function appColumns(
   busy: Readonly<Record<string, AppAction>>,
+  outcomeFor: (app: InstalledApp) => LaunchOutcome | undefined,
   onAction: (action: AppAction, app: InstalledApp) => void
 ): Array<Column<InstalledApp>> {
   return [
@@ -66,10 +75,14 @@ function appColumns(
     {
       key: 'status',
       header: 'Status',
-      width: '140px',
+      width: '160px',
       render: (a) => {
-        const s = statusView(a)
-        return <StatusPill tone={s.tone}>{s.label}</StatusPill>
+        const s = statusView(a, outcomeFor(a))
+        return (
+          <StatusPill tone={s.tone} pulse={s.pulse ?? false}>
+            {s.label}
+          </StatusPill>
+        )
       }
     },
     {
@@ -92,6 +105,9 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
   const device = blocker === null && target ? target.id : null
   const { state, reload } = useApps(device)
   const { busy, run } = useAppActions(device, reload)
+  const outcomes = useLaunchOutcomes()
+  const outcomeFor = (app: InstalledApp): LaunchOutcome | undefined =>
+    device === null ? undefined : outcomes[outcomeKey(device, app.packageId)]
   const [tab, setTab] = useState<AppTab>('installed')
   const [selected, setSelected] = useState<string | null>(null)
   // Component details (`vpm info` per component), by package ID and update time.
@@ -105,6 +121,18 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
   const apps = list && list.target.id === device ? list.apps : []
   const shown = visibleApps(apps, tab)
   const current = shown.find((a) => a.packageId === selected) ?? shown[0]
+
+  // A crash stays until the app is seen running (AC 7). "Verifying…" is the running action's.
+  useEffect(() => {
+    if (!list || list.target.id !== device) return
+    for (const app of list.apps) {
+      const key = outcomeKey(list.target.id, app.packageId)
+      const outcome = launchOutcomesNow()[key]
+      if (outcome && outcome.state !== 'verifying' && seenRunning(app)) {
+        setLaunchOutcome(key, undefined)
+      }
+    }
+  }, [list, device])
   const detailKey = current ? `${device}\n${current.packageId}\n${current.updatedAt}` : null
   const detail = detailKey ? details[detailKey] : undefined
 
@@ -203,7 +231,7 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
           <div className="overflow-auto">
             <Table
-              columns={appColumns(busy, (action, app) => void run(action, app))}
+              columns={appColumns(busy, outcomeFor, (action, app) => void run(action, app))}
               rows={shown}
               rowKey={(a) => a.packageId}
               {...(current ? { selectedKey: current.packageId } : {})}
@@ -220,6 +248,7 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
               app={withDetail(current, detail)}
               now={new Date()}
               busy={busy[current.packageId]}
+              outcome={outcomeFor(current)}
               onAction={(action, app) => void run(action, app)}
               reinstall={reinstallPackage}
             />

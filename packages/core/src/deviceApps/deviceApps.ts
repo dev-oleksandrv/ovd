@@ -35,6 +35,8 @@ export interface AppsDeps {
   install: InstallSteps
   homedir: string
   cwd: string
+  // Injected so tests wait without real timers (launch verification's settle window).
+  sleep?: (ms: number) => Promise<void>
 }
 
 // A component as `vlcm list` shows it while it runs.
@@ -96,7 +98,8 @@ export interface AppDetails {
 }
 
 // Apps (Stage 2.4): what is installed and running on the target, and the actions on it
-// (`appActions.ts`). Launch verification against running apps and crash history comes in 2.5.
+// (`appActions.ts`); every launch is verified against the running app and the crash history
+// (Stage 2.5, `launchVerification.ts`).
 export interface Apps extends AppActions {
   list(opts?: AppsListOptions): Promise<AppList>
   // `ref`: a package or component ID, a .vpkg or a project folder. Without one, the open

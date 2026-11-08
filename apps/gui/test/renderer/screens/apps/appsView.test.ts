@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import type { InstalledApp, LaunchResult, TerminateResult } from '@ovd/core'
+import type { InstalledApp, LaunchCrash, LaunchResult, TerminateResult } from '@ovd/core'
 import {
   actionToast,
+  CALLOUT_TITLES,
+  crashCauseLines,
+  outcomeOf,
+  seenRunning,
   appActionCli,
   appInfoCli,
   appsBlocker,
@@ -35,6 +39,65 @@ describe('appsView', () => {
     [hello, { tone: 'muted', label: 'Stopped' }]
   ])('status of %s', (app, view) => {
     expect(statusView(app)).toEqual(view)
+  })
+
+  const crash: LaunchCrash = {
+    pid: 3200,
+    time: new Date(2026, 10, 5, 14, 2).toISOString(),
+    signal: 'SIGABRT',
+    message: 'Error: player: deliberate crash right after launch',
+    stack: [],
+    logs: []
+  }
+
+  test.each([
+    [
+      'verifying',
+      { state: 'verifying' } as const,
+      { tone: 'info', label: 'Verifying…', pulse: true }
+    ],
+    [
+      'crashed',
+      { state: 'crashed', crash } as const,
+      { tone: 'error', label: 'Crashed on launch' }
+    ],
+    ['not running', { state: 'not-running' } as const, { tone: 'muted', label: 'Stopped' }]
+  ])('status after a launch: %s', (_name, outcome, view) => {
+    expect(statusView(hello, outcome)).toEqual(view)
+  })
+
+  test('the outcome a launch leaves', () => {
+    const base = {
+      target: { id: 'VirtualDevice', name: 'Vega Virtual Device' },
+      app: { packageId: player.packageId, title: player.title, componentId: 'c' },
+      launched: true as const
+    }
+    expect(outcomeOf({ ...base, verified: true, pid: 3571 })).toBeUndefined()
+    expect(outcomeOf({ ...base, verified: false, reason: 'crashed', crash })).toEqual({
+      state: 'crashed',
+      crash
+    })
+    expect(outcomeOf({ ...base, verified: false, reason: 'not-running' })).toEqual({
+      state: 'not-running'
+    })
+  })
+
+  test('seen running: a pid above 0', () => {
+    expect(seenRunning(player)).toBe(true)
+    expect(seenRunning(hello)).toBe(false)
+    expect(
+      seenRunning({ ...player, status: { state: 'running', pid: 0, lifespan: 'PERMANENT' } })
+    ).toBe(false)
+  })
+
+  test('the crash cause lines, without what is unknown', () => {
+    expect(crashCauseLines(crash, now)).toEqual([
+      'SIGABRT · Error: player: deliberate crash right after launch',
+      'pid 3200 · Today 14:02'
+    ])
+    expect(crashCauseLines({ ...crash, signal: undefined, message: undefined }, now)).toEqual([
+      'pid 3200 · Today 14:02'
+    ])
   })
 
   test('tabs count and filter', () => {
@@ -125,12 +188,33 @@ describe('appsView', () => {
   const launched: LaunchResult = {
     target,
     app: { ...app, componentId: 'com.example.player.main' },
-    launched: true
+    launched: true,
+    verified: true,
+    pid: 3571
+  }
+  const crashed: LaunchResult = {
+    target,
+    app: { ...app, componentId: 'com.example.player.main' },
+    launched: true,
+    verified: false,
+    reason: 'crashed',
+    crash
   }
   const stopped: TerminateResult = { target, app, forced: false, wasRunning: true }
 
   test.each([
-    ['launch', launched, { tone: 'ok', text: 'Launched Sample Player' }],
+    ['launch', launched, { tone: 'ok', text: 'Launched Sample Player · verified' }],
+    ['launch', crashed, { tone: 'error', text: CALLOUT_TITLES.crashed }],
+    [
+      'launch',
+      { ...launched, verified: false, reason: 'not-running' },
+      { tone: 'error', text: 'Launch reported success, but the app isn’t running' }
+    ],
+    [
+      'restart',
+      { ...crashed, wasRunning: true },
+      { tone: 'error', text: 'Launch reported success, but the app crashed' }
+    ],
     ['terminate', stopped, { tone: 'ok', text: 'Stopped Sample Player' }],
     [
       'terminate',
@@ -142,7 +226,11 @@ describe('appsView', () => {
       { ...stopped, forced: true, wasRunning: null },
       { tone: 'ok', text: 'Force stopped Sample Player' }
     ],
-    ['restart', { ...launched, wasRunning: true }, { tone: 'ok', text: 'Restarted Sample Player' }],
+    [
+      'restart',
+      { ...launched, wasRunning: true },
+      { tone: 'ok', text: 'Restarted Sample Player · verified' }
+    ],
     [
       'uninstall',
       { target, app, uninstalled: true },

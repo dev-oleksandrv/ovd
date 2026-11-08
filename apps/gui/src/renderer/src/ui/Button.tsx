@@ -14,6 +14,8 @@ interface ButtonProps {
   disabled?: boolean
   // Shown as a tooltip when disabled: every disabled action says why.
   disabledReason?: string
+  // For a button that shows or hides something (`aria-expanded`).
+  expanded?: boolean
 }
 
 const variants = {
@@ -36,7 +38,8 @@ export function Button({
   icon,
   loading = false,
   disabled = false,
-  disabledReason
+  disabledReason,
+  expanded
 }: ButtonProps) {
   const inactive = disabled || loading
   return (
@@ -45,6 +48,7 @@ export function Button({
       onClick={inactive ? undefined : onClick}
       disabled={disabled}
       aria-busy={loading || undefined}
+      aria-expanded={expanded}
       title={disabled ? disabledReason : undefined}
       className={cx(
         'inline-flex shrink-0 cursor-pointer items-center whitespace-nowrap',

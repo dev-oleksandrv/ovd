@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises'
 import { createLogged } from '../activity/logged.js'
 import { parseDeviceAppCommand } from '../adapters/parseDeviceAppCommand.js'
 import { parseVlcmList } from '../adapters/parseVlcmList.js'
@@ -12,6 +13,11 @@ import type { RunResult } from '../sdk/runner.js'
 import { assertAppId, type AppId } from './appId.js'
 import type { AppsDeps, AppsTarget } from './deviceApps.js'
 import { notInstalled, sourceOf } from './deviceApps.js'
+import {
+  createLaunchVerifier,
+  LAUNCH_TIMEOUT_MS,
+  type LaunchVerification
+} from './launchVerification.js'
 
 export interface ActionApp {
   packageId: string
@@ -20,13 +26,13 @@ export interface ActionApp {
   componentId?: string
 }
 
-// What `launch-app` reported. Stage 2.5 adds the verification against running apps and crash
-// history (ADR 0012) here.
-export interface LaunchResult {
+// What `launch-app` reported, and whether the app runs afterwards: the running component and
+// the crash history decide (ADR 0012, `launchVerification.ts`).
+export type LaunchResult = {
   target: AppsTarget
   app: ActionApp & { componentId: string }
   launched: true
-}
+} & LaunchVerification
 
 export interface TerminateResult {
   target: AppsTarget
@@ -36,11 +42,18 @@ export interface TerminateResult {
   wasRunning: boolean | null
 }
 
-export interface RestartResult {
+export type RestartResult = {
   target: AppsTarget
   app: ActionApp & { componentId: string }
   wasRunning: boolean
   launched: true
+} & LaunchVerification
+
+// What a launch or restart does while it verifies.
+export interface LaunchOptions {
+  device?: string
+  // Called once `launch-app` returned, while OVD watches the app.
+  onVerifying?: () => void
 }
 
 export interface UninstallResult {
@@ -62,9 +75,9 @@ export interface ReinstallResult {
 // Apps → actions (Stage 2.4). `ref`: a package or component ID, a .vpkg or a project folder;
 // without one, the open project's or .vpkg's app. Each action is one activity entry (ADR 0011).
 export interface AppActions {
-  launch(ref?: string, opts?: { device?: string }): Promise<LaunchResult>
+  launch(ref?: string, opts?: LaunchOptions): Promise<LaunchResult>
   terminate(ref?: string, opts?: { device?: string; force?: boolean }): Promise<TerminateResult>
-  restart(ref?: string, opts?: { device?: string }): Promise<RestartResult>
+  restart(ref?: string, opts?: LaunchOptions): Promise<RestartResult>
   uninstall(ref?: string, opts?: { device?: string }): Promise<UninstallResult>
   // Uninstall (when installed), then install the package `ovd apps install` would pick.
   reinstall(ref?: string, opts?: { device?: string; force?: boolean }): Promise<ReinstallResult>
@@ -80,14 +93,42 @@ export interface AppActionsContext {
   packageIdOf(ref: string | undefined): Promise<AppId>
 }
 
-// `launch-app` once returned 87 s after the app was up, waiting on the SDK's telemetry step
-// (ARCHITECTURE §8).
-const LAUNCH_TIMEOUT_MS = 180_000
 const ACTION_TIMEOUT_MS = 60_000
+
+// The error a surface shows for a launch that wasn't verified; `undefined` when it was.
+export function launchNotVerified(result: LaunchVerification): OvdError | undefined {
+  if (result.verified) return undefined
+  return result.reason === 'crashed'
+    ? new OvdError(
+        'LAUNCH_NOT_VERIFIED',
+        'Launch reported success, but the app crashed',
+        'See the cause and the logs around the crash, then launch it again'
+      )
+    : new OvdError(
+        'LAUNCH_NOT_VERIFIED',
+        'Launch reported success, but the app isn’t running',
+        'Check the app with ovd apps info, then launch it again'
+      )
+}
+
+// An unverified launch is returned with its crash data, and logged as LAUNCH_NOT_VERIFIED.
+function notVerifiedOutcome(result: LaunchVerification) {
+  if (result.verified) return undefined
+  const crash = result.reason === 'crashed' ? result.crash : undefined
+  return {
+    errorCode: 'LAUNCH_NOT_VERIFIED' as const,
+    args: {
+      reason: result.reason,
+      ...(crash ? { pid: String(crash.pid) } : {}),
+      ...(crash?.signal ? { signal: crash.signal } : {})
+    }
+  }
+}
 
 export function createAppActions(ctx: AppActionsContext): AppActions {
   const { deps } = ctx
   const logged = createLogged(deps.activity)
+  const verifiedLaunch = createLaunchVerifier(ctx, deps.sleep ?? ((ms) => delay(ms)))
 
   // Package and component IDs read from the device are checked too before they reach a command.
   const fromDevice = (id: string, device: Device): AppId =>
@@ -109,26 +150,35 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
     )
   }
 
-  async function launchComponent(device: Device, pkg: VpmPackage): Promise<AppId> {
+  // `launch-app`, verified. The interactive component comes first: a package without one
+  // reads and starts nothing on the device.
+  async function launchComponent(
+    device: Device,
+    pkg: VpmPackage,
+    onVerifying: (() => void) | undefined
+  ): Promise<{ componentId: AppId; verification: LaunchVerification }> {
     const component = await interactiveComponent(device, pkg)
-    const { vegaPath } = await deps.sdk.get()
-    const run = await deps.runner.run(
-      vegaDeviceCmd(vegaPath, 'launch-app', ['-a', component], device.id, {
-        timeoutMs: LAUNCH_TIMEOUT_MS
-      })
-    )
-    const result = parseDeviceAppCommand(run, 'launch')
-    if (!result.ok) {
-      if (result.kind === 'not-installed') throw notInstalled(pkg.id, device)
-      if (result.kind === 'device-not-found') throw gone(device)
-      throw new OvdError(
-        'LAUNCH_FAILED',
-        `Launch failed: ${result.reason}`,
-        'Check the app with ovd apps info, then retry',
-        { exitCode: run.exitCode }
+    const launch = async () => {
+      const { vegaPath } = await deps.sdk.get()
+      const run = await deps.runner.run(
+        vegaDeviceCmd(vegaPath, 'launch-app', ['-a', component], device.id, {
+          timeoutMs: LAUNCH_TIMEOUT_MS
+        })
       )
+      const result = parseDeviceAppCommand(run, 'launch')
+      if (!result.ok) {
+        if (result.kind === 'not-installed') throw notInstalled(pkg.id, device)
+        if (result.kind === 'device-not-found') throw gone(device)
+        throw new OvdError(
+          'LAUNCH_FAILED',
+          `Launch failed: ${result.reason}`,
+          'Check the app with ovd apps info, then retry',
+          { exitCode: run.exitCode }
+        )
+      }
     }
-    return component
+    const verification = await verifiedLaunch(device, pkg, component, launch, onVerifying)
+    return { componentId: component, verification }
   }
 
   async function terminatePackage(device: Device, pkg: VpmPackage, force: boolean) {
@@ -196,15 +246,22 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
   return {
     async launch(ref, opts = {}) {
       const { id, device, target } = await prepare(ref, opts.device)
-      return logged('app.launch', device.id, { app: id }, async () => {
-        const pkg = await ctx.installedPackage(device, id)
-        const componentId = await launchComponent(device, pkg)
-        return {
-          target,
-          app: { packageId: pkg.id, title: pkg.title, componentId },
-          launched: true as const
-        }
-      })
+      return logged(
+        'app.launch',
+        device.id,
+        { app: id },
+        async (): Promise<LaunchResult> => {
+          const pkg = await ctx.installedPackage(device, id)
+          const { componentId, verification } = await launchComponent(device, pkg, opts.onVerifying)
+          return {
+            target,
+            app: { packageId: pkg.id, title: pkg.title, componentId },
+            launched: true as const,
+            ...verification
+          }
+        },
+        notVerifiedOutcome
+      )
     },
 
     async terminate(ref, opts = {}) {
@@ -225,22 +282,29 @@ export function createAppActions(ctx: AppActionsContext): AppActions {
 
     async restart(ref, opts = {}) {
       const { id, device, target } = await prepare(ref, opts.device)
-      return logged('app.restart', device.id, { app: id }, async () => {
-        const pkg = await ctx.installedPackage(device, id)
-        const running = parseVlcmList(
-          (await ctx.shell(device, ['vlcm', 'list'], 'the running apps')).stdout
-        )
-        const wasRunning = running.some((r) => pkg.componentIds.includes(r.application))
-        // Graceful stop only when the app runs (`launch-app` itself force-stops it).
-        if (wasRunning) await terminatePackage(device, pkg, false)
-        const componentId = await launchComponent(device, pkg)
-        return {
-          target,
-          app: { packageId: pkg.id, title: pkg.title, componentId },
-          wasRunning,
-          launched: true as const
-        }
-      })
+      return logged(
+        'app.restart',
+        device.id,
+        { app: id },
+        async (): Promise<RestartResult> => {
+          const pkg = await ctx.installedPackage(device, id)
+          const running = parseVlcmList(
+            (await ctx.shell(device, ['vlcm', 'list'], 'the running apps')).stdout
+          )
+          const wasRunning = running.some((r) => pkg.componentIds.includes(r.application))
+          // Graceful stop only when the app runs (`launch-app` itself force-stops it).
+          if (wasRunning) await terminatePackage(device, pkg, false)
+          const { componentId, verification } = await launchComponent(device, pkg, opts.onVerifying)
+          return {
+            target,
+            app: { packageId: pkg.id, title: pkg.title, componentId },
+            wasRunning,
+            launched: true as const,
+            ...verification
+          }
+        },
+        notVerifiedOutcome
+      )
     },
 
     async uninstall(ref, opts = {}) {

@@ -24,6 +24,14 @@ export interface World {
   // exist for the player on the Virtual Device; the stick is recorded with nothing side-loaded.
   // `launch-app` adds the player, `vlcm terminate-app` and `uninstall-app` remove it.
   running: { device: string; app: string }[]
+  // The Virtual Device player crashes right after `launch-app`, which still reports success
+  // (ADR 0012): it never joins `running` (fixtures/0.24/README.md, row
+  // `vlcm-crash-history/virtual-device-after.txt`: "the app never shows in `vlcm list`").
+  playerCrashesOnLaunch: boolean
+  // The player crashed: the crash history, the vault and the capture answer with their "after"
+  // recordings (`vlcm-crash-history/virtual-device-after.txt`,
+  // `loggingctl-vault-ls/virtual-device-tombstones-after.json`, `log-capture/virtual-device-crashed.txt`).
+  playerCrashed: boolean
 }
 
 export interface Stick {
@@ -66,7 +74,9 @@ export function defaultWorld(): World {
     vvd: { running: false, developerMode: true },
     vdaConnected: [],
     installed: [],
-    running: []
+    running: [],
+    playerCrashesOnLaunch: false,
+    playerCrashed: false
   }
 }
 

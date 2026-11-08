@@ -39,6 +39,21 @@ describe('parseVlcmList', () => {
   })
 
   test.each([
+    // Right after `launch-app` on a stick: pid 0 and an empty container column, so the
+    // whitespace split reads the launch-args column there (ARCHITECTURE §8).
+    ['idle, pid 0', 'vlcm-list/app-idle.txt', { pid: 0, state: 'IDLE', container: '<none>' }],
+    [
+      'ready, with a pid',
+      'vlcm-list/app-ready.txt',
+      { pid: 8697, state: 'READY', container: 'framework.slice/essential/8697' }
+    ]
+  ])('the player %s', (_name, file, expected) => {
+    expect(parseVlcmList(fixture(`0.24/${file}`))).toEqual([
+      { application: 'com.example.player.main', type: 'I', lifespan: 'PERMANENT', ...expected }
+    ])
+  })
+
+  test.each([
     ['empty output', ''],
     ['an error', 'vda: device offline'],
     [

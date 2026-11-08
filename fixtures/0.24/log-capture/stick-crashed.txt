@@ -1,0 +1,79 @@
+Nov 08 01:52:30.064798 firestick-0000000000000001 lcm_service[899]: I lcm-app-control-ops-slim-service:[LcmAppControlOpsSlimImpl.cpp:455] Killing pkgId 'com.example.player' forced
+Nov 08 01:52:30.064933 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:7864] Terminating package with id com.example.player with force
+Nov 08 01:52:30.397304 firestick-0000000000000001 pkgmgrd[900]: INFO com.amazon.vpm.default_registrar: [DefaultComponentRegistrar.cpp:400] Found single default component 'com.example.player.main'
+Nov 08 01:52:30.401363 firestick-0000000000000001 eventmgrd[898]: INFO com.amazon.message_router.core: [MessageRouterService.cpp:1845] Channel: 3073 from pid: 8683 Send request for message uri: pkg://com.example.player.main, reqId: 3886
+Nov 08 01:52:30.403782 firestick-0000000000000001 lcm_service[899]: I lcm-mr-wrapper:[MessageRouterWrapper.cpp:255] Processing launch request from MessageRouter (reqId=3886, compId=com.example.player.main, targetTrackName='')
+Nov 08 01:52:30.404464 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:4371] Received launch request for pkg://com.example.player.main
+Nov 08 01:52:30.406813 firestick-0000000000000001 pkgmgrd[900]: INFO com.amazon.vpm.default_registrar: [DefaultComponentRegistrar.cpp:400] Found single default component 'com.example.player.main'
+Nov 08 01:52:30.429375 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:3694] Running process for com.example.player.main with UUID de227758-43ed-4474-8c78-b3b90f9f2d56 and request id 435
+Nov 08 01:52:30.432020 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:4949] App record added with AppId com.example.player.main; appInstId: 435; pid: Unassigned; initiator: 1; reqId: 3886; backstackRole: 0
+Nov 08 01:52:30.433468 firestick-0000000000000001 stemd[801]: INFO com.amazon.appfwk.stemd: loop:event{type=ClientEvent}:client{pid=899}:request{type=LaunchComponent}: received launch request, rid=435, component="com.example.player.main", extras=Some(["enable-vsh=true"])
+Nov 08 01:52:30.456002 firestick-0000000000000001 splashservice[2379]: [2026-11-08 01:52:30.445] [INFO] [eventHandler:160] EVT [event://com.amazon.lcm/splash-screen/show] Got the appID com.example.player.main appInstId 435
+Nov 08 01:52:30.456002 firestick-0000000000000001 splashservice[2379]: [2026-11-08 01:52:30.448] [INFO] [eventHandler:178] EVT  m_assetPath: /var/lib/pkgmgrd/packages/com.example.player/assets/raw/, assetName: SplashScreenImages.zip, m_componentInfoPath: /var/lib/pkgmgrd/packages/com.example.player/assets
+Nov 08 01:52:30.456002 firestick-0000000000000001 splashservice[2379]: [2026-11-08 01:52:30.452] [INFO] Received an launch evt from [com.example.player.main]
+Nov 08 01:52:30.484645 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:3976] appInst[435](com.example.player.main)<F>: Launched with parent pid 8691
+Nov 08 01:52:30.489107 firestick-0000000000000001 splashservice[2379]: [2026-11-08 01:52:30.488] [INFO] [hasColorInfo:3395] No color config found for component com.example.player.main
+Nov 08 01:52:30.492030 firestick-0000000000000001 splashservice[2379]: [ERROR] Did not find file /var/lib/pkgmgrd/packages/com.example.player/assets/raw/SplashScreenImages.zip , /var/lib/pkgmgrd/packages/com.example.player/assets/raw/compressedSplashScreenImages.zip
+Nov 08 01:52:30.492030 firestick-0000000000000001 splashservice[2379]: [2026-11-08 01:52:30.491] [INFO] Display width 1920 height 1080, m_componentInfoPath /var/lib/pkgmgrd/packages/com.example.player/assets, m_assetPath /var/lib/pkgmgrd/packages/com.example.player/assets/raw/, m_assetName SplashScreenImages.zip
+Nov 08 01:52:31.055640 firestick-0000000000000001 stemd[801]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=8691 id=395 rid=435 state="Alive" state="Ready"}: stem is ready and associated with a component, id="com.example.player.main"
+Nov 08 01:52:31.061326 firestick-0000000000000001 stemd[801]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=8691 id=395 rid=435 state="Alive" state="Ready"}: sending launch parameters, component="com.example.player.main"
+Nov 08 01:52:31.110002 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:6070] appInst[435](com.example.player.main)<F>: Launched in pid 8697
+Nov 08 01:52:31.110119 firestick-0000000000000001 lcm_service[899]: I lcm-dsmonitor:[DisplayObserver.cpp:707] Creating display context with appInst[435], appPid[8697], hostAppInst[0] on display[0]
+Nov 08 01:52:31.110570 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-service:[AppStateObserver.cpp:465] Got app update, event 5, reason 0, for pid 8697 appInstId 435 appId com.example.player.main state 1 type 0 serviceType 0 taskType 0 pinnedToBackstack 0 postEvent false
+Nov 08 01:52:31.118174 firestick-0000000000000001 lcm_service[899]: I resmgr-app-registry:[AppResourceRegistry.cpp:786] display decoded session status com.example.player.main: Operation completed successfully , not engaged ? true
+Nov 08 01:52:31.118415 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 5
+Nov 08 01:52:31.171390 firestick-0000000000000001 lcm_service[899]: E resmgr-monitor-power:[PowerManagerWrapper.cpp:129] No power component for app_framework-com.example.player.main-435 435 t: DISPLAY l: 2
+Nov 08 01:52:31.171635 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-power:[PowerManagerWrapper.cpp:151] Release power lock component for app_framework-com.example.player.main-435 t: DISPLAY l: 3
+Nov 08 01:52:31.171760 firestick-0000000000000001 lcm_service[899]: E resmgr-monitor-power:[PowerManagerWrapper.cpp:157] Releasing 2 lock failed for component app_framework-com.example.player.main-435 435
+Nov 08 01:52:31.172572 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-power:[PowerManagerWrapper.cpp:151] Release power lock component for app_framework-com.example.player.main-435 t: DISPLAY l: 4
+Nov 08 01:52:31.172696 firestick-0000000000000001 lcm_service[899]: E resmgr-monitor-power:[PowerManagerWrapper.cpp:157] Releasing 2 lock failed for component app_framework-com.example.player.main-435 435
+Nov 08 01:52:31.172806 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 0
+Nov 08 01:52:31.173702 firestick-0000000000000001 lcm_service[899]: E resmgr-monitor-power:[PowerManagerWrapper.cpp:129] No power component for app_framework-com.example.player.main-435 435 t: CPU l: 2
+Nov 08 01:52:31.173983 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-power:[PowerManagerWrapper.cpp:151] Release power lock component for app_framework-com.example.player.main-435 t: CPU l: 3
+Nov 08 01:52:31.174125 firestick-0000000000000001 lcm_service[899]: E resmgr-monitor-power:[PowerManagerWrapper.cpp:157] Releasing 2 lock failed for component app_framework-com.example.player.main-435 435
+Nov 08 01:52:31.174237 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-power:[PowerManagerWrapper.cpp:151] Release power lock component for app_framework-com.example.player.main-435 t: CPU l: 4
+Nov 08 01:52:31.174347 firestick-0000000000000001 lcm_service[899]: E resmgr-monitor-power:[PowerManagerWrapper.cpp:157] Releasing 2 lock failed for component app_framework-com.example.player.main-435 435
+Nov 08 01:52:31.256072 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:3471] appInst[435](com.example.player.main)<F>: Trigger event LAUNCH in state IDLE. Completed: true
+Nov 08 01:52:31.256952 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-service:[AppStateObserver.cpp:465] Got app update, event 5, reason 0, for pid 8697 appInstId 435 appId com.example.player.main state 1 type 0 serviceType 0 taskType 0 pinnedToBackstack 0 postEvent true
+Nov 08 01:52:31.320786 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:3471] appInst[435](com.example.player.main)<F>: Trigger event START in state LAUNCHED. Completed: true
+Nov 08 01:52:31.320967 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:3471] appInst[435](com.example.player.main)<F>: Trigger event FOREGROUND in state READY. Completed: false
+Nov 08 01:52:31.326324 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-service:[AppStateObserver.cpp:465] Got app update, event 1, reason 0, for pid 8697 appInstId 435 appId com.example.player.main state 1 type 0 serviceType 0 taskType 0 pinnedToBackstack 0 postEvent false
+Nov 08 01:52:31.329392 firestick-0000000000000001 lcm_service[899]: I resmgr-app-registry:[AppResourceRegistry.cpp:786] display decoded session status com.example.player.main: Operation completed successfully , not engaged ? true
+Nov 08 01:52:31.329508 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 5
+Nov 08 01:52:31.333009 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 0
+Nov 08 01:52:31.346638 firestick-0000000000000001 lcm_service[899]: I resmgr-app-registry:[AppResourceRegistry.cpp:786] display decoded session status com.example.player.main: Operation completed successfully , not engaged ? true
+Nov 08 01:52:31.346766 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 5
+Nov 08 01:52:31.347040 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 0
+Nov 08 01:52:31.347759 firestick-0000000000000001 lcm_service[899]: I resmgr-app-registry:[AppResourceRegistry.cpp:786] display decoded session status com.example.player.main: Operation completed successfully , not engaged ? true
+Nov 08 01:52:31.347871 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 5
+Nov 08 01:52:31.347983 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:831] set power level com.example.player.main: lvl 2 for resource 0
+Nov 08 01:52:31.390984 firestick-0000000000000001 lcm_service[899]: I lcm-server:[Lcm.cpp:3471] appInst[435](com.example.player.main)<F>: Trigger event FOREGROUND in state READY. Completed: true
+Nov 08 01:52:31.542849 firestick-0000000000000001 com.example.player[8697]: ERROR com.amazon.keplerscript: [KeplerScript-Native] LocalAssetImageLoader: Cannot load image from non local source:
+Nov 08 01:52:31.543525 firestick-0000000000000001 com.example.player[8697]: ERROR com.amazon.keplerscript: [KeplerScript-Native] LocalAssetImageLoader: Cannot load image from non local source:
+Nov 08 01:52:31.543723 firestick-0000000000000001 com.example.player[8697]: ERROR com.amazon.keplerscript: [KeplerScript-Native] LocalAssetImageLoader: Cannot load image from non local source:
+Nov 08 01:52:31.544006 firestick-0000000000000001 com.example.player[8697]: ERROR com.amazon.keplerscript: [KeplerScript-Native] LocalAssetImageLoader: Cannot load image from non local source:
+Nov 08 01:52:31.544334 firestick-0000000000000001 com.example.player[8697]: INFO com.amazon.keplerscript: [KeplerScript-Native] KeplerViewComponent::setHasTVPreferredFocus tag: 28
+Nov 08 01:52:31.544459 firestick-0000000000000001 com.example.player[8697]: ERROR com.amazon.keplerscript: [KeplerScript-Native] LocalAssetImageLoader: Cannot load image from non local source:
+Nov 08 01:52:31.545835 firestick-0000000000000001 com.example.player[8697]: ERROR com.amazon.keplerscript: [KeplerScript-Native] LocalAssetImageLoader: Cannot load image from non local source:
+Nov 08 01:52:31.549148 firestick-0000000000000001 com.example.player[8697]: INFO com.amazon.keplerscript: [KeplerScript-Native] KeplerScriptSceneDelegate:: Send FOREGROUND
+Nov 08 01:52:31.550311 firestick-0000000000000001 com.example.player[8697]: INFO com.amazon.keplerscript: [KeplerScript-Native] [MountingManager::SurfaceTelemetryLogger] begin tracking surface 1
+Nov 08 01:52:31.550449 firestick-0000000000000001 com.example.player[8697]: I GWSI_LOG:41 m_displayClients = 4
+Nov 08 01:52:31.550572 firestick-0000000000000001 com.example.player[8697]: I GWSI_LOG:42 Display created 0xad635cc0 surfaceless 0 
+Nov 08 01:52:31.550690 firestick-0000000000000001 com.example.player[8697]: I PROGRAM_NAME:getLocalDeviceState:92: LocalDeviceStateImpl: getLocalDeviceState enter
+Nov 08 01:52:31.550801 firestick-0000000000000001 com.example.player[8697]: I PROGRAM_NAME:getLocalDeviceState:108: LocalDeviceStateImpl: getLocalDeviceState exit
+Nov 08 01:52:31.557549 firestick-0000000000000001 com.example.player[8697]: INFO Volta: Volta: calling makeCurrent for surface 0xad466518
+Nov 08 01:52:31.601393 firestick-0000000000000001 com.example.player[8697]: INFO Volta: Volta:TextureUploadThread started
+Nov 08 01:52:31.658443 firestick-0000000000000001 com.example.player[8697]: ERROR com.amazon.keplerscript: [KeplerScript-JavaScript] [Error: player: deliberate crash right after launch]
+Nov 08 01:52:31.659833 firestick-0000000000000001 com.example.player[8697]: ERROR Volta: Volta:Reporting Fatal Exception:
+Nov 08 01:52:31.660116 firestick-0000000000000001 com.example.player[8697]: ERROR Volta: Volta:Error: player: deliberate crash right after launch
+Nov 08 01:52:31.719875 firestick-0000000000000001 acr_core_dump[8764]: Process 'com.example.player' (PID=8697) crashed with signal 6
+Nov 08 01:52:31.720016 firestick-0000000000000001 acr_core_dump[8764]: Cannot find library name for process com.example.player
+Nov 08 01:52:31.726589 firestick-0000000000000001 acr_core_dump[8764]: minidump path: /var/lib/data/acr/tmp//crash_1794102751_5000_5000_8697_6_com_example_player.dmp, proc path: /proc/8697.
+Nov 08 01:52:32.340518 firestick-0000000000000001 acr_core_dump[8764]: Custom reason for crash /var/lib/data/acr/tmp//crash_1794102751_5000_5000_8697_6_com_example_player.acr: SIGABRT
+Nov 08 01:52:32.341251 firestick-0000000000000001 acr_core_dump[8764]: Creating crash file /var/lib/data/acr/tmp//crash_1794102751_5000_5000_8697_6_com_example_player.acr with Descriptor: 3ba7e78c0fdb3e3566985fd9660d8881 with Fingerprint: JSThread_6_7b15f81b1886a2eb9790d0dc39fd1c44
+Nov 08 01:52:32.359897 firestick-0000000000000001 acr_core_dump[8764]: acr for 1794102751_5000_5000_8697_6_com_example_player generated
+Nov 08 01:52:32.384324 firestick-0000000000000001 smartboxd[826]: I SmartBox:Enrolling [/var/lib/data/acr/tombstones/crash_1794102751_5000_5000_8697_6_com_example_player.acr.dropbox] to vault dir [/var/lib/data/ace/dropbox/vault/SYSTEM_TOMBSTONE/acr] as [2087]
+Nov 08 01:52:32.429118 firestick-0000000000000001 lcm_service[899]: E lcm-server:[Lcm.cpp:6304] Deregistering application with clientPid 8697 and package id com.example.player after process death
+Nov 08 01:52:32.437308 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-service:[AppStateObserver.cpp:465] Got app update, event 0, reason 4, for pid 8697 appInstId 435 appId com.example.player.main state no-change type 0 serviceType 0 taskType 0 pinnedToBackstack 0 postEvent false
+Nov 08 01:52:32.438324 firestick-0000000000000001 lcm_service[899]: I resmgr-monitor-service:[AppStateObserver.cpp:465] Got app update, event 0, reason 4, for pid 8697 appInstId 435 appId com.example.player.main state 2 type 0 serviceType 0 taskType 0 pinnedToBackstack 0 postEvent true
+Nov 08 01:52:32.440915 firestick-0000000000000001 lcm_service[899]: W resmgr-app-registry:[AppResourceRegistry.cpp:200] Unknown app type 0 or name [8697] for U-

@@ -16,7 +16,7 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
 | 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
 
-**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 work (2.1–2.4) is on `main`, not yet released.
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 work (2.1–2.5) is on `main`, not yet released.
 
 The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
@@ -183,7 +183,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** every action works on a stick and the Virtual Device; Running and "Running now" update within one refresh.
 
-### 2.5 Launch verification — next
+### 2.5 Launch verification — done (PR #89)
 
 - After every launch, confirm with running apps and crash history (ADR 0012). Desktop: "Verifying launch…"; on failure "Launch reported success, but the app crashed" with the cause and "Logs around crash". CLI: non-zero exit, `"verified": false, "reason": "crashed"`.
 
@@ -201,7 +201,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Sidebar after (first public release):** Device → Devices, Apps, Packages · Debug → Logs · Setup → Doctor.
 
-### 3.1 Logs screen
+### 3.1 Logs screen — next
 
 - CLI `ovd logs [--app] [--level] [--since] [--until] [--grep] [--regex]`.
 - Toolbar: session label, search with regex toggle, level picker V/D/I/W/E, package filter (All / each app / System), Pause/Resume, Clear, Export.

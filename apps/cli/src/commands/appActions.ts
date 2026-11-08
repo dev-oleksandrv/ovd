@@ -1,7 +1,9 @@
+import { launchNotVerified } from '@ovd/core'
 import type { Command } from 'commander'
 import type { CliDeps } from '../program.js'
 import {
   launchedLine,
+  notVerifiedText,
   reinstalledLine,
   restartedLine,
   terminatedLine,
@@ -14,13 +16,20 @@ import { reportContext } from './context.js'
 const APP = 'package or component ID, .vpkg or project folder (default: the open one)'
 
 // The app actions (Stage 2.4): launch, terminate, restart, uninstall, reinstall. Each one is a
-// device action, logged by core (ADR 0011). Launch verification comes in 2.5 (ADR 0012).
+// device action, logged by core (ADR 0011). Launch and restart are verified (ADR 0012): an app
+// that crashed or isn't running afterwards exits 7, with the launch next to the error.
 export function addAppActionCommands(
   apps: Command,
   deps: CliDeps,
   setExitCode: (code: number) => void
 ): void {
   const device = (d: string | undefined) => (d === undefined ? {} : { device: d })
+  const onVerifying = () => deps.output.stderr('Verifying launch…\n')
+  const notVerified = {
+    failure: launchNotVerified,
+    failureHuman: (r: Parameters<typeof launchNotVerified>[0]) =>
+      notVerifiedText(r, launchNotVerified(r))
+  }
 
   apps
     .command('launch')
@@ -29,9 +38,10 @@ export function addAppActionCommands(
     .action(async (app: string | undefined, _opts, cmd: Command) => {
       const ctx = reportContext(cmd, deps, setExitCode)
       deps.output.stderr(`Launching ${app ?? 'the open project’s app'}…\n`)
-      await report(ctx, () => deps.ovd().apps.launch(app, device(ctx.device)), {
+      await report(ctx, () => deps.ovd().apps.launch(app, { ...device(ctx.device), onVerifying }), {
         json: (launch) => ({ launch }),
-        human: launchedLine
+        human: launchedLine,
+        ...notVerified
       })
     })
 
@@ -61,10 +71,11 @@ export function addAppActionCommands(
     .action(async (app: string | undefined, _opts, cmd: Command) => {
       const ctx = reportContext(cmd, deps, setExitCode)
       deps.output.stderr(`Restarting ${app ?? 'the open project’s app'}…\n`)
-      await report(ctx, () => deps.ovd().apps.restart(app, device(ctx.device)), {
-        json: (restart) => ({ restart }),
-        human: restartedLine
-      })
+      await report(
+        ctx,
+        () => deps.ovd().apps.restart(app, { ...device(ctx.device), onVerifying }),
+        { json: (restart) => ({ restart }), human: restartedLine, ...notVerified }
+      )
     })
 
   apps

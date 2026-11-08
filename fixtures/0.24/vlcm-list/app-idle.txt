@@ -1,0 +1,2 @@
+application                             type      pid     id      state       lifespan       timeout container                               launch args                   
+com.example.player.main            I         0       435     IDLE        PERMANENT      n/a                                             <none>                        

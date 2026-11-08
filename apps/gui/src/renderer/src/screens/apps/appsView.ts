@@ -1,6 +1,7 @@
 import type {
   Device,
   InstalledApp,
+  LaunchCrash,
   LaunchResult,
   ReinstallResult,
   RestartResult,
@@ -10,6 +11,7 @@ import type {
 import type { KeyValue } from '../../ui/KeyValueGrid'
 import type { Tone } from '../../ui/tone'
 import { whenText } from '../packages/packagesView'
+import type { LaunchOutcome } from './launchOutcomes'
 
 export type AppTab = 'installed' | 'running'
 
@@ -34,13 +36,45 @@ export function running(app: InstalledApp): boolean {
   return app.status.state === 'running'
 }
 
-// "Running · 4182" / "Stopped" (design `status`). "Verifying…" and "Crashed on launch" come
-// with launch verification (2.5).
-export function statusView(app: InstalledApp): { tone: Tone; label: string } {
+// "Running · 4182" / "Stopped" (design `status`), "Verifying…" while a launch is verified and
+// "Crashed on launch" after one crashed (ADR 0012). An app that isn't running after a launch
+// shows what the list says.
+export function statusView(
+  app: InstalledApp,
+  outcome?: LaunchOutcome
+): { tone: Tone; label: string; pulse?: true } {
+  if (outcome?.state === 'verifying') return { tone: 'info', label: 'Verifying…', pulse: true }
+  if (outcome?.state === 'crashed') return { tone: 'error', label: 'Crashed on launch' }
   return app.status.state === 'running'
     ? { tone: 'ok', label: `Running · ${app.status.pid}` }
     : { tone: 'muted', label: 'Stopped' }
 }
+
+// The outcome a launch or restart leaves, or undefined when it was verified.
+export function outcomeOf(result: LaunchResult | RestartResult): LaunchOutcome | undefined {
+  if (result.verified) return undefined
+  return result.reason === 'crashed'
+    ? { state: 'crashed', crash: result.crash }
+    : { state: 'not-running' }
+}
+
+// The list shows the app running: pid 0 is `IDLE` right after a launch, not running.
+export function seenRunning(app: InstalledApp): boolean {
+  return app.status.state === 'running' && app.status.pid > 0
+}
+
+// The callout's cause: "SIGABRT · Error: …" and "pid 3200 · Today 01:51", without what is
+// unknown.
+export function crashCauseLines(crash: LaunchCrash, now: Date): string[] {
+  const cause = [crash.signal, crash.message].filter(Boolean).join(' · ')
+  return [...(cause ? [cause] : []), `pid ${crash.pid} · ${installedText(crash.time, now)}`]
+}
+
+// The same words as core's LAUNCH_NOT_VERIFIED messages (`launchNotVerified`).
+export const CALLOUT_TITLES = {
+  crashed: 'Launch reported success, but the app crashed',
+  'not-running': 'Launch reported success, but the app isn’t running'
+} as const
 
 export function tabCounts(apps: InstalledApp[]): Record<AppTab, number> {
   return { installed: apps.length, running: apps.filter(running).length }
@@ -139,9 +173,13 @@ export function actionToast(
   action: AppAction,
   app: InstalledApp,
   result: AppActionResult
-): { tone: 'ok' | 'info'; text: string } {
+): { tone: 'ok' | 'info' | 'error'; text: string } {
   if (action === 'terminate' && 'wasRunning' in result && result.wasRunning === false) {
     return { tone: 'info', text: `${app.title} wasn’t running` }
+  }
+  if ('verified' in result) {
+    if (!result.verified) return { tone: 'error', text: CALLOUT_TITLES[result.reason] }
+    return { tone: 'ok', text: `${DONE[action]} ${app.title} · verified` }
   }
   return { tone: 'ok', text: `${DONE[action]} ${app.title}` }
 }

@@ -30,6 +30,7 @@ test.each<[ErrorCode, number]>([
   ['APP_NOT_INSTALLED', 1],
   ['NOT_SIDELOADED', 1],
   ['LAUNCH_FAILED', 1],
+  ['LAUNCH_NOT_VERIFIED', 7],
   ['TERMINATE_FAILED', 1],
   ['UNINSTALL_FAILED', 1],
   ['NO_APP', 2],

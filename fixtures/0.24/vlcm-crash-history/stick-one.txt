@@ -1,0 +1,17 @@
+AppCrashInfoBuffer:
+  Capacity: 10
+  Size: 1
+  [0] pid: 19871
+      packageId: com.example.player
+      timestamp: 3985.139771698s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: true
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-07 22:36:14.796 UTC (epoch ms: 1794090974796)
+        LCM_APP_IN_FOREGROUND: true
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.amazon.smplighthouse.launcher.main instId: 250
+        LCM_PROCESS_ACTIVITY_STATE: active
+

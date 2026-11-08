@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   createActivityLog,
   createApps,
@@ -13,6 +13,13 @@ import {
   type ActivityEntry,
   type OvdError
 } from '../../src/index.js'
+import { assertAppId } from '../../src/deviceApps/appId.js'
+import {
+  captureStartScript,
+  captureStopScript,
+  deviceScript
+} from '../../src/deviceApps/launchScripts.js'
+import { CAPTURE_SECONDS } from '../../src/deviceApps/launchVerification.js'
 import { createInstallSteps } from '../../src/install/installSteps.js'
 import { FakeRunner } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
@@ -32,6 +39,25 @@ const FORCE = `${SHELL} vlcm terminate-app --force --pkg-id ${PLAYER}`
 const LAUNCH = `vega device launch-app -a ${PLAYER}.main --device VirtualDevice`
 const UNINSTALL = `vega device uninstall-app -a ${PLAYER} --device VirtualDevice`
 const APP_CONFIG = 'assets/raw/keplerscript-app-config.json'
+// Launch verification (launchVerification.test.ts covers its cases).
+const CRASH_HISTORY = `${SHELL} vlcm crash-history`
+const START = `${SHELL} ${deviceScript(captureStartScript(CAPTURE_SECONDS))}`
+const STOP = `${SHELL} ${deviceScript(
+  captureStopScript(
+    { file: '/tmp/tmp.XXXXHeBy6l', pid: 2056 },
+    assertAppId(PLAYER, { from: 'argument' }),
+    0
+  )
+)}`
+const APP_LIST = `${SHELL} vlcm list --app-id ${PLAYER}.main`
+const VERIFY = [
+  CRASH_HISTORY,
+  START,
+  LAUNCH,
+  ...Array<string>(5).fill(APP_LIST),
+  CRASH_HISTORY,
+  STOP
+]
 const VVD = { device: 'VirtualDevice' }
 
 const out = (path: string, exitCode = 0) => ({ stdout: fixture(`0.24/${path}`), exitCode })
@@ -44,7 +70,13 @@ const online = {
   [STATUS]: out('vega-virtual-device-status/running.json'),
   [STICK_INFO]: out('vega-device-info/stick-usb.json'),
   [VVD_INFO]: out('vega-device-info/virtual-device.json'),
-  [PKG_INFO]: out('vpm-info-package/player.txt')
+  [PKG_INFO]: out('vpm-info-package/player.txt'),
+  // A launch the player survives. The stop of a capture without a crash has no recording; its
+  // output is discarded.
+  [CRASH_HISTORY]: out('vlcm-crash-history/virtual-device-before.txt'),
+  [START]: out('log-capture/started.txt'),
+  [APP_LIST]: out('vlcm-list/app-running.txt'),
+  [STOP]: {}
 }
 // The Virtual Device stopped: VDA lists only the stick.
 const vvdStopped = {
@@ -143,6 +175,7 @@ async function setup(
     homedir: home,
     cwd: home
   })
+  const sleep = vi.fn(async (_ms: number) => {})
   const apps = createApps({
     runner,
     sdk,
@@ -152,9 +185,10 @@ async function setup(
     activity,
     install,
     homedir: home,
-    cwd: home
+    cwd: home,
+    sleep
   })
-  return { apps, runner }
+  return { apps, runner, sleep }
 }
 
 async function activity(): Promise<Pick<ActivityEntry, 'action' | 'args' | 'result'>[]> {
@@ -204,9 +238,11 @@ describe('apps.launch', () => {
     expect(result).toEqual({
       target: vvdTarget,
       app: { ...playerApp, componentId: `${PLAYER}.main` },
-      launched: true
+      launched: true,
+      verified: true,
+      pid: 3571
     })
-    expect(actionCalls(runner)).toEqual([PKG_INFO, LAUNCH])
+    expect(actionCalls(runner)).toEqual([PKG_INFO, ...VERIFY])
     expect(runner.calls.find((c) => c.display === LAUNCH)?.timeoutMs).toBe(180_000)
     expect(await activity()).toEqual([
       { action: 'app.launch', target: 'VirtualDevice', args: { app: PLAYER }, result: 'ok' }
@@ -376,9 +412,11 @@ describe('apps.restart', () => {
       target: vvdTarget,
       app: { ...playerApp, componentId: `${PLAYER}.main` },
       wasRunning: true,
-      launched: true
+      launched: true,
+      verified: true,
+      pid: 3571
     })
-    expect(actionCalls(runner)).toEqual([PKG_INFO, VLCM, TERMINATE, LAUNCH])
+    expect(actionCalls(runner)).toEqual([PKG_INFO, VLCM, TERMINATE, ...VERIFY])
     expect(await activity()).toEqual([
       { action: 'app.restart', target: 'VirtualDevice', args: { app: PLAYER }, result: 'ok' }
     ])
@@ -394,7 +432,7 @@ describe('apps.restart', () => {
     const result = await apps.restart(PLAYER, VVD)
 
     expect(result.wasRunning).toBe(false)
-    expect(actionCalls(runner)).toEqual([PKG_INFO, VLCM, LAUNCH])
+    expect(actionCalls(runner)).toEqual([PKG_INFO, VLCM, ...VERIFY])
   })
 
   test('not installed', async () => {
