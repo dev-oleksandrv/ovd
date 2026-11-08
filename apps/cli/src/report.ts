@@ -29,16 +29,7 @@ export async function report<T>(
   try {
     value = await action()
   } catch (error) {
-    const body = isOvdError(error)
-      ? toErrorJson(error)
-      : {
-          code: 'UNEXPECTED_ERROR',
-          message: error instanceof Error ? error.message : String(error),
-          hint: 'This is a bug in OVD. Please report it with the command you ran'
-        }
-    if (ctx.json) ctx.output.stdout(`${JSON.stringify({ ok: false, error: body })}\n`)
-    else ctx.output.stderr(`Error: ${body.message}\n${body.hint}\n`)
-    ctx.setExitCode(isOvdError(error) ? exitCodeFor(error.code) : 1)
+    reportError(ctx, error)
     return
   }
   const failed = render.failure?.(value)
@@ -56,4 +47,19 @@ export async function report<T>(
   }
   if (ctx.json) ctx.output.stdout(`${JSON.stringify({ ok: true, ...render.json(value) })}\n`)
   else ctx.output.stdout(render.human(value))
+}
+
+// Prints an error as `report` does: in JSON mode one `{"ok": false, "error": …}` line on stdout,
+// else the message and hint on stderr; sets the error's exit code.
+export function reportError(ctx: ReportContext, error: unknown): void {
+  const body = isOvdError(error)
+    ? toErrorJson(error)
+    : {
+        code: 'UNEXPECTED_ERROR',
+        message: error instanceof Error ? error.message : String(error),
+        hint: 'This is a bug in OVD. Please report it with the command you ran'
+      }
+  if (ctx.json) ctx.output.stdout(`${JSON.stringify({ ok: false, error: body })}\n`)
+  else ctx.output.stderr(`Error: ${body.message}\n${body.hint}\n`)
+  ctx.setExitCode(isOvdError(error) ? exitCodeFor(error.code) : 1)
 }
