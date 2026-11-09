@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import {
   ALL_PACKAGES,
   callsFile,
+  loginProbesFile,
   logStreamsFile,
   readWorld,
   STICK_ADDRESS,
@@ -119,11 +120,13 @@ function deviceInfo(w: World, id: string): Reply {
 }
 
 async function devmodeLogin(w: World): Promise<Reply> {
+  appendFileSync(loginProbesFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
   if (w.account !== 'signed-out') {
     return { stdout: fixture('vega-devmode-login/signed-in.json'), exitCode: 2 }
   }
   // Logged now: the process may be stopped before it answers.
   log(true)
+  if (w.loginHold) await new Promise(() => setInterval(() => undefined, 60_000))
   if (w.browserSignIn === 'never') {
     // Prints the pending answer, then waits until it is stopped.
     process.stdout.write(fixture('vega-devmode-login/signed-out.json'))
@@ -151,6 +154,16 @@ async function logStream(w: World): Promise<Reply> {
   // Logged now: the stream is stopped, never answers.
   log(true)
   appendFileSync(logStreamsFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
+  if (w.logStream.ignoreFirstSigterm) {
+    let sigterms = 0
+    process.on('SIGTERM', () => {
+      sigterms++
+      if (sigterms > 1) process.exit(143)
+      const fresh = readWorld(dir as string)
+      fresh.logStream.ignoreFirstSigterm = false
+      writeWorld(dir as string, fresh)
+    })
+  }
   const lines = fixture('loggingctl-log/stick-follow.txt').split(/(?<=\n)/)
   const writeInThirds = async (text: string) => {
     const cuts = [0, Math.floor(text.length / 3), Math.floor((text.length * 2) / 3), text.length]

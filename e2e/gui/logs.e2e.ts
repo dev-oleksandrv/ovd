@@ -4,6 +4,7 @@ import type { Page } from '@playwright/test'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 import { ovd } from '../harness/cli.ts'
 import { expect, test } from '../harness/gui.ts'
+import { stillRunning } from '../harness/sandbox.ts'
 
 const LOG = `vega exec vda -s ${STICK_SERIAL} shell loggingctl log -f -o short_concise`
 const ERRORS_CLI = 'ovd logs --app com.example.player --level error'
@@ -124,6 +125,21 @@ test.describe('Logs', () => {
       await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
       await expect(fresh).toHaveCount(0)
     })
+  })
+
+  test('quitting while Logs follows the stick leaves no log stream', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const desktop = await launch()
+    await openLogs(desktop.page)
+    await expect(rows(desktop.page).first()).toBeVisible()
+    await expect.poll(() => sandbox.logStreamPids().length).toBeGreaterThan(0)
+
+    await desktop.quit()
+
+    await expect.poll(() => stillRunning(sandbox.logStreamPids())).toEqual([])
   })
 
   test('an unplugged target: Logs unavailable', async ({ sandbox, launch }) => {

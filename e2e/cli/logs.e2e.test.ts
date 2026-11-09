@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 import { ovd, startOvd } from '../harness/cli.ts'
+import { stillRunning } from '../harness/sandbox.ts'
 import { createSandbox, type Sandbox } from '../harness/vitest.ts'
 
 const LOG = `vega exec vda -s ${STICK_SERIAL} shell loggingctl log -f -o short_concise`
@@ -40,6 +41,13 @@ function noStreamLeft(sandbox: Sandbox): void {
   for (const pid of pids) {
     expect(() => process.kill(pid, 0)).toThrow(expect.objectContaining({ code: 'ESRCH' }))
   }
+}
+
+// After a forced stop (exit 130 or 143) ovd doesn't wait for the group, so a stream may still
+// be exiting, or waiting to be reaped, when ovd has exited: poll, with a bound.
+async function noStreamLeftAfterExit(sandbox: Sandbox): Promise<void> {
+  expect(sandbox.logStreamPids().length).toBeGreaterThan(0)
+  await expect.poll(() => stillRunning(sandbox.logStreamPids()), { timeout: 5_000 }).toEqual([])
 }
 
 describe('ovd logs', () => {
@@ -99,6 +107,33 @@ describe('ovd logs', () => {
     expect(run.exitCode).toBe(0)
     expect(run.jsonLines<JsonEntry>().length).toBeGreaterThan(0)
     noStreamLeft(sandbox)
+  })
+
+  // The stdout isn't parsed in the forced stops: a forced exit may cut its last line.
+  test("SIGTERM stops the stream's process group and exits 143", async () => {
+    const sandbox = withStick()
+    const running = startOvd(sandbox, ['logs', '--json'])
+    await running.waitForStdout((out) => out.includes('\n'))
+    running.signal('SIGTERM')
+    const run = await running.done
+    expect(run.exitCode).toBe(143)
+    await noStreamLeftAfterExit(sandbox)
+  })
+
+  test('a second Ctrl+C stops a stream that ignores the first SIGTERM, and exits 130', async () => {
+    const sandbox = withStick({
+      logStream: { ends: false, holdAfterLine: null, ignoreFirstSigterm: true }
+    })
+    const running = startOvd(sandbox, ['logs', '--json'])
+    await running.waitForStdout((out) => out.includes('\n'))
+    running.signal('SIGINT')
+    // Two signals sent back to back can merge into one: wait until the first Ctrl+C's SIGTERM
+    // reached the stream's group, within core's 2 s grace before SIGKILL.
+    await expect.poll(() => sandbox.world().logStream.ignoreFirstSigterm).toBe(false)
+    running.signal('SIGINT')
+    const run = await running.done
+    expect(run.exitCode).toBe(130)
+    await noStreamLeftAfterExit(sandbox)
   })
 
   test('an offline target exits 4 without starting the stream', async () => {

@@ -1,5 +1,6 @@
 import { usbStick } from '../fake-sdk/world.ts'
 import { expect, test } from '../harness/gui.ts'
+import { stillRunning } from '../harness/sandbox.ts'
 
 function nav(page: import('@playwright/test').Page, name: string) {
   return page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name })
@@ -91,5 +92,20 @@ test.describe('VDA not answering', () => {
       .getByRole('button', { name: 'Re-check' })
       .click()
     await expect(page.getByRole('status').filter({ hasText: 'VDA responded' })).toBeVisible()
+  })
+})
+
+test.describe('Sign-in probe waiting at quit', () => {
+  test.use({ world: { account: 'signed-out', browserSignIn: 'never', loginHold: true } })
+
+  test('quitting while the sign-in probe waits leaves no probe', async ({ sandbox, launch }) => {
+    sandbox.installSdk()
+    // Doctor runs at launch (useDoctor.ts), and its sign-in probe waits until it is stopped.
+    const desktop = await launch()
+    await expect.poll(() => sandbox.probePids().length, { timeout: 15_000 }).toBeGreaterThan(0)
+
+    await desktop.quit()
+
+    await expect.poll(() => stillRunning(sandbox.probePids())).toEqual([])
   })
 })

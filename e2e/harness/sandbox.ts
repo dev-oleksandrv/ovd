@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import {
   callsFile,
   defaultWorld,
+  loginProbesFile,
   logStreamsFile,
   readWorld,
   writeWorld,
@@ -50,6 +51,8 @@ export interface Sandbox {
   clearCalls(): void
   // The pid of every log stream (`loggingctl log -f`) the fake SDK started.
   logStreamPids(): number[]
+  // The pid of every sign-in probe (`vega devmode login --json`) the fake SDK started.
+  probePids(): number[]
   hostState(): unknown
   activity(): ActivityLine[]
   // Removes the sandbox; throws when a surface ran an SDK command the fake has no recording
@@ -80,6 +83,14 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     // The display of a headless Ubuntu runner (xvfb-run), for the desktop app.
     ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
     ...(process.env.XAUTHORITY ? { XAUTHORITY: process.env.XAUTHORITY } : {})
+  }
+
+  function pidsIn(file: string): number[] {
+    if (!existsSync(file)) return []
+    return readFileSync(file, 'utf8')
+      .split('\n')
+      .filter((l) => l !== '')
+      .map((l) => (JSON.parse(l) as { pid: number }).pid)
   }
 
   function readCalls(): Call[] {
@@ -120,14 +131,9 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
 
     clearCalls: () => writeFileSync(callsFile(sdkDir), ''),
 
-    logStreamPids() {
-      const file = logStreamsFile(sdkDir)
-      if (!existsSync(file)) return []
-      return readFileSync(file, 'utf8')
-        .split('\n')
-        .filter((l) => l !== '')
-        .map((l) => (JSON.parse(l) as { pid: number }).pid)
-    },
+    logStreamPids: () => pidsIn(logStreamsFile(sdkDir)),
+
+    probePids: () => pidsIn(loginProbesFile(sdkDir)),
 
     hostState() {
       const file = join(ovdHome, 'state.json')
@@ -153,4 +159,16 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
       }
     }
   }
+}
+
+// The pids that are still running (a pid that is gone answers ESRCH).
+export function stillRunning(pids: number[]): number[] {
+  return pids.filter((pid) => {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code !== 'ESRCH'
+    }
+  })
 }
