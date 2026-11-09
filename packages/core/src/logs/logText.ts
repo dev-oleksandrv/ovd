@@ -1,4 +1,5 @@
-import type { LogEntry } from './types.js'
+import type { Surface } from '../activity/activityLog.js'
+import type { LogEntry, OvdEvent } from './types.js'
 
 export interface LogTextOptions {
   // Wraps the level letter, e.g. in ANSI color for a terminal.
@@ -13,15 +14,69 @@ const PID_WIDTH = 6
 // `HH:MM:SS.mmm L <tag> <pid> <message>` in host local time, continuation lines indented to
 // the message column.
 export function logText(entry: LogEntry, opts: LogTextOptions = {}): string {
+  const time = clock(new Date(entry.time))
+  if (entry.ovd !== undefined) {
+    // An OVD line: `HH:MM:SS.mmm OVD <message>`, the OVD column painted at the entry's level.
+    const label = opts.paintLevel ? opts.paintLevel(entry.level, 'OVD') : 'OVD'
+    return `${time} ${label} ${entry.message}\n`
+  }
   const level = opts.paintLevel ? opts.paintLevel(entry.level, entry.level) : entry.level
   const pid = (entry.pid === null ? '-' : String(entry.pid)).padStart(PID_WIDTH)
   const columns = `${entry.tag.padEnd(TAG_WIDTH)} ${pid} `
-  const time = clock(new Date(entry.time))
   // The indent counts the unpainted prefix: paint adds invisible characters only.
   const indent = ' '.repeat(`${time} ${entry.level} ${columns}`.length)
   const head = `${time} ${level} ${columns}`
   const [first = '', ...rest] = entry.message.split('\n')
   return [head + first, ...rest.map((line) => indent + line)].join('\n') + '\n'
+}
+
+const SURFACE_PHRASE: Record<Surface, string> = {
+  cli: 'from the CLI',
+  desktop: 'from the desktop',
+  mcp: 'from MCP',
+  action: 'from the GitHub Action'
+}
+
+// The one English line of an OVD event. It lives next to `logText` because the CLI, the
+// desktop list and Export must read the same, and the renderer can't import core runtime code
+// (it gets the text with the entry as `message`).
+export function ovdEventText(event: OvdEvent): string {
+  switch (event.kind) {
+    case 'install': {
+      const reinstall = event.action === 'app.reinstall'
+      const subject =
+        (reinstall ? (event.app ?? event.package) : (event.package ?? event.app)) ?? 'the app'
+      if (event.result === 'ok') {
+        return `${reinstall ? 'Reinstalled' : 'Installed'} ${subject} ${SURFACE_PHRASE[event.surface]}`
+      }
+      return `${reinstall ? 'Reinstall' : 'Install'} of ${subject} failed: ${event.errorCode ?? 'unknown error'}`
+    }
+    case 'restarted':
+      return 'Log session restarted'
+    case 'disconnected':
+      return 'Device dropped · reconnecting…'
+    case 'reconnected':
+      return 'Log session reconnected'
+    case 'launch': {
+      const what = event.action === 'app.restart' ? 'Restart' : 'Launch'
+      const app = event.app ?? 'the app'
+      switch (event.result) {
+        case 'verified':
+          return `${what} of ${app} verified`
+        case 'crashed': {
+          const details = [
+            ...(event.pid === undefined ? [] : [`pid ${event.pid}`]),
+            ...(event.signal === undefined ? [] : [event.signal])
+          ]
+          return `Crash detected: ${app}${details.length > 0 ? ` (${details.join(', ')})` : ''}`
+        }
+        case 'not-running':
+          return `${what} of ${app} not verified: it isn’t running`
+        case 'failed':
+          return `${what} of ${app} failed: ${event.errorCode ?? 'unknown error'}`
+      }
+    }
+  }
 }
 
 export function logTextAll(entries: LogEntry[]): string {

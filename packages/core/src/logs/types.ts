@@ -1,3 +1,6 @@
+import type { Surface } from '../activity/activityLog.js'
+import type { ErrorCode } from '../errors/ovdError.js'
+
 // One level per entry, from its syslog priority (logLevel.ts). V is only a filter value: it
 // means "everything", and no entry is ever V.
 export type LogLevel = 'V' | 'D' | 'I' | 'W' | 'E'
@@ -23,7 +26,36 @@ export interface LogEntry {
   message: string
   // false for a line that has no header and follows no entry: kept as is.
   parsed: boolean
+  // Set on an OVD line: one of OVD's own events, shown inline with `tag: 'OVD'` and no device
+  // fields (`deviceTime`, `process`, `pid`, `tid` are null).
+  ovd?: OvdEvent
 }
+
+// OVD's own events shown inline in a log session (`ovdEventText` gives their one line). Open to
+// new kinds.
+export type OvdEvent =
+  | {
+      kind: 'install'
+      action: 'app.install' | 'app.reinstall'
+      surface: Surface
+      result: 'ok' | 'error'
+      package?: string
+      app?: string
+      errorCode?: ErrorCode
+    }
+  | { kind: 'restarted'; reason: 'install' }
+  | { kind: 'disconnected' }
+  | { kind: 'reconnected' }
+  | {
+      kind: 'launch'
+      action: 'app.launch' | 'app.restart'
+      surface: Surface
+      app?: string
+      result: 'verified' | 'crashed' | 'not-running' | 'failed'
+      pid?: number
+      signal?: string
+      errorCode?: ErrorCode
+    }
 
 export interface LogCounts {
   // Lines (entries) and E entries received since the start or the last Clear.

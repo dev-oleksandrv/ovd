@@ -1,4 +1,5 @@
 import { homedir as osHomedir } from 'node:os'
+import { createActivityFeed } from './activity/activityFeed.js'
 import { createActivityLog, type Surface } from './activity/activityLog.js'
 import { createDevices, type Devices } from './devices/devices.js'
 import { createDevmode, type Devmode } from './devmode/devmode.js'
@@ -102,6 +103,15 @@ export function createOvd(opts: OvdOptions): Ovd {
     homedir,
     cwd
   })
-  const logs = createLogs({ runner, sdk, devices, activity, now: opts.now ?? (() => new Date()) })
+  // Tails `activity.jsonl`, so a log session sees the installs of every OVD process.
+  const feed = createActivityFeed({ home })
+  const logs = createLogs({
+    runner,
+    sdk,
+    devices,
+    activity,
+    feed,
+    now: opts.now ?? (() => new Date())
+  })
   return { sdk, devices, doctor, vvd, pairing, devmode, project, packages, install, apps, logs }
 }

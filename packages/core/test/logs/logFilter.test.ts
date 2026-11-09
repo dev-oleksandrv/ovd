@@ -175,3 +175,30 @@ describe('compileLogFilter: the regex slice', () => {
     expect(Date.now() - started).toBeLessThan(1_000)
   })
 })
+
+test('an OVD entry matches any level, package, system and search filter', () => {
+  const ovd: LogEntry = {
+    seq: 0,
+    time: NOW.toISOString(),
+    deviceTime: null,
+    level: 'I',
+    priority: null,
+    facility: null,
+    process: null,
+    pid: null,
+    tid: null,
+    tag: 'OVD',
+    message: 'Log session restarted',
+    parsed: true,
+    ovd: { kind: 'restarted', reason: 'install' }
+  }
+  for (const input of [
+    { level: 'error' },
+    { app: PLAYER },
+    { system: true },
+    { search: 'nothing like it' },
+    { search: '^zzz$', regex: true }
+  ] satisfies LogFilterInput[]) {
+    expect(compileLogFilter(input, NOW).matches(ovd)).toBe(true)
+  }
+})
