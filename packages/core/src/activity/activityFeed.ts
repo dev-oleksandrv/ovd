@@ -13,7 +13,8 @@ export const ACTIVITY_POLL_MS = 500
 export const ACTIVITY_POLL_BYTES = 1024 * 1024
 // It reads in chunks of at most this size.
 export const ACTIVITY_CHUNK_BYTES = 64 * 1024
-// An unterminated line longer than this is dropped, and so is the rest of it up to its newline.
+// A line longer than this is dropped, whether it arrives in one poll or spans several (then the
+// rest of it is skipped up to its newline).
 export const ACTIVITY_MAX_PARTIAL = 64 * 1024
 // No entry OVD writes carries a longer arg; a longer one is not an entry to trust.
 export const ACTIVITY_MAX_ARG = 4096
@@ -81,6 +82,8 @@ export function createActivityFeed(opts: { home: string; pollMs?: number }): Act
       skipping = true
     }
     for (const line of pieces) {
+      // The first piece already holds `partial`, so this counts the whole line.
+      if (line.length > ACTIVITY_MAX_PARTIAL) continue
       const entry = parseLine(line)
       if (entry) for (const listener of [...listeners]) listener(entry)
     }

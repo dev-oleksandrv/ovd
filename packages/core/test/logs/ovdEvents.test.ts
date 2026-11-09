@@ -145,13 +145,18 @@ test('ovdEntry builds an OVD line with no device fields', () => {
 
 test('ovdEventOf: control characters in activity strings never reach the OVD line', () => {
   const event = ovdEventOf(
-    at({ action: 'app.install', args: { package: 'player\u001b[2J\n\u009b31m_armv7.vpkg' } })
+    at({
+      action: 'app.install',
+      args: { package: 'player\u001b[2J\n\u009b31m\u202e\u2066_armv7\u200f.vpkg' }
+    })
   )
   expect(event).toMatchObject({ kind: 'install', package: 'player[2J31m_armv7.vpkg' })
   const message = ovdEntry(event as OvdEvent, TIME, 1).message
   expect(message).toBe('Installed player[2J31m_armv7.vpkg from the CLI')
-  // eslint-disable-next-line no-control-regex -- matching control characters is the point
-  expect(message).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/)
+  expect(message).not.toMatch(
+    // eslint-disable-next-line no-control-regex -- matching control characters is the point
+    /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/
+  )
 })
 
 test('ovdEventOf: a crash signal and app are cleaned too', () => {

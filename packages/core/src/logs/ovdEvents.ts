@@ -78,9 +78,10 @@ export function ovdEntry(event: OvdEvent, time: string, seq: number): LogEntry {
 export const OVD_TEXT_MAX = 256
 
 // C0 controls, DEL and C1 controls: none may reach a terminal from `activity.jsonl`, whose
-// strings (a .vpkg file name, say) can carry escape sequences.
+// strings (a .vpkg file name, say) can carry escape sequences. Bidi formatting controls go too,
+// so a crafted package or app name can't reorder an OVD line visually.
 // eslint-disable-next-line no-control-regex -- matching control characters is the point
-const CONTROLS = /[\u0000-\u001f\u007f-\u009f]/g
+const CONTROLS = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
 
 // A string arg of the entry, without control characters and cut to OVD_TEXT_MAX with `…`.
 function text(value: string | number | boolean | undefined): string | undefined {

@@ -221,4 +221,22 @@ describe('createActivityFeed', () => {
     expect(seen.map((e) => e.target)).toEqual(['valid'])
     off()
   })
+
+  test('a line over 64 KiB whose newline arrives in the same poll is dropped too', async () => {
+    const feed = createActivityFeed({ home })
+    await log().append(install('first'))
+    const seen: ActivityEntry[] = []
+    const off = feed.subscribe((e) => seen.push(e))
+    const time = new Date().toISOString()
+    // One append: kept whole, this line would parse as the 'dropped' entry.
+    await appendFile(
+      file(),
+      `${' '.repeat(80 * 1024)}${JSON.stringify({ ...install('dropped'), time, surface: 'cli' })}\n`
+    )
+    await log().append(install('valid'))
+    await pollUntil(() => seen.length > 0)
+    await somePolls()
+    expect(seen.map((e) => e.target)).toEqual(['valid'])
+    off()
+  })
 })
