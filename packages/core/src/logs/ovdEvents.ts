@@ -74,8 +74,22 @@ export function ovdEntry(event: OvdEvent, time: string, seq: number): LogEntry {
   }
 }
 
+// The longest string an OVD line takes from an activity entry, in code points.
+export const OVD_TEXT_MAX = 256
+
+// C0 controls, DEL and C1 controls: none may reach a terminal from `activity.jsonl`, whose
+// strings (a .vpkg file name, say) can carry escape sequences.
+// eslint-disable-next-line no-control-regex -- matching control characters is the point
+const CONTROLS = /[\u0000-\u001f\u007f-\u009f]/g
+
+// A string arg of the entry, without control characters and cut to OVD_TEXT_MAX with `…`.
 function text(value: string | number | boolean | undefined): string | undefined {
-  return typeof value === 'string' && value !== '' ? value : undefined
+  if (typeof value !== 'string') return undefined
+  const points = Array.from(value.replace(CONTROLS, ''))
+  if (points.length === 0) return undefined
+  return points.length > OVD_TEXT_MAX
+    ? `${points.slice(0, OVD_TEXT_MAX - 1).join('')}…`
+    : points.join('')
 }
 
 // `appActions.ts` writes the crash pid as a decimal string.

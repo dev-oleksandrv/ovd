@@ -164,4 +164,61 @@ describe('createActivityFeed', () => {
     offA()
     offB()
   })
+
+  test('an entry with an arg longer than 4096 characters is skipped', async () => {
+    const feed = createActivityFeed({ home })
+    await log().append(install('first'))
+    const seen: ActivityEntry[] = []
+    const off = feed.subscribe((e) => seen.push(e))
+    const time = new Date().toISOString()
+    await appendFile(
+      file(),
+      `${JSON.stringify({ ...install('long'), args: { package: 'p'.repeat(4097) }, time, surface: 'cli' })}\n`
+    )
+    await log().append(install('valid'))
+    await pollUntil(() => seen.length > 0)
+    await somePolls()
+    expect(seen.map((e) => e.target)).toEqual(['valid'])
+    off()
+  })
+
+  test('a 3 MiB append is read over several polls, each entry once', async () => {
+    const feed = createActivityFeed({ home })
+    await log().append(install('first'))
+    const seen: ActivityEntry[] = []
+    const off = feed.subscribe((e) => seen.push(e))
+    const time = new Date().toISOString()
+    const lines: string[] = []
+    let bytes = 0
+    for (let i = 0; bytes < 3 * 1024 * 1024; i++) {
+      // A multi-byte character, so chunk edges fall inside one now and then.
+      const line = `${JSON.stringify({ ...install(`T${i}`), args: { package: `pläyer_${'x'.repeat(200)}.vpkg` }, time, surface: 'cli' })}\n`
+      lines.push(line)
+      bytes += Buffer.byteLength(line)
+    }
+    await appendFile(file(), lines.join(''))
+    await pollUntil(() => seen.length > 0)
+    expect(seen.length).toBeLessThan(lines.length)
+    await pollUntil(() => seen.length >= lines.length)
+    await somePolls()
+    expect(seen.map((e) => e.target)).toEqual(lines.map((_, i) => `T${i}`))
+    off()
+  })
+
+  test('an unterminated line over 64 KiB is dropped up to its newline', async () => {
+    const feed = createActivityFeed({ home })
+    await log().append(install('first'))
+    const seen: ActivityEntry[] = []
+    const off = feed.subscribe((e) => seen.push(e))
+    const time = new Date().toISOString()
+    // JSON allows leading spaces: kept whole, this line would parse as the 'dropped' entry.
+    await appendFile(file(), ' '.repeat(80 * 1024))
+    await somePolls()
+    await appendFile(file(), `${JSON.stringify({ ...install('dropped'), time, surface: 'cli' })}\n`)
+    await log().append(install('valid'))
+    await pollUntil(() => seen.length > 0)
+    await somePolls()
+    expect(seen.map((e) => e.target)).toEqual(['valid'])
+    off()
+  })
 })

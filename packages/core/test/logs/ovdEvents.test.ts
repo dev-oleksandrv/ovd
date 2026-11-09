@@ -142,3 +142,47 @@ test('ovdEntry builds an OVD line with no device fields', () => {
     ovd: { kind: 'restarted', reason: 'install' }
   })
 })
+
+test('ovdEventOf: control characters in activity strings never reach the OVD line', () => {
+  const event = ovdEventOf(
+    at({ action: 'app.install', args: { package: 'player\u001b[2J\n\u009b31m_armv7.vpkg' } })
+  )
+  expect(event).toMatchObject({ kind: 'install', package: 'player[2J31m_armv7.vpkg' })
+  const message = ovdEntry(event as OvdEvent, TIME, 1).message
+  expect(message).toBe('Installed player[2J31m_armv7.vpkg from the CLI')
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point
+  expect(message).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/)
+})
+
+test('ovdEventOf: a crash signal and app are cleaned too', () => {
+  expect(
+    ovdEventOf(
+      at({
+        action: 'app.launch',
+        args: {
+          app: `com.example.player\u0007`,
+          reason: 'crashed',
+          signal: '\u001b]0;x\u0007SIGSEGV'
+        },
+        result: 'error',
+        errorCode: 'LAUNCH_NOT_VERIFIED'
+      })
+    )
+  ).toMatchObject({ app: PLAYER, signal: ']0;xSIGSEGV' })
+})
+
+test('ovdEventOf: a string arg is cut to 256 characters with an ellipsis', () => {
+  const event = ovdEventOf(at({ action: 'app.install', args: { package: 'p'.repeat(4000) } }))
+  const pkg = event?.kind === 'install' ? event.package : undefined
+  expect(pkg).toBe(`${'p'.repeat(255)}…`)
+  expect(Array.from(pkg ?? '')).toHaveLength(256)
+})
+
+test('ovdEventOf: an arg of only control characters counts as missing', () => {
+  expect(ovdEventOf(at({ action: 'app.install', args: { package: '\u001b\n' } }))).toEqual({
+    kind: 'install',
+    action: 'app.install',
+    surface: 'cli',
+    result: 'ok'
+  })
+})
