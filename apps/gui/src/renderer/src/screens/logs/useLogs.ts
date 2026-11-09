@@ -74,14 +74,18 @@ export function useLogs(target: Device | undefined): LogsValue {
     if (idle && device !== null) void window.ovd.logs.open(device)
   }, [idle, device])
 
-  // Echo the CLI equivalent once the session runs.
-  const runningSession =
-    store.state.status === 'running' && store.state.device === device ? store.session : null
+  // Echo the CLI equivalent once per session, as soon as it runs or reconnects: a session can
+  // open straight into `reconnecting` when the device drops while its stream starts.
+  const liveSession =
+    (store.state.status === 'running' || store.state.status === 'reconnecting') &&
+    store.state.device === targetId
+      ? store.session
+      : null
   useEffect(() => {
-    if (runningSession !== null && device !== null) {
-      echo(logsCli(filterRef.current, device, toggleRef.current))
+    if (liveSession !== null && targetId !== null) {
+      echo(logsCli(filterRef.current, targetId, toggleRef.current))
     }
-  }, [runningSession, device, echo])
+  }, [liveSession, targetId, echo])
 
   const apply = useCallback(
     async (next: LogsFilter) => {

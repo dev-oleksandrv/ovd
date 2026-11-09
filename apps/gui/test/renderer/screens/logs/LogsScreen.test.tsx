@@ -124,6 +124,43 @@ describe('LogsScreen', () => {
     await waitFor(() => expect(stub.api.logs.restart).toHaveBeenCalledWith(stick.id))
   })
 
+  test('a session that ended with restart after install off: the error command carries --no-restart-after-install', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    push(stub, {
+      kind: 'state',
+      session: 1,
+      state: {
+        status: 'ended',
+        device: stick.id,
+        name: stick.name,
+        startedAt: null,
+        error: {
+          code: 'LOG_STREAM_ENDED',
+          message: 'Fire TV stick’s log stream ended',
+          hint: 'The device may have disconnected or rebooted'
+        },
+        restartAfterInstall: false
+      }
+    })
+    expect(
+      screen.getByText(`$ ovd logs --no-restart-after-install --device ${stick.id}`)
+    ).toBeTruthy()
+  })
+
+  test('a session that opens straight into reconnecting echoes the CLI once', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    push(stub, {
+      kind: 'state',
+      session: 1,
+      state: { ...running, status: 'reconnecting', restartAfterInstall: false }
+    })
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --no-restart-after-install --device ${stick.id}`)
+    )
+  })
+
   test('a stream that ended with lines keeps them under the error', async () => {
     const stub = await renderScreen()
     await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())

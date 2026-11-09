@@ -73,7 +73,7 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
       <ErrorState
         title={current.error.message}
         hint={current.error.hint}
-        command={logsCli(filter, current.device)}
+        command={logsCli(filter, current.device, current.restartAfterInstall)}
         actions={restartButton}
       />
     ) : (current.status === 'running' || current.status === 'reconnecting') &&
