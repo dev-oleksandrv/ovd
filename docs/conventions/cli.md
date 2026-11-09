@@ -17,5 +17,5 @@ Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/c
 - Exit codes are meaningful and documented in `docs/ARCHITECTURE.md`: `0` success, `1` failure, `2` usage error, plus the specific codes listed there (e.g. architecture mismatch, launch not verified, no SDK). Don't invent a new code without adding it there.
 - Respect `VEGA_SERIAL` and the remembered target; `--device <id>` overrides both.
 - Destructive or overriding actions need an explicit flag (`--force`), never a prompt in non-interactive mode.
-- Streams (`logs`, `run`, `--watch`) stop cleanly on Ctrl+C: abort core, wait for child processes to exit, then exit `0`.
+- Streams (`logs`, `run`, `--watch`) stop cleanly on Ctrl+C: abort core, wait for child processes to exit, then exit `0`. A second Ctrl+C stops their process groups and exits `130` at once.
 - Command names and flags match what the desktop echoes. If you add or rename a command, update the desktop CLI echo in the same branch.

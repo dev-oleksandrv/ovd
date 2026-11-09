@@ -85,7 +85,7 @@ docs/
 - Discovers the Vega CLI (SDK Manager) and the active SDK version: `OVD_VEGA`, then every `vega` on `PATH`, then `~/vega/bin/vega` (a desktop app doesn't inherit the shell `PATH`). The manager wins over a `vega` bundled inside an SDK, which lacks `vega sdk` and `vega devmode`. Device commands fail with an install hint when none is found.
 - Every call goes through one runner: target injection (`--device <id>` for `vega device …`, `-s <serial>` for `vega exec vda …`), timeout, `AbortSignal`, captured stdout/stderr/exit code.
 - VDA runs as `vega exec vda …`. Device tools run through `vega exec vda shell` (`shell -c <component>` for component scope).
-- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. The log stream (`loggingctl log -f`) is built: it runs in its own process group and is stopped by signalling the group; reconnecting comes in 3.2. Probes stopped by `stopWhen` (the `vega devmode login --json` sign-in probe) run in their own process group too, and are stopped as a group on a match, a timeout or an abort. Planned: the input console (Stage 4) and memory polling (Stage 6).
+- Long-running processes are managed: explicit start and stop, reconnect when a device drops, no orphans. The log stream (`loggingctl log -f`) is built: it runs in its own process group and is stopped by signalling the group; reconnecting comes in 3.2. Probes stopped by `stopWhen` (the `vega devmode login --json` sign-in probe) run in their own process group too, and are stopped as a group on a match, a timeout or an abort. Planned: the input console (Stage 4) and memory polling (Stage 6). Core keeps a process-wide registry of the live detached groups (`packages/core/src/sdk/processGroups.ts`), so none outlives OVD: the CLI SIGTERMs every registered group on exit, a second Ctrl+C, SIGTERM or an uncaught error, and the desktop aborts its running probes and the stream on `before-quit` and SIGTERMs what is left on `will-quit`. A SIGKILL of OVD or a hard crash (native crash, OOM kill) runs nothing, so those groups stay.
 
 ### 4.2 Adapters
 
@@ -113,16 +113,18 @@ Core returns typed errors: a stable `code`, a `message` and a one-line `hint`. S
 
 **Exit codes:**
 
-| Code | Meaning                                                                    |
-| ---- | -------------------------------------------------------------------------- |
-| 0    | Success                                                                    |
-| 1    | Failure (generic)                                                          |
-| 2    | Usage error                                                                |
-| 3    | SDK missing or unusable                                                    |
-| 4    | Device not found, target offline or no target                              |
-| 5    | External step not completed (not signed in, code rejected, pairing failed) |
-| 6    | Architecture mismatch: the package doesn't match the target (ADR 0008)     |
-| 7    | Launch not verified: the app crashed or isn't running after launch         |
+| Code | Meaning                                                                                                            |
+| ---- | ------------------------------------------------------------------------------------------------------------------ |
+| 0    | Success                                                                                                            |
+| 1    | Failure (generic)                                                                                                  |
+| 2    | Usage error                                                                                                        |
+| 3    | SDK missing or unusable                                                                                            |
+| 4    | Device not found, target offline or no target                                                                      |
+| 5    | External step not completed (not signed in, code rejected, pairing failed)                                         |
+| 6    | Architecture mismatch: the package doesn't match the target (ADR 0008)                                             |
+| 7    | Launch not verified: the app crashed or isn't running after launch                                                 |
+| 130  | Stopped at once by Ctrl+C (a second Ctrl+C, or Ctrl+C on a command that can't cancel; the shell's code for SIGINT) |
+| 143  | Stopped by SIGTERM (the shell's code)                                                                              |
 
 The app commands exit 1 for an app that isn't installed (`APP_NOT_INSTALLED`) or isn't side-loaded (`NOT_SIDELOADED`) and for an install, launch, terminate or uninstall the SDK refuses (`INSTALL_FAILED`, `LAUNCH_FAILED`, `TERMINATE_FAILED`, `UNINSTALL_FAILED`), which scripts tell apart by `error.code` in `--json`, and exit 2 for an invalid app ID (`INVALID_APP_ID`) or no app given with nothing open (`NO_APP`). `ovd apps launch` and `ovd apps restart` exit 7 (`LAUNCH_NOT_VERIFIED`) for both `"reason": "crashed"` and `"reason": "not-running"`. `ovd apps launch` on an app that already runs does nothing and exits 0 with `"wasRunning": true` and `"launched": false`.
 
