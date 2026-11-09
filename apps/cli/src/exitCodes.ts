@@ -32,6 +32,11 @@ const CODES: Partial<Record<ErrorCode, number>> = {
   LAUNCH_NOT_VERIFIED: 7
 }
 
+// A forced stop exits with the shell's code for the signal (128 + its number), documented in
+// docs/ARCHITECTURE.md §5: Ctrl+C that can't wait for the command, and SIGTERM.
+export const SIGINT_EXIT_CODE = 130
+export const SIGTERM_EXIT_CODE = 143
+
 export function exitCodeFor(code: ErrorCode): number {
   return CODES[code] ?? 1
 }

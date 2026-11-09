@@ -1,7 +1,8 @@
 import { createServer, type Server } from 'node:net'
 import type { Check, DoctorReport } from '@ovd/core'
 import { afterEach, describe, expect, test } from 'vitest'
-import { ovd } from '../harness/cli.ts'
+import { ovd, startOvd } from '../harness/cli.ts'
+import { stillRunning } from '../harness/sandbox.ts'
 import { createSandbox } from '../harness/vitest.ts'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 
@@ -12,6 +13,26 @@ function byId(report: Report): Record<string, Check> {
 }
 
 describe('ovd doctor', () => {
+  test('SIGTERM while the sign-in probe waits exits 143 and leaves no probe', async () => {
+    const sandbox = createSandbox({
+      account: 'signed-out',
+      browserSignIn: 'never',
+      loginHold: true
+    })
+    sandbox.installSdk()
+    const running = startOvd(sandbox, ['doctor', '--json'])
+
+    // The probe comes after the SDK, VDA and device checks, each a fake `vega` start.
+    await expect.poll(() => sandbox.probePids().length, { timeout: 15_000 }).toBeGreaterThan(0)
+    running.signal('SIGTERM')
+
+    const run = await running.done
+    expect(run.exitCode).toBe(143)
+    // A forced stop doesn't wait for the probe's group: poll, with a bound.
+    await expect.poll(() => stillRunning(sandbox.probePids()), { timeout: 5_000 }).toEqual([])
+    expect(sandbox.world().account).toBe('signed-out')
+  })
+
   test('without an SDK, only the SDK check runs and it links the install', async () => {
     const sandbox = createSandbox()
 

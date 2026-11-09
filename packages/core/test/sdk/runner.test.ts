@@ -1,7 +1,8 @@
 import { realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { OvdError } from '../../src/index.js'
+import { createProcessGroups } from '../../src/sdk/processGroups.js'
 import { createExecaRunner } from '../../src/sdk/runner.js'
 
 // Real child processes, but `node` itself stands in for the SDK: no SDK or device needed.
@@ -209,6 +210,79 @@ describe('createExecaRunner streams', () => {
     expect(result).toMatchObject({ exitCode: 129 })
     expect(result).not.toHaveProperty('stopped')
   })
+
+  // A child that starts a grandchild, prints both pids and runs until stopped.
+  const withGrandchild =
+    "const { spawn } = require('node:child_process');" +
+    "const g = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });" +
+    "process.stdout.write(process.pid + ' ' + g.pid + '\\n');setInterval(() => {}, 1000)"
+
+  test('a running stream is registered until an abort has stopped it', async () => {
+    const groups = createProcessGroups()
+    const registered = createExecaRunner(groups)
+    const controller = new AbortController()
+    const { spec, chunks, firstChunk } = streamOf(withGrandchild, { signal: controller.signal })
+    const run = registered.run(spec)
+    await firstChunk
+    const [child = 0] = chunks.join('').trim().split(' ').map(Number)
+    expect(groups.pids()).toEqual([child])
+
+    controller.abort()
+    await run
+
+    expect(groups.pids()).toEqual([])
+  })
+
+  test('a stream that ends by itself is unregistered', async () => {
+    const groups = createProcessGroups()
+    const registered = createExecaRunner(groups)
+    let during: readonly number[] = []
+    let printed = ''
+    await registered.run({
+      ...node("process.stdout.write(process.pid + '\\n')"),
+      stream: {
+        onChunk: (chunk) => {
+          printed += chunk
+          during = groups.pids()
+        }
+      }
+    })
+    expect(during).toEqual([Number(printed.trim())])
+    expect(groups.pids()).toEqual([])
+  })
+
+  test('stopAll ends a running stream, its child and its grandchild', async () => {
+    const groups = createProcessGroups()
+    const registered = createExecaRunner(groups)
+    const { spec, chunks, firstChunk } = streamOf(withGrandchild)
+    const run = registered.run(spec)
+    await firstChunk
+    const [child = 0, grandchild = 0] = chunks.join('').trim().split(' ').map(Number)
+    expect(grandchild).toBeGreaterThan(0)
+
+    groups.stopAll()
+    const result = await run
+
+    // An outside signal to the run: no `stopped` (runner.ts reports it as a shell would).
+    expect(result).toMatchObject({ exitCode: 143 })
+    expect(result).not.toHaveProperty('stopped')
+    expect(gone(child)).toBe(true)
+    await expect.poll(() => gone(grandchild)).toBe(true)
+    expect(groups.pids()).toEqual([])
+  })
+
+  test('a stream that fails to start registers nothing', async () => {
+    const groups = createProcessGroups()
+    const register = vi.spyOn(groups, 'register')
+    const run = createExecaRunner(groups).run({
+      file: '/nonexistent/vega',
+      args: [],
+      display: 'vega exec vda shell loggingctl log -f',
+      stream: { onChunk: () => undefined }
+    })
+    await expect(run).rejects.toMatchObject({ code: 'COMMAND_FAILED' })
+    expect(register).not.toHaveBeenCalled()
+  })
 })
 
 describe('createExecaRunner stopWhen', () => {
@@ -289,4 +363,32 @@ describe('createExecaRunner stopWhen', () => {
     await expect.poll(() => gone(grandchild)).toBe(true)
     await expect.poll(() => groupGone(child)).toBe(true)
   })
+
+  test.each(['match', 'timeout', 'abort'] as const)(
+    'a waiting probe is registered until a %s has stopped it',
+    async (how) => {
+      const groups = createProcessGroups()
+      const registered = createExecaRunner(groups)
+      const controller = new AbortController()
+      let during: readonly number[] | undefined
+      let seen = ''
+      const run = registered.run({
+        ...probe,
+        ...(how === 'timeout' ? { timeoutMs: 300 } : {}),
+        signal: controller.signal,
+        onStdout: (stdout) => {
+          if (during === undefined) {
+            during = groups.pids()
+            seen = stdout
+            if (how === 'abort') controller.abort()
+          }
+        },
+        stopWhen: how === 'match' ? (stdout) => stdout.includes('"pending"') : () => false
+      })
+      await run.catch(() => undefined)
+
+      expect(during).toEqual([pidsOf(seen).child])
+      expect(groups.pids()).toEqual([])
+    }
+  )
 })

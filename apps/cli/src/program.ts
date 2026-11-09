@@ -24,8 +24,9 @@ export interface CliDeps {
   // Lazy: `hello`, `--help` and `--version` work without an SDK.
   ovd: () => Ovd
   env: Record<string, string | undefined>
-  // Calls `abort` on Ctrl+C until the returned function is called; for commands that must
-  // stop their SDK process cleanly instead of being killed with it.
+  // Calls `abort` on the first Ctrl+C or a closed stdout pipe until the returned function is
+  // called; for commands that must stop their SDK process cleanly instead of being killed with
+  // it. A second Ctrl+C stops every SDK process group and exits 130 at once (`exitHooks.ts`).
   onInterrupt: (abort: () => void) => () => void
   // Asks on stderr and resolves with the answer; absent when stdin isn't a terminal, so
   // commands that need input take it from flags instead.

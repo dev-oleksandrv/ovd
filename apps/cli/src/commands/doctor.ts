@@ -17,7 +17,7 @@ export function registerDoctor(
       const ctx = reportContext(cmd, deps, setExitCode)
       let failed = false
       // The sign-in probe runs in its own process group, which the terminal's Ctrl+C doesn't
-      // reach, and `onInterrupt` replaces the default SIGINT exit (src/index.ts): Ctrl+C (or a
+      // reach, and `onInterrupt` replaces the default SIGINT exit (src/exitHooks.ts): Ctrl+C (or a
       // closed stdout pipe) aborts the run, and core stops the command in flight.
       const controller = new AbortController()
       const dispose = deps.onInterrupt(() => controller.abort())

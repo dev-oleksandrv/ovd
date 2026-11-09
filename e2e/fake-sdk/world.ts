@@ -43,7 +43,13 @@ export interface World {
   // `ends`: the stream prints the recording before a reboot and ends by itself (exit 0).
   // `holdAfterLine`: print only that many lines of `stick-follow.txt`, then the rest once the
   // test sets it back to null.
-  logStream: { ends: boolean; holdAfterLine: number | null }
+  // `ignoreFirstSigterm`: the stream ignores the first SIGTERM to its group and sets the flag
+  // back to `false` in the world, so a test can see that it arrived. The next SIGTERM ends it.
+  logStream: { ends: boolean; holdAfterLine: number | null; ignoreFirstSigterm?: boolean }
+  // When signed out, `vega devmode login --json` waits before it prints anything until it is
+  // stopped, so a test can stop OVD while a probe runs. Doctor's own 5 s probe timeout still
+  // applies.
+  loginHold: boolean
 }
 
 export interface Stick {
@@ -90,7 +96,8 @@ export function defaultWorld(): World {
     playerCrashesOnLaunch: false,
     playerStopsOnLaunch: false,
     playerCrashed: false,
-    logStream: { ends: false, holdAfterLine: null }
+    logStream: { ends: false, holdAfterLine: null },
+    loginHold: false
   }
 }
 
@@ -117,6 +124,12 @@ export function callsFile(dir: string): string {
 // One `{ pid }` line per log stream the fake started, so a test can check none is left.
 export function logStreamsFile(dir: string): string {
   return join(dir, 'log-streams.jsonl')
+}
+
+// One `{ pid }` line per `vega devmode login --json` the fake started, so a test can check none
+// is left.
+export function loginProbesFile(dir: string): string {
+  return join(dir, 'login-probes.jsonl')
 }
 
 export function readWorld(dir: string): World {

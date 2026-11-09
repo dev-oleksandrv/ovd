@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { createOvd } from '@ovd/core'
+import { createOvd, processGroups } from '@ovd/core'
 import { registerAppsIpc } from './appsIpc'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerInstallIpc } from './installIpc'
@@ -11,6 +11,7 @@ import { registerLogsIpc } from './logsIpc'
 import { registerPackagesIpc } from './packagesIpc'
 import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
+import { registerQuitHooks } from './quitHooks'
 import { registerSetupIpc } from './setupIpc'
 import { showWhenReady } from './showWindow'
 import { registerVvdIpc } from './vvdIpc'
@@ -27,6 +28,9 @@ const devices = registerDevicesIpc(
     if (update.ok) logs.targetChanged(update.target)
   }
 )
+// Quitting stops the probes and the log stream in flight and waits for the log session, then
+// SIGTERMs any SDK process group still running.
+const quitting = registerQuitHooks(app, { logs, stopAll: () => processGroups.stopAll() })
 
 function createWindow(): void {
   // Create the browser window.
@@ -85,7 +89,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  registerIpcHandlers(ovd)
+  registerIpcHandlers(ovd, quitting)
   registerVvdIpc(ovd, devices.refresh)
   registerPairingIpc(ovd, devices.refresh)
   registerProjectIpc(ovd, () => mainWindow)
@@ -101,15 +105,6 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
-})
-
-// Quitting waits until the log stream's process group is gone.
-let quitting = false
-app.on('before-quit', (event) => {
-  if (quitting || !logs.running()) return
-  event.preventDefault()
-  quitting = true
-  void logs.stop().finally(() => app.quit())
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

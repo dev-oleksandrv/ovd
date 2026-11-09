@@ -5,7 +5,7 @@ import { channels, type AppInfo, type IpcResult, type SdkSummary } from '../prel
 import { toResult } from './ipcResult'
 
 // Core runs in-process in main (ADR 0004); each handler is a thin call into it.
-export function registerIpcHandlers(ovd: Ovd): void {
+export function registerIpcHandlers(ovd: Ovd, quitting: AbortSignal): void {
   ipcMain.handle(channels.appInfo, (): AppInfo => ({ version: app.getVersion() }))
 
   ipcMain.handle(channels.sdkInfo, (): Promise<IpcResult<SdkSummary>> =>
@@ -13,6 +13,8 @@ export function registerIpcHandlers(ovd: Ovd): void {
   )
 
   ipcMain.handle(channels.doctorRun, (): Promise<IpcResult<DoctorReport>> =>
-    toResult(() => ovd.doctor.run())
+    // Quitting stops the sign-in probe in flight instead of leaving `vega devmode login`
+    // behind. The AbortError then is not mapped: no window is left to show it.
+    toResult(() => ovd.doctor.run({ signal: quitting }))
   )
 }
