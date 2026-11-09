@@ -31,6 +31,28 @@ const multi: LogEntry = {
   priority: 'info',
   message: '[KeplerScript-JavaScript] player multi\nline two\nline three'
 }
+const ovdLine = (message: string, ovd: LogEntry['ovd'], seq = 9): LogEntry => ({
+  seq,
+  time: '2026-11-08T07:27:01.002Z',
+  deviceTime: null,
+  level: 'I',
+  priority: null,
+  facility: null,
+  process: null,
+  pid: null,
+  tid: null,
+  tag: 'OVD',
+  message,
+  parsed: true,
+  ...(ovd ? { ovd } : {})
+})
+const installed = ovdLine('Installed player_armv7.vpkg from the CLI', {
+  kind: 'install',
+  action: 'app.install',
+  surface: 'cli',
+  result: 'ok',
+  package: 'player_armv7.vpkg'
+})
 const system: LogEntry = {
   seq: 3,
   time: '2026-11-08T07:27:00.300Z',
@@ -75,6 +97,8 @@ function stubLogs(batches: LogEntry[][], opts: { failWith?: ErrorCode } = {}): S
       counts: () => ({ lines: 0, errors: 0, shown: 0 }),
       apps: () => [],
       clear: () => undefined,
+      state: () => 'following',
+      setRestartAfterInstall: () => undefined,
       stop: async () => undefined
     }
     return session
@@ -233,8 +257,11 @@ describe('ovd logs', () => {
     expect(await running).toEqual({ stdout: '', stderr: '', exitCode: 0 })
   })
 
-  test('a stream that ends by itself exits 1 with the error as the last JSON line', async () => {
-    const stub = stubLogs([[system]])
+  test('a session that gives up reconnecting exits 1 with LOG_STREAM_ENDED as the last JSON line', async () => {
+    const stub = stubLogs([
+      [system],
+      [ovdLine('Device dropped · reconnecting…', { kind: 'disconnected' })]
+    ])
     const error = new OvdError('LOG_STREAM_ENDED', 'Fire TV stick’s log stream ended', 'hint', {
       exitCode: 0
     })
@@ -243,9 +270,59 @@ describe('ovd logs', () => {
       .trim()
       .split('\n')
       .map((l) => JSON.parse(l) as unknown)
-    expect(lines).toHaveLength(2)
+    expect(lines).toHaveLength(3)
+    expect(lines[1]).toEqual({
+      time: '2026-11-08T07:27:01.002Z',
+      ovd: { kind: 'disconnected' },
+      message: 'Device dropped · reconnecting…'
+    })
     expect(lines.at(-1)).toMatchObject({ ok: false, error: { code: 'LOG_STREAM_ENDED' } })
     expect(exitCode).toBe(1)
+  })
+
+  test('--json prints an OVD line as {time, ovd, message}', async () => {
+    const stub = stubLogs([[installed]])
+    const { stdout } = await run(['logs', '--json'], stub)
+    expect(JSON.parse(stdout.trim())).toEqual({
+      time: '2026-11-08T07:27:01.002Z',
+      ovd: {
+        kind: 'install',
+        action: 'app.install',
+        surface: 'cli',
+        result: 'ok',
+        package: 'player_armv7.vpkg'
+      },
+      message: 'Installed player_armv7.vpkg from the CLI'
+    })
+  })
+
+  test.each<[string, { tty?: boolean }, boolean]>([
+    ['a terminal', { tty: true }, true],
+    ['a pipe', {}, false]
+  ])(
+    'human output prints HH:MM:SS.mmm OVD <message>, colored only on %s',
+    async (_n, opts, colored) => {
+      const stub = stubLogs([[installed]])
+      const { stdout } = await run(['logs'], stub, { reason: 'until' }, opts)
+      const plain = new RegExp(
+        String.raw`^\d{2}:\d{2}:\d{2}\.\d{3} OVD Installed player_armv7\.vpkg from the CLI\n$`
+      )
+      if (colored) {
+        expect(stdout).toContain('\u001b[32mOVD\u001b[0m')
+        expect(stdout.replace('\u001b[32m', '').replace('\u001b[0m', '')).toMatch(plain)
+      } else {
+        expect(stdout).toMatch(plain)
+      }
+    }
+  )
+
+  test('--no-restart-after-install starts the session with restartAfterInstall false; the default is true', async () => {
+    const off = stubLogs([])
+    await run(['logs', '--no-restart-after-install'], off)
+    expect(off.start).toHaveBeenCalledWith(expect.objectContaining({ restartAfterInstall: false }))
+    const on = stubLogs([])
+    await run(['logs'], on)
+    expect(on.start).toHaveBeenCalledWith(expect.objectContaining({ restartAfterInstall: true }))
   })
 
   test('a stream that ends by itself prints the error on stderr in human mode', async () => {

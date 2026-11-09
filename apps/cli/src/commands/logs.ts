@@ -4,12 +4,18 @@ import type { CliDeps } from '../program.js'
 import { reportError } from '../report.js'
 import { reportContext } from './context.js'
 
-// `ovd logs` follows the target's log until Ctrl+C, `--until`, or the stream's end.
-// Human output, one line per entry (continuation lines indented to the message column):
+// `ovd logs` follows the target's log until Ctrl+C, `--until`, or reconnecting gives up. It
+// restarts the stream after every install OVD makes on the target (`--no-restart-after-install`
+// keeps it running) and reconnects by itself when the device drops.
+// Human output, one line per entry (continuation lines indented to the message column), and
+// OVD's own events as OVD lines:
 //   07:27:00.257 E resmgr-app-registry         899 [AppRegistry] …
+//   07:27:01.002 OVD Installed player_armv7.vpkg from the CLI
 // `--json`: one JSON object per entry (JSON lines), never wrapped in a document:
 //   {"time","level","priority","facility","process","pid","tid","tag","message","parsed"}
-// A stream that ends by itself ends the output with the `{"ok":false,"error":…}` line, exit 1.
+//   {"time","ovd","message"} for an OVD line (`ovd` is the event, with its `kind`)
+// When reconnecting gives up (LOG_STREAM_ENDED) the output ends with the
+// `{"ok":false,"error":…}` line, exit 1.
 
 interface LogsOptions {
   app?: string
@@ -19,6 +25,8 @@ interface LogsOptions {
   until?: string
   grep?: string
   regex?: boolean
+  // commander's `--no-restart-after-install`: false when given, true otherwise.
+  restartAfterInstall?: boolean
 }
 
 const COLORS: Record<LogEntry['level'], string> = {
@@ -49,6 +57,7 @@ export function registerLogs(
     .option('--until <time>', 'stop at this time: ISO date-time, HH:MM[:SS] or 30s, 5m, 2h')
     .option('--grep <text>', 'only lines whose message or tag contains this text')
     .option('--regex', 'treat --grep as a regular expression')
+    .option('--no-restart-after-install', 'keep the stream running when OVD installs on the target')
     .action(async (opts: LogsOptions, cmd: Command) => {
       const ctx = reportContext(cmd, deps, setExitCode)
       const color = deps.stdoutTty === true && deps.env.NO_COLOR === undefined
@@ -71,6 +80,7 @@ export function registerLogs(
           session = await deps.ovd().logs.start({
             ...(ctx.device === undefined ? {} : { device: ctx.device }),
             filter: filterOf(opts),
+            restartAfterInstall: opts.restartAfterInstall !== false,
             signal: controller.signal,
             // The CLI prints and forgets: core keeps no buffer for it.
             capacity: 0,
@@ -104,8 +114,9 @@ function filterOf(opts: LogsOptions): LogFilterInput {
   }
 }
 
-// Picked explicitly: `seq` and `deviceTime` stay internal.
+// Picked explicitly: `seq` and `deviceTime` stay internal. An OVD line has its own shape.
 function jsonOf(entry: LogEntry) {
+  if (entry.ovd !== undefined) return { time: entry.time, ovd: entry.ovd, message: entry.message }
   return {
     time: entry.time,
     level: entry.level,
