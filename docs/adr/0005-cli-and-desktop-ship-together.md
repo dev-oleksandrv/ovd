@@ -21,4 +21,4 @@ Terminal, CI and agent users need the CLI; people who want a device hub, a log v
 
 ## Amendments
 
-- 2026-11-09 (#92, `ee45bc6`): view-only desktop actions write no `ovd …` echo. View-only means changing only what is shown: Clear, Pause and Resume, Follow, scroll. Filter changes still echo. This matches `docs/conventions/gui.md`.
+- 2026-11-09 (#92, `ee45bc6`): view-only desktop actions write no `ovd …` echo. View-only means changing only what is shown: Clear, Pause and Resume, Follow, scroll. Filter changes still echo. This matches `docs/conventions/gui.md` (Behavior, CLI echo).
