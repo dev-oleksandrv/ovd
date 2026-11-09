@@ -96,4 +96,31 @@ describe('logStore', () => {
     store = setFollow(store, true)
     expect(newLines(store)).toBe(0)
   })
+
+  test('an append mixing OVD and device entries keeps seq order for Pause and new lines', () => {
+    const ovd = logEntry(3, {
+      deviceTime: null,
+      process: null,
+      pid: null,
+      tid: null,
+      tag: 'OVD',
+      message: 'Log session restarted',
+      ovd: { kind: 'restarted', reason: 'install' }
+    })
+    let store = applyUpdate(emptyStore(), reset(1, 3))
+    store = pause(store)
+    store = setFollow(store, false)
+    store = applyUpdate(store, {
+      kind: 'append',
+      session: 1,
+      entries: [ovd, logEntry(4), logEntry(5)],
+      counts: { lines: 5, errors: 0, shown: 6 },
+      apps: []
+    })
+    expect(store.entries.map((e) => e.seq)).toEqual([0, 1, 2, 3, 4, 5])
+    expect(visibleCount(store)).toBe(3)
+    expect(newLines(store)).toBe(3)
+    store = resume(store)
+    expect(visibleCount(store)).toBe(6)
+  })
 })

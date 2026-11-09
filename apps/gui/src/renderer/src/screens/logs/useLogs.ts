@@ -29,6 +29,9 @@ export interface LogsValue {
   setSearch(text: string): void
   setRegex(on: boolean): void
   clearFilters(): void
+  // The footer toggle: restart the session after every install OVD makes (default on).
+  restartAfterInstall: boolean
+  setRestartAfterInstall(on: boolean): void
   restart(): void
   clear(): void
   exportShown(): void
@@ -46,7 +49,13 @@ export function useLogs(target: Device | undefined): LogsValue {
   const [filter, setFilterState] = useState<LogsFilter>({})
   const [search, setSearchText] = useState('')
   const [regex, setRegexState] = useState(false)
+  // Sessions open only for an online target; the echo and Restart use its ID even while it
+  // shows offline (a reconnecting session keeps the screen).
   const device = target?.status === 'online' ? target.id : null
+  const targetId = target?.id ?? null
+  const restartAfterInstall = store.state.status === 'idle' ? true : store.state.restartAfterInstall
+  const toggleRef = useRef(restartAfterInstall)
+  toggleRef.current = restartAfterInstall
   // The latest filter asked for, ahead of main's answer: two quick changes (level, then
   // package) build on each other instead of the second undoing the first.
   const filterRef = useRef<LogsFilter>({})
@@ -69,7 +78,9 @@ export function useLogs(target: Device | undefined): LogsValue {
   const runningSession =
     store.state.status === 'running' && store.state.device === device ? store.session : null
   useEffect(() => {
-    if (runningSession !== null && device !== null) echo(logsCli(filterRef.current, device))
+    if (runningSession !== null && device !== null) {
+      echo(logsCli(filterRef.current, device, toggleRef.current))
+    }
   }, [runningSession, device, echo])
 
   const apply = useCallback(
@@ -78,7 +89,7 @@ export function useLogs(target: Device | undefined): LogsValue {
       filterRef.current = next
       setFilterState(next)
       const result = await window.ovd.logs.setFilter(next)
-      const cli = device === null ? undefined : logsCli(next, device)
+      const cli = targetId === null ? undefined : logsCli(next, targetId, toggleRef.current)
       if (!result.ok) {
         if (filterRef.current === next) {
           filterRef.current = previous
@@ -89,7 +100,7 @@ export function useLogs(target: Device | undefined): LogsValue {
       }
       notify({ tone: 'info', text: 'Log filter applied', ...(cli ? { cli } : {}) })
     },
-    [device, notify]
+    [targetId, notify]
   )
 
   // The search reaches the filter after typing stops; an invalid regex changes nothing.
@@ -130,14 +141,30 @@ export function useLogs(target: Device | undefined): LogsValue {
       setRegexState(false)
       void apply({})
     },
+    restartAfterInstall,
+    setRestartAfterInstall(on) {
+      void window.ovd.logs.setRestartAfterInstall(on).then((result) => {
+        const cli = targetId === null ? undefined : logsCli(filterRef.current, targetId, on)
+        if (!result.ok) {
+          notify({ tone: 'error', text: result.error.message, ...(cli ? { cli } : {}) })
+          return
+        }
+        notify({
+          tone: 'info',
+          text: on ? 'Restart session after install: on' : 'Restart session after install: off',
+          ...(cli ? { cli } : {})
+        })
+      })
+    },
     restart() {
-      if (device === null) return
-      void window.ovd.logs.restart(device).then((result) => {
-        const cli = logsCli(filterRef.current, device)
+      if (targetId === null) return
+      const id = targetId
+      void window.ovd.logs.restart(id).then((result) => {
+        const cli = logsCli(filterRef.current, id, toggleRef.current)
         if (result.ok) {
           notify({
             tone: 'info',
-            text: `Restarted the log session on ${target?.name ?? device}`,
+            text: `Restarted the log session on ${target?.name ?? id}`,
             cli
           })
         } else {
@@ -151,7 +178,8 @@ export function useLogs(target: Device | undefined): LogsValue {
     exportShown() {
       const through = store.pausedThrough ?? undefined
       void window.ovd.logs.export(through).then((result) => {
-        const cli = device === null ? undefined : logsCli(filterRef.current, device)
+        const cli =
+          targetId === null ? undefined : logsCli(filterRef.current, targetId, toggleRef.current)
         if (!result.ok) {
           notify({ tone: 'error', text: result.error.message, ...(cli ? { cli } : {}) })
         } else if (result.data) {

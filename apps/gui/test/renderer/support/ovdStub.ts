@@ -128,7 +128,7 @@ export function stubOvd(opts: {
   let logsListener: ((update: LogsUpdate) => void) | undefined
   const starting = (device: string): IpcResult<LogsState> => ({
     ok: true,
-    data: { status: 'starting', device, name: device }
+    data: { status: 'starting', device, name: device, restartAfterInstall: true }
   })
   let promptListener: ((prompt: LoginPrompt) => void) | undefined
   const find = (id: string): Device | undefined => opts.devices?.find((d) => d.id === id)
@@ -264,6 +264,14 @@ export function stubOvd(opts: {
       restart: vi.fn(opts.logs?.restart ?? (async (device: string) => starting(device))),
       setFilter: vi.fn(
         opts.logs?.setFilter ?? (async (): Promise<IpcResult<null>> => ({ ok: true, data: null }))
+      ),
+      // Answers as main does: the running state with the new value.
+      setRestartAfterInstall: vi.fn(
+        opts.logs?.setRestartAfterInstall ??
+          (async (on: boolean): Promise<IpcResult<LogsState>> => ({
+            ok: true,
+            data: { status: 'starting', device: '', name: '', restartAfterInstall: on }
+          }))
       ),
       clear: vi.fn(opts.logs?.clear ?? (async () => undefined)),
       export: vi.fn(

@@ -3,6 +3,7 @@ import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { ErrorState } from '../../ui/ErrorState'
 import { InlineError } from '../../ui/InlineError'
+import { InlineNote } from '../../ui/InlineNote'
 import { LoadingState } from '../../ui/LoadingState'
 import { OfflineState } from '../../ui/OfflineState'
 import { LogFooter } from './LogFooter'
@@ -28,7 +29,10 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
   const { store, filter } = logs
   const name = target?.name ?? ''
   const session = store.state
+  // The session for the target decides first: a running, reconnecting or ended one keeps the
+  // screen while the target shows offline; the offline state is only for no session.
   const current = session.status !== 'idle' && session.device === target?.id ? session : null
+  const shown = blocker === null || current !== null
   const count = visibleCount(store)
   const following = store.seenThrough === null
   const paused = store.pausedThrough !== null
@@ -57,7 +61,7 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
         body="Pick a device in the title bar to follow its log."
         actions={<Button onClick={onSwitchTarget}>Choose a target</Button>}
       />
-    ) : blocker === 'offline' ? (
+    ) : blocker === 'offline' && !current ? (
       <OfflineState
         deviceName={name}
         title="Logs unavailable"
@@ -72,7 +76,9 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
         command={logsCli(filter, current.device)}
         actions={restartButton}
       />
-    ) : current.status === 'running' && store.counts.lines === 0 ? (
+    ) : (current.status === 'running' || current.status === 'reconnecting') &&
+      store.counts.lines === 0 &&
+      store.entries.length === 0 ? (
       <EmptyState
         title={`Waiting for log lines from ${name}`}
         body="Lines show up here as the device logs them."
@@ -95,7 +101,7 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
           {target ? `Live log of ${name} · filtered on this computer` : 'The target’s live log'}
         </div>
       </header>
-      {blocker === null && (
+      {shown && (
         <LogToolbar
           label={current ? sessionLabel(current) : name}
           filter={filter}
@@ -114,7 +120,15 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
           onExport={logs.exportShown}
         />
       )}
-      {blocker === null && current?.status === 'ended' && store.entries.length > 0 && (
+      {current?.status === 'reconnecting' && (
+        <div className="px-6 pt-3">
+          <InlineNote
+            title={`Reconnecting to ${current.name}…`}
+            body="The device dropped. Lines continue here once it’s back."
+          />
+        </div>
+      )}
+      {current?.status === 'ended' && store.entries.length > 0 && (
         <div className="px-6 pt-3">
           <InlineError title={current.error.message} body={current.error.hint}>
             <div>{restartButton}</div>
@@ -122,7 +136,7 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
         </div>
       )}
       {body}
-      {blocker === null && current && current.status !== 'starting' && (
+      {current && current.status !== 'starting' && (
         <LogFooter
           counts={store.counts}
           newLines={newLines(store)}
@@ -135,6 +149,8 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
             logs.setFollow(true)
             logs.resume()
           }}
+          restartAfterInstall={logs.restartAfterInstall}
+          onRestartAfterInstall={logs.setRestartAfterInstall}
         />
       )}
     </div>

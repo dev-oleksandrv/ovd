@@ -48,6 +48,17 @@ describe('logsCli', () => {
   ])('quotes the device %s only when it needs it', (device, cli) => {
     expect(logsCli({}, device)).toBe(cli)
   })
+
+  test.each([
+    [{}, `ovd logs --no-restart-after-install --device ${STICK}`],
+    [
+      { app: 'com.example.player', level: 'e', search: 'tick' },
+      `ovd logs --app com.example.player --level error --grep "tick" --no-restart-after-install --device ${STICK}`
+    ]
+  ])('with restart after install off %o → %s', (filter, cli) => {
+    expect(logsCli(filter, STICK, false)).toBe(cli)
+    expect(logsCli(filter, STICK, true)).toBe(cli.replace(' --no-restart-after-install', ''))
+  })
 })
 
 describe('shellQuote', () => {
@@ -156,12 +167,27 @@ describe('labels', () => {
         status: 'running',
         device: STICK,
         name: 'Fire TV stick',
-        startedAt: at.toISOString()
+        startedAt: at.toISOString(),
+        restartAfterInstall: true
       })
     ).toBe('Fire TV stick · since 07:27:00')
-    expect(sessionLabel({ status: 'starting', device: STICK, name: 'Fire TV stick' })).toBe(
-      'Fire TV stick'
-    )
+    expect(
+      sessionLabel({
+        status: 'reconnecting',
+        device: STICK,
+        name: 'Fire TV stick',
+        startedAt: at.toISOString(),
+        restartAfterInstall: false
+      })
+    ).toBe('Fire TV stick · since 07:27:00')
+    expect(
+      sessionLabel({
+        status: 'starting',
+        device: STICK,
+        name: 'Fire TV stick',
+        restartAfterInstall: true
+      })
+    ).toBe('Fire TV stick')
     expect(sessionLabel({ status: 'idle' })).toBe('')
   })
 
