@@ -2,6 +2,7 @@ import { constants } from 'node:os'
 import { StringDecoder } from 'node:string_decoder'
 import { execa } from 'execa'
 import { OvdError } from '../errors/ovdError.js'
+import { processGroups, type ProcessGroups } from './processGroups.js'
 
 export interface CommandSpec {
   file: string
@@ -57,11 +58,14 @@ const STREAM_STDERR_BYTES = 4_096
 const GROUP_POLL_MS = 25
 
 // Non-zero exits are returned, not thrown: callers decide what an exit code means for their tool.
-export function createExecaRunner(): Runner {
+// Every detached group is in `groups` while it runs, so the surfaces can SIGTERM what is left
+// when OVD exits (CLI exit, second Ctrl+C, SIGTERM, uncaught error; desktop `before-quit` and
+// `will-quit`). A SIGKILL of OVD or a hard crash runs nothing, so those groups stay.
+export function createExecaRunner(groups: ProcessGroups = processGroups): Runner {
   return {
     async run(spec) {
-      if (spec.stream) return runStream(spec, spec.stream)
-      if (spec.stopWhen) return runStopWhen(spec, spec.stopWhen)
+      if (spec.stream) return runStream(spec, spec.stream, groups)
+      if (spec.stopWhen) return runStopWhen(spec, spec.stopWhen, groups)
       const started = Date.now()
       const subprocess = execa(spec.file, spec.args, {
         reject: false,
@@ -100,7 +104,8 @@ export function createExecaRunner(): Runner {
 // own process group, and a match, the timeout or an abort stops the whole group.
 async function runStopWhen(
   spec: CommandSpec,
-  stopWhen: (stdout: string) => boolean
+  stopWhen: (stdout: string) => boolean,
+  groups: ProcessGroups
 ): Promise<RunResult> {
   const started = Date.now()
   const command = spec.display
@@ -113,56 +118,60 @@ async function runStopWhen(
     env: spec.env,
     cwd: spec.cwd
   })
+  const unregister = registerGroup(groups, subprocess.pid)
+  try {
+    let reason: 'matched' | 'timeout' | 'abort' | undefined
+    let stopping: Promise<void> | undefined
+    const exited = subprocess.then(() => undefined)
+    const stop = (why: 'matched' | 'timeout' | 'abort') => {
+      if (reason) return
+      reason = why
+      stopping = stopGroup(subprocess.pid, exited, STREAM_GRACE_MS)
+    }
 
-  let reason: 'matched' | 'timeout' | 'abort' | undefined
-  let stopping: Promise<void> | undefined
-  const exited = subprocess.then(() => undefined)
-  const stop = (why: 'matched' | 'timeout' | 'abort') => {
-    if (reason) return
-    reason = why
-    stopping = stopGroup(subprocess.pid, exited, STREAM_GRACE_MS)
-  }
+    let seen = ''
+    const onData = (chunk: Buffer) => {
+      seen += chunk.toString()
+      spec.onStdout?.(seen)
+      if (stopWhen(seen)) stop('matched')
+    }
+    subprocess.stdout.on('data', onData)
 
-  let seen = ''
-  const onData = (chunk: Buffer) => {
-    seen += chunk.toString()
-    spec.onStdout?.(seen)
-    if (stopWhen(seen)) stop('matched')
-  }
-  subprocess.stdout.on('data', onData)
+    const timeoutMs = spec.timeoutMs ?? DEFAULT_TIMEOUT_MS
+    const timer = timeoutMs > 0 ? setTimeout(() => stop('timeout'), timeoutMs) : undefined
+    const { signal } = spec
+    const onAbort = () => stop('abort')
+    if (signal?.aborted) onAbort()
+    else signal?.addEventListener('abort', onAbort, { once: true })
 
-  const timeoutMs = spec.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const timer = timeoutMs > 0 ? setTimeout(() => stop('timeout'), timeoutMs) : undefined
-  const { signal } = spec
-  const onAbort = () => stop('abort')
-  if (signal?.aborted) onAbort()
-  else signal?.addEventListener('abort', onAbort, { once: true })
+    const result = await subprocess
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
+    subprocess.stdout.off('data', onData)
+    if (stopping) await stopping
 
-  const result = await subprocess
-  clearTimeout(timer)
-  signal?.removeEventListener('abort', onAbort)
-  subprocess.stdout.off('data', onData)
-  if (stopping) await stopping
-
-  if (reason === 'abort') throw abortError(signal)
-  if (reason === 'timeout') throw timedOut(command)
-  if (reason === 'matched') {
+    if (reason === 'abort') throw abortError(signal)
+    if (reason === 'timeout') throw timedOut(command)
+    if (reason === 'matched') {
+      return {
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode ?? STOPPED_EXIT_CODE,
+        durationMs: Date.now() - started,
+        command,
+        stopped: true
+      }
+    }
+    if (result.exitCode === undefined) throw notStarted(command, result.originalMessage)
     return {
       stdout: result.stdout,
       stderr: result.stderr,
-      exitCode: result.exitCode ?? STOPPED_EXIT_CODE,
+      exitCode: result.exitCode,
       durationMs: Date.now() - started,
-      command,
-      stopped: true
+      command
     }
-  }
-  if (result.exitCode === undefined) throw notStarted(command, result.originalMessage)
-  return {
-    stdout: result.stdout,
-    stderr: result.stderr,
-    exitCode: result.exitCode,
-    durationMs: Date.now() - started,
-    command
+  } finally {
+    unregister()
   }
 }
 
@@ -186,7 +195,8 @@ function notStarted(command: string, cause: string | undefined): OvdError {
 
 async function runStream(
   spec: CommandSpec,
-  stream: NonNullable<CommandSpec['stream']>
+  stream: NonNullable<CommandSpec['stream']>,
+  groups: ProcessGroups
 ): Promise<RunResult> {
   const started = Date.now()
   const command = spec.display
@@ -200,53 +210,63 @@ async function runStream(
     env: spec.env,
     cwd: spec.cwd
   })
-  const decoder = new StringDecoder('utf8')
-  subprocess.stdout.on('data', (chunk: Buffer) => {
-    const text = decoder.write(chunk)
-    if (text !== '') stream.onChunk(text)
-  })
-  // The listener stays attached for the whole run: with `buffer: false` nothing else drains
-  // the pipe, and a full stderr pipe blocks the chain.
-  let stderr = ''
-  subprocess.stderr.on('data', (chunk: Buffer) => {
-    if (stderr.length < STREAM_STDERR_BYTES) {
-      stderr = (stderr + chunk.toString()).slice(0, STREAM_STDERR_BYTES)
-    }
-  })
+  const unregister = registerGroup(groups, subprocess.pid)
+  try {
+    const decoder = new StringDecoder('utf8')
+    subprocess.stdout.on('data', (chunk: Buffer) => {
+      const text = decoder.write(chunk)
+      if (text !== '') stream.onChunk(text)
+    })
+    // The listener stays attached for the whole run: with `buffer: false` nothing else drains
+    // the pipe, and a full stderr pipe blocks the chain.
+    let stderr = ''
+    subprocess.stderr.on('data', (chunk: Buffer) => {
+      if (stderr.length < STREAM_STDERR_BYTES) {
+        stderr = (stderr + chunk.toString()).slice(0, STREAM_STDERR_BYTES)
+      }
+    })
 
-  let stopping: Promise<void> | undefined
-  const exited = subprocess.then(() => undefined)
-  const stop = () => {
-    stopping ??= stopGroup(subprocess.pid, exited, stream.graceMs ?? STREAM_GRACE_MS)
-  }
-  const { signal } = spec
-  if (signal?.aborted) stop()
-  else signal?.addEventListener('abort', stop, { once: true })
-
-  const result = await subprocess
-  signal?.removeEventListener('abort', stop)
-  if (stopping) await stopping
-  const rest = decoder.end()
-  if (rest !== '') stream.onChunk(rest)
-  const durationMs = Date.now() - started
-  if (stopping) {
-    return {
-      stdout: '',
-      stderr,
-      exitCode: result.exitCode ?? STOPPED_EXIT_CODE,
-      durationMs,
-      command,
-      stopped: true
+    let stopping: Promise<void> | undefined
+    const exited = subprocess.then(() => undefined)
+    const stop = () => {
+      stopping ??= stopGroup(subprocess.pid, exited, stream.graceMs ?? STREAM_GRACE_MS)
     }
+    const { signal } = spec
+    if (signal?.aborted) stop()
+    else signal?.addEventListener('abort', stop, { once: true })
+
+    const result = await subprocess
+    signal?.removeEventListener('abort', stop)
+    if (stopping) await stopping
+    const rest = decoder.end()
+    if (rest !== '') stream.onChunk(rest)
+    const durationMs = Date.now() - started
+    if (stopping) {
+      return {
+        stdout: '',
+        stderr,
+        exitCode: result.exitCode ?? STOPPED_EXIT_CODE,
+        durationMs,
+        command,
+        stopped: true
+      }
+    }
+    if (result.exitCode === undefined && !result.isTerminated) {
+      throw notStarted(command, result.originalMessage)
+    }
+    // Ended by a signal OVD didn't send (SIGHUP, an OOM kill): reported as a shell would.
+    const exitCode =
+      result.exitCode ??
+      (result.signal === undefined ? STOPPED_EXIT_CODE : 128 + constants.signals[result.signal])
+    return { stdout: '', stderr, exitCode, durationMs, command }
+  } finally {
+    unregister()
   }
-  if (result.exitCode === undefined && !result.isTerminated) {
-    throw notStarted(command, result.originalMessage)
-  }
-  // Ended by a signal OVD didn't send (SIGHUP, an OOM kill): reported as a shell would.
-  const exitCode =
-    result.exitCode ??
-    (result.signal === undefined ? STOPPED_EXIT_CODE : 128 + constants.signals[result.signal])
-  return { stdout: '', stderr, exitCode, durationMs, command }
+}
+
+// A spawn that failed has no pid and nothing to register.
+function registerGroup(groups: ProcessGroups, pid: number | undefined): () => void {
+  return pid === undefined ? () => undefined : groups.register(pid)
 }
 
 // SIGTERM to the whole group, SIGKILL after `graceMs` if any of it is left. Settles once the
