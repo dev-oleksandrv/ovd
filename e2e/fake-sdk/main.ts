@@ -150,10 +150,19 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 // three chunks cut mid-line, then it follows until its process group is signalled.
 async function logStream(w: World): Promise<Reply> {
   const { ends, holdAfterLine } = w.logStream
+  // Every stream's pid, so a test can see which ones still run.
+  appendFileSync(logStreamsFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
   if (ends) return { stdout: fixture('loggingctl-log/stick-follow-reboot.txt') }
+  if (w.logStream.reboot) {
+    // The stick reboots: this stream prints the recording before a reboot and ends (exit 0),
+    // and the stick is away for REBOOT_MS. The world is written back before stdout, so the
+    // stick is already gone when ovd sees the end.
+    w.logStream.reboot = false
+    if (w.stick) w.stick.rebootingUntil = Date.now() + REBOOT_MS
+    return { stdout: fixture('loggingctl-log/stick-follow-reboot.txt') }
+  }
   // Logged now: the stream is stopped, never answers.
   log(true)
-  appendFileSync(logStreamsFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
   if (w.logStream.ignoreFirstSigterm) {
     let sigterms = 0
     process.on('SIGTERM', () => {
