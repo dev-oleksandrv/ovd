@@ -5,18 +5,14 @@
 
 ## Context
 
-A `loggingctl` session only sees apps that were installed before it started. After a reinstall, the log viewer goes silent for the app being debugged, which is the most common "my logs are empty" problem. Logs an app never sends to the stream look the same (see Decision).
+A `loggingctl` session only sees apps that were installed before it started. After a reinstall, the log viewer goes silent for the app being debugged, which is the most common "my logs are empty" problem. Release builds also send no `console.log` output to the stream, which looks the same.
 
 ## Decision
 
 - Core restarts the log stream automatically after every install it performs. The desktop has a "Restart session after install" toggle, on by default.
 - The stream reconnects when a device drops, with an inline note.
 - Each restart is written to the activity log and shown as an OVD line in the log viewer (ADR 0011).
-- What reaches the stream, as seen on a stick (ARCHITECTURE §8, `fixtures/0.24/loggingctl-log/`):
-  - Release builds send `console.log`, `info`, `warn` and `error`.
-  - Debug builds send each line twice.
-  - `console.debug` never shows up, and neither does anything logged before `AppRegistry.registerComponent`.
-  - A bundler config such as Babel `transform-remove-console` may still strip logs.
+- When the followed app is a Release build, the viewer says its JS logs are hidden instead of looking empty.
 
 ## Consequences
 
@@ -26,4 +22,4 @@ A `loggingctl` session only sees apps that were installed before it started. Aft
 
 ## Amendments
 
-- 2026-11-08: Amended 2026-11-08. A stick check showed that Release builds do send `console.log`, `info`, `warn` and `error`, so the Context sentence and the last Decision bullet (a Release build "hides its JS logs") now say what the stick showed, and the Release-build banner is no longer planned.
+- 2026-11-08 (#92, `0c4e284`): a stick check (ARCHITECTURE §8, `fixtures/0.24/loggingctl-log/`) showed that the Context's last sentence and the last Decision bullet are wrong: Release builds do send `console.log`, `info`, `warn` and `error` to the stream, so the viewer won't say a Release build's JS logs are hidden, and the Release-build banner is no longer planned. Also seen on the stick: Debug builds send each line twice; `console.debug` never shows up, and neither does anything logged before `AppRegistry.registerComponent`; a bundler config such as Babel `transform-remove-console` may still strip logs. #92 first rewrote the text above in place; it was restored on 2026-11-09.

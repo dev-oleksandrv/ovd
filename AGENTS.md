@@ -63,7 +63,7 @@ Follow the higher source and flag the conflict in your report with the file:line
 Layout and dependency rules: [ARCHITECTURE §2–3](docs/ARCHITECTURE.md#2-project-structure). In short: all logic in `packages/core`; `apps/cli`, `apps/gui` (and later `apps/mcp`) only call it; `e2e/` runs the built surfaces against a fake SDK; `fixtures/<sdk-version>/` holds recorded SDK output.
 
 - **Wrap, don't reimplement.** Call the user's installed SDK tools; never talk device protocols directly, never bundle SDK binaries, refuse to run without an SDK (ADR 0002). The desktop never shells out to `ovd` (ADR 0001).
-- **CLI and desktop together.** A feature isn't done until both surfaces have it, and every desktop action shows its `ovd …` equivalent (ADR 0005). `--json` on every command, stable shape, meaningful exit codes (ADR 0006).
+- **CLI and desktop together.** A feature isn't done until both surfaces have it, and every desktop action (except view-only ones) shows its `ovd …` equivalent (ADR 0005). `--json` on every command, stable shape, meaningful exit codes (ADR 0006).
 - **Feature order,** in one branch: core action (SDK through the runner, adapter, typed data, activity log) → sanitized fixture (`docs/conventions/testing.md`) → CLI command → desktop screen with loading, empty, error and offline-target states and the CLI echo → tests → e2e in both surfaces, teaching the fake SDK any new command from its fixture (ADR 0023).
 - **E2E in every stage.** A stage isn't done until `pnpm run test:e2e` and the `e2e` CI check pass.
 - **Tests run without hardware.** Real devices are for manual checks only.
