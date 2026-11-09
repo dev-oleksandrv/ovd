@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 import { createInterface } from 'node:readline/promises'
-import { createOvd, type Ovd } from '@ovd/core'
+import { createOvd, processGroups, type Ovd } from '@ovd/core'
+import { installExitHooks } from './exitHooks.js'
 import { runCli } from './runCli.js'
 
 let ovd: Ovd | undefined
+// Before anything runs, and without creating a core: every way out stops the SDK process
+// groups still running.
+const hooks = installExitHooks(process, () => processGroups.stopAll())
 
 process.exitCode = await runCli(process.argv.slice(2), {
   output: {
@@ -12,19 +16,7 @@ process.exitCode = await runCli(process.argv.slice(2), {
   },
   ovd: () => (ovd ??= createOvd({ surface: 'cli' })),
   env: process.env,
-  // A closed stdout pipe (`ovd logs | head`) stops a command like Ctrl+C, so its SDK process
-  // group is stopped instead of left running.
-  onInterrupt: (abort) => {
-    const onPipeError = (error: NodeJS.ErrnoException) => {
-      if (error.code === 'EPIPE') abort()
-    }
-    process.once('SIGINT', abort)
-    process.stdout.on('error', onPipeError)
-    return () => {
-      process.off('SIGINT', abort)
-      process.stdout.off('error', onPipeError)
-    }
-  },
+  onInterrupt: hooks.onInterrupt,
   stdoutTty: process.stdout.isTTY === true,
   ...(process.stdin.isTTY ? { prompt } : {})
 })
