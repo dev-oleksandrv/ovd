@@ -10,7 +10,7 @@ import { LogFooter } from './LogFooter'
 import { LogList } from './LogList'
 import { LogToolbar } from './LogToolbar'
 import { newLines, visibleCount } from './logStore'
-import { logsBlocker, logsCli, packageChoices, sessionLabel } from './logsView'
+import { heldDevice, logsBlocker, logsCli, packageChoices, sessionLabel } from './logsView'
 import { useLogs } from './useLogs'
 
 interface LogsScreenProps {
@@ -27,11 +27,17 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
   const blocker = logsBlocker(target)
   const logs = useLogs(target)
   const { store, filter } = logs
-  const name = target?.name ?? ''
   const session = store.state
-  // The session for the target decides first: a running, reconnecting or ended one keeps the
-  // screen while the target shows offline; the offline state is only for no session.
-  const current = session.status !== 'idle' && session.device === target?.id ? session : null
+  // Without a target, the session main keeps while its device reconnects stays on screen.
+  const held = heldDevice(session, target)
+  const name = target?.name ?? (held !== null && session.status !== 'idle' ? session.name : '')
+  // The session for the target decides first: a running or reconnecting one keeps the screen
+  // while the target shows offline. An ended one on an offline target gives way to the offline
+  // state, with why it ended: Restart can't work until the target is back.
+  const forTarget =
+    session.status !== 'idle' && session.device === (target?.id ?? held) ? session : null
+  const endedOffline = blocker === 'offline' && forTarget?.status === 'ended' ? forTarget : null
+  const current = endedOffline ? null : forTarget
   const shown = blocker === null || current !== null
   const count = visibleCount(store)
   const following = store.seenThrough === null
@@ -55,7 +61,7 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
   )
 
   const body =
-    blocker === 'no-target' ? (
+    blocker === 'no-target' && !current ? (
       <EmptyState
         title="No target device"
         body="Pick a device in the title bar to follow its log."
@@ -65,6 +71,9 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
       <OfflineState
         deviceName={name}
         title="Logs unavailable"
+        {...(endedOffline
+          ? { detail: `The last log session ended: ${endedOffline.error.message}` }
+          : {})}
         actions={<Button onClick={onSwitchTarget}>Switch target</Button>}
       />
     ) : !current || current.status === 'starting' ? (
@@ -98,7 +107,7 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
       <header className="flex flex-col gap-1 border-b border-line px-6 pt-5 pb-4">
         <h1 className="m-0 text-heading font-semibold tracking-[-0.015em]">Logs</h1>
         <div className="text-muted">
-          {target ? `Live log of ${name} · filtered on this computer` : 'The target’s live log'}
+          {name ? `Live log of ${name} · filtered on this computer` : 'The target’s live log'}
         </div>
       </header>
       {shown && (

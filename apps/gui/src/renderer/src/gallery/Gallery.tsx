@@ -460,6 +460,14 @@ export function Gallery() {
               actions={<Button icon="wifi">Reconnect</Button>}
             />
           </div>
+          <div className="rounded-card border border-line">
+            <OfflineState
+              deviceName="Living room stick"
+              title="Logs unavailable"
+              detail="The last log session ended: the device stayed away for 5 minutes."
+              actions={<Button>Switch target</Button>}
+            />
+          </div>
         </div>
         <div className="w-full">
           <BlockedNotice

@@ -167,14 +167,11 @@ describe('createLogsController', () => {
     expect(sent.at(-1)).toMatchObject({ kind: 'reset', session: 2 })
   })
 
-  test.each([
-    ['another device', VVD],
-    ['no target', null]
-  ])('a target change to %s stops the session and goes idle', async (_n, target) => {
+  test('a target change to another device stops the session and goes idle', async () => {
     const { controller, start, sessions, sent } = setup()
     await controller.open(STICK)
     await settle()
-    await controller.targetChanged(target)
+    await controller.targetChanged(VVD)
     expect(sessions[0]?.ended()).toEqual({ reason: 'stopped' })
     expect(sent.slice(-2)).toEqual([
       { kind: 'state', session: 2, state: { status: 'idle' } },
@@ -198,6 +195,31 @@ describe('createLogsController', () => {
     await controller.open(STICK)
     await controller.targetChanged(VVD)
     await settle()
+    expect(sessions[0]?.ended()).toEqual({ reason: 'stopped' })
+    expect(controller.running()).toBe(false)
+  })
+
+  test('no target (the device dropped, nothing remembered) keeps the session running', async () => {
+    const { controller, start, sessions, sent } = setup()
+    await controller.open(STICK)
+    await settle()
+    const before = sent.length
+    await controller.targetChanged(null)
+    expect(sent).toHaveLength(before)
+    expect(sessions[0]?.ended()).toBeUndefined()
+    expect(controller.running()).toBe(true)
+    // The device is back: still the same session, no new start.
+    await controller.targetChanged(STICK)
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(controller.device()).toBe(STICK)
+  })
+
+  test('another device after no target still replaces the session', async () => {
+    const { controller, sessions } = setup()
+    await controller.open(STICK)
+    await settle()
+    await controller.targetChanged(null)
+    await controller.targetChanged(VVD)
     expect(sessions[0]?.ended()).toEqual({ reason: 'stopped' })
     expect(controller.running()).toBe(false)
   })

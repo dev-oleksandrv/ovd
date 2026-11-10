@@ -254,6 +254,28 @@ test.describe('Logs', () => {
       await expect(rows(page).nth(0)).toContainText('Device dropped · reconnecting…')
       await expect(rows(page).nth(1)).toContainText('Log session reconnected')
     })
+
+    test('a reboot with no remembered target: the session stays, with its note, and reconnects', async ({
+      sandbox,
+      launch
+    }) => {
+      sandbox.installSdk()
+      // Not remembered: the stick is the target only while it is the one online device, so the
+      // target is gone while it reboots. Main keeps the session (it reconnects by itself).
+      const { page } = await launch()
+      await openLogs(page)
+
+      const note = page.getByRole('status').filter({ hasText: 'Reconnecting to Fire TV stick…' })
+      await expect(note).toBeVisible()
+      await expect(page.getByText('No target device')).toHaveCount(0)
+      await expect(note).toHaveCount(0)
+      await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
+      // One session throughout: the first stream and the reconnect, no fresh start.
+      expect(sandbox.calls().filter((c) => c === LOG)).toHaveLength(2)
+      await page.getByRole('textbox', { name: 'Search logs' }).fill('no device line says this')
+      await expect(rows(page)).toHaveCount(2)
+      await expect(rows(page).nth(1)).toContainText('Log session reconnected')
+    })
   })
 
   test.describe('ended', () => {
@@ -280,6 +302,35 @@ test.describe('Logs', () => {
       await expect(toast(page, `ovd logs --device ${STICK_SERIAL}`).first()).toBeVisible()
       // The new session's streams end at once too.
       await expect.poll(() => sandbox.calls().filter((c) => c === LOG).length).toBeGreaterThan(3)
+    })
+
+    test('an ended session whose target goes offline: Logs unavailable with why, then Restart once it is back', async ({
+      sandbox,
+      launch
+    }) => {
+      sandbox.installSdk()
+      // Remembered as the target, so it stays the target once it is gone.
+      expect((await ovd(sandbox, ['target', 'set', STICK_SERIAL])).exitCode).toBe(0)
+      const { page } = await launch()
+      await openLogs(page)
+      const error = page.getByRole('alert').filter({ hasText: 'Fire TV stick’s log stream ended' })
+      await expect(error).toBeVisible()
+
+      sandbox.update((w) => {
+        if (w.stick) w.stick.usbCable = false
+      })
+
+      await expect(page.getByText('Logs unavailable — Fire TV stick is offline')).toBeVisible()
+      await expect(
+        page.getByText('The last log session ended: Fire TV stick’s log stream ended')
+      ).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Restart', exact: true })).toHaveCount(0)
+
+      sandbox.update((w) => {
+        if (w.stick) w.stick.usbCable = true
+      })
+
+      await expect(error.getByRole('button', { name: 'Restart' })).toBeVisible()
     })
   })
 })

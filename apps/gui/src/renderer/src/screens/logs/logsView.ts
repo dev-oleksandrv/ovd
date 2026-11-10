@@ -147,6 +147,13 @@ export function sessionLabel(state: LogsState): string {
 }
 
 // Why the log can't be read, or null when it can (as the Apps screen decides it).
+// The device of a session main keeps while there's no target at all (the only online device
+// dropped, nothing remembered): it's reconnecting, so the screen stays on it. Null otherwise.
+export function heldDevice(state: LogsState, target: Device | undefined): string | null {
+  if (target !== undefined) return null
+  return state.status === 'running' || state.status === 'reconnecting' ? state.device : null
+}
+
 export function logsBlocker(target: Device | undefined): 'no-target' | 'offline' | null {
   return appsBlocker(target)
 }
