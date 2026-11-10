@@ -9,10 +9,28 @@ export interface LogTextOptions {
 const TAG_WIDTH = 24
 const PID_WIDTH = 6
 
+// Control characters in device text (an app's own `console.log`, a tag) would reach the
+// terminal, or a viewer of the exported file, as escape sequences that move the cursor,
+// recolor or rewrite lines, and bidi controls would reorder a line visually. They are shown as
+// visible escapes instead: C0 (but tab and newline), DEL and C1 as `\xHH`, bidi as `\u{HHHH}`.
+// `--json` keeps the device text exact.
+const CONTROLS =
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point
+  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
+
+function escapeControls(text: string): string {
+  return text.replace(CONTROLS, (char) => {
+    const code = char.charCodeAt(0)
+    return code <= 0xff
+      ? `\\x${code.toString(16).padStart(2, '0')}`
+      : `\\u{${code.toString(16).padStart(4, '0')}}`
+  })
+}
+
 // The plain-text line format of `ovd logs` and of the desktop's Export, which must match, so
 // it lives here as an export format (surfaces can't share code with each other):
 // `HH:MM:SS.mmm L <tag> <pid> <message>` in host local time, continuation lines indented to
-// the message column.
+// the message column, control characters escaped (`escapeControls`).
 export function logText(entry: LogEntry, opts: LogTextOptions = {}): string {
   const time = clock(new Date(entry.time))
   if (entry.ovd !== undefined) {
@@ -22,11 +40,11 @@ export function logText(entry: LogEntry, opts: LogTextOptions = {}): string {
   }
   const level = opts.paintLevel ? opts.paintLevel(entry.level, entry.level) : entry.level
   const pid = (entry.pid === null ? '-' : String(entry.pid)).padStart(PID_WIDTH)
-  const columns = `${entry.tag.padEnd(TAG_WIDTH)} ${pid} `
+  const columns = `${escapeControls(entry.tag).padEnd(TAG_WIDTH)} ${pid} `
   // The indent counts the unpainted prefix: paint adds invisible characters only.
   const indent = ' '.repeat(`${time} ${entry.level} ${columns}`.length)
   const head = `${time} ${level} ${columns}`
-  const [first = '', ...rest] = entry.message.split('\n')
+  const [first = '', ...rest] = escapeControls(entry.message).split('\n')
   return [head + first, ...rest.map((line) => indent + line)].join('\n') + '\n'
 }
 
