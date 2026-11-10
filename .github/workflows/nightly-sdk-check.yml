@@ -1,0 +1,96 @@
+name: Nightly SDK check
+
+# Stage 3.7 (ADR 0007): the built CLI against the latest public Vega SDK and a headless Virtual
+# Device. scripts/nightly-sdk-check.mjs does the work; this file installs what it needs.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+  # A change to the check proves itself on a real runner. Read-only: no issue is opened.
+  pull_request:
+    paths:
+      - .github/workflows/nightly-sdk-check.yml
+      - scripts/nightly-sdk-check.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-sdk-check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Setup, the SDK install (15) and the script (80) with room to upload.
+    timeout-minutes: 105
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The CLI bundles core with tsup, so this builds everything the check runs.
+      - run: pnpm --filter @ovd/cli build
+      # The sanitizer and leak check on made-up input, before any real output exists.
+      - run: node scripts/nightly-sdk-check.mjs --self-test
+      # The Virtual Device needs /dev/kvm; hosted runners expose it only after this rule.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # The SDK installer uses jq and lz4.
+      - run: sudo apt-get update && sudo apt-get install -y jq lz4
+      # Public installer, no sign-in. The hash is printed, not pinned: the job tests the latest.
+      - name: Install the latest Vega SDK
+        timeout-minutes: 15
+        run: |
+          curl -fsSL https://sdk-installer.vega.labcollab.net/get_vvm.sh -o "$RUNNER_TEMP/get_vvm.sh"
+          sha256sum "$RUNNER_TEMP/get_vvm.sh"
+          NONINTERACTIVE=true bash "$RUNNER_TEMP/get_vvm.sh"
+          echo "$HOME/vega/bin" >> "$GITHUB_PATH"
+      # The script's own step timeouts add up to about 74 minutes. A step timeout signals the
+      # script, which sanitizes its output before it exits.
+      - name: Run the check
+        timeout-minutes: 80
+        run: node scripts/nightly-sdk-check.mjs
+      - name: Add the summary
+        if: always()
+        run: |
+          if [ -f .work/nightly/summary.md ]; then cat .work/nightly/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+      # Sanitized recordings and CLI output; new fixtures when the SDK major.minor changed.
+      - name: Upload the recordings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-sdk-check
+          path: .work/nightly
+          if-no-files-found: ignore
+
+  # A failed, cancelled or timed-out scheduled or manual run opens one issue, then comments on it
+  # while it stays open.
+  report:
+    needs: check
+    if: always() && needs.check.result != 'success' && needs.check.result != 'skipped' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the issue
+        run: |
+          title='Nightly SDK check failed'
+          number=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" \
+            --json number,title --jq ".[] | select(.title == \"$title\") | .number" | head -n 1)
+          if [ -n "$number" ]; then
+            gh issue comment "$number" -R "$GITHUB_REPOSITORY" --body "Failed again: $RUN_URL"
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$title" \
+              --body "The nightly SDK check failed: $RUN_URL. The run's artifact has the sanitized recordings."
+          fi

@@ -26,4 +26,6 @@ When an SDK version changes a tool's output, add a new version folder. Keep the 
 3. Add a line to the version folder's `README.md`: file, command, device type, date.
 4. Never hand-edit a fixture's structure to make a test pass. Re-record instead.
 
+The nightly SDK check (`scripts/nightly-sdk-check.mjs`) uploads its sanitized recordings as an artifact. For an SDK major.minor with no folder yet, they are laid out as `<x.y>/<tool>/virtual-device-nightly-<NNN>.<ext>` with a `README.md`; rename them to their cases and check them before committing.
+
 The e2e fake SDK (`e2e/fake-sdk/`) answers with these files too (ADR 0023), so a new command's recording is what makes its flow testable end to end.

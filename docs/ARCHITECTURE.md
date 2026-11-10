@@ -226,6 +226,9 @@ OVD designs around these. This list is the one home for SDK behavior: add new fi
 - The stick's journal rotates fast enough that a crash right after launch is gone from it moments later, so only a log capture running during the launch catches the crash's lines (the app's own JS error, logged in Release too, the `acr_core_dump` "crashed with signal 6" line and the LCM death line).
 - A background capture survives the `vda shell` call that started it: `f=$(mktemp)`, then `timeout <s> loggingctl log -f -o short_precise > "$f" 2>&1 &`, then `echo "$f $!"` prints the file and the `timeout` pid in 0.6 s. `kill <pid>` alone leaves `loggingctl` running as an orphan; `pkill -P <pid>` ends it, and `timeout` ends both if nothing stops them. Device temp files are in a 476 MB tmpfs. The device has Toybox `timeout`, `pkill`, `sed` and `grep`.
 - Right after `vega virtual-device start` reports ready, VDA can drop the Virtual Device for a few seconds (`vda: device 'emulator-5554' not found`) and list it again under a new transport ID.
+- The SDK installs with no sign-in or secret (checked 2026-11-10): `get_vvm.sh` from `sdk-installer.vega.labcollab.net`, run with `NONINTERACTIVE=true`, puts the Vega CLI in `~/vega/bin`; `VEGA_SDK_VERSION` and `SKIP_VVD_INSTALL` are optional. `vega sdk list-remote --json` works signed out; the latest SDK was 2.0.13986.
+- `vega virtual-device start` takes `--no-gui`, `--no-gl-accel` (Linux only) and `--timeout <s>` (default 60). With `--no-gui` the Virtual Device boots as usual on macOS (aarch64, 7–10 s, checked 2026-11-10). On Ubuntu it needs `/dev/kvm`.
+- `vega project generate -t helloWorld -n <name> --packageId <id> -o <dir>` writes the project into `<dir>` itself, in about 2 s (checked 2026-11-10). `npm install` takes its dependencies from public npm, and `npm run build:debug` builds it. The template is pure JS, so its packages are `any` (ADR 0008), and its JS logs nothing: the app's only lines come from native code in its process, whose identity is the package ID's last 15 characters (`ample.hellovega`), so `ovd logs --app` shows none of them.
 
 ## 9. Testing
 
@@ -234,7 +237,7 @@ OVD designs around these. This list is the one home for SDK behavior: add new fi
 - Fixtures are sanitized with the neutral sample data (ADR 0016).
 - CLI tests assert `--json` output and exit codes. No snapshot tests.
 - End-to-end tests (`e2e/`, `pnpm run test:e2e`) run the built CLI and desktop app against a fake SDK that answers only with recorded fixtures (ADR 0023). They check user flows, the SDK commands run and the state left behind. CI runs them as the required `e2e` job.
-- Real-device behavior is checked manually. The nightly SDK job (Stage 3.7, not built yet) will cover the Virtual Device (ADR 0007).
+- Real-device behavior is checked manually. The nightly SDK check (Stage 3.7, ADR 0007) covers the Virtual Device: `.github/workflows/nightly-sdk-check.yml` installs the latest SDK on `ubuntu-latest` and runs `scripts/nightly-sdk-check.mjs`. The script starts a headless Virtual Device, builds a throwaway `com.example.hellovega`, and runs `doctor`, `devices`, `pkg info`, `install`, `apps launch` and `logs` from the built CLI with `--json`. A recording `vega` shim at `OVD_VEGA` (core checks it before PATH) records every SDK call. The output is sanitized and leak-checked, and laid out as fixtures when the SDK's major.minor has no folder yet. A failed scheduled run opens or comments on the issue "Nightly SDK check failed".
 
 ## 10. Decisions
 
