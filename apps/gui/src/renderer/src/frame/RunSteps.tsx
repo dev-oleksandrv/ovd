@@ -63,7 +63,7 @@ export function RunSteps({ state, cli, onOpenLogs }: RunStepsProps) {
                 {row.detail && (
                   <span
                     className={cx(
-                      'font-mono text-label break-all',
+                      'font-mono text-label wrap-anywhere',
                       row.status === 'failed' ? 'text-error-text' : 'text-muted'
                     )}
                   >
