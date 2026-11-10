@@ -697,6 +697,15 @@ export function Gallery() {
           <ToggleButton label="Regex" pressed={regex} onChange={setRegex} mono>
             .*
           </ToggleButton>
+          <ToggleButton
+            icon="visibility"
+            pressed={false}
+            onChange={() => undefined}
+            disabled
+            disabledReason="Vega Virtual Device is offline"
+          >
+            Watch off
+          </ToggleButton>
           <MenuButton
             label="Export"
             icon="download"

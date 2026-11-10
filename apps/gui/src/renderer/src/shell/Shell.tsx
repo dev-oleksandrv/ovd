@@ -13,6 +13,7 @@ import { SdkStatus } from '../frame/SdkStatus'
 import { SearchButton } from '../frame/SearchButton'
 import { TargetPicker } from '../frame/TargetPicker'
 import { TargetStatus } from '../frame/TargetStatus'
+import { WatchToggle } from '../frame/WatchToggle'
 import { DevicesScreen } from '../screens/devices/DevicesScreen'
 import { AppsScreen } from '../screens/apps/AppsScreen'
 import { LogsScreen } from '../screens/logs/LogsScreen'
@@ -21,6 +22,7 @@ import { PairWizard } from '../pairing/PairWizard'
 import { useFileDrop } from '../project/useFileDrop'
 import { useProject } from '../project/useProject'
 import { useRun } from '../run/useRun'
+import { useWatch } from '../run/useWatch'
 import { SetupWizard } from '../setup/SetupWizard'
 import { firstRunNeeded, gateFailure, gateOpen } from '../screens/environment/doctorView'
 import { EnvironmentScreen } from '../screens/environment/EnvironmentScreen'
@@ -114,6 +116,7 @@ export function Shell() {
   // A verified run opens Logs; a crash's toast and the steps offer it.
   const openLogs = (): void => void go('logs')
   const run = useRun({ onDone: openLogs, onOpenLogs: openLogs })
+  const watch = useWatch({ mode: projectMode, run })
 
   const runDoctor = async (): Promise<void> => {
     const result = await doctor.run()
@@ -180,6 +183,12 @@ export function Shell() {
             state={run.state}
             onRun={(device) => void run.start(device)}
             onOpenLogs={openLogs}
+          />
+          <WatchToggle
+            mode={projectMode}
+            target={target}
+            watching={watch.watching}
+            onToggle={() => void watch.toggle(target?.id)}
           />
           <div className="flex-1" />
           <SearchButton

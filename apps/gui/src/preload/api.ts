@@ -9,6 +9,7 @@ import type {
   ErrorJson,
   ForgetResult,
   InstallResult,
+  InstallTarget,
   LaunchResult,
   LogCounts,
   LogEntry,
@@ -107,6 +108,28 @@ export type FollowOutcome = 'started' | 'restarted' | 'skipped' | 'timeout'
 
 // What main pushes while a run goes: each step as it starts, and how its log step went.
 export type RunProgress = { kind: 'step'; step: RunStep } | { kind: 'logs'; outcome: FollowOutcome }
+
+// Watch (Stage 3.5): main watches the open project's `build/` folder. `folder` is its display
+// path. Main is the source of truth: it pushes every change of it as a `state` event.
+export type WatchState = { watching: false } | { watching: true; folder: string }
+
+// A settled batch of the watched build folder, as core's `BuildChange` with its error as data.
+// `build`: the changed build main redeploys on `target`; absent when none fits it or `error`.
+export interface WatchChange {
+  folder: string
+  changed: PackageBuild[]
+  build?: PackageBuild
+  target?: InstallTarget
+  error?: ErrorJson
+}
+
+// What main pushes while watching: its state, each batch (before its redeploy), the redeploy's
+// result, and `stopped` when the watch ended by itself (another project was opened).
+export type WatchEvent =
+  | ({ kind: 'state' } & WatchState)
+  | { kind: 'changed'; change: WatchChange }
+  | { kind: 'redeployed'; device: string; result: IpcResult<RunOutcome> }
+  | { kind: 'stopped' }
 
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson }
@@ -227,6 +250,13 @@ export interface OvdApi {
     start(device: string): Promise<IpcResult<RunOutcome>>
     onProgress(listener: (progress: RunProgress) => void): () => void
   }
+  watch: {
+    // `ovd run --watch --device <id>` without the first run: watches the open project folder and
+    // redeploys each new build on the target. Idempotent; NOT_A_PROJECT without a folder open.
+    set(on: boolean): Promise<IpcResult<WatchState>>
+    state(): Promise<WatchState>
+    onEvent(listener: (event: WatchEvent) => void): () => void
+  }
 }
 
 export const channels = {
@@ -275,5 +305,8 @@ export const channels = {
   logsExport: 'ovd:logs:export',
   logsUpdate: 'ovd:logs:update',
   run: 'ovd:run',
-  runProgress: 'ovd:run:progress'
+  runProgress: 'ovd:run:progress',
+  watchSet: 'ovd:watch:set',
+  watchState: 'ovd:watch:state',
+  watchEvent: 'ovd:watch:event'
 } as const

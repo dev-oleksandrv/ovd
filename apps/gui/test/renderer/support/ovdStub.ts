@@ -29,7 +29,9 @@ import type {
   LogsUpdate,
   OvdApi,
   RunProgress,
-  SdkSummary
+  SdkSummary,
+  WatchEvent,
+  WatchState
 } from '../../../src/preload/api'
 
 export interface OvdStub {
@@ -42,6 +44,8 @@ export interface OvdStub {
   pushLogs: (update: LogsUpdate) => void
   // Pushes a run's progress as main does.
   pushRun: (progress: RunProgress) => void
+  // Pushes a watch event as main does.
+  pushWatch: (event: WatchEvent) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -135,10 +139,13 @@ export function stubOvd(opts: {
   // A session that starts and sends nothing unless a test says otherwise.
   logs?: Partial<Omit<OvdApi['logs'], 'onUpdate'>>
   run?: Partial<Omit<OvdApi['run'], 'onProgress'>>
+  // Off, and turned on and off as main does, unless a test says otherwise.
+  watch?: Partial<Omit<OvdApi['watch'], 'onEvent'>>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   let logsListener: ((update: LogsUpdate) => void) | undefined
   let runListener: ((progress: RunProgress) => void) | undefined
+  let watchListener: ((event: WatchEvent) => void) | undefined
   const starting = (device: string): IpcResult<LogsState> => ({
     ok: true,
     data: { status: 'starting', device, name: device, restartAfterInstall: true }
@@ -303,6 +310,22 @@ export function stubOvd(opts: {
           runListener = undefined
         }
       }
+    },
+    watch: {
+      set: vi.fn(
+        opts.watch?.set ??
+          (async (on: boolean): Promise<IpcResult<WatchState>> => ({
+            ok: true,
+            data: on ? { watching: true, folder: '~/dev/hellovega' } : { watching: false }
+          }))
+      ),
+      state: vi.fn(opts.watch?.state ?? (async (): Promise<WatchState> => ({ watching: false }))),
+      onEvent: (l) => {
+        watchListener = l
+        return () => {
+          watchListener = undefined
+        }
+      }
     }
   }
   window.ovd = api
@@ -311,6 +334,7 @@ export function stubOvd(opts: {
     push: (update) => listener?.(update),
     prompt: (p) => promptListener?.(p),
     pushLogs: (u) => logsListener?.(u),
-    pushRun: (p) => runListener?.(p)
+    pushRun: (p) => runListener?.(p),
+    pushWatch: (e) => watchListener?.(e)
   }
 }

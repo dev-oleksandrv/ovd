@@ -23,6 +23,9 @@ export function registerLogsIpc(
   // The run's log step (`runIpc.ts`) goes through the same session.
   armRestart: LogsController['armRestart']
   follow: LogsController['follow']
+  // Watch makes sure a session follows the target (`watchIpc.ts`).
+  open: LogsController['open']
+  device: LogsController['device']
 } {
   const controller = createLogsController({
     logs: ovd.logs,
@@ -80,7 +83,9 @@ export function registerLogsIpc(
       void controller.targetChanged(target)
     },
     armRestart: (device) => controller.armRestart(device),
-    follow: (device, arm) => controller.follow(device, arm)
+    follow: (device, arm) => controller.follow(device, arm),
+    open: (device) => controller.open(device),
+    device: () => controller.device()
   }
 
   // `ovd-logs-<device>-<YYYYMMDD-HHMMSS>.<txt|jsonl>`, with `:` (an IP:port) as `-`.
