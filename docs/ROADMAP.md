@@ -239,11 +239,11 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** a rebuild redeploys and logs continue without manual steps.
 
-### 3.6 First-release polish — partly done (Homebrew tap pending)
+### 3.6 First-release polish — done (PR #104)
 
 - Palette lists Crashes, Remote & Screen, Shell, Deep links, Performance, Scenarios & MCP as "Coming in a later version".
 - Loading, empty, error and offline-target states on every first-release screen.
-- Homebrew tap (`brew install ovd`). Needs the maintainer's approval and a published release.
+- The Homebrew tap moved to Stage 4 (4.6): it needs a published release first.
 
 ### 3.7 Nightly SDK check — done (PR #105)
 
@@ -266,6 +266,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 - **4.3 Screenshots:** `ovd screenshot [--out] [--clipboard]`; button and palette action; saved to `~/ovd/captures` and the clipboard; Captures list. _Expected:_ one click saves a PNG from either device type.
 - **4.4 Screen view:** Virtual Device live view ("Live · emulator gRPC", ~16+ fps); stick "Latest screenshot · <time>" with Refresh (marked out of date after a key press); "No signal" when offline.
 - **4.5 Reboot & wait:** `ovd reboot` returns when the device is back; desktop shows "Rebooting…". _Expected:_ a stick returns to Online without manual reconnecting.
+- **4.6 Homebrew tap:** `brew install ovd` from a tap whose formula installs the published `@ovd/cli` release (ADR 0015, moved from 3.6). A packaging change, so it needs the maintainer's approval first. _Expected:_ `brew install ovd` on macOS and Ubuntu gives a working `ovd`.
 
 **E2E:** keys and text reaching each device type through its backend; Home disabled on the Virtual Device; screenshots saved and listed; screen view states including "No signal"; reboot returning to Online.
 
@@ -440,10 +441,10 @@ About an hour each, done just before the stage that needs them.
 
 Starting targets, revisited after Stage 3.
 
-| Metric                              | How                                  | Target                             |
-| ----------------------------------- | ------------------------------------ | ---------------------------------- |
-| .vpkg to running app with live logs | Stopwatch vs raw SDK commands        | Under 30 s, at least 2× faster     |
-| Raw SDK commands in a working day   | Self-tracking over a week            | Zero for install, launch, logs     |
-| "Empty logs" after reinstall        | Count while dogfooding               | Zero                               |
-| Outside adoption                    | Stars, npm downloads, outside issues | Tracked from first public release  |
-| Outside contributors                | Merged PRs from non-maintainers      | At least one by the end of Stage 5 |
+| Metric                              | How                                                  | Target                             |
+| ----------------------------------- | ---------------------------------------------------- | ---------------------------------- |
+| .vpkg to running app with live logs | Stopwatch vs a developer typing the raw SDK commands | Under 30 s, at least 2× faster     |
+| Raw SDK commands in a working day   | Self-tracking over a week                            | Zero for install, launch, logs     |
+| "Empty logs" after reinstall        | Count while dogfooding                               | Zero                               |
+| Outside adoption                    | Stars, npm downloads, outside issues                 | Tracked from first public release  |
+| Outside contributors                | Merged PRs from non-maintainers                      | At least one by the end of Stage 5 |
