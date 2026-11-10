@@ -1,8 +1,8 @@
 import {
   isOvdError,
-  logTextAll,
   toErrorJson,
   type ErrorJson,
+  type LogEntry,
   type LogSession,
   type Ovd
 } from '@ovd/core'
@@ -19,8 +19,9 @@ export interface LogsController {
   // The footer toggle, for the running session and every later one; returns the new state.
   setRestartAfterInstall(on: boolean): LogsState
   clear(): void
-  // The shown lines as plain text (the `ovd logs` format); null without a session.
-  exportText(throughSeq?: number): { text: string; lines: number } | null
+  // The shown entries (up to `throughSeq`) and the time of the last one, which the CLI echo's
+  // `--until` ends at; null without a session.
+  exportEntries(throughSeq?: number): { entries: LogEntry[]; until: string | null } | null
   // Stops the session and waits until its process group is gone.
   stop(): Promise<void>
   running(): boolean
@@ -188,10 +189,10 @@ export function createLogsController(opts: {
       current.clear()
       resetFrom(session, current)
     },
-    exportText(throughSeq) {
+    exportEntries(throughSeq) {
       if (!current) return null
       const entries = current.entries(throughSeq)
-      return { text: logTextAll(entries), lines: entries.length }
+      return { entries, until: entries.at(-1)?.time ?? null }
     },
     async stop() {
       await replace()

@@ -12,6 +12,7 @@ const build = (
   const opts = {
     go: vi.fn(),
     runDoctor: vi.fn(),
+    exportLogs: vi.fn(),
     setup: vi.fn(),
     pair: vi.fn(),
     switchTarget: vi.fn(),
@@ -34,6 +35,8 @@ describe('paletteItems', () => {
       ['Pair a device over Wi‑Fi…', 'Action'],
       ['Start Virtual Device', 'Action'],
       ['Run ovd doctor', 'Action'],
+      ['Export logs as plain text…', 'Action'],
+      ['Export logs as JSON lines…', 'Action'],
       ['Switch target to Vega Virtual Device', 'Device'],
       ['Switch target to Bedroom stick', 'Device'],
       ...LATER.map(([label]) => [label, 'Coming in a later version'])
@@ -68,6 +71,10 @@ describe('paletteItems', () => {
     expect(opts.pair).toHaveBeenCalled()
     items[8]?.run()
     expect(opts.runDoctor).toHaveBeenCalled()
+    items[9]?.run()
+    expect(opts.exportLogs).toHaveBeenLastCalledWith('text')
+    items[10]?.run()
+    expect(opts.exportLogs).toHaveBeenLastCalledWith('jsonl')
   })
 
   test('filters by a case-insensitive substring, ignoring surrounding spaces', () => {

@@ -133,7 +133,7 @@ describe('command palette', () => {
   test('⌘K opens it with Devices, Apps, Packages, Logs, Doctor, the other devices and later screens', async () => {
     await renderShell()
     open()
-    expect(options().slice(0, 11)).toEqual([
+    expect(options().slice(0, 13)).toEqual([
       'Go to Devices',
       'Go to Apps',
       'Go to Packages',
@@ -143,6 +143,8 @@ describe('command palette', () => {
       'Pair a device over Wi‑Fi…',
       'Start Virtual Device',
       'Run ovd doctor',
+      'Export logs as plain text…',
+      'Export logs as JSON lines…',
       'Switch target to Vega Virtual Device',
       'Switch target to Bedroom stick'
     ])
@@ -191,9 +193,9 @@ describe('command palette', () => {
     const { api } = await renderShell()
     open()
     const input = screen.getByRole('combobox')
-    for (let i = 0; i < 10; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
+    for (let i = 0; i < 12; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'ArrowUp' })
-    expect(screen.getAllByRole('option')[9]?.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getAllByRole('option')[11]?.getAttribute('aria-selected')).toBe('true')
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(api.devices.setTarget).toHaveBeenCalledWith('VirtualDevice')
   })
@@ -203,5 +205,39 @@ describe('command palette', () => {
     const dialog = open()
     fireEvent.click(dialog.parentElement as HTMLElement)
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('Export logs as JSON lines… goes to Logs and exports once the session runs', async () => {
+    const stub = stubOvd({
+      list: async () => ready(devices, stick.id),
+      devices,
+      logs: { export: async () => ({ ok: true, data: { status: 'canceled' } }) }
+    })
+    render(
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
+    )
+    await screen.findByRole('list', { name: 'Devices' })
+    open()
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'JSON lines' } })
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })
+    expect(await screen.findByRole('heading', { name: 'Logs', level: 1 })).toBeTruthy()
+    expect(stub.api.logs.export).not.toHaveBeenCalled()
+    act(() =>
+      stub.pushLogs({
+        kind: 'state',
+        session: 1,
+        state: {
+          status: 'running',
+          device: stick.id,
+          name: stick.name,
+          startedAt: '2026-11-08T07:27:00.000Z',
+          restartAfterInstall: true
+        }
+      })
+    )
+    await vi.waitFor(() => expect(stub.api.logs.export).toHaveBeenCalledWith({ format: 'jsonl' }))
+    expect(stub.api.logs.export).toHaveBeenCalledTimes(1)
   })
 })

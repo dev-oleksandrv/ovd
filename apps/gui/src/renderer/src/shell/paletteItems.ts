@@ -1,4 +1,4 @@
-import type { Device } from '@ovd/core'
+import type { Device, LogExportFormat } from '@ovd/core'
 import type { VvdBusy } from '../screens/devices/deviceView'
 
 export type Screen = 'devices' | 'apps' | 'packages' | 'logs' | 'doctor'
@@ -29,6 +29,8 @@ export function paletteItems(opts: {
   target: string | null
   go: (screen: Screen) => void
   runDoctor: () => void
+  // Goes to Logs and exports the shown lines, as the toolbar's Export does.
+  exportLogs: (format: LogExportFormat) => void
   vvd: { busy: VvdBusy; start: () => void; stop: () => void }
   setup: () => void
   pair: () => void
@@ -100,6 +102,22 @@ export function paletteItems(opts: {
       kind: 'Action',
       later: false,
       run: opts.runDoctor
+    },
+    {
+      id: 'action:export-logs-text',
+      label: 'Export logs as plain text…',
+      icon: 'download',
+      kind: 'Action',
+      later: false,
+      run: () => opts.exportLogs('text')
+    },
+    {
+      id: 'action:export-logs-jsonl',
+      label: 'Export logs as JSON lines…',
+      icon: 'download',
+      kind: 'Action',
+      later: false,
+      run: () => opts.exportLogs('jsonl')
     },
     ...opts.devices
       .filter((device) => device.id !== opts.target)

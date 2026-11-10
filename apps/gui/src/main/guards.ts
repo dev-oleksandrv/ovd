@@ -1,4 +1,5 @@
-import type { LogsFilter } from '../preload/api'
+import { LOG_EXPORT_FORMATS, type LogExportFormat } from '@ovd/core'
+import type { LogsExportRequest, LogsFilter } from '../preload/api'
 
 // IPC payloads come from the renderer; check them before they reach core.
 export function requireText(value: unknown, field: string): string {
@@ -53,4 +54,19 @@ export function optionalSeq(value: unknown): number | undefined {
     throw new TypeError('throughSeq must be a non-negative integer')
   }
   return value
+}
+
+// Export's request: a known format and an optional `throughSeq`, nothing else.
+export function logsExportRequest(value: unknown): LogsExportRequest {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError('export request must be an object')
+  }
+  const { format, throughSeq, ...rest } = value as Record<string, unknown>
+  const extra = Object.keys(rest)[0]
+  if (extra !== undefined) throw new TypeError(`${extra} is not an export option`)
+  if (!(LOG_EXPORT_FORMATS as readonly unknown[]).includes(format)) {
+    throw new TypeError(`format must be one of ${LOG_EXPORT_FORMATS.join(', ')}`)
+  }
+  const seq = optionalSeq(throughSeq)
+  return { format: format as LogExportFormat, ...(seq === undefined ? {} : { throughSeq: seq }) }
 }

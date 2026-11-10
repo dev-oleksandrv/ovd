@@ -1,5 +1,5 @@
-import type { CheckId } from '@ovd/core'
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import type { CheckId, LogExportFormat } from '@ovd/core'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { targetDevice, useDevicesContext } from '../devices/devicesContext'
 import { useDoctor } from '../doctor/useDoctor'
 import { useFeedback } from '../feedback/feedbackContext'
@@ -44,6 +44,13 @@ export function Shell() {
   // null until the first doctor report arrives and decides the start screen.
   const [firstRun, setFirstRun] = useState<boolean | null>(null)
   const [highlight, setHighlight] = useState<CheckId | null>(null)
+  // A palette export waiting for the Logs screen and its session.
+  const [exportRequest, setExportRequest] = useState<{ format: LogExportFormat; n: number } | null>(
+    null
+  )
+  const clearExportRequest = useCallback(() => setExportRequest(null), [])
+  // Counts the requests, so a second one for the same format is a new request.
+  const exportCount = useRef(0)
   const doctor = useDoctor()
   const { run: runDoctorNow } = doctor
   // Doctor's Project row follows the project: a mode switch runs doctor again.
@@ -89,14 +96,17 @@ export function Shell() {
     return () => clearTimeout(timer)
   }, [highlight])
 
-  const go = (next: Screen): void => {
+  // Whether it went to `next`: the first-run gate may send it to Doctor instead.
+  const go = (next: Screen): boolean => {
     setGallery(false)
+    setExportRequest(null)
     if (next !== 'doctor' && firstRun && report && !gateOpen(report.checks)) {
       setScreen('doctor')
       setHighlight(gateFailure(report.checks))
-      return
+      return false
     }
     setScreen(next)
+    return true
   }
 
   const runDoctor = async (): Promise<void> => {
@@ -131,6 +141,9 @@ export function Shell() {
     runDoctor: () => {
       go('doctor')
       void runDoctor()
+    },
+    exportLogs: (format) => {
+      if (go('logs')) setExportRequest({ format, n: ++exportCount.current })
     },
     vvd: { busy: vvd.busy, start: () => void vvd.start(), stop: () => void vvd.stop() },
     setup: () => setSettingUp(true),
@@ -252,6 +265,8 @@ export function Shell() {
         <LogsScreen
           onSwitchTarget={() => setMenu(true)}
           projectAppId={projectMode?.kind === 'folder' ? (projectMode.packageId ?? null) : null}
+          exportRequest={exportRequest}
+          onExportHandled={clearExportRequest}
         />
       ) : screen === 'packages' ? (
         <PackagesScreen

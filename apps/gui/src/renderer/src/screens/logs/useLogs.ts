@@ -1,4 +1,4 @@
-import type { Device } from '@ovd/core'
+import type { Device, LogExportFormat } from '@ovd/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LogsFilter } from '../../../../preload/api'
 import { useFeedback } from '../../feedback/feedbackContext'
@@ -11,7 +11,10 @@ import {
   setFollow as setFollowStore,
   type LogStore
 } from './logStore'
-import { heldDevice, logsCli, regexError, withPackage, without } from './logsView'
+import { heldDevice, logsCli, logsExportCli, regexError, withPackage, without } from './logsView'
+
+// The toast when Export has nothing to save (no session, or no shown lines).
+export const NO_LINES_TO_EXPORT = 'No log lines to export'
 
 // How long the search waits for typing to stop before it re-filters.
 export const SEARCH_DEBOUNCE_MS = 300
@@ -34,7 +37,8 @@ export interface LogsValue {
   setRestartAfterInstall(on: boolean): void
   restart(): void
   clear(): void
-  exportShown(): void
+  // Saves the shown lines (up to the pause) in `format`, after the save dialog.
+  exportShown(format: LogExportFormat): void
   pause(): void
   resume(): void
   setFollow(on: boolean): void
@@ -180,20 +184,28 @@ export function useLogs(target: Device | undefined): LogsValue {
     clear() {
       void window.ovd.logs.clear()
     },
-    exportShown() {
-      const through = store.pausedThrough ?? undefined
-      void window.ovd.logs.export(through).then((result) => {
-        const cli =
-          targetId === null ? undefined : logsCli(filterRef.current, targetId, toggleRef.current)
+    exportShown(format) {
+      const through = store.pausedThrough
+      const request = { format, ...(through === null ? {} : { throughSeq: through }) }
+      void window.ovd.logs.export(request).then((result) => {
         if (!result.ok) {
+          const cli =
+            targetId === null ? undefined : logsCli(filterRef.current, targetId, toggleRef.current)
           notify({ tone: 'error', text: result.error.message, ...(cli ? { cli } : {}) })
-        } else if (result.data) {
-          notify({
-            tone: 'info',
-            text: `Exported ${result.data.lines} lines to ${result.data.path}`,
-            ...(cli ? { cli } : {})
-          })
+          return
         }
+        const exported = result.data
+        if (exported.status === 'empty') notify({ tone: 'info', text: NO_LINES_TO_EXPORT })
+        if (exported.status !== 'saved') return
+        const cli =
+          targetId === null
+            ? undefined
+            : logsExportCli(filterRef.current, targetId, toggleRef.current, exported)
+        notify({
+          tone: 'info',
+          text: `Exported ${exported.lines} lines to ${exported.path}`,
+          ...(cli ? { cli } : {})
+        })
       })
     },
     pause: () => setStore(pauseStore),

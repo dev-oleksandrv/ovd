@@ -21,7 +21,14 @@ import type {
   VvdState
 } from '@ovd/core'
 import { vi } from 'vitest'
-import type { IpcResult, LogsState, LogsUpdate, OvdApi, SdkSummary } from '../../../src/preload/api'
+import type {
+  IpcResult,
+  LogsExportResult,
+  LogsState,
+  LogsUpdate,
+  OvdApi,
+  SdkSummary
+} from '../../../src/preload/api'
 
 export interface OvdStub {
   api: OvdApi
@@ -274,10 +281,7 @@ export function stubOvd(opts: {
           }))
       ),
       clear: vi.fn(opts.logs?.clear ?? (async () => undefined)),
-      export: vi.fn(
-        opts.logs?.export ??
-          (async () => unexpected<{ path: string; lines: number } | null>('logs.export'))
-      ),
+      export: vi.fn(opts.logs?.export ?? (async () => unexpected<LogsExportResult>('logs.export'))),
       onUpdate: (l) => {
         logsListener = l
         return () => {

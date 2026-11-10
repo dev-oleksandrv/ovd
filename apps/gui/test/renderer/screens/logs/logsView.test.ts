@@ -4,6 +4,7 @@ import {
   highlightSegments,
   logsBlocker,
   logsCli,
+  logsExportCli,
   packageChoices,
   regexError,
   sessionLabel,
@@ -58,6 +59,44 @@ describe('logsCli', () => {
   ])('with restart after install off %o → %s', (filter, cli) => {
     expect(logsCli(filter, STICK, false)).toBe(cli)
     expect(logsCli(filter, STICK, true)).toBe(cli.replace(' --no-restart-after-install', ''))
+  })
+})
+
+describe('logsExportCli', () => {
+  const UNTIL = '2026-11-08T07:27:01.257Z'
+  const saved = {
+    path: '/home/dev/player.txt',
+    format: 'text' as const,
+    until: UNTIL,
+    replaced: false
+  }
+
+  test.each([
+    [{}, true, saved, `ovd logs --until ${UNTIL} --export /home/dev/player.txt --device ${STICK}`],
+    [
+      { app: 'com.example.player', level: 'e', search: 'tick 2', regex: true },
+      true,
+      { ...saved, path: '/home/dev/player.jsonl', format: 'jsonl' as const },
+      `ovd logs --app com.example.player --level error --grep "tick 2" --regex --until ${UNTIL} --export /home/dev/player.jsonl --format jsonl --device ${STICK}`
+    ],
+    [
+      {},
+      false,
+      { ...saved, replaced: true },
+      `ovd logs --no-restart-after-install --until ${UNTIL} --export /home/dev/player.txt --force --device ${STICK}`
+    ],
+    [
+      {},
+      true,
+      { ...saved, path: "/home/dev/Dev Logs/it's.txt" },
+      `ovd logs --until ${UNTIL} --export '/home/dev/Dev Logs/it'\\''s.txt' --device ${STICK}`
+    ]
+  ])('%o (restart %s) → %s', (filter, restart, exported, cli) => {
+    expect(logsExportCli(filter, STICK, restart, exported)).toBe(cli)
+  })
+
+  test('quotes the device as logsCli does', () => {
+    expect(logsExportCli({}, 'a b', true, saved)).toMatch(/ --device 'a b'$/)
   })
 })
 

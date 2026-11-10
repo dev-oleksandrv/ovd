@@ -49,4 +49,19 @@ describe('Gallery', () => {
     fireEvent.click(cancel)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  test('the log controls include the Export menu button', () => {
+    render(
+      <FeedbackProvider>
+        <Gallery />
+      </FeedbackProvider>
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Export/ }))
+    const menu = screen.getByRole('menu', { name: 'Export' })
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((i) => i.textContent)
+    ).toEqual(['Plain text (.txt)', 'JSON lines (.jsonl)'])
+  })
 })
