@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
 import {
+  logsExportRequest,
   logsFilter,
   optionalFlag,
   optionalSeq,
@@ -101,5 +102,30 @@ describe('requireFlag', () => {
     ['null', null]
   ])('%s is a TypeError', (_label, value) => {
     expect(() => requireFlag(value, 'on')).toThrow(new TypeError('on must be a boolean'))
+  })
+})
+
+describe('logsExportRequest', () => {
+  test.each([
+    [{ format: 'text' }, { format: 'text' }],
+    [
+      { format: 'jsonl', throughSeq: 4 },
+      { format: 'jsonl', throughSeq: 4 }
+    ],
+    [{ format: 'jsonl', throughSeq: undefined }, { format: 'jsonl' }]
+  ])('%o is accepted', (value, request) => {
+    expect(logsExportRequest(value)).toEqual(request)
+  })
+
+  test.each([
+    ['undefined', undefined],
+    ['a format alone', 'text'],
+    ['an array', []],
+    ['no format', {}],
+    ['an unknown format', { format: 'csv' }],
+    ['a bad throughSeq', { format: 'text', throughSeq: -1 }],
+    ['an unknown key', { format: 'text', path: '/tmp/x' }]
+  ])('rejects %s', (_label, value) => {
+    expect(() => logsExportRequest(value)).toThrow(TypeError)
   })
 })

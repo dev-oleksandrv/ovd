@@ -1,4 +1,7 @@
+import type { LogExportFormat } from '@ovd/core'
+import { useEffect, useRef } from 'react'
 import { targetDevice, useDevicesContext } from '../../devices/devicesContext'
+import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { ErrorState } from '../../ui/ErrorState'
@@ -11,18 +14,28 @@ import { LogList } from './LogList'
 import { LogToolbar } from './LogToolbar'
 import { newLines, visibleCount } from './logStore'
 import { heldDevice, logsBlocker, logsCli, packageChoices, sessionLabel } from './logsView'
-import { useLogs } from './useLogs'
+import { NO_LINES_TO_EXPORT, useLogs } from './useLogs'
 
 interface LogsScreenProps {
   // Opens the title bar's target picker.
   onSwitchTarget: () => void
   // The open project's app ID, offered in the package filter before it logs anything.
   projectAppId: string | null
+  // An export the palette asked for; `n` tells two requests for the same format apart. It
+  // waits while the session starts, then runs once; `onExportHandled` clears it.
+  exportRequest?: { format: LogExportFormat; n: number } | null
+  onExportHandled?: () => void
 }
 
 // Debug → Logs (Stage 3.1): the target's live log, filtered in core, with its `ovd logs` echo.
-export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
+export function LogsScreen({
+  onSwitchTarget,
+  projectAppId,
+  exportRequest = null,
+  onExportHandled = () => undefined
+}: LogsScreenProps) {
   const { state: devices } = useDevicesContext()
+  const { notify } = useFeedback()
   const target = targetDevice(devices)
   const blocker = logsBlocker(target)
   const logs = useLogs(target)
@@ -42,6 +55,27 @@ export function LogsScreen({ onSwitchTarget, projectAppId }: LogsScreenProps) {
   const count = visibleCount(store)
   const following = store.seenThrough === null
   const paused = store.pausedThrough !== null
+  // A palette export: none without a session (no target, or an offline one), else once the
+  // session for the target runs, reconnects or ended (main keeps its lines). It waits for the
+  // first device list: until then there's no target to tell.
+  const exportShown = logs.exportShown
+  const exportStatus =
+    devices.status === 'loading'
+      ? null
+      : blocker !== null && current === null
+        ? 'none'
+        : (current?.status ?? null)
+  // The request last run: it runs once even if a render comes before the parent cleared it.
+  const exportedRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (exportRequest === null || exportStatus === null || exportStatus === 'starting') return
+    if (exportedRef.current === exportRequest.n) return
+    exportedRef.current = exportRequest.n
+    onExportHandled()
+    if (exportStatus === 'none') notify({ tone: 'info', text: NO_LINES_TO_EXPORT })
+    else exportShown(exportRequest.format)
+  }, [exportRequest, exportStatus, exportShown, onExportHandled, notify])
+
   const restartButton = (
     <Button icon="restart_alt" onClick={logs.restart}>
       Restart

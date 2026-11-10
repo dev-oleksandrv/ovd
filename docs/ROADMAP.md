@@ -218,13 +218,13 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** reinstall 10 times with logs open; logs keep arriving and each reinstall shows as an OVD line.
 
-### 3.3 Export — next
+### 3.3 Export — done
 
 - Plain text or JSON lines, from the toolbar, the palette and `ovd logs --export`.
 
 **Expected:** an exported JSON-lines file can be read back line by line.
 
-### 3.4 Run button (one-click deploy)
+### 3.4 Run button (one-click deploy) — next
 
 - CLI `ovd run` = install + launch + verify + follow logs; Ctrl+C stops cleanly.
 - Title bar "Run ▸ <project>" (or the dropped .vpkg) with a live steps dropdown: found build → installing → restarting log session → launching → verifying → following logs; ends with the CLI equivalent and opens Logs.

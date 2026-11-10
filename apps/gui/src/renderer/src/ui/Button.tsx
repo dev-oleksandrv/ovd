@@ -16,6 +16,8 @@ interface ButtonProps {
   disabledReason?: string
   // For a button that shows or hides something (`aria-expanded`).
   expanded?: boolean
+  // For a button that opens a menu (`aria-haspopup`).
+  hasPopup?: 'menu'
   // Focuses the button on mount: a dialog's safe default (Cancel).
   autoFocus?: boolean
 }
@@ -43,6 +45,7 @@ export function Button({
   disabled = false,
   disabledReason,
   expanded,
+  hasPopup,
   autoFocus = false
 }: ButtonProps) {
   const inactive = disabled || loading
@@ -53,6 +56,7 @@ export function Button({
       disabled={disabled}
       aria-busy={loading || undefined}
       aria-expanded={expanded}
+      aria-haspopup={hasPopup}
       autoFocus={autoFocus}
       title={disabled ? disabledReason : undefined}
       className={cx(

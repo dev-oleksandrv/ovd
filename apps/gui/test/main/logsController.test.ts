@@ -267,7 +267,7 @@ describe('createLogsController', () => {
       kind: 'state',
       state: { status: 'ended', error: { code: 'LOG_STREAM_ENDED' } }
     })
-    expect(controller.exportText()?.lines).toBe(2)
+    expect(controller.exportEntries()?.entries).toHaveLength(2)
   })
 
   test('entries with no match still lead to an append with fresh counts', async () => {
@@ -338,13 +338,20 @@ describe('createLogsController', () => {
     })
   })
 
-  test('exportText formats the shown entries up to throughSeq', async () => {
+  test('exportEntries gives the shown entries up to throughSeq and the last one’s time', async () => {
     const { controller } = setup()
     await controller.open(STICK)
     await settle()
-    const exported = controller.exportText(0)
-    expect(exported?.lines).toBe(1)
-    expect(exported?.text).toMatch(/ I com\.amazon\.keplerscript +27178 player tick 0\n$/)
+    expect(controller.exportEntries(0)).toEqual({ entries: [entry(0)], until: entry(0).time })
+    expect(controller.exportEntries()?.entries.map((e) => e.seq)).toEqual([0, 1])
+  })
+
+  test('exportEntries: null without a session, no until without entries', async () => {
+    const { controller } = setup({ entries: 0 })
+    expect(controller.exportEntries()).toBeNull()
+    await controller.open(STICK)
+    await settle()
+    expect(controller.exportEntries()).toEqual({ entries: [], until: null })
   })
 
   test('stop awaits the session’s end', async () => {

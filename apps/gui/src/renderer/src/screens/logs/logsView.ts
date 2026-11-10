@@ -1,4 +1,4 @@
-import type { Device } from '@ovd/core'
+import type { Device, LogExportFormat } from '@ovd/core'
 import type { LogsFilter, LogsState } from '../../../../preload/api'
 import type { SelectOption } from '../../ui/Select'
 import { appsBlocker } from '../apps/appsView'
@@ -33,6 +33,37 @@ export function levelName(level: string | undefined): string | null {
 
 // The `ovd logs …` that shows what the screen shows (ADR 0005), in the CLI's flag order.
 export function logsCli(filter: LogsFilter, device: string, restartAfterInstall = true): string {
+  return [...logsFlags(filter, restartAfterInstall), `--device ${shellQuote(device)}`].join(' ')
+}
+
+export interface LogsExportEcho {
+  path: string
+  format: LogExportFormat
+  // The time of the last exported line: the CLI command ends where the snapshot ends.
+  until: string
+  // The file existed and the save dialog confirmed replacing it.
+  replaced: boolean
+}
+
+// The `ovd logs … --export` that writes what Export saved. Approximate where a pause cut the
+// lines by entry number: lines that arrived after the pause with an earlier time are in range.
+export function logsExportCli(
+  filter: LogsFilter,
+  device: string,
+  restartAfterInstall: boolean,
+  exported: LogsExportEcho
+): string {
+  return [
+    ...logsFlags(filter, restartAfterInstall),
+    `--until ${shellQuote(exported.until)}`,
+    `--export ${shellQuote(exported.path)}`,
+    ...(exported.format === 'text' ? [] : [`--format ${exported.format}`]),
+    ...(exported.replaced ? ['--force'] : []),
+    `--device ${shellQuote(device)}`
+  ].join(' ')
+}
+
+function logsFlags(filter: LogsFilter, restartAfterInstall: boolean): string[] {
   const parts = ['ovd logs']
   if (filter.app) parts.push(`--app ${shellQuote(filter.app)}`)
   else if (filter.system) parts.push('--system')
@@ -44,8 +75,7 @@ export function logsCli(filter: LogsFilter, device: string, restartAfterInstall 
     if (filter.regex) parts.push('--regex')
   }
   if (!restartAfterInstall) parts.push('--no-restart-after-install')
-  parts.push(`--device ${shellQuote(device)}`)
-  return parts.join(' ')
+  return parts
 }
 
 // Characters a shell never expands or splits on in a word: app IDs, serials, `IP:port`.

@@ -24,6 +24,7 @@ import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { KeyValueGrid } from '../ui/KeyValueGrid'
 import { LoadingState } from '../ui/LoadingState'
+import { MenuButton } from '../ui/MenuButton'
 import { BlockedNotice } from '../ui/BlockedNotice'
 import { InlineError } from '../ui/InlineError'
 import { InlineNote } from '../ui/InlineNote'
@@ -572,6 +573,7 @@ export function Gallery() {
               target: target?.id ?? null,
               go: () => undefined,
               runDoctor: () => undefined,
+              exportLogs: () => undefined,
               vvd: { busy: null, start: () => undefined, stop: () => undefined },
               setup: () => undefined,
               pair: () => undefined,
@@ -651,6 +653,23 @@ export function Gallery() {
           <ToggleButton label="Regex" pressed={regex} onChange={setRegex} mono>
             .*
           </ToggleButton>
+          <MenuButton
+            label="Export"
+            icon="download"
+            size="sm"
+            items={[
+              {
+                id: 'text',
+                label: 'Plain text (.txt)',
+                onSelect: () => notify({ tone: 'info', text: 'Export as plain text' })
+              },
+              {
+                id: 'jsonl',
+                label: 'JSON lines (.jsonl)',
+                onSelect: () => notify({ tone: 'info', text: 'Export as JSON lines' })
+              }
+            ]}
+          />
         </div>
       </GallerySection>
 

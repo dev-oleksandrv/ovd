@@ -25,7 +25,12 @@ afterEach(() => {
 })
 
 async function renderScreen(
-  opts: { devices?: Device[]; logs?: Parameters<typeof stubOvd>[0]['logs'] } = {}
+  opts: {
+    devices?: Device[]
+    logs?: Parameters<typeof stubOvd>[0]['logs']
+    exportRequest?: { format: 'text' | 'jsonl'; n: number }
+    onExportHandled?: () => void
+  } = {}
 ): Promise<OvdStub> {
   const devices = opts.devices ?? [stick]
   const stub = stubOvd({
@@ -36,7 +41,12 @@ async function renderScreen(
   render(
     <FeedbackProvider>
       <DevicesProvider>
-        <LogsScreen onSwitchTarget={() => undefined} projectAppId={null} />
+        <LogsScreen
+          onSwitchTarget={() => undefined}
+          projectAppId={null}
+          {...(opts.exportRequest ? { exportRequest: opts.exportRequest } : {})}
+          {...(opts.onExportHandled ? { onExportHandled: opts.onExportHandled } : {})}
+        />
       </DevicesProvider>
       <StatusBar />
       <ToastViewport />
@@ -274,20 +284,132 @@ describe('LogsScreen', () => {
     expect(stub.api.logs.clear).toHaveBeenCalled()
   })
 
-  test('Export saves the shown lines and says where', async () => {
+  test('Export → Plain text saves the shown lines and says where, with the CLI echo', async () => {
     const stub = await renderScreen({
       logs: {
         export: async () => ({
           ok: true,
-          data: { path: '/home/dev/ovd-logs.txt', lines: 3 }
+          data: {
+            status: 'saved',
+            path: '/home/dev/ovd-logs.txt',
+            format: 'text',
+            lines: 3,
+            until: '2026-11-08T07:27:00.257Z',
+            replaced: false
+          }
         })
       }
     })
     await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
     start(stub)
     fireEvent.click(screen.getByRole('button', { name: /Export/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Plain text (.txt)' }))
     expect(await screen.findByText('Exported 3 lines to /home/dev/ovd-logs.txt')).toBeTruthy()
-    expect(stub.api.logs.export).toHaveBeenCalledWith(undefined)
+    expect(stub.api.logs.export).toHaveBeenCalledWith({ format: 'text' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    await waitFor(() =>
+      expect(echoed()).toContain(
+        `ovd logs --until 2026-11-08T07:27:00.257Z --export /home/dev/ovd-logs.txt --device ${stick.id}`
+      )
+    )
+  })
+
+  test('Export → JSON lines while paused exports up to the pause; a replaced file echoes --force', async () => {
+    const stub = await renderScreen({
+      logs: {
+        export: async () => ({
+          ok: true,
+          data: {
+            status: 'saved',
+            path: '/home/dev/player.jsonl',
+            format: 'jsonl',
+            lines: 3,
+            until: '2026-11-08T07:27:00.257Z',
+            replaced: true
+          }
+        })
+      }
+    })
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    fireEvent.click(screen.getByRole('button', { name: /Pause/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Export/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'JSON lines (.jsonl)' }))
+    expect(await screen.findByText('Exported 3 lines to /home/dev/player.jsonl')).toBeTruthy()
+    expect(stub.api.logs.export).toHaveBeenCalledWith({ format: 'jsonl', throughSeq: 2 })
+    await waitFor(() =>
+      expect(echoed()).toContain(
+        `ovd logs --until 2026-11-08T07:27:00.257Z --export /home/dev/player.jsonl --format jsonl --force --device ${stick.id}`
+      )
+    )
+  })
+
+  test('Export with nothing shown: "No log lines to export"', async () => {
+    const stub = await renderScreen({
+      logs: { export: async () => ({ ok: true, data: { status: 'empty' } }) }
+    })
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    fireEvent.click(screen.getByRole('button', { name: /Export/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Plain text (.txt)' }))
+    expect(await screen.findByText('No log lines to export')).toBeTruthy()
+  })
+
+  test('a failed export shows the error with the CLI echo', async () => {
+    const stub = await renderScreen({
+      logs: {
+        export: async () => ({
+          ok: false,
+          error: {
+            code: 'EXPORT_FAILED',
+            message: 'Can’t write /home/dev/ro/ovd-logs.txt (EACCES)',
+            hint: 'Check that you can write to the folder'
+          }
+        })
+      }
+    })
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    fireEvent.click(screen.getByRole('button', { name: /Export/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Plain text (.txt)' }))
+    expect(await screen.findByText('Can’t write /home/dev/ro/ovd-logs.txt (EACCES)')).toBeTruthy()
+    await waitFor(() => expect(echoed()).toContain(`ovd logs --device ${stick.id}`))
+  })
+
+  test('a palette export waits while the session starts, then runs once', async () => {
+    const onExportHandled = vi.fn()
+    const stub = await renderScreen({
+      exportRequest: { format: 'jsonl', n: 1 },
+      onExportHandled,
+      logs: { export: async () => ({ ok: true, data: { status: 'canceled' } }) }
+    })
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    push(stub, {
+      kind: 'state',
+      session: 1,
+      state: { status: 'starting', device: stick.id, name: stick.name, restartAfterInstall: true }
+    })
+    expect(stub.api.logs.export).not.toHaveBeenCalled()
+    start(stub)
+    await waitFor(() => expect(stub.api.logs.export).toHaveBeenCalledWith({ format: 'jsonl' }))
+    expect(onExportHandled).toHaveBeenCalledTimes(1)
+    push(stub, { kind: 'append', session: 1, entries: [logEntry(3)], counts: counts(4), apps: [] })
+    expect(stub.api.logs.export).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([
+    ['no target', []],
+    ['an offline target', [{ ...stick, status: 'offline' as const }]]
+  ])('a palette export with %s: "No log lines to export", no save dialog', async (_n, devices) => {
+    const onExportHandled = vi.fn()
+    const stub = await renderScreen({
+      devices,
+      exportRequest: { format: 'text', n: 1 },
+      onExportHandled
+    })
+    expect(await screen.findByText('No log lines to export')).toBeTruthy()
+    expect(onExportHandled).toHaveBeenCalledTimes(1)
+    expect(stub.api.logs.export).not.toHaveBeenCalled()
   })
 
   test('the footer toggle turns restart after install off and the echo carries --no-restart-after-install', async () => {

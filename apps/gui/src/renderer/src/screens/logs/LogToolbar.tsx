@@ -1,6 +1,8 @@
+import type { LogExportFormat } from '@ovd/core'
 import type { LogsFilter } from '../../../../preload/api'
 import { Button } from '../../ui/Button'
 import { Chip } from '../../ui/Chip'
+import { MenuButton } from '../../ui/MenuButton'
 import { Segmented } from '../../ui/Segmented'
 import { Select, type SelectOption } from '../../ui/Select'
 import { TextField } from '../../ui/TextField'
@@ -22,7 +24,7 @@ interface LogToolbarProps {
   onPause: () => void
   onResume: () => void
   onClear: () => void
-  onExport: () => void
+  onExport: (format: LogExportFormat) => void
 }
 
 export function LogToolbar(props: LogToolbarProps) {
@@ -63,9 +65,15 @@ export function LogToolbar(props: LogToolbarProps) {
         <Button size="sm" icon="delete_sweep" onClick={props.onClear}>
           Clear
         </Button>
-        <Button size="sm" icon="download" onClick={props.onExport}>
-          Export
-        </Button>
+        <MenuButton
+          label="Export"
+          icon="download"
+          size="sm"
+          items={[
+            { id: 'text', label: 'Plain text (.txt)', onSelect: () => props.onExport('text') },
+            { id: 'jsonl', label: 'JSON lines (.jsonl)', onSelect: () => props.onExport('jsonl') }
+          ]}
+        />
       </div>
       <div className="flex items-center gap-2 text-meta text-muted">
         <span>{props.label}</span>

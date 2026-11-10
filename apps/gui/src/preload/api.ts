@@ -12,6 +12,7 @@ import type {
   LaunchResult,
   LogCounts,
   LogEntry,
+  LogExportFormat,
   LogFilterInput,
   LoginPrompt,
   PackageBuild,
@@ -74,6 +75,27 @@ export type LogsUpdate =
       entries: LogEntry[]
       counts: LogCounts
       apps: string[]
+    }
+
+// What Export asks main for: the shown lines (up to `throughSeq` while paused) in `format`.
+export interface LogsExportRequest {
+  format: LogExportFormat
+  throughSeq?: number
+}
+
+// What Export did. `empty`: no session or no shown lines, so no save dialog. `saved` carries
+// what the CLI echo needs: the time of the last line (`--until`) and whether the file existed
+// (the save dialog confirmed the replace, `--force`).
+export type LogsExportResult =
+  | { status: 'empty' }
+  | { status: 'canceled' }
+  | {
+      status: 'saved'
+      path: string
+      format: LogExportFormat
+      lines: number
+      until: string
+      replaced: boolean
     }
 
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
@@ -185,8 +207,8 @@ export interface OvdApi {
     // session and every later one.
     setRestartAfterInstall(on: boolean): Promise<IpcResult<LogsState>>
     clear(): Promise<void>
-    // Saves the shown lines (up to `throughSeq`) as plain text; null when the user cancels.
-    export(throughSeq?: number): Promise<IpcResult<{ path: string; lines: number } | null>>
+    // Saves the shown lines (up to `throughSeq`) in `format`, after the native save dialog.
+    export(request: LogsExportRequest): Promise<IpcResult<LogsExportResult>>
     onUpdate(listener: (update: LogsUpdate) => void): () => void
   }
 }

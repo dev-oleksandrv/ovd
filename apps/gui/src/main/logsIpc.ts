@@ -1,10 +1,15 @@
-import { writeFile } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
 import { dialog, ipcMain, type BrowserWindow } from 'electron'
-import type { Ovd } from '@ovd/core'
-import { channels } from '../preload/api'
-import { logsFilter, optionalSeq, requireFlag, requireText } from './guards'
+import { writeLogExport, type LogExportFormat, type Ovd } from '@ovd/core'
+import { channels, type LogsExportResult } from '../preload/api'
+import { logsExportRequest, logsFilter, requireFlag, requireText } from './guards'
 import { toResult } from './ipcResult'
 import { createLogsController } from './logsController'
+
+const FILTERS: Record<LogExportFormat, { name: string; extensions: [string] }> = {
+  text: { name: 'Plain text', extensions: ['txt'] },
+  jsonl: { name: 'JSON lines', extensions: ['jsonl'] }
+}
 
 // Debug → Logs (Stage 3.1). Main runs the session and batches its updates (gui rules): the
 // renderer gets at most one append per ~100 ms.
@@ -37,22 +42,31 @@ export function registerLogsIpc(
     toResult(async () => controller.setRestartAfterInstall(requireFlag(on, 'on')))
   )
   ipcMain.handle(channels.logsClear, () => controller.clear())
-  ipcMain.handle(channels.logsExport, (_event, throughSeq: unknown) =>
-    toResult(async () => {
-      const exported = controller.exportText(optionalSeq(throughSeq))
-      if (!exported) return null
+  ipcMain.handle(channels.logsExport, (_event, request: unknown) =>
+    toResult(async (): Promise<LogsExportResult> => {
+      const { format, throughSeq } = logsExportRequest(request)
+      const exported = controller.exportEntries(throughSeq)
+      if (!exported || exported.until === null) return { status: 'empty' }
       const win = window()
       const options = {
         title: 'Export log lines',
-        defaultPath: exportName(new Date()),
-        filters: [{ name: 'Text', extensions: ['txt'] }]
+        defaultPath: exportName(new Date(), format),
+        filters: [FILTERS[format]]
       }
       const result = win
         ? await dialog.showSaveDialog(win, options)
         : await dialog.showSaveDialog(options)
-      if (result.canceled || !result.filePath) return null
-      await writeFile(result.filePath, exported.text, 'utf8')
-      return { path: result.filePath, lines: exported.lines }
+      if (result.canceled || !result.filePath) return { status: 'canceled' }
+      // The dialog already confirmed a replace; the echo then needs `--force`.
+      const replaced = await stat(result.filePath).then(
+        () => true,
+        () => false
+      )
+      const saved = await writeLogExport(result.filePath, exported.entries, {
+        format,
+        overwrite: true
+      })
+      return { status: 'saved', ...saved, until: exported.until, replaced }
     })
   )
 
@@ -64,13 +78,13 @@ export function registerLogsIpc(
     }
   }
 
-  // `ovd-logs-<device>-<YYYYMMDD-HHMMSS>.txt`, with `:` (an IP:port) as `-`.
-  function exportName(now: Date): string {
+  // `ovd-logs-<device>-<YYYYMMDD-HHMMSS>.<txt|jsonl>`, with `:` (an IP:port) as `-`.
+  function exportName(now: Date, format: LogExportFormat): string {
     const two = (n: number) => String(n).padStart(2, '0')
     const stamp =
       `${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}-` +
       `${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`
     const id = (controller.device() ?? 'device').replaceAll(':', '-')
-    return `ovd-logs-${id}-${stamp}.txt`
+    return `ovd-logs-${id}-${stamp}.${FILTERS[format].extensions[0]}`
   }
 }

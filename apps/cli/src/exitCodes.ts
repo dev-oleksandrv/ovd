@@ -28,6 +28,7 @@ const CODES: Partial<Record<ErrorCode, number>> = {
   NO_APP: 2,
   INVALID_APP_ID: 2,
   INVALID_LOG_FILTER: 2,
+  EXPORT_FILE_EXISTS: 2,
   ARCH_MISMATCH: 6,
   LAUNCH_NOT_VERIFIED: 7
 }

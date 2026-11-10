@@ -39,7 +39,9 @@ export const ERROR_CODES = [
   'INVALID_LOG_FILTER',
   'LOG_STREAM_ENDED',
   'COMMAND_FAILED',
-  'UNEXPECTED_OUTPUT'
+  'UNEXPECTED_OUTPUT',
+  'EXPORT_FILE_EXISTS',
+  'EXPORT_FAILED'
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

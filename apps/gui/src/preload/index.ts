@@ -78,7 +78,7 @@ const api: OvdApi = {
     setFilter: (filter) => ipcRenderer.invoke(channels.logsFilter, filter),
     setRestartAfterInstall: (on) => ipcRenderer.invoke(channels.logsRestartAfterInstall, on),
     clear: () => ipcRenderer.invoke(channels.logsClear),
-    export: (throughSeq) => ipcRenderer.invoke(channels.logsExport, throughSeq),
+    export: (request) => ipcRenderer.invoke(channels.logsExport, request),
     onUpdate: (listener) => {
       const handler = (_event: IpcRendererEvent, update: LogsUpdate): void => listener(update)
       ipcRenderer.on(channels.logsUpdate, handler)

@@ -1,4 +1,8 @@
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
+  logText,
   OvdError,
   type ErrorCode,
   type LogEntry,
@@ -7,7 +11,7 @@ import {
   type LogStartOptions,
   type Ovd
 } from '@ovd/core'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cli } from '../support/runCli.js'
 
 // Entries as core parses them from fixtures/0.24/loggingctl-log/stick-follow.txt.
@@ -361,5 +365,220 @@ describe('ovd logs', () => {
     const { exitCode } = await cli(['logs', '--app'], { ovd: stub.ovd })
     expect(exitCode).toBe(2)
     expect(stub.start).not.toHaveBeenCalled()
+  })
+})
+
+describe('ovd logs --export', () => {
+  let dir: string
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ovd-cli-export-'))
+  })
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+  const linesOf = async (path: string) => (await readFile(path, 'utf8')).split('\n')
+
+  test('--format jsonl writes the --json line of each entry; stdout says where', async () => {
+    const file = join(dir, 'player.jsonl')
+    const stub = stubLogs([[errorTick(1, 0)], [installed, multi]])
+    const { stdout, stderr, exitCode } = await run(
+      ['logs', '--export', file, '--format', 'jsonl'],
+      stub
+    )
+    const lines = await linesOf(file)
+    expect(lines.at(-1)).toBe('')
+    const parsed = lines.slice(0, -1).map((l) => JSON.parse(l) as Record<string, unknown>)
+    expect(parsed).toHaveLength(3)
+    expect(parsed[0]).toEqual({
+      time: '2026-11-08T07:27:00.257Z',
+      level: 'E',
+      priority: 'err',
+      facility: 'user',
+      process: 'com.example.player',
+      pid: 27178,
+      tid: 2842092448,
+      tag: 'com.amazon.keplerscript',
+      message: '[KeplerScript-JavaScript] player error tick 1',
+      parsed: true
+    })
+    expect(parsed[1]).toEqual({
+      time: installed.time,
+      ovd: installed.ovd,
+      message: installed.message
+    })
+    expect(parsed[2]?.message).toBe(multi.message)
+    expect(stdout).toBe(`Exported 3 lines to ${file}\n`)
+    expect(stderr).toBe(`Exporting the log of Fire TV stick to ${file} (Ctrl+C to stop)…\n`)
+    expect(exitCode).toBe(0)
+  })
+
+  test('the default format is the ovd logs text, uncolored on a terminal', async () => {
+    const file = join(dir, 'player.txt')
+    const stub = stubLogs([[errorTick(1, 0), system]])
+    const { exitCode } = await run(
+      ['logs', '--export', file],
+      stub,
+      { reason: 'until' },
+      { tty: true }
+    )
+    expect(await readFile(file, 'utf8')).toBe(logText(errorTick(1, 0)) + logText(system))
+    expect(exitCode).toBe(0)
+  })
+
+  test('--json prints one document with the path, format and lines', async () => {
+    const file = join(dir, 'player.txt')
+    const stub = stubLogs([[errorTick(1, 0)], [errorTick(2, 1)]])
+    const { stdout, exitCode } = await run(['logs', '--export', file, '--json'], stub)
+    expect(stdout.trim().split('\n')).toHaveLength(1)
+    expect(JSON.parse(stdout)).toEqual({ ok: true, path: file, format: 'text', lines: 2 })
+    expect(exitCode).toBe(0)
+  })
+
+  test('an existing file is refused with EXPORT_FILE_EXISTS (exit 2), unchanged, no session', async () => {
+    const file = join(dir, 'kept.txt')
+    await writeFile(file, 'before\n')
+    const stub = stubLogs([[errorTick(1, 0)]])
+    const { stdout, exitCode } = await cli(['logs', '--export', file, '--json'], {
+      ovd: stub.ovd
+    })
+    expect(JSON.parse(stdout)).toMatchObject({ ok: false, error: { code: 'EXPORT_FILE_EXISTS' } })
+    expect(exitCode).toBe(2)
+    expect(stub.start).not.toHaveBeenCalled()
+    expect(await readFile(file, 'utf8')).toBe('before\n')
+  })
+
+  test('--force replaces an existing file', async () => {
+    const file = join(dir, 'kept.txt')
+    await writeFile(file, 'before, longer than the export would be on its own line\n')
+    const stub = stubLogs([[errorTick(1, 0)]])
+    const { exitCode } = await run(['logs', '--export', file, '--force'], stub)
+    expect(await readFile(file, 'utf8')).toBe(logText(errorTick(1, 0)))
+    expect(exitCode).toBe(0)
+  })
+
+  test('a missing folder: EXPORT_FAILED (exit 1) with the error document, no session', async () => {
+    const file = join(dir, 'missing', 'player.txt')
+    const stub = stubLogs([])
+    const { stdout, exitCode } = await cli(['logs', '--export', file, '--json'], { ovd: stub.ovd })
+    expect(JSON.parse(stdout)).toMatchObject({
+      ok: false,
+      error: { code: 'EXPORT_FAILED', hint: expect.any(String) }
+    })
+    expect(exitCode).toBe(1)
+    expect(stub.start).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    ['--format', ['--format', 'jsonl']],
+    ['--force', ['--force']],
+    ['an unknown --format', ['--export', 'out.csv', '--format', 'csv']]
+  ])('%s without --export or a known format is a usage error', async (_name, args) => {
+    const stub = stubLogs([])
+    const { exitCode } = await cli(['logs', ...args], { ovd: stub.ovd })
+    expect(exitCode).toBe(2)
+    expect(stub.start).not.toHaveBeenCalled()
+  })
+
+  test('a stream that gives up still closes the file, then prints the error document (exit 1)', async () => {
+    const file = join(dir, 'partial.jsonl')
+    const stub = stubLogs([
+      [errorTick(1, 0)],
+      [ovdLine('Device dropped · reconnecting…', { kind: 'disconnected' })]
+    ])
+    const error = new OvdError('LOG_STREAM_ENDED', 'Fire TV stick’s log stream ended', 'hint')
+    const { stdout, exitCode } = await run(
+      ['logs', '--export', file, '--format', 'jsonl', '--json'],
+      stub,
+      { reason: 'ended', error }
+    )
+    expect((await linesOf(file)).slice(0, -1).map((l) => JSON.parse(l) as unknown)).toEqual([
+      expect.objectContaining({ message: '[KeplerScript-JavaScript] player error tick 1' }),
+      expect.objectContaining({ ovd: { kind: 'disconnected' } })
+    ])
+    expect(stdout.trim().split('\n')).toHaveLength(1)
+    expect(JSON.parse(stdout)).toMatchObject({ ok: false, error: { code: 'LOG_STREAM_ENDED' } })
+    expect(exitCode).toBe(1)
+  })
+
+  test('a write that fails stops the session and exits 1 with EXPORT_FAILED', async () => {
+    const file = join(dir, 'taken.txt')
+    const stub = stubLogs([[errorTick(1, 0)]])
+    const start = stub.start as unknown as Ovd['logs']['start']
+    // The path passes the preflight, then becomes a folder before the first write: opening it
+    // fails with EISDIR (on macOS and Linux, also as root).
+    const ovd = {
+      logs: {
+        start: (async (opts: LogStartOptions) => {
+          await mkdir(file)
+          return start(opts)
+        }) as unknown as Ovd['logs']['start']
+      }
+    } as Partial<Ovd>
+    // The session is never finished here: the command only ends because the failed write
+    // aborted it.
+    const { stdout, exitCode } = await cli(['logs', '--export', file, '--force', '--json'], {
+      ovd
+    })
+    expect(stdout.trim().split('\n')).toHaveLength(1)
+    expect(JSON.parse(stdout)).toMatchObject({
+      ok: false,
+      error: { code: 'EXPORT_FAILED', hint: expect.any(String) }
+    })
+    expect(exitCode).toBe(1)
+    const [started] = stub.start.mock.calls[0] as [LogStartOptions]
+    expect(started.signal?.aborted).toBe(true)
+  })
+
+  test('a start that fails leaves no file, and an existing --force target unchanged', async () => {
+    const fresh = join(dir, 'fresh.txt')
+    const failing = stubLogs([], { failWith: 'TARGET_OFFLINE' })
+    const first = await cli(['logs', '--export', fresh, '--json'], { ovd: failing.ovd })
+    expect(JSON.parse(first.stdout)).toMatchObject({ ok: false, error: { code: 'TARGET_OFFLINE' } })
+    expect(first.exitCode).toBe(4)
+    await expect(stat(fresh)).rejects.toMatchObject({ code: 'ENOENT' })
+
+    const kept = join(dir, 'kept.txt')
+    await writeFile(kept, 'before\n')
+    const second = await cli(['logs', '--export', kept, '--force'], { ovd: failing.ovd })
+    expect(second.exitCode).toBe(4)
+    expect(await readFile(kept, 'utf8')).toBe('before\n')
+  })
+
+  test('Ctrl+C before the stream started exits 0 and leaves no file', async () => {
+    const file = join(dir, 'early.txt')
+    const start = vi.fn(async (opts: LogStartOptions = {}) => {
+      await new Promise<void>((resolve) =>
+        opts.signal?.addEventListener('abort', () => resolve(), { once: true })
+      )
+      const error = new Error('The operation was aborted')
+      error.name = 'AbortError'
+      throw error
+    })
+    let interrupt = (): void => undefined
+    const running = cli(['logs', '--export', file], {
+      ovd: { logs: { start: start as unknown as Ovd['logs']['start'] } },
+      onInterrupt: (abort) => (interrupt = abort)
+    })
+    await vi.waitFor(() => expect(start).toHaveBeenCalled())
+    interrupt()
+    expect(await running).toEqual({ stdout: '', stderr: '', exitCode: 0 })
+    await expect(stat(file)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  test('Ctrl+C after lines arrived keeps them and reports the export', async () => {
+    const file = join(dir, 'stopped.txt')
+    const stub = stubLogs([[errorTick(1, 0)]])
+    let interrupt = (): void => undefined
+    const running = cli(['logs', '--export', file, '--json'], {
+      ovd: stub.ovd,
+      onInterrupt: (abort) => (interrupt = abort)
+    })
+    await vi.waitFor(() => expect(stub.start).toHaveBeenCalled())
+    await new Promise((resolve) => setImmediate(resolve))
+    interrupt()
+    const { stdout, exitCode } = await running
+    expect(JSON.parse(stdout)).toEqual({ ok: true, path: file, format: 'text', lines: 1 })
+    expect(await readFile(file, 'utf8')).toBe(logText(errorTick(1, 0)))
+    expect(exitCode).toBe(0)
   })
 })
