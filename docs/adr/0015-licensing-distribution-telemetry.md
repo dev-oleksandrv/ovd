@@ -26,3 +26,4 @@ OVD is a tool companies may adopt, built in the open by a single maintainer who 
 ## Amendments
 
 - 2026-10-18 (`42add84`): the npm package changed from `@voronkov/ovd` to `@ovd/cli`, because `@ovd` is the maintainer's npm user scope. The text above was edited in place before this rule existed.
+- 2026-11-10 (`02bf92b`): the Homebrew tap comes after the first public release, in Stage 4 (ROADMAP 4.6), because a formula needs a published version. Until then releases have two targets, npm and GitHub Releases. Maintainer decision.
