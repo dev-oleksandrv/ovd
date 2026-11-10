@@ -517,6 +517,20 @@ describe('restart after install', () => {
     ])
   })
 
+  test('onRestart is called once the restarted stream has started, not before', async () => {
+    const restarts: string[] = []
+    const s = await startWith({ onRestart: (reason) => restarts.push(reason) }, undefined, {
+      streams: streamsOf(2)
+    })
+    const [, s2] = s.streams as [FakeStream, FakeStream]
+    s.feed.emit(installOn(STICK))
+    await waitFor(() => s2.spec !== undefined)
+    expect(restarts).toEqual([])
+    s2.emit(FOLLOW)
+    expect(restarts).toEqual(['install'])
+    await s.session.stop()
+  })
+
   test.each(['start option', 'setRestartAfterInstall'] as const)(
     'with restartAfterInstall off (%s) only the install line is added',
     async (how) => {
@@ -704,10 +718,18 @@ describe('reconnect', () => {
 
   test('a self-ended stream reconnects once the target is back', async () => {
     const states: string[] = []
-    const s = await startWith({ onState: (state) => states.push(state) }, REBOOT, {
-      streams: streamsOf(2),
-      script: { [VDA]: [stick, none, none, stick] }
-    })
+    const restarts: string[] = []
+    const s = await startWith(
+      {
+        onState: (state) => states.push(state),
+        onRestart: (reason) => restarts.push(reason)
+      },
+      REBOOT,
+      {
+        streams: streamsOf(2),
+        script: { [VDA]: [stick, none, none, stick] }
+      }
+    )
     const [s1, s2] = s.streams as [FakeStream, FakeStream]
     s1.end(0)
     await waitFor(() => s.session.state() === 'reconnecting')
@@ -725,6 +747,7 @@ describe('reconnect', () => {
     await vi.advanceTimersByTimeAsync(250)
     expect(s.session.state()).toBe('following')
     expect(states).toEqual(['reconnecting', 'following'])
+    expect(restarts).toEqual(['reconnect'])
     expect(s.ovd()).toEqual(['Device dropped · reconnecting…', 'Log session reconnected'])
     const seqs = s.delivered().map((e) => e.seq)
     expect(seqs).toEqual(Array.from({ length: 20 + 2 + 243 }, (_, i) => i))

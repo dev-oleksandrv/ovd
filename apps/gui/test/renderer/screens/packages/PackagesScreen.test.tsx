@@ -101,7 +101,8 @@ const installed: InstallResult = {
     title: armv7Info.title,
     version: armv7Info.version,
     buildNumber: armv7Info.buildNumber,
-    architecture: 'armv7'
+    architecture: 'armv7',
+    buildType: armv7Info.buildType
   },
   target: stickTarget,
   forced: false

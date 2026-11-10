@@ -170,7 +170,8 @@ describe('Install.install', () => {
         title: 'Sample Player',
         version: '1.4.2',
         buildNumber: 142,
-        architecture: 'armv7'
+        architecture: 'armv7',
+        buildType: 'release'
       },
       target: { id: STICK, name: 'Fire TV stick', architecture: 'armv7' },
       forced: false
@@ -413,6 +414,35 @@ describe('Install.install: refs', () => {
 
     expect(result).toMatchObject({ installed: true, forced: false, package: { path: path() } })
     expect(runner.count(installCmd(path(), device))).toBe(1)
+  })
+
+  test('prefer picks a matching build of that type; onPackage sees it before the install', async () => {
+    const release = await makeFile(
+      'build/aarch64-release/player_aarch64.vpkg',
+      new Date('2026-11-01T12:00:00Z')
+    )
+    const { install, runner } = await setup({
+      ...bothOnline,
+      ...vpt(aarch64, 'player-aarch64'),
+      [`vega exec vpt show-contents ${release}`]: out('vpt-show-contents/player-aarch64.txt'),
+      [installCmd(aarch64, 'VirtualDevice')]: out('vega-device-install-app/installed.txt')
+    })
+    const seen: unknown[] = []
+
+    const result = await install.install(undefined, {
+      device: 'VirtualDevice',
+      prefer: 'debug',
+      onPackage: (pkg, target) => seen.push({ pkg, target, installs: runner.calls.length })
+    })
+
+    expect(result.package).toMatchObject({ path: aarch64, buildType: 'debug' })
+    expect(seen).toEqual([
+      {
+        pkg: { ...result.package, folder: 'build/aarch64-debug/' },
+        target: result.target,
+        installs: runner.calls.findIndex((c) => c.display.includes('install-app'))
+      }
+    ])
   })
 
   test('a folder with only a build for another architecture is blocked; --force installs it', async () => {

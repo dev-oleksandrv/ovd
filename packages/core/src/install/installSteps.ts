@@ -1,5 +1,6 @@
 import { stat } from 'node:fs/promises'
 import { basename, resolve as resolvePath } from 'node:path'
+import type { BuildType } from '../adapters/parseAppConfig.js'
 import { parseInstallApp } from '../adapters/parseInstallApp.js'
 import type { PackageArch } from '../adapters/parseVptContents.js'
 import { assertAppId } from '../deviceApps/appId.js'
@@ -50,7 +51,13 @@ export interface InstallSteps {
   targetDevice(device?: string): Promise<{ device: Device; target: InstallTarget }>
   // `ref`: a .vpkg, a project folder or a package ID; without one, the open .vpkg or project.
   // The target is read only when a folder's builds have to be told apart by architecture.
-  resolve(ref: string | undefined, target: () => Promise<InstallTarget>): Promise<ResolvedPackage>
+  // `prefer`: among a folder's builds that match the target, the newest of this build type
+  // (from the build folder's name) wins; without one of that type, the newest match.
+  resolve(
+    ref: string | undefined,
+    target: () => Promise<InstallTarget>,
+    prefer?: BuildType
+  ): Promise<ResolvedPackage>
   check(
     path: string,
     target: InstallTarget,
@@ -92,10 +99,12 @@ export function createInstallSteps(deps: InstallStepsDeps): InstallSteps {
   }
 
   // The newest build that matches the target, else the newest, which the guard then blocks.
+  // With `prefer`, the matching builds of that type are tried first, newest first.
   async function pickBuild(
     builds: PackageBuild[],
     folder: string,
-    targetOf: () => Promise<InstallTarget>
+    targetOf: () => Promise<InstallTarget>,
+    prefer?: BuildType
   ): Promise<ResolvedPackage> {
     const newest = builds[0]
     if (!newest) {
@@ -106,9 +115,17 @@ export function createInstallSteps(deps: InstallStepsDeps): InstallSteps {
       )
     }
     const { architecture } = await targetOf()
-    const candidates = builds
-      .filter((b) => b.folderArch === undefined || b.folderArch === architecture)
-      .slice(0, MAX_FIX_READS)
+    const matching = builds.filter(
+      (b) => b.folderArch === undefined || b.folderArch === architecture
+    )
+    const ordered =
+      prefer === undefined
+        ? matching
+        : [
+            ...matching.filter((b) => b.folderBuildType === prefer),
+            ...matching.filter((b) => b.folderBuildType !== prefer)
+          ]
+    const candidates = ordered.slice(0, MAX_FIX_READS)
     for (const build of candidates) {
       const found = await deps.packages.architecture(build.path).catch(() => 'unknown' as const)
       if (compareArch(found, architecture) === 'match') return { path: build.path, build, builds }
@@ -153,12 +170,12 @@ export function createInstallSteps(deps: InstallStepsDeps): InstallSteps {
     targetDevice,
     check,
 
-    async resolve(ref, targetOf) {
+    async resolve(ref, targetOf, prefer) {
       const mode = await deps.project.current()
       if (ref === undefined) {
         if (mode?.kind === 'vpkg') return { path: mode.path }
         if (mode?.kind === 'folder' && !mode.missing) {
-          return pickBuild(await deps.packages.builds(), mode.path, targetOf)
+          return pickBuild(await deps.packages.builds(), mode.path, targetOf, prefer)
         }
         throw new OvdError(
           'NO_PACKAGE',
@@ -168,13 +185,15 @@ export function createInstallSteps(deps: InstallStepsDeps): InstallSteps {
       }
       const path = resolvePath(deps.cwd, expandHome(ref, deps.homedir))
       const found = await stat(path).catch(() => undefined)
-      if (found?.isDirectory()) return pickBuild(await deps.packages.builds(path), path, targetOf)
+      if (found?.isDirectory()) {
+        return pickBuild(await deps.packages.builds(path), path, targetOf, prefer)
+      }
       // A path, even a missing one: `packages.info` says what is wrong with it.
       if (found || ref.includes('/') || /\.vpkg$/i.test(ref)) return { path }
       // A package ID: refused here when it isn't one, as every app action does (`appId.ts`).
       assertAppId(ref, { from: 'argument' })
       if (mode?.kind === 'folder' && !mode.missing && mode.packageId === ref) {
-        return pickBuild(await deps.packages.builds(), mode.path, targetOf)
+        return pickBuild(await deps.packages.builds(), mode.path, targetOf, prefer)
       }
       if (mode?.kind === 'vpkg' && !mode.missing) {
         if ((await deps.packages.info(mode.path)).id === ref) return { path: mode.path }
