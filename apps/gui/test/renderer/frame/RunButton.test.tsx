@@ -174,6 +174,37 @@ describe('Run button', () => {
     await vi.waitFor(() => expect(stub.api.logs.open).toHaveBeenCalledWith('VirtualDevice'))
   })
 
+  test('a run main rejects: the step fails, an error toast, and Run works again', async () => {
+    const start = vi
+      .fn<OvdApi['run']['start']>()
+      .mockRejectedValueOnce(new Error('a run is already in progress'))
+      .mockResolvedValueOnce(outcome(verified))
+    await renderApp({ mode: folder, start })
+    const button = (await screen.findByRole('button', {
+      name: 'Run ▸ hellovega'
+    })) as HTMLButtonElement
+    await vi.waitFor(() => expect(button.disabled).toBe(false))
+
+    fireEvent.click(button)
+
+    const steps = screen.getByRole('region', { name: 'Run steps' })
+    expect(await within(steps).findByRole('listitem', { name: 'Pick build: failed' })).toBeTruthy()
+    expect(within(steps).getByText('Couldn’t start the run')).toBeTruthy()
+    const toast = await screen.findByText(
+      'Couldn’t start the run. A run may still be in progress: wait for it to finish, then try again.'
+    )
+    expect(toast.closest('[role="status"]')?.textContent).toContain(
+      '$ ovd run --device VirtualDevice'
+    )
+    await vi.waitFor(() => expect(button.disabled).toBe(false))
+
+    fireEvent.click(button)
+    expect(start).toHaveBeenCalledTimes(2)
+    expect(
+      await within(steps).findByRole('listitem', { name: 'Following logs: done' })
+    ).toBeTruthy()
+  })
+
   test('Esc closes the steps; the chevron shows them again', async () => {
     await renderApp({ mode: folder, start: async () => outcome(verified) })
     const button = (await screen.findByRole('button', {

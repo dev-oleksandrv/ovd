@@ -148,6 +148,14 @@ export function runDisabledReason(
   return null
 }
 
+// A run main refused or never answered (a run still in progress after a reload, an IPC
+// failure): finished as failed like any other error, so Run is enabled again.
+export const RUN_NOT_STARTED: ErrorJson = {
+  code: 'COMMAND_FAILED',
+  message: 'Couldn’t start the run',
+  hint: 'A run may still be in progress: wait for it to finish, then try again.'
+}
+
 // The CLI equivalent (ADR 0005): core runs with no ref, so it reads the open project or .vpkg,
 // exactly as this does.
 export function runCli(device: string): string {

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { useFeedback } from '../feedback/feedbackContext'
 import { outcomeOf } from '../screens/apps/appsView'
 import { outcomeKey, setLaunchOutcome } from '../screens/apps/launchOutcomes'
-import { runCli, runReducer, runToast, type RunState } from './runView'
+import type { RunOutcome } from '@ovd/core'
+import type { IpcResult } from '../../../preload/api'
+import { RUN_NOT_STARTED, runCli, runReducer, runToast, type RunState } from './runView'
 
 export interface RunHook {
   state: RunState
@@ -33,8 +35,14 @@ export function useRun(opts: { onDone: () => void; onOpenLogs: () => void }): Ru
       busy.current = true
       dispatch({ kind: 'start', device })
       echo(runCli(device))
-      const result = await window.ovd.run.start(device)
-      busy.current = false
+      let result: IpcResult<RunOutcome>
+      try {
+        result = await window.ovd.run.start(device)
+      } catch {
+        result = { ok: false, error: RUN_NOT_STARTED }
+      } finally {
+        busy.current = false
+      }
       dispatch({ kind: 'finish', result })
       const toast = runToast(result, device)
       if (!result.ok) {
