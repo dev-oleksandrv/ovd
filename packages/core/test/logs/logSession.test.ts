@@ -117,6 +117,23 @@ async function waitFor(condition: () => boolean): Promise<void> {
   throw new Error('waitFor: condition never held')
 }
 
+// Moves the fake clock in small steps until the condition holds, within the same real-time
+// budget. A reconnect poll arms its next timer only after its target read (real file I/O) is
+// done, which on a slow runner can come after one big `advanceTimersByTimeAsync`: that timer
+// would then never fire. Small steps keep advancing until it has.
+const ADVANCE_STEP_MS = 100
+
+async function advanceUntil(condition: () => boolean): Promise<void> {
+  const started = process.hrtime.bigint()
+  while (process.hrtime.bigint() - started < WAIT_BUDGET_NS) {
+    if (condition()) return
+    await vi.advanceTimersByTimeAsync(ADVANCE_STEP_MS)
+    await settle()
+  }
+  if (condition()) return
+  throw new Error('advanceUntil: condition never held')
+}
+
 interface Started {
   session: LogSession
   stream: FakeStream
@@ -697,14 +714,12 @@ describe('reconnect', () => {
     expect(states).toEqual(['reconnecting'])
     expect(s.ovd()).toEqual(['Device dropped · reconnecting…'])
     expect(s.delivered().filter((e) => e.ovd === undefined)).toHaveLength(20)
+    // Polls are RECONNECT_POLL_MS apart, so the count passes through every value.
     for (const calls of [2, 3]) {
-      await vi.advanceTimersByTimeAsync(RECONNECT_POLL_MS)
-      await waitFor(() => s.runner.count(VDA) === calls)
-      for (let i = 0; i < 20; i++) await settle()
+      await advanceUntil(() => s.runner.count(VDA) === calls)
       expect(s.runner.count(LOG)).toBe(1)
     }
-    await vi.advanceTimersByTimeAsync(RECONNECT_POLL_MS)
-    await waitFor(() => s2.spec !== undefined)
+    await advanceUntil(() => s2.spec !== undefined)
     expect(s.runner.count(LOG)).toBe(2)
     s2.emit(FOLLOW)
     await vi.advanceTimersByTimeAsync(250)
@@ -726,12 +741,9 @@ describe('reconnect', () => {
     const [s1, s2, s3] = s.streams as [FakeStream, FakeStream, FakeStream]
     s1.end(129)
     await waitFor(() => s.session.state() === 'reconnecting')
-    await vi.advanceTimersByTimeAsync(RECONNECT_POLL_MS)
-    await waitFor(() => s2.spec !== undefined)
+    await advanceUntil(() => s2.spec !== undefined)
     s2.end(129)
-    for (let i = 0; i < 20; i++) await settle()
-    await vi.advanceTimersByTimeAsync(RECONNECT_POLL_MS)
-    await waitFor(() => s3.spec !== undefined)
+    await advanceUntil(() => s3.spec !== undefined)
     s3.end(129)
     await waitFor(() => s.end() !== undefined)
     expect(s.end()).toMatchObject({
