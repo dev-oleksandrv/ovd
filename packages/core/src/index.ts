@@ -173,6 +173,20 @@ export type { LaunchCrash, LaunchVerification } from './deviceApps/launchVerific
 export { LOG_BUFFER_SIZE } from './logs/types.js'
 export type { LogCounts, LogEntry, LogLevel, OvdEvent } from './logs/types.js'
 export { logText, logTextAll, ovdEventText } from './logs/logText.js'
+export {
+  LOG_EXPORT_FORMATS,
+  logExport,
+  logJson,
+  openLogExport,
+  writeLogExport
+} from './logs/logExport.js'
+export type {
+  LogExportFormat,
+  LogExportOptions,
+  LogExportResult,
+  LogExportWriter,
+  LogJson
+} from './logs/logExport.js'
 export { isAppIdentity } from './logs/logFilter.js'
 export type { LogFilterInput } from './logs/logFilter.js'
 export type {
