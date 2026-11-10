@@ -211,14 +211,14 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** `ovd logs --app com.example.player --level error` streams only that app's errors; the desktop stays responsive under a flood; Follow sticks to the bottom until you scroll.
 
-### 3.2 Logs survive reinstall — next
+### 3.2 Logs survive reinstall — done (PR #97)
 
 - Stream restarts after every install made through OVD; footer toggle "Restart session after install", on by default (ADR 0014). Reconnects when a device drops, with an inline note.
-- OVD events inline (install, "Log session restarted", launch verified, crash detected, build folder changed), from the activity log.
+- OVD events inline (install, "Log session restarted", launch verified, crash detected), from the activity log. The "build folder changed" line comes with the build watcher in 3.5.
 
 **Expected:** reinstall 10 times with logs open; logs keep arriving and each reinstall shows as an OVD line.
 
-### 3.3 Export
+### 3.3 Export — next
 
 - Plain text or JSON lines, from the toolbar, the palette and `ovd logs --export`.
 
@@ -235,6 +235,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 ### 3.5 Watch and redeploy
 
 - Title bar toggle "Watching build/" / "Watch off" (project open only). A new build reinstalls and relaunches, with a toast and an OVD log line. CLI `ovd run --watch`.
+- OVD line "Build folder changed" in Logs when the watched build folder changes (moved from 3.2).
 
 **Expected:** a rebuild redeploys and logs continue without manual steps.
 
