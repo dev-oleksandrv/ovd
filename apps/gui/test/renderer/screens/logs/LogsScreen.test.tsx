@@ -338,4 +338,57 @@ describe('LogsScreen', () => {
     expect(screen.queryByText('Logs unavailable — Fire TV stick is offline')).toBeNull()
     expect(screen.getByRole('button', { name: /Pause/ })).toBeTruthy()
   })
+  test('an ended session on an offline target: the offline state with why it ended, no Restart', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    act(() => stub.push(ready([{ ...stick, status: 'offline' }], stick.id)))
+    push(stub, {
+      kind: 'state',
+      session: 1,
+      state: {
+        ...running,
+        status: 'ended',
+        error: { code: 'LOG_STREAM_ENDED', message: 'Fire TV stick stayed away', hint: 'h' }
+      }
+    })
+    expect(await screen.findByText('Logs unavailable — Fire TV stick is offline')).toBeTruthy()
+    expect(screen.getByText('The last log session ended: Fire TV stick stayed away')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Restart' })).toBeNull()
+    expect(screen.queryByText('[KeplerScript-JavaScript] player flood 0')).toBeNull()
+    // The target is back: the ended session shows again, with its lines and Restart.
+    act(() => stub.push(ready([stick], stick.id)))
+    expect(await screen.findByRole('button', { name: 'Restart' })).toBeTruthy()
+    expect(screen.getByText('[KeplerScript-JavaScript] player flood 0')).toBeTruthy()
+  })
+
+  test('no target while main keeps the session reconnecting: the list, the note and the echo stay', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    act(() => stub.push(ready([], null)))
+    push(stub, { kind: 'state', session: 1, state: { ...running, status: 'reconnecting' } })
+    expect(screen.getByRole('status').textContent).toContain('Reconnecting to Fire TV stick…')
+    expect(screen.getByText('[KeplerScript-JavaScript] player flood 2')).toBeTruthy()
+    expect(screen.queryByText('No target device')).toBeNull()
+    expect(screen.getByText('Live log of Fire TV stick · filtered on this computer')).toBeTruthy()
+    expect(echoed()).toContain(`ovd logs --device ${stick.id}`)
+  })
+
+  test('no target and no live session: a call to choose one', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    act(() => stub.push(ready([], null)))
+    push(stub, {
+      kind: 'state',
+      session: 1,
+      state: {
+        ...running,
+        status: 'ended',
+        error: { code: 'LOG_STREAM_ENDED', message: 'ended', hint: 'h' }
+      }
+    })
+    expect(await screen.findByText('No target device')).toBeTruthy()
+  })
 })

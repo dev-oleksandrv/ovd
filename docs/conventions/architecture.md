@@ -21,7 +21,7 @@ Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/a
 - Parsed output is validated with `zod` at the adapter boundary. Adapters are versioned per SDK version when output differs (ADR 0007).
 - Long-running streams (logs, input console, memory polling) are managed child processes with explicit start/stop, auto-reconnect when a device drops, and clean shutdown on abort. No orphaned processes.
 - Every device action (install, launch, stop, input, screenshot, reboot…) appends one entry to the activity log (ADR 0011).
-- Core returns typed data and typed errors (an error code plus a fix hint), never preformatted human text. Formatting belongs to the surface.
+- Core returns typed data and typed errors (an error code plus a fix hint), never preformatted human text. Formatting belongs to the surface. The one exception is a shared format that every surface must print the same way, such as the `ovd logs` line and Export format and the text of OVD's log lines (`packages/core/src/logs/logText.ts`): it lives in core next to the typed data it formats, because surfaces can't share code with each other and the renderer can't import core runtime code.
 - Core never reads `process.argv`, never writes to stdout/stderr, never calls `process.exit`.
 
 ## Rules

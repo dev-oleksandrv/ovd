@@ -229,3 +229,28 @@ test('an OVD entry prints time, OVD and the message; paintLevel paints OVD', () 
     `${CLOCK} <I:OVD> Log session restarted\n`
   )
 })
+
+test.each([
+  ['an ANSI escape', 'red \u001b[31mtext\u001b[0m', 'red \\x1b[31mtext\\x1b[0m'],
+  ['a carriage return', 'progress\rdone', 'progress\\x0ddone'],
+  ['DEL and a C1 control', 'a\u007fb\u009bc', 'a\\x7fb\\x9bc'],
+  ['a bidi override', 'abc‮def', 'abc\\u{202e}def'],
+  ['a tab, kept', 'key\tvalue', 'key\tvalue']
+])('escapes control characters in a device message: %s', (_name, message, shown) => {
+  expect(logText({ ...entry, message })).toBe(
+    `${CLOCK} E com.amazon.keplerscript   27178 ${shown}\n`
+  )
+})
+
+test('escapes control characters in the tag, padding the escaped text', () => {
+  expect(logText({ ...entry, tag: 'tag\u001b', message: 'm' })).toBe(
+    `${CLOCK} E ${'tag\\x1b'.padEnd(24)}  27178 m\n`
+  )
+})
+
+test('keeps newlines as continuation lines, escaping within each line', () => {
+  const indent = ' '.repeat(`${CLOCK} E com.amazon.keplerscript   27178 `.length)
+  expect(logText({ ...entry, message: 'first\nsecond\u0007' })).toBe(
+    `${CLOCK} E com.amazon.keplerscript   27178 first\n${indent}second\\x07\n`
+  )
+})

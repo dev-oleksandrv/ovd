@@ -11,7 +11,7 @@ import {
   setFollow as setFollowStore,
   type LogStore
 } from './logStore'
-import { logsCli, regexError, withPackage, without } from './logsView'
+import { heldDevice, logsCli, regexError, withPackage, without } from './logsView'
 
 // How long the search waits for typing to stop before it re-filters.
 export const SEARCH_DEBOUNCE_MS = 300
@@ -52,7 +52,8 @@ export function useLogs(target: Device | undefined): LogsValue {
   // Sessions open only for an online target; the echo and Restart use its ID even while it
   // shows offline (a reconnecting session keeps the screen).
   const device = target?.status === 'online' ? target.id : null
-  const targetId = target?.id ?? null
+  // Without a target, a session main keeps while its device reconnects stands in for it.
+  const targetId = target?.id ?? heldDevice(store.state, target)
   const restartAfterInstall = store.state.status === 'idle' ? true : store.state.restartAfterInstall
   const toggleRef = useRef(restartAfterInstall)
   toggleRef.current = restartAfterInstall

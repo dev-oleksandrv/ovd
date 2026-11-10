@@ -161,7 +161,10 @@ export function createLogsController(opts: {
     },
     restart: (device) => begin(device),
     async targetChanged(target) {
-      if (state.status === 'idle' || isFor(target)) return
+      // No target at all (the only online device dropped, nothing remembered) keeps the session:
+      // its device is most likely rebooting, and the session reconnects by itself, with its note
+      // and OVD lines, or ends when it gives up. Only another device replaces it.
+      if (state.status === 'idle' || target === null || isFor(target)) return
       const n = await replace()
       push(n, { status: 'idle' })
       resetFrom(n, undefined)

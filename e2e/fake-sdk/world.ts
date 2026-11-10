@@ -57,7 +57,8 @@ export interface World {
   }
   // When signed out, `vega devmode login --json` waits before it prints anything until it is
   // stopped, so a test can stop OVD while a probe runs. Doctor's own 5 s probe timeout still
-  // applies.
+  // applies. A timing knob (docs/conventions/testing.md): it delays the recorded answer, never
+  // changes it.
   loginHold: boolean
 }
 
