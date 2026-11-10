@@ -32,19 +32,33 @@ function setup(
     logsRunningFor?: string | null
     target?: string | null
     redeploy?: () => Promise<IpcResult<RunOutcome>>
+    // The first start waits (its baseline scan) until `release()`.
+    holdStart?: boolean
   } = {}
 ) {
   const sent: WatchEvent[] = []
+  let release = (): void => undefined
+  const held = opts.holdStart
+    ? new Promise<void>((resolve) => (release = resolve))
+    : Promise.resolve()
   let onBuild: WatchOptions['onBuild'] | undefined
   let end: (why: WatchEnd) => void = () => undefined
-  const stop = vi.fn(() => end({ reason: 'stopped' }))
+  // Every handle's stop, each ending its own watch.
+  const stop = vi.fn()
   const start = vi.fn(async (_ref: string | undefined, watch: WatchOptions) => {
     if (opts.startError) throw opts.startError
+    await held
     onBuild = watch.onBuild
+    let endThis: (why: WatchEnd) => void = () => undefined
+    const done = new Promise<WatchEnd>((resolve) => (endThis = resolve))
+    end = endThis
     return {
       ...folder,
-      stop,
-      done: new Promise<WatchEnd>((resolve) => (end = resolve))
+      stop: () => {
+        stop()
+        endThis({ reason: 'stopped' })
+      },
+      done
     }
   })
   const redeploy = vi.fn(
@@ -71,6 +85,7 @@ function setup(
     stop,
     redeploy,
     open,
+    release: () => release(),
     build: async (change: BuildChange) => {
       if (!onBuild) throw new Error('not watching')
       await onBuild(change)
@@ -204,5 +219,37 @@ describe('createWatchController', () => {
     s.controller.stop()
     expect(s.stop).toHaveBeenCalled()
     expect(s.controller.state()).toEqual({ watching: false })
+  })
+
+  test.each([
+    ['turned off', (s: ReturnType<typeof setup>) => void s.controller.set(false)],
+    ['stopped (quit, window closed)', (s: ReturnType<typeof setup>) => s.controller.stop()]
+  ])('%s while it starts: the late watch is stopped and pushes nothing', async (_name, off) => {
+    const s = setup({ holdStart: true })
+    const on = s.controller.set(true)
+    await vi.waitFor(() => expect(s.start).toHaveBeenCalled())
+    off(s)
+    s.release()
+
+    expect(await on).toEqual({ ok: true, data: { watching: false } })
+    expect(s.stop).toHaveBeenCalled()
+    expect(s.controller.state()).toEqual({ watching: false })
+    expect(s.sent).toEqual([])
+    expect(s.open).not.toHaveBeenCalled()
+  })
+
+  test('on, off and on again while the first start is pending: one watch, on', async () => {
+    const s = setup({ holdStart: true })
+    const first = s.controller.set(true)
+    await vi.waitFor(() => expect(s.start).toHaveBeenCalledTimes(1))
+    void s.controller.set(false)
+    const again = s.controller.set(true)
+    s.release()
+
+    expect(await first).toEqual({ ok: true, data: { watching: false } })
+    expect(await again).toEqual({ ok: true, data: { watching: true, folder: '~/dev/player' } })
+    expect(s.start).toHaveBeenCalledTimes(2)
+    expect(s.stop).toHaveBeenCalledTimes(1)
+    expect(s.controller.state()).toEqual({ watching: true, folder: '~/dev/player' })
   })
 })

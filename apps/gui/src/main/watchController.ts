@@ -40,6 +40,8 @@ export function createWatchController(deps: WatchControllerDeps): WatchControlle
   let current: WatchHandle | undefined
   // A start in progress, which a second `set(true)` waits for instead of starting another.
   let starting: Promise<IpcResult<WatchState>> | undefined
+  // Bumped by every off: a start that finishes in another generation was turned off meanwhile.
+  let generation = 0
 
   const setState = (next: WatchState) => {
     state = next
@@ -67,7 +69,13 @@ export function createWatchController(deps: WatchControllerDeps): WatchControlle
 
   const start = () =>
     toResult(async (): Promise<WatchState> => {
+      const gen = generation
       const handle = await deps.watch.start(undefined, { onBuild })
+      // Turned off (or the app quit) while it started: this watch is no longer wanted.
+      if (gen !== generation) {
+        handle.stop()
+        return state
+      }
       current = handle
       void handle.done.then((end) => {
         if (current !== handle) return
@@ -81,6 +89,9 @@ export function createWatchController(deps: WatchControllerDeps): WatchControlle
     })
 
   const off = () => {
+    // A start in flight sees it and stops what it gets; a later `set(true)` starts afresh.
+    generation++
+    starting = undefined
     const handle = current
     current = undefined
     handle?.stop()
@@ -95,7 +106,12 @@ export function createWatchController(deps: WatchControllerDeps): WatchControlle
         return { ok: true, data: state }
       }
       if (current) return { ok: true, data: state }
-      starting ??= start().finally(() => (starting = undefined))
+      if (!starting) {
+        const pending = start().finally(() => {
+          if (starting === pending) starting = undefined
+        })
+        starting = pending
+      }
       return starting
     },
     state: () => state,
