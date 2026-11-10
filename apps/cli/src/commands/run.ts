@@ -17,6 +17,12 @@ import type { CliDeps } from '../program.js'
 import { reportError } from '../report.js'
 import { LOG_COLORS, LOG_COLOR_RESET } from './logs.js'
 import { reportContext } from './context.js'
+import { runWatch } from './runWatch.js'
+
+interface RunFlags {
+  force?: boolean
+  watch?: boolean
+}
 
 // `ovd run [app]` (Stage 3.4): installs the build that matches the target (release for sticks,
 // debug for the Virtual Device, ADR 0008), starts the log session, restarts the app, verifies
@@ -29,6 +35,7 @@ import { reportContext } from './context.js'
 // one `{"ok":false,"error":…}` line (with `"run"` for an unverified launch, exit 7), its held
 // lines dropped and its session stopped. Ctrl+C before the launch is verified stops the run
 // after the step in flight and exits 0 with nothing on stdout.
+// `--watch`: redeploys every new build of the project folder (`runWatch.ts`).
 export function registerRun(
   program: Command,
   deps: CliDeps,
@@ -39,7 +46,8 @@ export function registerRun(
     .description('Install the build for the target, launch it and follow its log (Ctrl+C to stop)')
     .argument('[app]', '.vpkg, project folder or package ID (default: the open .vpkg or project)')
     .option('--force', 'install even when the package and target architectures differ')
-    .action(async (app: string | undefined, opts: { force?: boolean }, cmd: Command) => {
+    .option('--watch', 'redeploy every new build of the project folder (Ctrl+C to stop)')
+    .action(async (app: string | undefined, opts: RunFlags, cmd: Command) => {
       const ctx = reportContext(cmd, deps, setExitCode)
       const color = deps.stdoutTty === true && deps.env.NO_COLOR === undefined
       const paintLevel = color
@@ -50,6 +58,10 @@ export function registerRun(
         ctx.json
           ? entries.map((entry) => `${JSON.stringify(logJson(entry))}\n`).join('')
           : entries.map((entry) => logText(entry, paintLevel ? { paintLevel } : {})).join('')
+      if (opts.watch) {
+        await runWatch(deps, { app, force: opts.force === true, ctx, format })
+        return
+      }
       // Lines that arrive before the run is printed wait here; `undefined` once it is.
       let held: LogEntry[] | undefined = []
       // Set once the run fails or is aborted: lines the stream still delivers (while its session
