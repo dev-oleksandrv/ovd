@@ -8,9 +8,19 @@ interface LogFooterProps {
   onFollow: (on: boolean) => void
   // Scrolls to the bottom, turns Follow on and resumes.
   onShowNew: () => void
+  restartAfterInstall: boolean
+  onRestartAfterInstall: (on: boolean) => void
 }
 
-export function LogFooter({ counts, newLines, follow, onFollow, onShowNew }: LogFooterProps) {
+export function LogFooter({
+  counts,
+  newLines,
+  follow,
+  onFollow,
+  onShowNew,
+  restartAfterInstall,
+  onRestartAfterInstall
+}: LogFooterProps) {
   return (
     <div className="flex h-[38px] flex-none items-center gap-3 border-t border-line px-6 text-meta text-muted">
       <span>
@@ -27,6 +37,9 @@ export function LogFooter({ counts, newLines, follow, onFollow, onShowNew }: Log
           {newLines} new {newLines === 1 ? 'line' : 'lines'}
         </button>
       )}
+      <ToggleButton icon="autorenew" pressed={restartAfterInstall} onChange={onRestartAfterInstall}>
+        Restart session after install
+      </ToggleButton>
       <ToggleButton icon="vertical_align_bottom" pressed={follow} onChange={onFollow}>
         Follow
       </ToggleButton>

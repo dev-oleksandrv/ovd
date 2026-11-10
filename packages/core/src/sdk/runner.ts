@@ -27,6 +27,8 @@ export interface CommandSpec {
   // `onChunk` and nothing is kept, there is no timeout, and the command runs in its own process
   // group, which an abort signals as a whole (SIGTERM, then SIGKILL after `graceMs`): signalling
   // only the top `vega` orphans the chain (ARCHITECTURE §8). An abort resolves with `stopped`.
+  // A stream whose leader ends by itself has what is left of its group stopped the same way
+  // before the run resolves, without `stopped`.
   stream?: { onChunk: (chunk: string) => void; graceMs?: number }
 }
 
@@ -60,7 +62,8 @@ const GROUP_POLL_MS = 25
 // Non-zero exits are returned, not thrown: callers decide what an exit code means for their tool.
 // Every detached group is in `groups` while it runs, so the surfaces can SIGTERM what is left
 // when OVD exits (CLI exit, second Ctrl+C, SIGTERM, uncaught error; desktop `before-quit` and
-// `will-quit`). A SIGKILL of OVD or a hard crash runs nothing, so those groups stay.
+// `will-quit`). A SIGKILL of OVD or a hard crash runs nothing, so those groups stay. A stream
+// whose leader ends by itself has what is left of its group stopped before the run resolves.
 export function createExecaRunner(groups: ProcessGroups = processGroups): Runner {
   return {
     async run(spec) {
@@ -238,6 +241,13 @@ async function runStream(
     const result = await subprocess
     signal?.removeEventListener('abort', stop)
     if (stopping) await stopping
+    if (!stopping && subprocess.pid !== undefined && groupExists(subprocess.pid)) {
+      // A leader that ended by itself can leave members of its group running (the rest of the
+      // `vega` chain): they are stopped before the run resolves and the group is unregistered.
+      // Kept apart from `stopping`, so the run still reports its own exit, without `stopped`.
+      const leftover = stopGroup(subprocess.pid, exited, stream.graceMs ?? STREAM_GRACE_MS)
+      await leftover
+    }
     const rest = decoder.end()
     if (rest !== '') stream.onChunk(rest)
     const durationMs = Date.now() - started

@@ -72,8 +72,11 @@ export function createLogBuffer(
   return {
     add(entries) {
       for (const entry of entries) {
-        lines++
-        if (entry.level === 'E') errors++
+        // An OVD line is kept and shown, but it isn't a device line or an error.
+        if (entry.ovd === undefined) {
+          lines++
+          if (entry.level === 'E') errors++
+        }
         if (isAppIdentity(entry.process) && entry.process !== null) seen.add(entry.process)
         if (capacity === 0) continue
         if (size === capacity) dropOldest()

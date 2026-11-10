@@ -2,26 +2,32 @@ import { appendFile, mkdir, rename, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { ErrorCode } from '../errors/ovdError.js'
 
-export type Surface = 'cli' | 'desktop' | 'mcp' | 'action'
+export const SURFACES = ['cli', 'desktop', 'mcp', 'action'] as const
 
-export type ActivityAction =
-  | 'target.set'
-  | 'device.rename'
-  | 'vvd.start'
-  | 'vvd.stop'
-  | 'vvd.devmode.enable'
-  | 'devmode.enable'
-  | 'pair.tcpip'
-  | 'pair.connect'
-  | 'connect'
-  | 'forget'
-  | 'app.install'
-  | 'app.launch'
-  | 'app.terminate'
-  | 'app.restart'
-  | 'app.uninstall'
-  | 'app.reinstall'
-  | 'logs'
+export type Surface = (typeof SURFACES)[number]
+
+export const ACTIVITY_ACTIONS = [
+  'target.set',
+  'device.rename',
+  'vvd.start',
+  'vvd.stop',
+  'vvd.devmode.enable',
+  'devmode.enable',
+  'pair.tcpip',
+  'pair.connect',
+  'connect',
+  'forget',
+  'app.install',
+  'app.launch',
+  'app.terminate',
+  'app.restart',
+  'app.uninstall',
+  'app.reinstall',
+  'logs',
+  'logs.restart'
+] as const
+
+export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]
 
 export interface ActivityEntry {
   time: string

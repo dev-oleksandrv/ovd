@@ -271,6 +271,29 @@ describe('createExecaRunner streams', () => {
     expect(groups.pids()).toEqual([])
   })
 
+  test('a stream that ends by itself while its group still has a member stops that group before it resolves', async () => {
+    const groups = createProcessGroups()
+    const registered = createExecaRunner(groups)
+    // The grandchild is spawned as in `withGrandchild` (no `detached`), so it stays in the
+    // stream's process group; `stdio: 'ignore'` keeps it off the stream's pipes. The child
+    // exits by itself once the pids are written: the grandchild's handle would keep it alive.
+    const { spec, chunks } = streamOf(
+      "const { spawn } = require('node:child_process');" +
+        "const g = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });" +
+        "process.stdout.write(process.pid + ' ' + g.pid + '\\n', () => process.exit(0))"
+    )
+    const result = await registered.run(spec)
+    const [child = 0, grandchild = 0] = chunks.join('').trim().split(' ').map(Number)
+    expect(child).toBeGreaterThan(0)
+    expect(grandchild).toBeGreaterThan(0)
+
+    expect(gone(-child)).toBe(true)
+    expect(gone(grandchild)).toBe(true)
+    expect(groups.pids()).toEqual([])
+    expect(result).toMatchObject({ exitCode: 0 })
+    expect(result).not.toHaveProperty('stopped')
+  })
+
   test('a stream that fails to start registers nothing', async () => {
     const groups = createProcessGroups()
     const register = vi.spyOn(groups, 'register')

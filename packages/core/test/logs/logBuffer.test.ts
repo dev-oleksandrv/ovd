@@ -122,3 +122,24 @@ describe('the byte budget', () => {
     expect(buffer.counts()).toEqual({ lines: 5, errors: 1, shown: 0 })
   })
 })
+
+test('an OVD entry is kept and shown but counts in neither lines nor errors, and adds no app', () => {
+  const buffer = createLogBuffer(10)
+  buffer.add([entry(1)])
+  const ovd = entry(2, {
+    level: 'E',
+    deviceTime: null,
+    priority: null,
+    facility: null,
+    process: null,
+    pid: null,
+    tid: null,
+    tag: 'OVD',
+    message: 'Log session restarted',
+    ovd: { kind: 'restarted', reason: 'install' }
+  })
+  buffer.add([ovd])
+  expect(buffer.filtered().map((e) => e.seq)).toEqual([1, 2])
+  expect(buffer.counts()).toEqual({ lines: 1, errors: 0, shown: 2 })
+  expect(buffer.apps()).toEqual([])
+})

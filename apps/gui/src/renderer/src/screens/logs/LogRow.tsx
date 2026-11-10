@@ -21,9 +21,14 @@ interface LogRowProps {
 }
 
 // One log entry: time, level, tag, pid and the first message line; the full text on hover.
+// An OVD line (OVD's own event) shows OVD in the level and tag columns, no pid, in the accent
+// color.
 export function LogRow({ entry, search, regex, top }: LogRowProps) {
   const [first = '', ...rest] = entry.message.split('\n')
-  const full = `${timeOfDay(entry.time)} ${entry.level} ${entry.tag} ${entry.pid ?? '-'} ${entry.message}`
+  const ovd = entry.ovd !== undefined
+  const full = ovd
+    ? `${timeOfDay(entry.time)} OVD ${entry.message}`
+    : `${timeOfDay(entry.time)} ${entry.level} ${entry.tag} ${entry.pid ?? '-'} ${entry.message}`
   return (
     <div
       role="listitem"
@@ -35,14 +40,21 @@ export function LogRow({ entry, search, regex, top }: LogRowProps) {
       }
     >
       <span className="shrink-0 text-faint">{timeOfDay(entry.time)}</span>
-      <span className={`w-2.5 shrink-0 font-semibold ${LEVEL_CLASS[entry.level]}`}>
-        {entry.level}
+      {/* Wide enough for "OVD", so the columns stay aligned on every row. */}
+      <span
+        className={`w-6 shrink-0 font-semibold ${ovd ? 'text-accent' : LEVEL_CLASS[entry.level]}`}
+      >
+        {ovd ? 'OVD' : entry.level}
       </span>
-      <span className="w-[180px] shrink-0 truncate text-muted">
-        {highlighted(entry.tag, search, regex)}
+      <span className={`w-[180px] shrink-0 truncate ${ovd ? 'text-accent' : 'text-muted'}`}>
+        {ovd ? 'OVD' : highlighted(entry.tag, search, regex)}
       </span>
-      <span className="w-[52px] shrink-0 text-right text-subtle">{entry.pid ?? '-'}</span>
-      <span className="min-w-0 truncate text-text-soft">{highlighted(first, search, regex)}</span>
+      <span className="w-[52px] shrink-0 text-right text-subtle">
+        {ovd ? '' : (entry.pid ?? '-')}
+      </span>
+      <span className={`min-w-0 truncate ${ovd ? 'text-accent' : 'text-text-soft'}`}>
+        {highlighted(first, search, regex)}
+      </span>
       {rest.length > 0 && (
         <span className="shrink-0 text-faint">
           +{rest.length} {rest.length === 1 ? 'line' : 'lines'}

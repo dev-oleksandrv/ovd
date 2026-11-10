@@ -27,4 +27,26 @@ describe('LogRow', () => {
     render(<LogRow entry={logEntry(0)} search="" regex={false} />)
     expect(marks()).toEqual([])
   })
+
+  test('an OVD row shows OVD in the level and tag columns, no pid, in the accent color', () => {
+    const entry = logEntry(4, {
+      deviceTime: null,
+      priority: null,
+      facility: null,
+      process: null,
+      pid: null,
+      tid: null,
+      tag: 'OVD',
+      message: 'Log session restarted',
+      ovd: { kind: 'restarted', reason: 'install' }
+    })
+    render(<LogRow entry={entry} search="" regex={false} />)
+    const row = screen.getByRole('listitem')
+    const cells = Array.from(row.children).map((c) => c.textContent)
+    expect(cells.slice(1)).toEqual(['OVD', 'OVD', '', 'Log session restarted'])
+    for (const i of [1, 2, 4]) expect(row.children[i]?.className).toContain('text-accent')
+    expect(row.getAttribute('title')).toMatch(
+      /^\d{2}:\d{2}:\d{2}\.\d{3} OVD Log session restarted$/
+    )
+  })
 })

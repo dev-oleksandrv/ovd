@@ -6,6 +6,7 @@ import {
   type LogEntry,
   type LogSession,
   type LogSessionEnd,
+  type LogSessionState,
   type LogStartOptions,
   type Ovd
 } from '@ovd/core'
@@ -38,6 +39,9 @@ interface FakeSession {
   end(end: LogSessionEnd): void
   ended: () => LogSessionEnd | undefined
   setFilter: ReturnType<typeof vi.fn>
+  setRestartAfterInstall: ReturnType<typeof vi.fn>
+  // Sets what `state()` reports and calls the start's `onState`, as core does.
+  setState(state: LogSessionState): void
 }
 
 // A `logs.start` that resolves at once with a session holding `entries` (two by default).
@@ -70,6 +74,8 @@ function fakeLogs(opts: { failWith?: OvdError; entries?: number } = {}) {
         counts = { ...counts, shown: entries.length }
       }
     })
+    let state: LogSessionState = 'following'
+    const setRestartAfterInstall = vi.fn()
     const session: LogSession = {
       target: { id: start.device ?? STICK, name: 'Fire TV stick' },
       command: `vega exec vda -s ${start.device ?? STICK} shell loggingctl log -f -o short_concise`,
@@ -83,9 +89,22 @@ function fakeLogs(opts: { failWith?: OvdError; entries?: number } = {}) {
         entries = []
         counts = { lines: 0, errors: 0, shown: 0 }
       },
+      state: () => state,
+      setRestartAfterInstall,
       stop: async () => finish({ reason: 'stopped' })
     }
-    sessions.push({ opts: start, session, end: finish, ended: () => ended, setFilter })
+    sessions.push({
+      opts: start,
+      session,
+      end: finish,
+      ended: () => ended,
+      setFilter,
+      setRestartAfterInstall,
+      setState: (next) => {
+        state = next
+        start.onState?.(next)
+      }
+    })
     return session
   })
   return { logs: { start } as unknown as Ovd['logs'], start, sessions }
@@ -113,7 +132,8 @@ describe('createLogsController', () => {
     expect(await controller.open(STICK)).toEqual({
       status: 'starting',
       device: STICK,
-      name: STICK
+      name: STICK,
+      restartAfterInstall: true
     })
     await settle()
     expect(sent.at(-2)).toEqual({
@@ -123,7 +143,8 @@ describe('createLogsController', () => {
         status: 'running',
         device: STICK,
         name: 'Fire TV stick',
-        startedAt: '2026-11-08T07:27:00.000Z'
+        startedAt: '2026-11-08T07:27:00.000Z',
+        restartAfterInstall: true
       }
     })
     expect(sent.at(-1)).toMatchObject({ kind: 'reset', session: 1, entries: { length: 2 } })
@@ -205,7 +226,8 @@ describe('createLogsController', () => {
         device: STICK,
         name: STICK,
         startedAt: null,
-        error: { code: 'TARGET_OFFLINE', message: 'Fire TV stick is offline', hint: 'Plug it in' }
+        error: { code: 'TARGET_OFFLINE', message: 'Fire TV stick is offline', hint: 'Plug it in' },
+        restartAfterInstall: true
       }
     })
   })
@@ -310,6 +332,62 @@ describe('createLogsController', () => {
     await controller.stop()
     expect(sessions[0]?.ended()).toEqual({ reason: 'stopped' })
     expect(controller.running()).toBe(false)
+  })
+
+  test('the toggle applies to the running session and every later one, and pushes the state', async () => {
+    const { controller, start, sessions, sent } = setup()
+    await controller.open(STICK)
+    await settle()
+    expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ restartAfterInstall: true }))
+    expect(controller.setRestartAfterInstall(false)).toMatchObject({
+      status: 'running',
+      restartAfterInstall: false
+    })
+    expect(sessions[0]?.setRestartAfterInstall).toHaveBeenCalledWith(false)
+    expect(sent.at(-1)).toMatchObject({
+      kind: 'state',
+      session: 1,
+      state: { status: 'running', restartAfterInstall: false }
+    })
+    await controller.restart(STICK)
+    expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ restartAfterInstall: false }))
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        kind: 'state',
+        session: 2,
+        state: expect.objectContaining({ status: 'starting', restartAfterInstall: false })
+      })
+    )
+    await settle()
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        kind: 'state',
+        session: 2,
+        state: expect.objectContaining({ status: 'running', restartAfterInstall: false })
+      })
+    )
+  })
+
+  test('a reconnecting session pushes reconnecting and counts as running, then running again', async () => {
+    const { controller, sessions, sent } = setup()
+    await controller.open(STICK)
+    await settle()
+    sessions[0]?.setState('reconnecting')
+    expect(sent.at(-1)).toEqual({
+      kind: 'state',
+      session: 1,
+      state: {
+        status: 'reconnecting',
+        device: STICK,
+        name: 'Fire TV stick',
+        startedAt: '2026-11-08T07:27:00.000Z',
+        restartAfterInstall: true
+      }
+    })
+    expect(controller.running()).toBe(true)
+    sessions[0]?.setState('following')
+    expect(sent.at(-1)).toMatchObject({ kind: 'state', state: { status: 'running' } })
+    expect(controller.running()).toBe(true)
   })
 
   test('the renderer’s ring size is core’s buffer size', () => {

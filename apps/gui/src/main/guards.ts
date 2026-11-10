@@ -15,6 +15,12 @@ export function optionalFlag(value: unknown, field: string): boolean {
   return value
 }
 
+// A required on/off switch (the Logs footer toggle).
+export function requireFlag(value: unknown, field: string): boolean {
+  if (typeof value !== 'boolean') throw new TypeError(`${field} must be a boolean`)
+  return value
+}
+
 const FILTER_TEXT = ['app', 'level', 'search'] as const
 const FILTER_FLAGS = ['system', 'regex'] as const
 

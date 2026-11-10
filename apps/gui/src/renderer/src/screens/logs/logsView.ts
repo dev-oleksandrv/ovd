@@ -32,7 +32,7 @@ export function levelName(level: string | undefined): string | null {
 }
 
 // The `ovd logs …` that shows what the screen shows (ADR 0005), in the CLI's flag order.
-export function logsCli(filter: LogsFilter, device: string): string {
+export function logsCli(filter: LogsFilter, device: string, restartAfterInstall = true): string {
   const parts = ['ovd logs']
   if (filter.app) parts.push(`--app ${shellQuote(filter.app)}`)
   else if (filter.system) parts.push('--system')
@@ -43,6 +43,7 @@ export function logsCli(filter: LogsFilter, device: string): string {
     parts.push(`--grep ${doubleQuote(filter.search)}`)
     if (filter.regex) parts.push('--regex')
   }
+  if (!restartAfterInstall) parts.push('--no-restart-after-install')
   parts.push(`--device ${shellQuote(device)}`)
   return parts.join(' ')
 }

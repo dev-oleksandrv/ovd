@@ -74,6 +74,8 @@ export { createStateStore, emptyState } from './state/stateStore.js'
 export type { HostState, OpenProject, SavedDevice, StateStore } from './state/stateStore.js'
 export { createActivityLog } from './activity/activityLog.js'
 export type { ActivityAction, ActivityEntry, ActivityLog, Surface } from './activity/activityLog.js'
+export { ACTIVITY_POLL_MS, createActivityFeed } from './activity/activityFeed.js'
+export type { ActivityFeed } from './activity/activityFeed.js'
 export { canonicalId, classifyVdaEntry, defaultName } from './devices/deviceModel.js'
 export { createDevices } from './devices/devices.js'
 export type { Devices, DevicesDeps } from './devices/devices.js'
@@ -169,8 +171,14 @@ export type {
 } from './deviceApps/appActions.js'
 export type { LaunchCrash, LaunchVerification } from './deviceApps/launchVerification.js'
 export { LOG_BUFFER_SIZE } from './logs/types.js'
-export type { LogCounts, LogEntry, LogLevel } from './logs/types.js'
-export { logText, logTextAll } from './logs/logText.js'
+export type { LogCounts, LogEntry, LogLevel, OvdEvent } from './logs/types.js'
+export { logText, logTextAll, ovdEventText } from './logs/logText.js'
 export { isAppIdentity } from './logs/logFilter.js'
 export type { LogFilterInput } from './logs/logFilter.js'
-export type { Logs, LogSession, LogSessionEnd, LogStartOptions } from './logs/logSession.js'
+export type {
+  Logs,
+  LogSession,
+  LogSessionEnd,
+  LogSessionState,
+  LogStartOptions
+} from './logs/logSession.js'

@@ -76,6 +76,7 @@ const api: OvdApi = {
     open: (device) => ipcRenderer.invoke(channels.logsOpen, device),
     restart: (device) => ipcRenderer.invoke(channels.logsRestart, device),
     setFilter: (filter) => ipcRenderer.invoke(channels.logsFilter, filter),
+    setRestartAfterInstall: (on) => ipcRenderer.invoke(channels.logsRestartAfterInstall, on),
     clear: () => ipcRenderer.invoke(channels.logsClear),
     export: (throughSeq) => ipcRenderer.invoke(channels.logsExport, throughSeq),
     onUpdate: (listener) => {

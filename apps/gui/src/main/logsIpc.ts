@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises'
 import { dialog, ipcMain, type BrowserWindow } from 'electron'
 import type { Ovd } from '@ovd/core'
 import { channels } from '../preload/api'
-import { logsFilter, optionalSeq, requireText } from './guards'
+import { logsFilter, optionalSeq, requireFlag, requireText } from './guards'
 import { toResult } from './ipcResult'
 import { createLogsController } from './logsController'
 
@@ -32,6 +32,9 @@ export function registerLogsIpc(
   )
   ipcMain.handle(channels.logsFilter, (_event, filter: unknown) =>
     controller.setFilter(logsFilter(filter))
+  )
+  ipcMain.handle(channels.logsRestartAfterInstall, (_event, on: unknown) =>
+    toResult(async () => controller.setRestartAfterInstall(requireFlag(on, 'on')))
   )
   ipcMain.handle(channels.logsClear, () => controller.clear())
   ipcMain.handle(channels.logsExport, (_event, throughSeq: unknown) =>

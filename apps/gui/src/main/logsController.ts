@@ -16,6 +16,8 @@ export interface LogsController {
   // Main heard of a new target (from the target menu or a device poll).
   targetChanged(target: string | null): Promise<void>
   setFilter(filter: LogsFilter): Promise<IpcResult<null>>
+  // The footer toggle, for the running session and every later one; returns the new state.
+  setRestartAfterInstall(on: boolean): LogsState
   clear(): void
   // The shown lines as plain text (the `ovd logs` format); null without a session.
   exportText(throughSeq?: number): { text: string; lines: number } | null
@@ -40,6 +42,8 @@ export function createLogsController(opts: {
   let session = 0
   let state: LogsState = { status: 'idle' }
   let filter: LogsFilter = {}
+  // Kept for the app's run (not persisted), carried by every non-idle state.
+  let restartAfterInstall = true
   let current: LogSession | undefined
   // Stops whatever the current session number started (a start in progress included).
   let stopCurrent: () => Promise<void> = async () => undefined
@@ -70,15 +74,29 @@ export function createLogsController(opts: {
     if (n !== session) return state
     const controller = new AbortController()
     const startFilter = filter
-    push(n, { status: 'starting', device, name: device })
+    push(n, { status: 'starting', device, name: device, restartAfterInstall })
+    // Set once the start resolved: `onState` needs the session's name and start.
+    let started: LogSession | undefined
+    const following = (s: LogSession): LogsState => ({
+      status: s.state() === 'reconnecting' ? 'reconnecting' : 'running',
+      device,
+      name: s.target.name,
+      startedAt: s.startedAt,
+      restartAfterInstall
+    })
     const starting = opts.logs.start({
       device,
       filter: startFilter,
+      restartAfterInstall,
       signal: controller.signal,
       onEntries: (entries, counts, apps) => {
         if (n === session) batcher.append(n, entries, counts, apps)
+      },
+      onState: () => {
+        if (started && n === session) push(n, following(started))
       }
     })
+    const startToggle = restartAfterInstall
     stopCurrent = async () => {
       controller.abort()
       await starting.then(
@@ -90,7 +108,8 @@ export function createLogsController(opts: {
       (s) => {
         if (n !== session) return
         current = s
-        // The filter changed while the session started.
+        started = s
+        // The filter or the toggle changed while the session started.
         if (filter !== startFilter) {
           try {
             s.setFilter(filter)
@@ -98,7 +117,9 @@ export function createLogsController(opts: {
             filter = startFilter
           }
         }
-        push(n, { status: 'running', device, name: s.target.name, startedAt: s.startedAt })
+        if (restartAfterInstall !== startToggle) s.setRestartAfterInstall(restartAfterInstall)
+        // `following` reads `s.state()`: the session may already be reconnecting.
+        push(n, following(s))
         resetFrom(n, s)
         void s.done.then((end) => {
           if (end.reason !== 'ended' || n !== session) return
@@ -107,13 +128,21 @@ export function createLogsController(opts: {
             device,
             name: s.target.name,
             startedAt: s.startedAt,
-            error: toErrorJson(end.error)
+            error: toErrorJson(end.error),
+            restartAfterInstall
           })
         })
       },
       (error: unknown) => {
         if (n !== session || (error instanceof Error && error.name === 'AbortError')) return
-        push(n, { status: 'ended', device, name: device, startedAt: null, error: errorJson(error) })
+        push(n, {
+          status: 'ended',
+          device,
+          name: device,
+          startedAt: null,
+          error: errorJson(error),
+          restartAfterInstall
+        })
       }
     )
     return state
@@ -145,6 +174,12 @@ export function createLogsController(opts: {
         return null
       })
     },
+    setRestartAfterInstall(on) {
+      restartAfterInstall = on
+      current?.setRestartAfterInstall(on)
+      if (state.status !== 'idle') push(session, { ...state, restartAfterInstall: on })
+      return state
+    },
     clear() {
       if (!current) return
       current.clear()
@@ -159,7 +194,8 @@ export function createLogsController(opts: {
       await replace()
       state = { status: 'idle' }
     },
-    running: () => state.status === 'starting' || state.status === 'running',
+    running: () =>
+      state.status === 'starting' || state.status === 'running' || state.status === 'reconnecting',
     device: () => (state.status === 'idle' ? null : state.device)
   }
 }

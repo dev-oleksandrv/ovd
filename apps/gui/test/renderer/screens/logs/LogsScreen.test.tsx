@@ -15,7 +15,8 @@ const running: LogsState = {
   status: 'running',
   device: stick.id,
   name: stick.name,
-  startedAt: '2026-11-08T07:27:00.000Z'
+  startedAt: '2026-11-08T07:27:00.000Z',
+  restartAfterInstall: true
 }
 const counts = (lines: number, errors = 0, shown = lines) => ({ lines, errors, shown })
 
@@ -113,13 +114,51 @@ describe('LogsScreen', () => {
           code: 'LOG_STREAM_ENDED',
           message: 'Fire TV stick’s log stream ended',
           hint: 'The device may have disconnected or rebooted'
-        }
+        },
+        restartAfterInstall: true
       }
     })
     expect(screen.getByRole('alert').textContent).toContain('Fire TV stick’s log stream ended')
     expect(screen.getByText(`$ ovd logs --device ${stick.id}`)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Restart/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }))
     await waitFor(() => expect(stub.api.logs.restart).toHaveBeenCalledWith(stick.id))
+  })
+
+  test('a session that ended with restart after install off: the error command carries --no-restart-after-install', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    push(stub, {
+      kind: 'state',
+      session: 1,
+      state: {
+        status: 'ended',
+        device: stick.id,
+        name: stick.name,
+        startedAt: null,
+        error: {
+          code: 'LOG_STREAM_ENDED',
+          message: 'Fire TV stick’s log stream ended',
+          hint: 'The device may have disconnected or rebooted'
+        },
+        restartAfterInstall: false
+      }
+    })
+    expect(
+      screen.getByText(`$ ovd logs --no-restart-after-install --device ${stick.id}`)
+    ).toBeTruthy()
+  })
+
+  test('a session that opens straight into reconnecting echoes the CLI once', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    push(stub, {
+      kind: 'state',
+      session: 1,
+      state: { ...running, status: 'reconnecting', restartAfterInstall: false }
+    })
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --no-restart-after-install --device ${stick.id}`)
+    )
   })
 
   test('a stream that ended with lines keeps them under the error', async () => {
@@ -249,5 +288,54 @@ describe('LogsScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: /Export/ }))
     expect(await screen.findByText('Exported 3 lines to /home/dev/ovd-logs.txt')).toBeTruthy()
     expect(stub.api.logs.export).toHaveBeenCalledWith(undefined)
+  })
+
+  test('the footer toggle turns restart after install off and the echo carries --no-restart-after-install', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    const toggle = screen.getByRole('button', { name: 'Restart session after install' })
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(toggle)
+    await waitFor(() => expect(stub.api.logs.setRestartAfterInstall).toHaveBeenCalledWith(false))
+    expect(await screen.findByText('Restart session after install: off')).toBeTruthy()
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --no-restart-after-install --device ${stick.id}`)
+    )
+    // Main pushes the state with the new value.
+    push(stub, { kind: 'state', session: 1, state: { ...running, restartAfterInstall: false } })
+    expect(
+      screen
+        .getByRole('button', { name: 'Restart session after install' })
+        .getAttribute('aria-pressed')
+    ).toBe('false')
+  })
+
+  test('reconnecting: the note shows above the list and the list stays while the target shows offline, then goes once it runs', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    push(stub, { kind: 'state', session: 1, state: { ...running, status: 'reconnecting' } })
+    act(() => stub.push(ready([{ ...stick, status: 'offline' }], stick.id)))
+    const note = screen.getByRole('status')
+    expect(note.textContent).toContain('Reconnecting to Fire TV stick…')
+    expect(note.textContent).toContain('The device dropped. Lines continue here once it’s back.')
+    expect(screen.getByText('[KeplerScript-JavaScript] player flood 2')).toBeTruthy()
+    expect(screen.queryByText('Logs unavailable — Fire TV stick is offline')).toBeNull()
+    act(() => stub.push(ready([stick], stick.id)))
+    push(stub, { kind: 'state', session: 1, state: running })
+    expect(screen.queryByText('Reconnecting to Fire TV stick…')).toBeNull()
+    expect(screen.getByText('[KeplerScript-JavaScript] player flood 2')).toBeTruthy()
+  })
+
+  test('a running session keeps the list while the target shows offline', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    act(() => stub.push(ready([{ ...stick, status: 'offline' }], stick.id)))
+    await waitFor(() => expect(screen.getByText('3 lines · 0 errors')).toBeTruthy())
+    expect(screen.getByText('[KeplerScript-JavaScript] player flood 0')).toBeTruthy()
+    expect(screen.queryByText('Logs unavailable — Fire TV stick is offline')).toBeNull()
+    expect(screen.getByRole('button', { name: /Pause/ })).toBeTruthy()
   })
 })

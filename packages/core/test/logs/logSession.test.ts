@@ -15,7 +15,8 @@ import {
   type LogSessionEnd,
   type LogStartOptions
 } from '../../src/index.js'
-import { createLogs } from '../../src/logs/logSession.js'
+import { createLogs, RECONNECT_POLL_MS, RECONNECT_TIMEOUT_MS } from '../../src/logs/logSession.js'
+import { createFakeFeed, type FakeFeed } from '../support/fakeFeed.js'
 import { FakeRunner, FakeStream } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
 
@@ -70,8 +71,16 @@ function setup(
   const activity = createActivityLog({ home: ovdHome, surface: 'cli' })
   const devices = createDevices({ runner, sdk, state, activity, env: {} })
   const logsSdk = logsDiscover ? createSdkLocator(logsDiscover) : sdk
-  const logs = createLogs({ runner, sdk: logsSdk, devices, activity, now: () => new Date() })
-  return { logs, runner }
+  const feed = createFakeFeed()
+  const logs = createLogs({
+    runner,
+    sdk: logsSdk,
+    devices,
+    activity,
+    feed,
+    now: () => new Date()
+  })
+  return { logs, runner, feed }
 }
 
 async function activity(): Promise<Partial<ActivityEntry>[]> {
@@ -108,22 +117,50 @@ async function waitFor(condition: () => boolean): Promise<void> {
   throw new Error('waitFor: condition never held')
 }
 
+// Moves the fake clock in small steps until the condition holds, within the same real-time
+// budget. A reconnect poll arms its next timer only after its target read (real file I/O) is
+// done, which on a slow runner can come after one big `advanceTimersByTimeAsync`: that timer
+// would then never fire. Small steps keep advancing until it has.
+const ADVANCE_STEP_MS = 100
+
+async function advanceUntil(condition: () => boolean): Promise<void> {
+  const started = process.hrtime.bigint()
+  while (process.hrtime.bigint() - started < WAIT_BUDGET_NS) {
+    if (condition()) return
+    await vi.advanceTimersByTimeAsync(ADVANCE_STEP_MS)
+    await settle()
+  }
+  if (condition()) return
+  throw new Error('advanceUntil: condition never held')
+}
+
 interface Started {
   session: LogSession
   stream: FakeStream
+  streams: FakeStream[]
   runner: FakeRunner
+  feed: FakeFeed
   batches: { entries: LogEntry[]; counts: LogCounts; apps: string[] }[]
   delivered: () => LogEntry[]
+  ovd: () => string[]
   end: () => LogSessionEnd | undefined
 }
 
-// Starts a session on the stick and emits `first` to get it running.
+// Starts a session on the stick and emits `first` to get it running. `streams` are the
+// `loggingctl` runs in order, one per call; `script` replaces commands of `online`.
 async function startWith(
   opts: Omit<LogStartOptions, 'onEntries'> = {},
-  first = `${FOLLOW.split('\n')[0] ?? ''}\n`
+  first = `${FOLLOW.split('\n')[0] ?? ''}\n`,
+  {
+    streams = [new FakeStream()],
+    script = {}
+  }: {
+    streams?: FakeStream[]
+    script?: ConstructorParameters<typeof FakeRunner>[0]
+  } = {}
 ): Promise<Started> {
-  const stream = new FakeStream()
-  const { logs, runner } = setup({ ...online, [LOG]: stream })
+  const [stream = new FakeStream()] = streams
+  const { logs, runner, feed } = setup({ ...online, ...script, [LOG]: streams })
   const batches: Started['batches'] = []
   const starting = logs.start({
     ...opts,
@@ -134,15 +171,33 @@ async function startWith(
   const session = await starting
   let ended: LogSessionEnd | undefined
   void session.done.then((end) => (ended = end))
+  const delivered = () => batches.flatMap((b) => b.entries)
   return {
     session,
     stream,
+    streams,
     runner,
+    feed,
     batches,
-    delivered: () => batches.flatMap((b) => b.entries),
+    delivered,
+    ovd: () =>
+      delivered()
+        .filter((e) => e.ovd !== undefined)
+        .map((e) => e.message),
     end: () => ended
   }
 }
+
+const installOn = (target: string, over: Partial<ActivityEntry> = {}) =>
+  ({
+    action: 'app.install',
+    target,
+    surface: 'desktop',
+    args: { package: 'player_armv7.vpkg' },
+    ...over
+  }) as const
+
+const streamsOf = (n: number) => Array.from({ length: n }, () => new FakeStream())
 
 // Splits text in three arbitrary places (mid-line on purpose).
 const thirds = (text: string) => [text.slice(0, 1000), text.slice(1000, 17_777), text.slice(17_777)]
@@ -309,25 +364,6 @@ describe('a running session', () => {
     await s.session.stop()
   })
 
-  test('a stream that ends by itself resolves done with LOG_STREAM_ENDED', async () => {
-    const s = await startWith({}, REBOOT)
-    s.stream.end(0)
-    await waitFor(() => s.end() !== undefined)
-    expect(s.end()).toMatchObject({
-      reason: 'ended',
-      error: { code: 'LOG_STREAM_ENDED', details: { exitCode: 0 } }
-    })
-    expect(s.delivered()).toHaveLength(20)
-    expect(s.delivered().at(-1)?.process).toBe('systemd')
-  })
-
-  test('a stream ended by a signal (exit 129) is LOG_STREAM_ENDED too', async () => {
-    const s = await startWith()
-    s.stream.end(129)
-    await waitFor(() => s.end() !== undefined)
-    expect(s.end()).toMatchObject({ reason: 'ended', error: { code: 'LOG_STREAM_ENDED' } })
-  })
-
   test('stop() ends it as stopped', async () => {
     const s = await startWith()
     await s.session.stop()
@@ -451,5 +487,316 @@ describe('a running session', () => {
     expect(s.delivered().at(-1)?.message).toContain('player flood 49999')
     expect(s.session.counts()).toEqual({ lines: 50_000, errors: 0, shown: 50_000 })
     await s.session.stop()
+  })
+})
+
+describe('restart after install', () => {
+  test('an install on the target stops the stream, starts another and adds install then restarted', async () => {
+    const s = await startWith({}, undefined, { streams: streamsOf(2) })
+    const [s1, s2] = s.streams as [FakeStream, FakeStream]
+    s.feed.emit(installOn(STICK))
+    expect(s1.stopped).toBe(true)
+    await waitFor(() => s2.spec !== undefined)
+    expect(s.runner.count(LOG)).toBe(2)
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(s.ovd()).toEqual([
+      'Installed player_armv7.vpkg from the desktop',
+      'Log session restarted'
+    ])
+    const delivered = s.delivered()
+    const restarted = delivered.findIndex((e) => e.message === 'Log session restarted')
+    const firstDevice = delivered.findIndex((e) => e.ovd === undefined)
+    expect(restarted).toBeLessThan(firstDevice)
+    expect(delivered.filter((e) => e.ovd === undefined)).toHaveLength(243)
+    await s.session.stop()
+    expect(s2.stopped).toBe(true)
+    expect(await activity()).toEqual([
+      { action: 'logs', target: STICK, args: {}, result: 'ok' },
+      { action: 'logs.restart', target: STICK, args: { reason: 'install' }, result: 'ok' }
+    ])
+  })
+
+  test.each(['start option', 'setRestartAfterInstall'] as const)(
+    'with restartAfterInstall off (%s) only the install line is added',
+    async (how) => {
+      const s = await startWith(how === 'start option' ? { restartAfterInstall: false } : {})
+      if (how === 'setRestartAfterInstall') s.session.setRestartAfterInstall(false)
+      s.feed.emit(installOn(STICK))
+      for (let i = 0; i < 20; i++) await settle()
+      expect(s.stream.stopped).toBe(false)
+      expect(s.runner.count(LOG)).toBe(1)
+      expect(s.ovd()).toEqual(['Installed player_armv7.vpkg from the desktop'])
+      await s.session.stop()
+      expect(await activity()).toHaveLength(1)
+    }
+  )
+
+  test('a failed install adds its line and never restarts', async () => {
+    const s = await startWith()
+    s.feed.emit(installOn(STICK, { surface: 'cli', result: 'error', errorCode: 'INSTALL_FAILED' }))
+    for (let i = 0; i < 20; i++) await settle()
+    expect(s.stream.stopped).toBe(false)
+    expect(s.runner.count(LOG)).toBe(1)
+    expect(s.ovd()).toEqual(['Install of player_armv7.vpkg failed: INSTALL_FAILED'])
+    await s.session.stop()
+  })
+
+  test('another target’s install, logs, logs.restart and app.uninstall entries are ignored', async () => {
+    const s = await startWith()
+    s.feed.emit(installOn('VirtualDevice'))
+    s.feed.emit({ action: 'logs', target: STICK })
+    s.feed.emit({ action: 'logs.restart', target: STICK, args: { reason: 'install' } })
+    s.feed.emit({ action: 'app.uninstall', target: STICK, args: { app: PLAYER } })
+    for (let i = 0; i < 20; i++) await settle()
+    expect(s.ovd()).toEqual([])
+    expect(s.stream.stopped).toBe(false)
+    expect(s.runner.count(LOG)).toBe(1)
+    await s.session.stop()
+  })
+
+  test('installs during a restart are coalesced into one more restart', async () => {
+    const s = await startWith({}, undefined, { streams: streamsOf(3) })
+    const [, s2, s3] = s.streams as [FakeStream, FakeStream, FakeStream]
+    s.feed.emit(installOn(STICK))
+    s.feed.emit(installOn(STICK))
+    await waitFor(() => s2.spec !== undefined)
+    s.feed.emit(installOn(STICK))
+    s2.emit(FOLLOW.split('\n').slice(0, 2).join('\n') + '\n')
+    await waitFor(() => s3.spec !== undefined)
+    expect(s2.stopped).toBe(true)
+    s3.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(s.runner.count(LOG)).toBe(3)
+    expect(s.ovd()).toEqual([
+      'Installed player_armv7.vpkg from the desktop',
+      'Installed player_armv7.vpkg from the desktop',
+      'Installed player_armv7.vpkg from the desktop',
+      'Log session restarted',
+      'Log session restarted'
+    ])
+    await s.session.stop()
+  })
+
+  test('an install while the first stream starts is not missed', async () => {
+    const [s1, s2] = streamsOf(2) as [FakeStream, FakeStream]
+    const { logs, runner, feed } = setup({ ...online, [LOG]: [s1, s2] })
+    const batches: LogEntry[] = []
+    const starting = logs.start({ onEntries: (entries) => batches.push(...entries) })
+    await waitFor(() => s1.spec !== undefined)
+    expect(feed.subscribers()).toBe(1)
+    feed.emit(installOn(STICK))
+    expect(batches.map((e) => e.message)).toEqual(['Installed player_armv7.vpkg from the desktop'])
+    s1.emit(FOLLOW)
+    const session = await starting
+    await waitFor(() => s2.spec !== undefined)
+    expect(s1.stopped).toBe(true)
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(runner.count(LOG)).toBe(2)
+    expect(batches.filter((e) => e.message === 'Log session restarted')).toHaveLength(1)
+    await session.stop()
+    expect(feed.subscribers()).toBe(0)
+  })
+
+  test('a failed first start leaves no feed subscriber', async () => {
+    const stream = new FakeStream()
+    const { logs, feed } = setup({ ...online, [LOG]: stream })
+    const starting = logs.start()
+    await waitFor(() => stream.spec !== undefined)
+    expect(feed.subscribers()).toBe(1)
+    stream.end(0)
+    await expect(starting).rejects.toMatchObject({ code: 'LOG_STREAM_ENDED' })
+    expect(feed.subscribers()).toBe(0)
+  })
+
+  test('launch verified, crashed and not-running lines', async () => {
+    const s = await startWith()
+    s.feed.emit({ action: 'app.launch', target: STICK, args: { app: PLAYER } })
+    s.feed.emit({
+      action: 'app.restart',
+      target: STICK,
+      args: { app: PLAYER, reason: 'crashed', pid: '27178', signal: 'SIGABRT' },
+      result: 'error',
+      errorCode: 'LAUNCH_NOT_VERIFIED'
+    })
+    s.feed.emit({
+      action: 'app.launch',
+      target: STICK,
+      args: { app: PLAYER, reason: 'not-running' },
+      result: 'error',
+      errorCode: 'LAUNCH_NOT_VERIFIED'
+    })
+    expect(s.ovd()).toEqual([
+      'Launch of com.example.player verified',
+      'Crash detected: com.example.player (pid 27178, SIGABRT)',
+      'Launch of com.example.player not verified: it isn’t running'
+    ])
+    expect(s.runner.count(LOG)).toBe(1)
+    await s.session.stop()
+  })
+
+  test('OVD lines match every filter, count in shown only and seq keeps increasing across a restart', async () => {
+    const s = await startWith({ filter: { app: PLAYER, level: 'error' } }, FOLLOW, {
+      streams: streamsOf(2)
+    })
+    await vi.advanceTimersByTimeAsync(250)
+    const [, s2] = s.streams as [FakeStream, FakeStream]
+    s.feed.emit(installOn(STICK))
+    await waitFor(() => s2.spec !== undefined)
+    // The new stream prints the same backlog again: it is dropped.
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(s.delivered().map((e) => e.message)).toEqual([
+      '[KeplerScript-JavaScript] player error tick 1',
+      '[KeplerScript-JavaScript] player error tick 2',
+      'Installed player_armv7.vpkg from the desktop',
+      'Log session restarted'
+    ])
+    expect(s.session.counts()).toEqual({ lines: 243, errors: expect.any(Number), shown: 4 })
+    const seqs = s.session.entries().map((e) => e.seq)
+    expect(seqs).toEqual([...seqs].sort((a, b) => a - b))
+    expect(new Set(seqs).size).toBe(seqs.length)
+    s.session.setFilter({})
+    const all = s.session.entries().map((e) => e.seq)
+    expect(all).toEqual(Array.from({ length: 245 }, (_, i) => i))
+    await s.session.stop()
+  })
+
+  test.each([[undefined], [0]])(
+    'after a restart the Virtual Device backlog is dropped: exactly the 127 lines past line 573 of restart-after, none twice (capacity %s)',
+    async (capacity) => {
+      const before = fixture('0.24/loggingctl-log/virtual-device-restart-before.txt')
+      const after = fixture('0.24/loggingctl-log/virtual-device-restart-after.txt')
+      const s = await startWith(capacity === undefined ? {} : { capacity }, '', {
+        streams: streamsOf(2)
+      })
+      const [s1, s2] = s.streams as [FakeStream, FakeStream]
+      s1.emit(before)
+      await vi.advanceTimersByTimeAsync(250)
+      expect(s.delivered()).toHaveLength(573)
+      s.feed.emit(installOn(STICK))
+      await waitFor(() => s2.spec !== undefined)
+      for (const chunk of thirds(after)) s2.emit(chunk)
+      await vi.advanceTimersByTimeAsync(250)
+      const delivered = s.delivered()
+      const restarted = delivered.findIndex((e) => e.message === 'Log session restarted')
+      const expected = after
+        .split('\n')
+        .slice(573, 700)
+        .map((line) => line.replace(/^.*?: (?:\d+ )?/, ''))
+      const newer = delivered.slice(restarted + 1)
+      expect(newer).toHaveLength(127)
+      newer.forEach((e, i) => expect(expected[i]).toContain(e.message))
+      const keys = delivered
+        .filter((e) => e.ovd === undefined)
+        .map((e) => `${e.deviceTime ?? ''}|${e.process ?? ''}|${e.pid ?? ''}|${e.message}`)
+      expect(keys).toHaveLength(700)
+      expect(new Set(keys).size).toBe(700)
+      await s.session.stop()
+    }
+  )
+})
+
+describe('reconnect', () => {
+  const none = out('vda-devices/none.txt')
+  const stick = out('vda-devices/stick-usb.txt')
+
+  test('a self-ended stream reconnects once the target is back', async () => {
+    const states: string[] = []
+    const s = await startWith({ onState: (state) => states.push(state) }, REBOOT, {
+      streams: streamsOf(2),
+      script: { [VDA]: [stick, none, none, stick] }
+    })
+    const [s1, s2] = s.streams as [FakeStream, FakeStream]
+    s1.end(0)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    expect(states).toEqual(['reconnecting'])
+    expect(s.ovd()).toEqual(['Device dropped · reconnecting…'])
+    expect(s.delivered().filter((e) => e.ovd === undefined)).toHaveLength(20)
+    // Polls are RECONNECT_POLL_MS apart, so the count passes through every value.
+    for (const calls of [2, 3]) {
+      await advanceUntil(() => s.runner.count(VDA) === calls)
+      expect(s.runner.count(LOG)).toBe(1)
+    }
+    await advanceUntil(() => s2.spec !== undefined)
+    expect(s.runner.count(LOG)).toBe(2)
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(s.session.state()).toBe('following')
+    expect(states).toEqual(['reconnecting', 'following'])
+    expect(s.ovd()).toEqual(['Device dropped · reconnecting…', 'Log session reconnected'])
+    const seqs = s.delivered().map((e) => e.seq)
+    expect(seqs).toEqual(Array.from({ length: 20 + 2 + 243 }, (_, i) => i))
+    expect(s.end()).toBeUndefined()
+    await s.session.stop()
+    expect(await activity()).toEqual([
+      { action: 'logs', target: STICK, args: {}, result: 'ok' },
+      { action: 'logs.restart', target: STICK, args: { reason: 'reconnect' }, result: 'ok' }
+    ])
+  })
+
+  test('gives up after three streams in a row that end at once', async () => {
+    const s = await startWith({}, undefined, { streams: streamsOf(3) })
+    const [s1, s2, s3] = s.streams as [FakeStream, FakeStream, FakeStream]
+    s1.end(129)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    await advanceUntil(() => s2.spec !== undefined)
+    s2.end(129)
+    await advanceUntil(() => s3.spec !== undefined)
+    s3.end(129)
+    await waitFor(() => s.end() !== undefined)
+    expect(s.end()).toMatchObject({
+      reason: 'ended',
+      error: { code: 'LOG_STREAM_ENDED', details: { exitCode: 129 } }
+    })
+    expect(s.ovd()).toEqual(['Device dropped · reconnecting…'])
+    expect(s.runner.count(LOG)).toBe(3)
+    expect(await activity()).toEqual([
+      { action: 'logs', target: STICK, args: {}, result: 'ok' },
+      {
+        action: 'logs.restart',
+        target: STICK,
+        args: { reason: 'reconnect' },
+        result: 'error',
+        errorCode: 'LOG_STREAM_ENDED'
+      }
+    ])
+  })
+
+  test('gives up after RECONNECT_TIMEOUT_MS with the target away', async () => {
+    const s = await startWith({}, REBOOT, { script: { [VDA]: [stick, none] } })
+    s.stream.end(0)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    await vi.advanceTimersByTimeAsync(RECONNECT_TIMEOUT_MS - 1)
+    for (let i = 0; i < 20; i++) await settle()
+    expect(s.end()).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(1)
+    await waitFor(() => s.end() !== undefined)
+    expect(s.end()).toMatchObject({
+      reason: 'ended',
+      error: { code: 'LOG_STREAM_ENDED', details: { exitCode: 0 } }
+    })
+    expect(s.runner.count(LOG)).toBe(1)
+    expect(await activity()).toContainEqual({
+      action: 'logs.restart',
+      target: STICK,
+      args: { reason: 'reconnect' },
+      result: 'error',
+      errorCode: 'LOG_STREAM_ENDED'
+    })
+  })
+
+  test('stop during reconnecting ends as stopped with no stream started and no feed subscriber', async () => {
+    const s = await startWith({}, REBOOT, { script: { [VDA]: [stick, none] } })
+    s.stream.end(0)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    await s.session.stop()
+    expect(s.end()).toEqual({ reason: 'stopped' })
+    expect(s.feed.subscribers()).toBe(0)
+    await vi.advanceTimersByTimeAsync(RECONNECT_POLL_MS * 3)
+    for (let i = 0; i < 20; i++) await settle()
+    expect(s.runner.count(LOG)).toBe(1)
+    expect(s.runner.count(VDA)).toBe(1)
   })
 })

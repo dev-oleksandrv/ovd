@@ -26,6 +26,7 @@ import { KeyValueGrid } from '../ui/KeyValueGrid'
 import { LoadingState } from '../ui/LoadingState'
 import { BlockedNotice } from '../ui/BlockedNotice'
 import { InlineError } from '../ui/InlineError'
+import { InlineNote } from '../ui/InlineNote'
 import { Modal } from '../ui/Modal'
 import { Segmented } from '../ui/Segmented'
 import { Select } from '../ui/Select'
@@ -231,6 +232,27 @@ const LOG_ROWS: LogEntry[] = [
     tag: 'com.amazon.keplerscript',
     message: '[KeplerScript-JavaScript] player multi\nline two\nline three',
     parsed: true
+  },
+  {
+    seq: 2,
+    time: '2026-11-08T07:27:02.310Z',
+    deviceTime: null,
+    level: 'I',
+    priority: null,
+    facility: null,
+    process: null,
+    pid: null,
+    tid: null,
+    tag: 'OVD',
+    message: 'Installed player_armv7.vpkg from the desktop',
+    parsed: true,
+    ovd: {
+      kind: 'install',
+      action: 'app.install',
+      surface: 'desktop',
+      result: 'ok',
+      package: 'player_armv7.vpkg'
+    }
   }
 ]
 
@@ -514,6 +536,10 @@ export function Gallery() {
           <InlineError
             title="Port 5555 looks blocked"
             body="vda connect timed out. A firewall on this computer or the router may be blocking TCP port 5555; allow it, then retry."
+          />
+          <InlineNote
+            title="Reconnecting to Living room stick…"
+            body="The device dropped. Lines continue here once it’s back."
           />
         </div>
       </GallerySection>

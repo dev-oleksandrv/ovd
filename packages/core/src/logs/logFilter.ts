@@ -93,6 +93,8 @@ export function compileLogFilter(input: LogFilterInput, now: Date): LogFilter {
   const sinceMs = since?.getTime()
   return {
     matches(entry) {
+      // OVD lines show whatever the filter: they explain what happened to the stream.
+      if (entry.ovd !== undefined) return true
       if (app !== undefined && entry.process !== app) return false
       if (input.system && isAppIdentity(entry.process)) return false
       if (!atLeast(entry.level, level)) return false

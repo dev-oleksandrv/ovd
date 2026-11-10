@@ -38,14 +38,23 @@ export interface World {
   // recordings (`vlcm-crash-history/virtual-device-after.txt`,
   // `loggingctl-vault-ls/virtual-device-tombstones-after.json`, `log-capture/virtual-device-crashed.txt`).
   playerCrashed: boolean
-  // The stick's `loggingctl log -f`. Both are read when a stream starts, so a test sets them
+  // The stick's `loggingctl log -f`. They are read when a stream starts, so a test sets them
   // before it opens Logs or runs `ovd logs`; afterwards only `holdAfterLine: null` is polled.
-  // `ends`: the stream prints the recording before a reboot and ends by itself (exit 0).
-  // `holdAfterLine`: print only that many lines of `stick-follow.txt`, then the rest once the
-  // test sets it back to null.
+  // `ends`: every stream prints the recording before a reboot and ends by itself (exit 0).
+  // `holdAfterLine`: applies to every stream: each prints only that many lines of
+  // `stick-follow.txt`, waits until the test sets it back to null, then prints the rest.
   // `ignoreFirstSigterm`: the stream ignores the first SIGTERM to its group and sets the flag
   // back to `false` in the world, so a test can see that it arrived. The next SIGTERM ends it.
-  logStream: { ends: boolean; holdAfterLine: number | null; ignoreFirstSigterm?: boolean }
+  // `reboot` (absent is false): the next stream prints `stick-follow-reboot.txt` and ends with
+  // exit 0, the stick is away for REBOOT_MS (not listed by `vda devices -l`), and the flag goes
+  // back to false, so the stream after it prints `stick-follow.txt` (fixtures/0.24/README.md,
+  // Synthesized sequences).
+  logStream: {
+    ends: boolean
+    holdAfterLine: number | null
+    ignoreFirstSigterm?: boolean
+    reboot?: boolean
+  }
   // When signed out, `vega devmode login --json` waits before it prints anything until it is
   // stopped, so a test can stop OVD while a probe runs. Doctor's own 5 s probe timeout still
   // applies.

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 import { ovd, startOvd } from '../harness/cli.ts'
+import { makeRecordedVpkg } from '../harness/project.ts'
 import { stillRunning } from '../harness/sandbox.ts'
 import { createSandbox, type Sandbox } from '../harness/vitest.ts'
 
@@ -33,6 +34,37 @@ function fixtureInstant(month: number, day: number, time: string): string {
   const instant = [year + 1, year].map(at).find((t) => t - now <= DAY_MS) ?? at(year - 1)
   return new Date(instant).toISOString()
 }
+
+// An OVD line of `ovd logs --json`: the event and its text.
+interface JsonOvd {
+  time: string
+  ovd: { kind: string }
+  message: string
+}
+type JsonLine = Partial<JsonEntry> & Partial<JsonOvd>
+
+const VPKG = 'Downloads/player_armv7.vpkg'
+// The entry on line 100 of stick-follow.txt, the last one before `holdAfterLine: 100` (its
+// message shows again at line 149, at another time).
+const HELD_LAST = { time: '07:27:00.940', message: 'Security Context User::Pkg::bd0b43dc' }
+const printedHeld = (out: string) =>
+  linesOf(out).some(
+    (l) => l.time?.includes(HELD_LAST.time) === true && l.message?.includes(HELD_LAST.message)
+  )
+
+// The complete JSON lines printed so far.
+function linesOf(stdout: string): JsonLine[] {
+  return stdout
+    .split('\n')
+    .slice(0, -1)
+    .filter((l) => l.startsWith('{'))
+    .map((l) => JSON.parse(l) as JsonLine)
+}
+const kindsOf = (lines: JsonLine[]) => lines.flatMap((l) => (l.ovd ? [l.ovd.kind] : []))
+const deviceLines = (lines: JsonLine[]) => lines.filter((l) => l.ovd === undefined && l.level)
+const count = (lines: JsonLine[], kind: string) => kindsOf(lines).filter((k) => k === kind).length
+const logCalls = (sandbox: Sandbox) => sandbox.calls().filter((c) => c === LOG).length
+const restarts = (sandbox: Sandbox) => sandbox.activity().filter((a) => a.action === 'logs.restart')
 
 // Every log stream the fake SDK started has exited (no orphaned `vega` left behind).
 function noStreamLeft(sandbox: Sandbox): void {
@@ -144,16 +176,130 @@ describe('ovd logs', () => {
     expect(sandbox.calls().filter((c) => c.includes('loggingctl'))).toEqual([])
   })
 
-  test('a stream that ends by itself prints its lines, then the error, and exits 1', async () => {
+  test('three installs from other processes restart the stream each time; lines arrive once', async () => {
+    const sandbox = withStick({ logStream: { ends: false, holdAfterLine: 100 } })
+    makeRecordedVpkg(sandbox.home, VPKG, 'player-armv7-release')
+    const running = startOvd(sandbox, ['logs', '--json'], { timeoutMs: 55_000 })
+    await running.waitForStdout(printedHeld)
+    // Each install waits for its restart, so each gives exactly one (coalescing is unit-tested).
+    for (let n = 1; n <= 3; n++) {
+      const install = await ovd(sandbox, ['install', `~/${VPKG}`, '--json'])
+      expect(install.exitCode).toBe(0)
+      await running.waitForStdout((out) => count(linesOf(out), 'restarted') === n)
+    }
+    sandbox.update((w) => {
+      w.logStream.holdAfterLine = null
+    })
+    await running.waitForStdout((out) =>
+      linesOf(out).some((l) => l.message === '[KeplerScript-JavaScript] player flood 62')
+    )
+    const pids = sandbox.logStreamPids()
+    expect(pids).toHaveLength(4)
+    expect(stillRunning(pids)).toEqual([pids.at(-1)])
+    running.signal('SIGINT')
+    const run = await running.done
+    expect(run.exitCode).toBe(0)
+    const lines = linesOf(run.stdout)
+    expect(kindsOf(lines)).toEqual([
+      'install',
+      'restarted',
+      'install',
+      'restarted',
+      'install',
+      'restarted'
+    ])
+    expect(lines.find((l) => l.ovd?.kind === 'install')?.message).toBe(
+      'Installed player_armv7.vpkg from the CLI'
+    )
+    const device = deviceLines(lines)
+    expect(device).toHaveLength(243)
+    expect(new Set(device.map((l) => `${l.time} ${l.message}`)).size).toBe(243)
+    expect(logCalls(sandbox)).toBe(4)
+    expect(restarts(sandbox)).toEqual(
+      Array.from({ length: 3 }, () =>
+        expect.objectContaining({
+          surface: 'cli',
+          target: STICK_SERIAL,
+          args: { reason: 'install' },
+          result: 'ok'
+        })
+      )
+    )
+    noStreamLeft(sandbox)
+  })
+
+  test('--no-restart-after-install: one install line, one stream', async () => {
+    const sandbox = withStick({ logStream: { ends: false, holdAfterLine: 100 } })
+    makeRecordedVpkg(sandbox.home, VPKG, 'player-armv7-release')
+    const running = startOvd(sandbox, ['logs', '--json', '--no-restart-after-install'])
+    await running.waitForStdout(printedHeld)
+    const [first = 0] = sandbox.logStreamPids()
+    const install = await ovd(sandbox, ['install', `~/${VPKG}`, '--json'])
+    expect(install.exitCode).toBe(0)
+    await running.waitForStdout((out) => count(linesOf(out), 'install') === 1)
+    expect(stillRunning([first])).toEqual([first])
+    sandbox.update((w) => {
+      w.logStream.holdAfterLine = null
+    })
+    await running.waitForStdout((out) =>
+      linesOf(out).some((l) => l.message === '[KeplerScript-JavaScript] player flood 62')
+    )
+    running.signal('SIGINT')
+    const run = await running.done
+    expect(run.exitCode).toBe(0)
+    expect(kindsOf(linesOf(run.stdout))).toEqual(['install'])
+    expect(deviceLines(linesOf(run.stdout))).toHaveLength(243)
+    expect(logCalls(sandbox)).toBe(1)
+    expect(restarts(sandbox)).toEqual([])
+    noStreamLeft(sandbox)
+  })
+
+  test('a reboot: disconnected, then reconnected, then lines', async () => {
+    const sandbox = withStick({ logStream: { ends: false, holdAfterLine: null, reboot: true } })
+    const running = startOvd(sandbox, ['logs', '--json'])
+    await running.waitForStdout((out) =>
+      linesOf(out).some((l) => l.message === '[KeplerScript-JavaScript] player flood 62')
+    )
+    running.signal('SIGINT')
+    const run = await running.done
+    expect(run.exitCode).toBe(0)
+    const lines = linesOf(run.stdout)
+    expect(kindsOf(lines)).toEqual(['disconnected', 'reconnected'])
+    const reconnected = lines.findIndex((l) => l.ovd?.kind === 'reconnected')
+    expect(lines.findIndex((l) => l.ovd?.kind === 'disconnected')).toBeLessThan(reconnected)
+    expect(deviceLines(lines.slice(reconnected + 1))).toHaveLength(243)
+    expect(lines.find((l) => l.ovd?.kind === 'disconnected')?.message).toBe(
+      'Device dropped · reconnecting…'
+    )
+    expect(logCalls(sandbox)).toBe(2)
+    expect(restarts(sandbox)).toEqual([
+      expect.objectContaining({ args: { reason: 'reconnect' }, result: 'ok' })
+    ])
+    noStreamLeft(sandbox)
+  })
+
+  test('streams that end at once reconnect twice, then give up: the error last, exit 1', async () => {
     const sandbox = withStick({ logStream: { ends: true, holdAfterLine: null } })
     const run = await ovd(sandbox, ['logs', '--json'])
     expect(run.exitCode).toBe(1)
     const lines = run.jsonLines<Record<string, unknown>>()
-    expect(lines).toHaveLength(21)
-    expect(lines.slice(0, 20).every((l) => typeof l.message === 'string')).toBe(true)
     expect(lines.at(-1)).toMatchObject({ ok: false, error: { code: 'LOG_STREAM_ENDED' } })
+    const printed = linesOf(run.stdout)
+    expect(deviceLines(printed)).toHaveLength(20)
+    expect(kindsOf(printed)).toEqual(['disconnected', 'reconnected', 'disconnected', 'reconnected'])
+    expect(logCalls(sandbox)).toBe(3)
     expect(sandbox.activity().filter((a) => a.action === 'logs')).toEqual([
       expect.objectContaining({ result: 'ok' })
     ])
+    expect(restarts(sandbox)).toEqual([
+      expect.objectContaining({ args: { reason: 'reconnect' }, result: 'ok' }),
+      expect.objectContaining({ args: { reason: 'reconnect' }, result: 'ok' }),
+      expect.objectContaining({
+        args: { reason: 'reconnect' },
+        result: 'error',
+        errorCode: 'LOG_STREAM_ENDED'
+      })
+    ])
+    noStreamLeft(sandbox)
   })
 })

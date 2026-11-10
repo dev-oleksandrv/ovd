@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
-import { logsFilter, optionalFlag, optionalSeq, requireText } from '../../src/main/guards'
+import {
+  logsFilter,
+  optionalFlag,
+  optionalSeq,
+  requireFlag,
+  requireText
+} from '../../src/main/guards'
 
 describe('requireText', () => {
   test('returns a non-empty string unchanged', () => {
@@ -80,5 +86,20 @@ describe('optionalSeq', () => {
     ['null', null]
   ])('rejects %s', (_label, value) => {
     expect(() => optionalSeq(value)).toThrow(TypeError)
+  })
+})
+
+describe('requireFlag', () => {
+  test.each([true, false])('%s is returned as is', (value) => {
+    expect(requireFlag(value, 'on')).toBe(value)
+  })
+
+  test.each([
+    ['undefined', undefined],
+    ['a string', 'true'],
+    ['a number', 1],
+    ['null', null]
+  ])('%s is a TypeError', (_label, value) => {
+    expect(() => requireFlag(value, 'on')).toThrow(new TypeError('on must be a boolean'))
   })
 })
