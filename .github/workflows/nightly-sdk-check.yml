@@ -22,7 +22,8 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Setup, the SDK install (15) and the script (80) with room to upload.
+    timeout-minutes: 105
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -33,6 +34,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The CLI bundles core with tsup, so this builds everything the check runs.
       - run: pnpm --filter @ovd/cli build
+      # The sanitizer and leak check on made-up input, before any real output exists.
+      - run: node scripts/nightly-sdk-check.mjs --self-test
       # The Virtual Device needs /dev/kvm; hosted runners expose it only after this rule.
       - name: Enable KVM
         run: |
@@ -49,7 +52,11 @@ jobs:
           sha256sum "$RUNNER_TEMP/get_vvm.sh"
           NONINTERACTIVE=true bash "$RUNNER_TEMP/get_vvm.sh"
           echo "$HOME/vega/bin" >> "$GITHUB_PATH"
-      - run: node scripts/nightly-sdk-check.mjs
+      # The script's own step timeouts add up to about 74 minutes. A step timeout signals the
+      # script, which sanitizes its output before it exits.
+      - name: Run the check
+        timeout-minutes: 80
+        run: node scripts/nightly-sdk-check.mjs
       - name: Add the summary
         if: always()
         run: |
@@ -63,10 +70,11 @@ jobs:
           path: .work/nightly
           if-no-files-found: ignore
 
-  # A failed scheduled or manual run opens one issue, then comments on it while it stays open.
+  # A failed, cancelled or timed-out scheduled or manual run opens one issue, then comments on it
+  # while it stays open.
   report:
     needs: check
-    if: always() && needs.check.result == 'failure' && github.event_name != 'pull_request'
+    if: always() && needs.check.result != 'success' && needs.check.result != 'skipped' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

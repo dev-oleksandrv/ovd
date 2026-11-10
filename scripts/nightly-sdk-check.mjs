@@ -3,8 +3,10 @@
 // and a Virtual Device, records every SDK call OVD makes, sanitizes the recordings, and lays
 // them out as fixtures when the SDK's major.minor has no fixtures folder yet.
 // Usage: node scripts/nightly-sdk-check.mjs [--out <dir>] [--dry-run] [--keep-vvd]
-//          [--project <dir>] [--record]
-// Exit 0 when every step passed, 1 otherwise. Never runs `vega platform doctor`.
+//          [--project <dir>] [--record] [--self-test]
+// --self-test checks the sanitizer, leak check and fixture naming on made-up input, with no
+// SDK, device or network. Exit 0 when every step passed, 1 otherwise. Never runs `vega platform doctor`.
+import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import {
   chmodSync,
@@ -17,6 +19,7 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync
 } from 'node:fs'
 import { homedir, hostname, tmpdir, userInfo } from 'node:os'
@@ -59,6 +62,7 @@ function parseArgs(argv) {
   const options = {
     out: join(root, '.work', 'nightly'),
     dryRun: false,
+    selfTest: false,
     keepVvd: false,
     record: false,
     project: undefined
@@ -66,6 +70,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--dry-run') options.dryRun = true
+    else if (arg === '--self-test') options.selfTest = true
     else if (arg === '--keep-vvd') options.keepVvd = true
     else if (arg === '--record') options.record = true
     else if (arg === '--out' || arg === '--project') {
@@ -80,7 +85,7 @@ function parseArgs(argv) {
 function usage(message) {
   console.error(`nightly-sdk-check: ${message}`)
   console.error(
-    'usage: node scripts/nightly-sdk-check.mjs [--out <dir>] [--dry-run] [--keep-vvd] [--project <dir>] [--record]'
+    'usage: node scripts/nightly-sdk-check.mjs [--out <dir>] [--dry-run] [--keep-vvd] [--project <dir>] [--record] [--self-test]'
   )
   process.exit(2)
 }
@@ -352,10 +357,28 @@ function keepIpv4(ip) {
   )
 }
 
+// The sanitizer and the leak check treat the same values as safe, so a value one keeps the
+// other doesn't flag, and a value one should replace the other catches.
+function keepIpv6(ip) {
+  return /^2001:0?db8:/i.test(ip)
+}
+
+function keepMac(mac) {
+  return mac === '00:00:00:00:00:00' || mac.startsWith('02:00:00:00:00:')
+}
+
+function keepEmail(email) {
+  return /@example\.(com|org|net)$/i.test(email)
+}
+
 // `localhost` names no machine, and replacing it would break loopback URLs.
-function usableHost() {
-  const host = hostname()
+function usableHost(host) {
   return host === 'localhost' || host.startsWith('localhost.') ? '' : host
+}
+
+// This machine's identity; the self-test passes a fake one.
+function hostIdentity() {
+  return { home: homedir(), user: userInfo().username, host: hostname() }
 }
 
 function escapeRegExp(text) {
@@ -384,14 +407,14 @@ function pathVariants(path) {
   return [...variants].sort((a, b) => b.length - a.length)
 }
 
-function createSanitizer({ paths, devices, token }) {
-  const host = usableHost()
-  const user = userInfo().username
+function createSanitizer({ paths, devices, token, identity = hostIdentity() }) {
+  const host = usableHost(identity.host)
+  const user = identity.user
   const replacements = []
   for (const [path, placeholder] of paths) {
     for (const variant of pathVariants(path)) replacements.push([variant, placeholder])
   }
-  for (const variant of pathVariants(homedir())) replacements.push([variant, '/home/user'])
+  for (const variant of pathVariants(identity.home)) replacements.push([variant, '/home/user'])
   if (token) replacements.push([token, '<emulator-console-token>'])
   // Longest first, so a serial inside an `IP:port` ID or a longer name is replaced whole.
   for (const device of devices) {
@@ -420,20 +443,18 @@ function createSanitizer({ paths, devices, token }) {
       return ips.get(ip)
     })
     out = out.replace(IPV6, (ip) => {
-      if (/^2001:0?db8:/i.test(ip)) return ip
+      if (keepIpv6(ip)) return ip
       if (!v6s.has(ip)) v6s.set(ip, `2001:db8::${(++v6).toString(16)}`)
       return v6s.get(ip)
     })
     out = out.replace(MAC, (mac) => {
-      if (mac === '00:00:00:00:00:00' || mac.startsWith('02:00:00:00:00:')) return mac
+      if (keepMac(mac)) return mac
       if (!macs.has(mac)) {
         macs.set(mac, `02:00:00:00:00:${(macs.size + 1).toString(16).padStart(2, '0')}`)
       }
       return macs.get(mac)
     })
-    out = out.replace(EMAIL, (email) =>
-      /@example\.(com|org|net)$/i.test(email) ? email : 'user@example.com'
-    )
+    out = out.replace(EMAIL, (email) => (keepEmail(email) ? email : 'user@example.com'))
     return out
   }
 }
@@ -447,11 +468,14 @@ function sanitizeTree(dir, sanitize) {
 }
 
 // Every value that must not leave this machine. Hits are reported by file name, never by value.
-function leakCheck(dir, { devices, token }) {
+function leakCheck(dir, { devices, token, identity = hostIdentity() }) {
   const needles = []
-  const user = userInfo().username
+  const user = identity.user
   if (user.length >= 3 && user !== 'user') needles.push(wordPattern(user))
-  const host = usableHost()
+  for (const variant of pathVariants(identity.home)) {
+    if (variant !== '/home/user') needles.push(new RegExp(escapeRegExp(variant)))
+  }
+  const host = usableHost(identity.host)
   if (host) needles.push(wordPattern(host))
   const shortHost = host.split('.')[0]
   if (shortHost.length >= 3 && shortHost !== host) needles.push(wordPattern(shortHost))
@@ -464,8 +488,13 @@ function leakCheck(dir, { devices, token }) {
   const hits = []
   for (const file of listFiles(dir)) {
     const text = readFileSync(file, 'utf8')
-    const ipLeak = [...text.matchAll(IPV4)].some(([ip]) => !keepIpv4(ip))
-    if (ipLeak || needles.some((needle) => needle.test(text))) hits.push(relative(dir, file))
+    const patternLeak = [
+      [IPV4, keepIpv4],
+      [IPV6, keepIpv6],
+      [MAC, keepMac],
+      [EMAIL, keepEmail]
+    ].some(([pattern, keep]) => [...text.matchAll(pattern)].some(([value]) => !keep(value)))
+    if (patternLeak || needles.some((needle) => needle.test(text))) hits.push(relative(dir, file))
     for (const needle of needles) needle.lastIndex = 0
   }
   return hits
@@ -524,6 +553,7 @@ function findVpkg(project, arch) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
+  if (options.selfTest) return selfTest()
   if (options.dryRun) {
     console.log(`nightly-sdk-check (dry run): output in ${relative(root, options.out) || '.'}`)
     for (const [index, step] of STEPS.entries()) console.log(`  ${index + 1}. ${step}`)
@@ -548,6 +578,10 @@ async function main() {
   const arch = hostArch()
   let startedVvd = false
   let vega
+  let realVega
+  let sdk = {}
+  let fixturesVersion
+  let sdkVersion
 
   function record(step, ok, detail, ms) {
     results.push({ step, ok, detail, ms })
@@ -596,22 +630,44 @@ async function main() {
     return [doc, undefined]
   }
 
+  // Ctrl+C, or GitHub cancelling the run: stop what runs, then sanitize and leak-check as a
+  // normal end does (finish() is synchronous), so raw recordings never stay in the output.
+  let stopping = false
   function onSignal(signal) {
-    if (current) killGroup(current.pid, 'SIGTERM')
-    if (startedVvd && !options.keepVvd && vega) {
-      spawnSync(vega, ['virtual-device', 'stop'], { stdio: 'ignore', timeout: 60_000 })
+    if (stopping) return
+    stopping = true
+    if (current) {
+      killGroup(current.pid, 'SIGTERM')
+      // Give the shim's `tee`s a moment to flush and exit before the files are rewritten.
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_000)
+      killGroup(current.pid, 'SIGKILL')
+    }
+    results.push({ step: 'interrupted', ok: false, detail: signal, ms: 0 })
+    // Sanitize first: a runner that cancels a step kills it a few seconds after the signal.
+    try {
+      finish()
+    } catch {
+      // If sanitizing fails, drop the raw output rather than leave it for the upload.
+      for (const name of ['recordings', 'ovd', 'fixtures', 'shim']) {
+        rmSync(join(out, name), { recursive: true, force: true })
+      }
+    }
+    // Then stop the Virtual Device with the real CLI, so no raw recording lands after it.
+    if (startedVvd && !options.keepVvd && realVega) {
+      const stop = spawnSync(realVega, ['virtual-device', 'stop'], {
+        stdio: 'ignore',
+        timeout: 60_000
+      })
+      console.log(`vvd-stop after ${signal}: exit ${stop.status}`)
     }
     process.exit(signal === 'SIGINT' ? 130 : 143)
   }
   process.on('SIGINT', onSignal)
   process.on('SIGTERM', onSignal)
 
-  let sdk = {}
-  let fixturesVersion
-  let sdkVersion
   try {
     // a. The Vega CLI and the SDK version.
-    const realVega = process.env.OVD_REAL_VEGA ?? join(homedir(), 'vega', 'bin', 'vega')
+    realVega = process.env.OVD_REAL_VEGA ?? join(homedir(), 'vega', 'bin', 'vega')
     if (!existsSync(realVega)) {
       record('sdk-version', false, 'no Vega CLI at ~/vega/bin/vega (or OVD_REAL_VEGA)', 0)
       return finish()
@@ -865,7 +921,11 @@ async function main() {
         majorMinor: sdkVersion,
         newestFixtures: fixturesVersion
       },
-      fixtures: { recorded: fixtures, folder: fixtures > 0 ? `fixtures/${sdkVersion}` : null },
+      // A tripped leak check removed the layout with the rest, so nothing is left to curate.
+      fixtures:
+        leaks.length > 0
+          ? { recorded: 0, folder: null, dropped: true, laidOut: fixtures }
+          : { recorded: fixtures, folder: fixtures > 0 ? `fixtures/${sdkVersion}` : null },
       steps: results,
       leaks,
       appIdsToCurate: appIds
@@ -899,6 +959,12 @@ function summaryMarkdown(result) {
       ''
     )
   }
+  if (result.fixtures.dropped && result.fixtures.laidOut > 0) {
+    lines.push(
+      `${result.fixtures.laidOut} recordings were laid out as fixtures, then dropped by the leak check.`,
+      ''
+    )
+  }
   if (result.leaks.length > 0) {
     lines.push(
       `Leak check: ${result.leaks.length} file(s) held host details after sanitizing and were removed: ${result.leaks.map((file) => `\`${file}\``).join(', ')}.`,
@@ -912,6 +978,176 @@ function summaryMarkdown(result) {
     )
   }
   return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------------------------
+// Self-test: the pure parts on made-up input. Vitest is the maintainer's gate to extend, so the
+// script carries its own check, and CI runs it before the SDK install.
+
+function selfTest() {
+  const scratch = mkdtempSync(join(tmpdir(), 'ovd-nightly-self-test-'))
+  let failures = 0
+  function check(name, body) {
+    try {
+      body()
+      console.log(`ok   ${name}`)
+    } catch (error) {
+      failures++
+      console.log(`FAIL ${name}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  try {
+    check('parseSdkVersion and majorMinor', () => {
+      const sdk = parseSdkVersion('Active SDK Version: 0.24.12112\nVega CLI Version: 1.4.5\n')
+      assert.deepEqual(sdk, { sdk: '0.24.12112', cli: '1.4.5' })
+      assert.equal(majorMinor(sdk.sdk), '0.24')
+      assert.equal(majorMinor('2.0.13986'), '2.0')
+      assert.equal(majorMinor(undefined), undefined)
+      assert.deepEqual(parseSdkVersion('Unknown arguments'), { sdk: undefined, cli: undefined })
+    })
+
+    const names = [
+      [['--version'], 'vega-version'],
+      [['device', 'info', '--device', 'VirtualDevice'], 'vega-device-info'],
+      [['virtual-device', 'start', '--no-gui', '--timeout', '300'], 'vega-virtual-device-start'],
+      [['sdk', 'config', 'doctor', '--json'], 'vega-sdk-config-doctor'],
+      [['exec', 'vda', 'devices', '-l'], 'vda-devices'],
+      [['exec', 'vpt', 'info', '--json', '/tmp/a.vpkg'], 'vpt-info'],
+      [
+        ['exec', 'vda', '-s', 'emulator-5554', 'shell', 'vlcm', 'list', '--app-id', 'x'],
+        'vlcm-list'
+      ],
+      [
+        ['exec', 'vda', '-s', 'e', 'shell', 'vsm', 'developer-mode', 'enable'],
+        'vsm-developer-mode-enable'
+      ],
+      [['exec', 'vda', '-s', 'e', 'shell', 'loggingctl', 'log', '-f'], 'loggingctl-log'],
+      [['exec', 'vda', '-s', 'e', 'shell', 'vpm', 'info', 'com.example.hellovega'], 'vpm-info'],
+      [['exec', 'vda', '-s', 'e', 'shell', 'echo', 'Zm9v', '|', 'sh'], 'vda-shell']
+    ]
+    for (const [args, expected] of names) {
+      check(`toolName ${args.join(' ')}`, () => assert.equal(toolName(args), expected))
+    }
+
+    // A fake machine: its home is a symlink, so the real path is a second spelling of it.
+    const realHome = join(scratch, 'real-home')
+    mkdirSync(realHome)
+    const home = join(scratch, 'home-link')
+    symlinkSync(realHome, home)
+    const identity = { home, user: 'jdoe', host: 'build-box-7.corp.internal' }
+    const token = 'tok3n-SECRET-value-42'
+    const devices = [
+      {
+        id: '10.20.30.40:5555',
+        serial: 'G0R1234567890XYZ',
+        name: "Jane's TV",
+        fakeSerial: 'G070000000000001',
+        fakeName: 'Living room stick'
+      }
+    ]
+    const known = { devices, token, identity }
+    const raw = [
+      `home ${home}/project and ${realpathSync(realHome)}/cache`,
+      'user jdoe on build-box-7.corp.internal (build-box-7)',
+      'ip 10.1.2.3 and again 10.1.2.3, v6 2a01:4f8:1:2::3, mac aa:bb:cc:dd:ee:ff',
+      'mail jane@corp.internal',
+      `token ${token}`,
+      "stick G0R1234567890XYZ at 10.20.30.40:5555 named Jane's TV"
+    ].join('\n')
+    const safe = [
+      'docs 192.0.2.5 198.51.100.7 203.0.113.9 loopback 127.0.0.1 any 0.0.0.0',
+      'versions 1.0.323.0 0.24.12112 1.2.3.4.5 react@18.2.0',
+      'v6 2001:db8::7 time 16:01:44.123 mail user@example.com localhost',
+      '\t\tba:7b:3f:44:0d:75:99:2d:11:6d:84:e0:a8:91:84:3b',
+      '\t\t\t02:30:05:78:30:db',
+      'md5: 02:00:00:00:00:01:02:00:00:00:00:02:a7:14:38:77'
+    ].join('\n')
+    const sanitize = createSanitizer({ paths: [[join(scratch, 'work'), '/tmp/work']], ...known })
+    const clean = sanitize(raw)
+
+    check('sanitize replaces host details', () => {
+      assert.equal(
+        clean,
+        [
+          'home /home/user/project and /home/user/cache',
+          'user user on host.example (host)',
+          'ip 192.0.2.10 and again 192.0.2.10, v6 2001:db8::1, mac 02:00:00:00:00:01',
+          'mail user@example.com',
+          'token <emulator-console-token>',
+          'stick G070000000000001 at G070000000000001 named Living room stick'
+        ].join('\n')
+      )
+    })
+    check('sanitize keeps sample data, versions and hex dumps', () => {
+      assert.equal(sanitize(safe), safe)
+    })
+
+    const leakDir = join(scratch, 'leaks')
+    mkdirSync(leakDir)
+    writeFileSync(join(leakDir, 'clean.txt'), `${clean}\n${safe}`)
+    const needles = {
+      home: `${home}/x`,
+      'real-home': `${realpathSync(realHome)}/x`,
+      user: 'by jdoe',
+      host: 'on build-box-7.corp.internal',
+      'short-host': 'on build-box-7',
+      token: `t=${token}`,
+      serial: 'G0R1234567890XYZ',
+      name: "Jane's TV",
+      ipv4: '172.16.4.2',
+      ipv6: '2600:1f18::9',
+      mac: '3c:22:fb:01:02:03',
+      email: 'a.person@corp.internal'
+    }
+    for (const [name, text] of Object.entries(needles)) {
+      writeFileSync(join(leakDir, `${name}.txt`), `before ${text} after\n`)
+    }
+    check('leakCheck passes sanitized and safe text', () => {
+      const hits = leakCheck(leakDir, known)
+      assert.ok(!hits.includes('clean.txt'), 'clean.txt flagged')
+    })
+    for (const name of Object.keys(needles)) {
+      check(`leakCheck flags ${name}`, () => {
+        assert.ok(leakCheck(leakDir, known).includes(`${name}.txt`), `${name}.txt not flagged`)
+      })
+    }
+
+    check('layoutFixtures dedupes and names files', () => {
+      const recording = (id, stdout) => ({
+        id,
+        args: ['device', 'info', '--device', 'VirtualDevice'],
+        stdout,
+        stderr: 'log line\n',
+        exit: 0
+      })
+      const fixtures = join(scratch, 'fixtures')
+      const count = layoutFixtures(
+        [recording('001', '{"a":1}'), recording('002', '{"a":1}'), recording('003', 'text')],
+        fixtures,
+        {
+          version: '9.9',
+          sdk: { sdk: '9.9.1', cli: '9.0.0' },
+          date: '2026-11-10',
+          hostArch: 'x86_64'
+        }
+      )
+      assert.equal(count, 2)
+      const dir = join(fixtures, '9.9', 'vega-device-info')
+      assert.deepEqual(readdirSync(dir).sort(), [
+        'virtual-device-nightly-001.json',
+        'virtual-device-nightly-001.stderr.txt',
+        'virtual-device-nightly-002.stderr.txt',
+        'virtual-device-nightly-002.txt'
+      ])
+      const readme = readFileSync(join(fixtures, '9.9', 'README.md'), 'utf8')
+      assert.equal(readme.split('\n').filter((line) => line.startsWith('| `')).length, 2)
+      assert.match(readme, /Virtual Device \(x86_64\)/)
+    })
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
+  console.log(`nightly-sdk-check self-test: ${failures === 0 ? 'ok' : `${failures} failed`}`)
+  return failures === 0 ? 0 : 1
 }
 
 process.exitCode = await main()
