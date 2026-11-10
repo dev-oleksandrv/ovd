@@ -245,7 +245,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 - Loading, empty, error and offline-target states on every first-release screen.
 - Homebrew tap (`brew install ovd`). Needs the maintainer's approval and a published release.
 
-### 3.7 Nightly SDK check
+### 3.7 Nightly SDK check — in review, awaiting maintainer approval
 
 - Nightly CI on `ubuntu-latest`: latest SDK, headless Virtual Device, `doctor`, `devices`, `pkg info`, `install`, `launch`, `logs` with `--json`. New fixtures recorded when the SDK version changes; a failure opens an issue (ADR 0007).
 
