@@ -11,7 +11,8 @@ import { expandHome, tildePath } from '../project/paths.js'
 import type { Project } from '../project/project.js'
 import { PROJECT_FILES } from '../project/readProject.js'
 import { preferredBuildType } from '../run/run.js'
-import { watchBuilds } from './buildWatcher.js'
+import { watchBuilds, type PrivateBuild } from './buildWatcher.js'
+import { privateBuilds } from './privateBuilds.js'
 
 export interface WatchDeps {
   devices: Pick<Devices, 'currentTarget'>
@@ -21,6 +22,8 @@ export interface WatchDeps {
   homedir: string
   // Relative refs resolve against it (the CLI's working directory).
   cwd: string
+  // The packages a build still packs under `build/private/` (default: read from disk).
+  privateBuilds?: (folder: string) => Promise<PrivateBuild[]>
 }
 
 export interface WatchFolder {
@@ -197,6 +200,7 @@ export function createWatch(deps: WatchDeps): Watch {
 
       const watcher = watchBuilds({
         scan: () => deps.packages.builds(watched.path),
+        scanPrivate: () => (deps.privateBuilds ?? privateBuilds)(watched.path),
         ...(opts.pollMs === undefined ? {} : { pollMs: opts.pollMs }),
         onSettled
       })

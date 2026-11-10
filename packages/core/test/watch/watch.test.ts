@@ -9,6 +9,7 @@ import {
   type BuildChange,
   type Device,
   type PackageBuild,
+  type PrivateBuild,
   type ProjectMode,
   type ResolvedTarget
 } from '../../src/index.js'
@@ -91,6 +92,7 @@ function setup(
     target?: ResolvedTarget | null | OvdError
     mode?: ProjectMode | null
     builds?: PackageBuild[]
+    privates?: PrivateBuild[]
   } = {}
 ) {
   let builds = opts.builds ?? [build('aarch64', 'debug', T0), build('armv7', 'release', T0)]
@@ -99,6 +101,7 @@ function setup(
       ? { kind: 'folder', path: project, displayPath: '~/dev/player', name: 'player' }
       : opts.mode
   const entries: Omit<ActivityEntry, 'time' | 'surface'>[] = []
+  let privates: PrivateBuild[] = opts.privates ?? []
   const target =
     opts.target === undefined ? { device: vvd, source: 'remembered' as const } : opts.target
   const currentTarget = vi.fn(async () => {
@@ -111,7 +114,9 @@ function setup(
     project: { current: async () => mode },
     activity: { append: async (entry) => void entries.push(entry) },
     homedir: home,
-    cwd: home
+    cwd: home,
+    // Fake timers don't wait for disk reads: the private packages are set by the test.
+    privateBuilds: async () => privates
   })
   const changes: BuildChange[] = []
   const onBuild = vi.fn((change: BuildChange) => void changes.push(change))
@@ -122,7 +127,8 @@ function setup(
     onBuild,
     currentTarget,
     setBuilds: (next: PackageBuild[]) => (builds = next),
-    setMode: (next: ProjectMode | null) => (mode = next)
+    setMode: (next: ProjectMode | null) => (mode = next),
+    setPrivates: (next: PrivateBuild[]) => (privates = next)
   }
 }
 
@@ -187,7 +193,7 @@ describe('watch.start', () => {
       build('armv7', 'release', T0),
       build('armv7', 'debug', T2)
     ])
-    await poll(2)
+    await poll(3)
 
     expect(s.changes).toEqual([
       {
@@ -216,7 +222,7 @@ describe('watch.start', () => {
     })
     const handle = await s.watch.start(project, { onBuild: s.onBuild, pollMs: POLL })
     s.setBuilds([build('armv7', 'debug', T2), build('armv7', 'release', T1)])
-    await poll(2)
+    await poll(3)
     expect(s.changes[0]?.build).toEqual(build('armv7', 'release', T1))
     handle.stop()
   })
@@ -225,7 +231,7 @@ describe('watch.start', () => {
     const s = setup()
     const handle = await s.watch.start(project, { onBuild: s.onBuild, pollMs: POLL })
     s.setBuilds([build('aarch64', 'debug', T0), build('armv7', 'release', T1)])
-    await poll(2)
+    await poll(3)
     expect(s.changes).toHaveLength(1)
     expect(s.changes[0]?.build).toBeUndefined()
     expect(s.changes[0]?.target?.id).toBe('VirtualDevice')
@@ -244,7 +250,7 @@ describe('watch.start', () => {
     const s = setup({ target: { device: { ...vvd, status: 'stopped' }, source: 'remembered' } })
     const handle = await s.watch.start(project, { onBuild: s.onBuild, pollMs: POLL })
     s.setBuilds([build('aarch64', 'debug', T1), build('armv7', 'release', T0)])
-    await poll(2)
+    await poll(3)
     expect(s.changes[0]?.build).toBeUndefined()
     expect(s.changes[0]?.target).toBeUndefined()
     expect(s.changes[0]?.error).toMatchObject({
@@ -274,7 +280,7 @@ describe('watch.start', () => {
     const s = setup({ target })
     const handle = await s.watch.start(project, { onBuild: s.onBuild, pollMs: POLL })
     s.setBuilds([build('aarch64', 'debug', T1), build('armv7', 'release', T0)])
-    await poll(2)
+    await poll(3)
     expect(s.changes[0]?.error?.code).toBe(code)
     expect(s.entries[0]).toMatchObject({ target: null, result: 'error', errorCode: code })
     handle.stop()
@@ -288,9 +294,9 @@ describe('watch.start', () => {
       pollMs: POLL
     })
     s.setBuilds([build('aarch64', 'debug', T1), build('armv7', 'release', T0)])
-    await poll(2)
+    await poll(3)
     s.setBuilds([build('aarch64', 'debug', T2), build('armv7', 'release', T0)])
-    await poll(2)
+    await poll(3)
     expect(s.currentTarget.mock.calls).toEqual([['VirtualDevice'], ['VirtualDevice']])
     expect(s.changes).toHaveLength(2)
     handle.stop()
@@ -306,7 +312,7 @@ describe('watch.start', () => {
       name: 'hellovega'
     })
     s.setBuilds([build('aarch64', 'debug', T1), build('armv7', 'release', T0)])
-    await poll(2)
+    await poll(3)
     expect(await handle.done).toEqual({ reason: 'project-changed' })
     expect(s.onBuild).not.toHaveBeenCalled()
     expect(s.entries).toEqual([])
@@ -317,8 +323,34 @@ describe('watch.start', () => {
     const handle = await s.watch.start(project, { onBuild: s.onBuild, pollMs: POLL })
     s.setMode(null)
     s.setBuilds([build('aarch64', 'debug', T1), build('armv7', 'release', T0)])
-    await poll(2)
+    await poll(3)
     expect(s.onBuild).toHaveBeenCalledTimes(1)
+    handle.stop()
+  })
+
+  test('no redeploy while the build still packs another architecture', async () => {
+    const packed = (arch: 'aarch64' | 'armv7', type: 'Debug' | 'Release', modifiedAt: string) => ({
+      path: `${project}/build/private/kepler/@amazon-devices/player/undefined/vega/${arch}/${type}/@amazon-devices/player_${arch}.vpkg`,
+      size: 1_000,
+      modifiedAt,
+      arch,
+      buildType: type.toLowerCase() as 'debug' | 'release'
+    })
+    const s = setup({
+      builds: [build('aarch64', 'debug', T0), build('armv7', 'debug', T0)],
+      privates: [packed('aarch64', 'Debug', T0), packed('armv7', 'Debug', T0)]
+    })
+    const handle = await s.watch.start(project, { onBuild: s.onBuild, pollMs: POLL })
+    // aarch64 copied; armv7 packing (its private package newer than its copy).
+    s.setBuilds([build('aarch64', 'debug', T1), build('armv7', 'debug', T0)])
+    s.setPrivates([packed('aarch64', 'Debug', T0), packed('armv7', 'Debug', T1)])
+    await poll(6)
+    expect(s.onBuild).not.toHaveBeenCalled()
+    expect(s.entries).toEqual([])
+    s.setBuilds([build('aarch64', 'debug', T1), build('armv7', 'debug', T2)])
+    await poll(3)
+    expect(s.changes.map((c) => c.build)).toEqual([build('aarch64', 'debug', T1)])
+    expect(s.changes[0]?.changed).toHaveLength(2)
     handle.stop()
   })
 
@@ -328,7 +360,7 @@ describe('watch.start', () => {
     await poll(3)
     expect(s.onBuild).not.toHaveBeenCalled()
     s.setBuilds([build('aarch64', 'debug', T1)])
-    await poll(2)
+    await poll(3)
     expect(s.changes.map((c) => c.build)).toEqual([build('aarch64', 'debug', T1)])
     handle.stop()
   })
