@@ -232,7 +232,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** .vpkg to running app with live logs in under 30 s, at least 2× faster than raw commands.
 
-### 3.5 Watch and redeploy
+### 3.5 Watch and redeploy — done
 
 - Title bar toggle "Watching build/" / "Watch off" (project open only). A new build reinstalls and relaunches, with a toast and an OVD log line. CLI `ovd run --watch`.
 - OVD line "Build folder changed" in Logs when the watched build folder changes (moved from 3.2).
