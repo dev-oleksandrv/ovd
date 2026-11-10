@@ -42,7 +42,15 @@ if (!dir) {
 
 const args = process.argv.slice(2)
 const command = ['vega', ...args].join(' ')
-const world = readWorld(dir)
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const held = (w: World) => w.hold.some((prefix) => command.startsWith(prefix))
+let world = readWorld(dir)
+// A held command waits until the test releases it, then answers from the world as it is then.
+while (held(world)) {
+  await sleep(100)
+  world = readWorld(dir)
+}
 // What was read, so a command that changed nothing doesn't write the world back.
 const before = JSON.stringify(world)
 
@@ -143,8 +151,6 @@ async function devmodeLogin(w: World): Promise<Reply> {
   wroteWorld = true
   return { stdout: success ?? '' }
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // `loggingctl log -f` on the stick (fixtures/0.24/loggingctl-log): the recorded window in
 // three chunks cut mid-line, then it follows until its process group is signalled.

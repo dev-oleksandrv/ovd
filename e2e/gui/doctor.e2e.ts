@@ -42,6 +42,36 @@ test.describe('Doctor after setup', () => {
     expect(sandbox.world().account).toBe('signed-out')
   })
 
+  test.describe('while the SDK checks run', () => {
+    test.use({
+      world: {
+        stick: usbStick(),
+        account: 'signed-out',
+        browserSignIn: 'never',
+        hold: ['vega sdk config doctor --json']
+      }
+    })
+
+    test('shows Running checks… until the report arrives', async ({ sandbox, launch }) => {
+      sandbox.installSdk()
+      const { page } = await launch()
+      await nav(page, 'Doctor').click()
+
+      const running = page.getByRole('status').filter({ hasText: 'Running checks…' })
+      await expect(running).toBeVisible()
+      await expect(page.getByRole('list', { name: 'Checks' })).toHaveCount(0)
+
+      sandbox.update((w) => {
+        w.hold = []
+      })
+
+      await expect(page.getByText('0 failing · 1 warning')).toBeVisible()
+      await expect(row(page, 'Vega SDK')).toContainText('0.24.12112')
+      await expect(running).toHaveCount(0)
+      expect(sandbox.calls()).toContain('vega sdk config doctor --json')
+    })
+  })
+
   test('the Developer Mode row opens the new-stick wizard', async ({ sandbox, launch }) => {
     sandbox.installSdk()
     const { page } = await launch()

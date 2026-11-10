@@ -239,11 +239,11 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** a rebuild redeploys and logs continue without manual steps.
 
-### 3.6 First-release polish
+### 3.6 First-release polish — partly done (Homebrew tap pending)
 
 - Palette lists Crashes, Remote & Screen, Shell, Deep links, Performance, Scenarios & MCP as "Coming in a later version".
 - Loading, empty, error and offline-target states on every first-release screen.
-- Homebrew tap (`brew install ovd`).
+- Homebrew tap (`brew install ovd`). Needs the maintainer's approval and a published release.
 
 ### 3.7 Nightly SDK check
 

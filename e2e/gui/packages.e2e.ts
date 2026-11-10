@@ -1,5 +1,6 @@
 import type { ElectronApplication, Page } from '@playwright/test'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
+import { ovd } from '../harness/cli.ts'
 import { expect, test } from '../harness/gui.ts'
 import { makeProject, makeRecordedVpkg, makeVpkg } from '../harness/project.ts'
 
@@ -72,6 +73,39 @@ test.describe('Packages → Overview', () => {
     await expect.poll(() => sandbox.calls()).toContain(`vega exec vpt checksum ${armv7}`)
     // Inspecting a file on the host is not a device action.
     expect(sandbox.activity()).toEqual([])
+  })
+
+  test('the newest build shows Reading… while vpt reads it, then its overview', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    makeProject(sandbox.home, 'player')
+    const armv7 = makeRecordedVpkg(
+      sandbox.home,
+      'dev/player/build/armv7-release/player_armv7.vpkg',
+      'player-armv7-release'
+    )
+    // Opened with the CLI: the desktop reads the same host state (ADR 0022).
+    expect((await ovd(sandbox, ['open', `${sandbox.home}/dev/player`])).exitCode).toBe(0)
+    sandbox.update((w) => {
+      w.hold = ['vega exec vpt info']
+    })
+    const { page } = await launch()
+
+    await nav(page, 'Packages').click()
+
+    const reading = page.getByRole('status').filter({ hasText: 'Reading player_armv7.vpkg…' })
+    await expect(reading).toBeVisible()
+    await expect(page.getByRole('heading', { name: /^Sample Player/ })).toHaveCount(0)
+
+    sandbox.update((w) => {
+      w.hold = []
+    })
+
+    await expect(page.getByRole('heading', { name: /^Sample Player/ })).toBeVisible()
+    await expect(reading).toHaveCount(0)
+    expect(sandbox.calls()).toContain(`vega exec vpt info --json ${armv7}`)
   })
 
   test('a .vpkg opened from the drop zone is inspected and listed', async ({ sandbox, launch }) => {
@@ -198,6 +232,37 @@ test.describe('Install on target behind the architecture guard', () => {
         result: 'ok'
       })
     ])
+  })
+
+  test('an unplugged target: Install on target is disabled and says why', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    makeProject(sandbox.home, 'player')
+    makeRecordedVpkg(
+      sandbox.home,
+      'dev/player/build/armv7-release/player_armv7.vpkg',
+      'player-armv7-release'
+    )
+    expect((await ovd(sandbox, ['open', `${sandbox.home}/dev/player`])).exitCode).toBe(0)
+    // Remembered as the target, so it stays the target once it is gone.
+    expect((await ovd(sandbox, ['target', 'set', STICK_SERIAL])).exitCode).toBe(0)
+    const { page } = await launch()
+    const target = page.getByRole('button', { name: 'Target: Fire TV stick' })
+    await expect(target).toBeVisible()
+    sandbox.update((w) => {
+      if (w.stick) w.stick.usbCable = false
+    })
+    await expect(target).toContainText('Offline')
+
+    await nav(page, 'Packages').click()
+
+    await expect(page.getByRole('heading', { name: /^Sample Player/ })).toBeVisible()
+    const install = page.getByRole('button', { name: 'Install on target' })
+    await expect(install).toBeDisabled()
+    await expect(install).toHaveAttribute('title', 'Fire TV stick is offline')
+    expect(sandbox.calls().some((c) => c.startsWith('vega device install-app'))).toBe(false)
   })
 
   test('without a matching build, the fix opens the target picker', async ({ sandbox, launch }) => {
