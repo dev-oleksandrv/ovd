@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { VVD_VDA_SERIAL } from '../fake-sdk/world.ts'
+import { usbStick, VVD_VDA_SERIAL } from '../fake-sdk/world.ts'
 import { ovd } from '../harness/cli.ts'
 import { expect, test } from '../harness/gui.ts'
 import { MANIFEST, makeProject, makeRecordedVpkg } from '../harness/project.ts'
@@ -143,6 +143,49 @@ test.describe('Run', () => {
     })
     await expect(run).toBeEnabled()
     expect(sandbox.calls().some((c) => c.includes('install-app'))).toBe(false)
+  })
+
+  test('with nothing open, Run is disabled and says why, and Watch is hidden', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { page } = await launch()
+    await expect(page.getByRole('button', { name: 'Target: Vega Virtual Device' })).toBeVisible()
+
+    const run = page.getByRole('button', { name: 'Run', exact: true })
+    await expect(run).toBeDisabled()
+    await expect(run).toHaveAttribute('title', 'Open a project or drop a .vpkg')
+    await expect(page.getByRole('button', { name: /^Watch/ })).toHaveCount(0)
+  })
+
+  test.describe('with two devices online', () => {
+    test.use({ world: { stick: usbStick(), vvd: { running: true, developerMode: true } } })
+
+    test('Run waits for a target; picking one enables it', async ({ sandbox, launch }) => {
+      sandbox.installSdk()
+      const file = makeRecordedVpkg(
+        sandbox.home,
+        'Downloads/player_aarch64.vpkg',
+        'player-aarch64-debug'
+      )
+      expect((await ovd(sandbox, ['open', file])).exitCode).toBe(0)
+      const { page } = await launch()
+      const picker = page.getByRole('button', { name: 'Target device' })
+      // Two devices online: none is the target on its own.
+      await expect(picker).toContainText('No device')
+
+      const run = page.getByRole('button', { name: 'Run ▸ player_aarch64.vpkg' })
+      await expect(run).toBeDisabled()
+      await expect(run).toHaveAttribute('title', 'Pick a target first')
+
+      await picker.click()
+      await page.getByRole('menuitemradio', { name: /Vega Virtual Device/ }).click()
+
+      await expect(run).toBeEnabled()
+      expect(sandbox.hostState()).toMatchObject({ target: 'VirtualDevice' })
+      expect(sandbox.calls().some((c) => c.includes('install-app'))).toBe(false)
+    })
   })
 
   test('a crash on launch: Verify launch fails with "Crashed on launch" and an error toast', async ({

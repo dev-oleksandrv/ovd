@@ -215,6 +215,84 @@ test.describe('Logs', () => {
     })
   })
 
+  test('shows Starting the log session… while the target is resolved, then the lines', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { page } = await launch()
+    await expect(page.getByRole('button', { name: 'Target: Fire TV stick' })).toBeVisible()
+    // The doctor run at launch lists devices too; its sign-in probe is the run's last SDK call.
+    await expect.poll(() => sandbox.calls()).toContain('vega devmode login --json')
+    // Starting a session lists the devices again to find the target online.
+    sandbox.update((w) => {
+      w.hold = ['vega exec vda devices -l']
+    })
+
+    await openLogs(page)
+
+    const starting = page
+      .getByRole('status')
+      .filter({ hasText: 'Starting the log session on Fire TV stick…' })
+    await expect(starting).toBeVisible()
+    expect(sandbox.calls()).not.toContain(LOG)
+
+    sandbox.update((w) => {
+      w.hold = []
+    })
+
+    await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
+    await expect(starting).toHaveCount(0)
+    expect(sandbox.calls().filter((c) => c === LOG)).toHaveLength(1)
+  })
+
+  test.describe('before the first line', () => {
+    test.use({ world: { stick: usbStick(), logStream: { ends: false, holdAfterLine: 0 } } })
+
+    test('shows Waiting for log lines until the stick logs one', async ({ sandbox, launch }) => {
+      sandbox.installSdk()
+      const { page } = await launch()
+      await openLogs(page)
+
+      const waiting = page.getByText('Waiting for log lines from Fire TV stick')
+      await expect(waiting).toBeVisible()
+      await expect(rows(page)).toHaveCount(0)
+      await expect.poll(() => sandbox.calls()).toContain(LOG)
+
+      sandbox.update((w) => {
+        w.logStream.holdAfterLine = null
+      })
+
+      await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
+      await expect(waiting).toHaveCount(0)
+    })
+  })
+
+  test('a search with no hit: No lines match the filters; Clear filters shows them again', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { page } = await launch()
+    await openLogs(page)
+    await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
+
+    await page.getByRole('textbox', { name: 'Search logs' }).fill('no such line')
+
+    const none = page.getByText('No lines match the filters')
+    await expect(none).toBeVisible()
+    await expect(rows(page)).toHaveCount(0)
+    await expect(echo(page)).toContainText('--grep "no such line"')
+
+    await page.getByRole('button', { name: 'Clear filters' }).click()
+
+    await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
+    await expect(none).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: 'Search logs' })).toHaveValue('')
+    await expect(echo(page)).toContainText(`ovd logs --device ${STICK_SERIAL}`)
+    await expect(echo(page)).not.toContainText('--grep')
+  })
+
   test('quitting while Logs follows the stick leaves no log stream', async ({
     sandbox,
     launch

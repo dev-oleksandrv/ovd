@@ -10,6 +10,16 @@ async function runCommand(page: Page, query: string): Promise<void> {
   await expect(palette).toHaveCount(0)
 }
 
+// The screens of later stages (ADR 0018): listed in the palette, never in the sidebar.
+const LATER = [
+  'Crashes',
+  'Remote & Screen',
+  'Shell',
+  'Deep links',
+  'Performance',
+  'Scenarios & MCP'
+]
+
 test.use({ world: { stick: usbStick(), vvd: { running: true, developerMode: true } } })
 
 test.describe('command palette', () => {
@@ -80,6 +90,20 @@ test.describe('command palette', () => {
     const { page } = await launch()
     // The palette shortcut is bound once the app has mounted; a key pressed earlier is lost.
     await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
+
+    await page.keyboard.press(PALETTE_KEY)
+    const palette = page.getByRole('dialog', { name: 'Command palette' })
+    const sidebar = page.getByRole('navigation', { name: 'Main' })
+    for (const label of LATER) {
+      const option = palette
+        .getByRole('option')
+        .filter({ has: page.getByText(label, { exact: true }) })
+      await expect(option).toHaveCount(1)
+      await expect(option).toContainText('Coming in a later version')
+      await expect(sidebar.getByRole('button', { name: label })).toHaveCount(0)
+    }
+    await page.keyboard.press('Escape')
+    await expect(palette).toHaveCount(0)
 
     await runCommand(page, 'Crashes')
 

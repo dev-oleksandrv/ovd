@@ -1,10 +1,12 @@
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
 import { decodeScript } from '../fake-sdk/scripts.ts'
-import { ALL_PACKAGES } from '../fake-sdk/world.ts'
+import { ALL_PACKAGES, STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
+import { ovd } from '../harness/cli.ts'
 import { expect, test } from '../harness/gui.ts'
 import { MANIFEST, makeProject, makeRecordedVpkg } from '../harness/project.ts'
 
 const SHELL = 'vega exec vda -s emulator-5554 shell'
+const STICK_SHELL = `vega exec vda -s ${STICK_SERIAL} shell`
 const ALL = `${SHELL} ${ALL_PACKAGES}`
 const VLCM = `${SHELL} vlcm list`
 const TITLE = 'Basic UI React Native Application for project player'
@@ -176,6 +178,65 @@ test.describe('Apps', () => {
 
     await expect(page.getByText('No target device')).toBeVisible()
     expect(sandbox.calls().filter((c) => c.startsWith(SHELL))).toEqual([])
+  })
+
+  test.describe('on the stick', () => {
+    test.use({ world: { stick: usbStick() } })
+
+    test('an unplugged target: Apps unavailable, and nothing is read from it', async ({
+      sandbox,
+      launch
+    }) => {
+      sandbox.installSdk()
+      // Remembered as the target, so it stays the target once it is gone.
+      expect((await ovd(sandbox, ['target', 'set', STICK_SERIAL])).exitCode).toBe(0)
+      const { page } = await launch()
+      const target = page.getByRole('button', { name: 'Target: Fire TV stick' })
+      await expect(target).toBeVisible()
+      sandbox.update((w) => {
+        if (w.stick) w.stick.usbCable = false
+      })
+      await expect(target).toContainText('Offline')
+      // Running now on Devices may have read the stick while it was plugged in.
+      sandbox.clearCalls()
+
+      await nav(page, 'Apps').click()
+
+      await expect(page.getByText('Apps unavailable — Fire TV stick is offline')).toBeVisible()
+      await page.getByRole('button', { name: 'Switch target' }).click()
+      await expect(page.getByRole('menu', { name: 'Target device' })).toBeVisible()
+      expect(sandbox.calls().filter((c) => c.startsWith(STICK_SHELL))).toEqual([])
+    })
+  })
+
+  test.describe('while the device reads its packages', () => {
+    // On the Virtual Device: the stick's recording lists a store app whose component read
+    // isn't recorded on the stick.
+    test.use({ world: { vvd: { running: true, developerMode: true }, hold: [ALL] } })
+
+    test('shows Reading apps…, then the empty list once the read answers', async ({
+      sandbox,
+      launch
+    }) => {
+      sandbox.installSdk()
+      const { page } = await launch()
+      await expect(page.getByRole('button', { name: 'Target: Vega Virtual Device' })).toBeVisible()
+      await nav(page, 'Apps').click()
+
+      const reading = page
+        .getByRole('status')
+        .filter({ hasText: 'Reading apps on Vega Virtual Device…' })
+      await expect(reading).toBeVisible()
+      await expect(page.getByText('No apps you installed on Vega Virtual Device')).toHaveCount(0)
+
+      sandbox.update((w) => {
+        w.hold = []
+      })
+
+      await expect(page.getByText('No apps you installed on Vega Virtual Device')).toBeVisible()
+      await expect(reading).toHaveCount(0)
+      expect(sandbox.calls()).toContain(ALL)
+    })
   })
 
   test('launch, stop, restart and uninstall the player, with Apps and Running now following', async ({

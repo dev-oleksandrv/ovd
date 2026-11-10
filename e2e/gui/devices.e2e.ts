@@ -76,6 +76,54 @@ test.describe('Devices', () => {
     expect(sandbox.hostState()).toMatchObject({ names: { [STICK_SERIAL]: 'Living room stick' } })
   })
 
+  test.describe('while VDA lists', () => {
+    test.use({ world: { stick: usbStick(), hold: ['vega exec vda devices -l'] } })
+
+    test('shows Loading devices… until the first list arrives', async ({ sandbox, launch }) => {
+      sandbox.installSdk()
+      const { page } = await launch()
+
+      await expect(page.getByRole('status').filter({ hasText: 'Loading devices…' })).toBeVisible()
+      await expect(deviceRow(page, /Fire TV stick/)).toHaveCount(0)
+
+      sandbox.update((w) => {
+        w.hold = []
+      })
+
+      await expect(deviceRow(page, /Fire TV stick.*Online/)).toBeVisible()
+      await expect(page.getByRole('status').filter({ hasText: 'Loading devices…' })).toHaveCount(0)
+      expect(sandbox.calls()).toContain('vega exec vda devices -l')
+    })
+  })
+
+  test('VDA breaking shows the error with its fix; the list comes back once VDA works', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { page } = await launch()
+    await expect(deviceRow(page, /Fire TV stick/)).toBeVisible()
+    // The doctor run at launch also calls VDA; its sign-in probe is the run's last SDK call, so
+    // VDA breaks for the device polls only.
+    await expect.poll(() => sandbox.calls()).toContain('vega devmode login --json')
+
+    sandbox.update((w) => {
+      w.vda = 'broken'
+    })
+
+    const error = page.getByRole('alert').filter({ hasText: 'VDA is not available' })
+    await expect(error).toBeVisible({ timeout: 6_000 })
+    await expect(error).toContainText('Check the Vega SDK install: vega exec vda version')
+    await expect(deviceRow(page, /Fire TV stick/)).toHaveCount(0)
+
+    sandbox.update((w) => {
+      w.vda = 'ok'
+    })
+
+    await expect(deviceRow(page, /Fire TV stick.*Online/)).toBeVisible({ timeout: 6_000 })
+    await expect(error).toHaveCount(0)
+  })
+
   test('Rescan lists again and echoes ovd devices', async ({ sandbox, launch }) => {
     sandbox.installSdk()
     const { page } = await launch()
