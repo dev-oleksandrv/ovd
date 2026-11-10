@@ -402,6 +402,29 @@ describe('run', () => {
     expect(steps.map((s) => s.step)).toEqual(['build', 'install', 'logs'])
   })
 
+  test('an abort during the launch: the launch finishes, the run is stopped', async () => {
+    const controller = new AbortController()
+    const { run, calls } = await setup({
+      ...online,
+      ...allBuilds(),
+      [VVD.install(builds['aarch64-debug'])]: out('vega-device-install-app/installed.txt')
+    })
+    const { opts, steps } = options(calls, {
+      device: 'VirtualDevice',
+      signal: controller.signal,
+      onStep: (s) => {
+        steps.push(s)
+        if (s.step === 'verify') controller.abort()
+      }
+    })
+
+    const error = await failure(run.run(undefined, opts))
+
+    expect(error.name).toBe('AbortError')
+    expect(calls()).toContain(VVD.LAUNCH)
+    expect(steps.map((s) => s.step)).not.toContain('follow')
+  })
+
   test('an abort before the run starts reads nothing', async () => {
     const { run, calls } = await setup(online)
     const controller = new AbortController()

@@ -96,6 +96,8 @@ export function createRun(deps: RunDeps): Run {
         device: device.id,
         onVerifying: () => step({ step: 'verify' })
       })
+      // An abort during the launch: the run is stopped, so its result isn't reported.
+      checkAbort()
       if (launch.verified) step({ step: 'follow' })
       return { target: installed.target, package: pkg, forced: installed.forced, launch }
     }
