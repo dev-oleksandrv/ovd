@@ -4,7 +4,7 @@ import { writeLogExport, type LogExportFormat, type Ovd } from '@ovd/core'
 import { channels, type LogsExportResult } from '../preload/api'
 import { logsExportRequest, logsFilter, requireFlag, requireText } from './guards'
 import { toResult } from './ipcResult'
-import { createLogsController } from './logsController'
+import { createLogsController, type LogsController } from './logsController'
 
 const FILTERS: Record<LogExportFormat, { name: string; extensions: [string] }> = {
   text: { name: 'Plain text', extensions: ['txt'] },
@@ -20,6 +20,9 @@ export function registerLogsIpc(
   stop(): Promise<void>
   running(): boolean
   targetChanged(target: string | null): void
+  // The run's log step (`runIpc.ts`) goes through the same session.
+  armRestart: LogsController['armRestart']
+  follow: LogsController['follow']
 } {
   const controller = createLogsController({
     logs: ovd.logs,
@@ -75,7 +78,9 @@ export function registerLogsIpc(
     running: () => controller.running(),
     targetChanged(target) {
       void controller.targetChanged(target)
-    }
+    },
+    armRestart: (device) => controller.armRestart(device),
+    follow: (device, arm) => controller.follow(device, arm)
   }
 
   // `ovd-logs-<device>-<YYYYMMDD-HHMMSS>.<txt|jsonl>`, with `:` (an IP:port) as `-`.

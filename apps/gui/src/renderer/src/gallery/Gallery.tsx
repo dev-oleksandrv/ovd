@@ -5,12 +5,14 @@ import { CommandPalette } from '../frame/CommandPalette'
 import { NavGroup } from '../frame/NavGroup'
 import { NavItem } from '../frame/NavItem'
 import { SearchButton } from '../frame/SearchButton'
+import { RunSteps } from '../frame/RunSteps'
 import { TargetPicker } from '../frame/TargetPicker'
 import { DoctorRow } from '../screens/environment/DoctorRow'
 import { ConfirmUninstall } from '../screens/apps/ConfirmUninstall'
 import { LaunchCallout } from '../screens/apps/LaunchCallout'
 import { LaunchStatus } from '../screens/apps/LaunchStatus'
 import { LogRow } from '../screens/logs/LogRow'
+import type { RunRow, RunState } from '../run/runView'
 import { paletteItems } from '../shell/paletteItems'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -41,6 +43,48 @@ import { TextField } from '../ui/TextField'
 import { ToggleButton } from '../ui/ToggleButton'
 import { Wizard } from '../ui/Wizard'
 import { GallerySection } from './GallerySection'
+
+// A run of the sample project on the Virtual Device, in the three states the dropdown shows.
+const RUN_ROWS: RunRow[] = [
+  {
+    id: 'build',
+    label: 'Pick build',
+    status: 'done',
+    detail: 'build/aarch64-debug/player_aarch64.vpkg · debug'
+  },
+  { id: 'install', label: 'Install', status: 'done', detail: 'on Vega Virtual Device' },
+  { id: 'logs', label: 'Start log session', status: 'done' },
+  { id: 'launch', label: 'Launch', status: 'done' },
+  { id: 'verify', label: 'Verify launch', status: 'active' },
+  { id: 'follow', label: 'Following logs', status: 'pending' }
+]
+const RUN_STATES: { label: string; state: Exclude<RunState, { phase: 'idle' }> }[] = [
+  { label: 'Running', state: { phase: 'running', device: 'VirtualDevice', rows: RUN_ROWS } },
+  {
+    label: 'Done',
+    state: {
+      phase: 'done',
+      device: 'VirtualDevice',
+      rows: RUN_ROWS.map((row) => ({ ...row, status: 'done' }))
+    }
+  },
+  {
+    label: 'Crashed on launch',
+    state: {
+      phase: 'failed',
+      device: 'VirtualDevice',
+      rows: RUN_ROWS.map((row) =>
+        row.id === 'verify'
+          ? {
+              ...row,
+              status: 'failed',
+              detail: 'Crashed on launch · Error: player: deliberate crash right after launch'
+            }
+          : row
+      )
+    }
+  }
+]
 
 // Dev-only page with every base component in every state (Stage 0.2). Sample data uses the
 // neutral set (ADR 0016).
@@ -670,6 +714,21 @@ export function Gallery() {
               }
             ]}
           />
+        </div>
+      </GallerySection>
+
+      <GallerySection title="Run steps">
+        <div className="flex flex-wrap items-start gap-4">
+          {RUN_STATES.map(({ label, state }) => (
+            <div key={label} className="flex flex-col gap-1.5">
+              <div className="text-label text-faint">{label}</div>
+              <RunSteps
+                state={state}
+                cli="ovd run --device VirtualDevice"
+                onOpenLogs={() => undefined}
+              />
+            </div>
+          ))}
         </div>
       </GallerySection>
 

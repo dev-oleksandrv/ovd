@@ -12,6 +12,7 @@ import { registerPackagesIpc } from './packagesIpc'
 import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
 import { registerQuitHooks } from './quitHooks'
+import { registerRunIpc } from './runIpc'
 import { registerSetupIpc } from './setupIpc'
 import { showWhenReady } from './showWindow'
 import { registerVvdIpc } from './vvdIpc'
@@ -96,6 +97,7 @@ app.whenReady().then(() => {
   registerPackagesIpc(ovd, () => mainWindow)
   registerInstallIpc(ovd)
   registerAppsIpc(ovd)
+  registerRunIpc(ovd, logs, () => mainWindow)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
 
   createWindow()
