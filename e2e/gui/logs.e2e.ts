@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 import { ovd } from '../harness/cli.ts'
-import { expect, test } from '../harness/gui.ts'
+import { expect, PALETTE_KEY, test } from '../harness/gui.ts'
 import { makeRecordedVpkg } from '../harness/project.ts'
 import { stillRunning } from '../harness/sandbox.ts'
 
@@ -26,6 +26,19 @@ function toast(page: Page, text: string) {
 
 function rows(page: Page) {
   return page.getByRole('list', { name: 'Log lines' }).getByRole('listitem')
+}
+
+// Picks a format from the toolbar's Export menu.
+async function exportAs(page: Page, format: 'Plain text (.txt)' | 'JSON lines (.jsonl)') {
+  await page.getByRole('button', { name: 'Export' }).click()
+  await page.getByRole('menu', { name: 'Export' }).getByRole('menuitem', { name: format }).click()
+}
+
+// The native save dialog can't be driven, so it answers with `file`.
+async function saveAs(app: ElectronApplication, file: string): Promise<void> {
+  await app.evaluate(({ dialog }, path) => {
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath: path })
+  }, file)
 }
 
 async function openLogs(page: Page): Promise<void> {
@@ -75,18 +88,18 @@ test.describe('Logs', () => {
     ])
   })
 
-  test('Export saves the shown lines in the ovd logs format', async ({ sandbox, launch }) => {
+  test('Export → Plain text saves the shown lines in the ovd logs format', async ({
+    sandbox,
+    launch
+  }) => {
     sandbox.installSdk()
     const { app, page } = await launch()
     const file = join(sandbox.home, 'player-errors.txt')
-    // The native save dialog can't be driven, so it answers with `file`.
-    await app.evaluate(({ dialog }, path) => {
-      dialog.showSaveDialog = async () => ({ canceled: false, filePath: path })
-    }, file)
+    await saveAs(app, file)
     await openLogs(page)
     await playerErrors(page)
 
-    await page.getByRole('button', { name: 'Export' }).click()
+    await exportAs(page, 'Plain text (.txt)')
 
     await expect(toast(page, `Exported 2 lines to ${file}`)).toBeVisible()
     const lines = readFileSync(file, 'utf8').split('\n')
@@ -99,6 +112,78 @@ test.describe('Logs', () => {
         )
       )
     }
+    // `--until` is the second error line's instant: the CLI command ends where the file does.
+    await expect(echo(page)).toContainText(
+      new RegExp(`${ERRORS_CLI} --until \\S+Z --export ${file} --device ${STICK_SERIAL}`)
+    )
+  })
+
+  test('Export → JSON lines saves one --json line per shown entry, with its CLI echo', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { app, page } = await launch()
+    const file = join(sandbox.home, 'player-errors.jsonl')
+    await saveAs(app, file)
+    await openLogs(page)
+    await playerErrors(page)
+
+    await exportAs(page, 'JSON lines (.jsonl)')
+
+    await expect(toast(page, `Exported 2 lines to ${file}`)).toBeVisible()
+    const lines = readFileSync(file, 'utf8').split('\n')
+    expect(lines.at(-1)).toBe('')
+    const entries = lines.slice(0, -1).map((l) => JSON.parse(l) as Record<string, unknown>)
+    expect(entries.map((e) => e.message)).toEqual([
+      '[KeplerScript-JavaScript] player error tick 1',
+      '[KeplerScript-JavaScript] player error tick 2'
+    ])
+    for (const entry of entries) {
+      expect(entry).toMatchObject({ level: 'E', process: 'com.example.player', pid: 27178 })
+      expect(Object.keys(entry)).not.toContain('seq')
+    }
+    await expect(echo(page)).toContainText(
+      new RegExp(
+        `${ERRORS_CLI} --until \\S+Z --export ${file} --format jsonl --device ${STICK_SERIAL}`
+      )
+    )
+    await expect(toast(page, `--export ${file} --format jsonl`)).toBeVisible()
+    expect(sandbox.calls().filter((c) => c === LOG)).toHaveLength(1)
+  })
+
+  test('the palette exports the session main keeps while another screen is shown', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { app, page } = await launch()
+    const file = join(sandbox.home, 'all.jsonl')
+    await saveAs(app, file)
+    await openLogs(page)
+    // The last line of the recorded window: every line has arrived.
+    await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
+    await nav(page, 'Devices').click()
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
+
+    await page.keyboard.press(PALETTE_KEY)
+    const palette = page.getByRole('dialog', { name: 'Command palette' })
+    await palette.getByRole('combobox', { name: 'Command' }).fill('Export logs as JSON lines')
+    await palette.getByRole('option', { name: 'Export logs as JSON lines…' }).click()
+
+    await expect(page.getByRole('heading', { name: 'Logs', level: 1 })).toBeVisible()
+    const saved = toast(page, `lines to ${file}`)
+    await expect(saved).toBeVisible()
+    const count = Number(/Exported (\d+) lines/.exec((await saved.textContent()) ?? '')?.[1])
+    const lines = readFileSync(file, 'utf8').split('\n').slice(0, -1)
+    expect(lines).toHaveLength(count)
+    expect(count).toBeGreaterThan(2)
+    for (const line of lines) expect(() => JSON.parse(line) as unknown).not.toThrow()
+    expect((JSON.parse(lines.at(-1) ?? '') as { message: string }).message).toContain(
+      'player flood 62'
+    )
+    // Main kept the session: no second stream.
+    expect(sandbox.calls().filter((c) => c === LOG)).toHaveLength(1)
   })
 
   test.describe('paused', () => {

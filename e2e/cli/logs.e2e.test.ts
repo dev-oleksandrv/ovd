@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 import { ovd, startOvd } from '../harness/cli.ts'
@@ -176,6 +178,69 @@ describe('ovd logs', () => {
     const run = await running.done
     expect(run.exitCode).toBe(130)
     await noStreamLeftAfterExit(sandbox)
+  })
+
+  test('--export --format jsonl writes the two player errors; --json prints one result document', async () => {
+    const sandbox = withStick()
+    const file = join(sandbox.home, 'player-errors.jsonl')
+    // After both error lines (stick-follow.txt:35, :185), as in the --until test above.
+    const until = fixtureInstant(10, 8, '07:27:01.270')
+    const run = await ovd(sandbox, [
+      'logs',
+      '--app',
+      'com.example.player',
+      '--level',
+      'error',
+      '--until',
+      until,
+      '--export',
+      file,
+      '--format',
+      'jsonl',
+      '--json'
+    ])
+    expect(run.exitCode).toBe(0)
+    expect(run.json()).toEqual({ ok: true, path: file, format: 'jsonl', lines: 2 })
+    const lines = readFileSync(file, 'utf8').split('\n')
+    expect(lines.at(-1)).toBe('')
+    const entries = lines.slice(0, -1).map((l) => JSON.parse(l) as JsonEntry)
+    expect(entries.map((l) => l.message)).toEqual([
+      '[KeplerScript-JavaScript] player error tick 1',
+      '[KeplerScript-JavaScript] player error tick 2'
+    ])
+    for (const entry of entries) {
+      expect(entry).toMatchObject({ level: 'E', process: 'com.example.player', pid: 27178 })
+    }
+    expect(sandbox.calls().filter((c) => c.includes('loggingctl'))).toEqual([LOG])
+    noStreamLeft(sandbox)
+  })
+
+  test('--export refuses an existing file (exit 2, unchanged, no stream); --force replaces it', async () => {
+    const sandbox = withStick()
+    const file = join(sandbox.home, 'player-errors.txt')
+    writeFileSync(file, 'kept\n')
+    const until = fixtureInstant(10, 8, '07:27:01.270')
+    const args = ['logs', '--app', 'com.example.player', '--level', 'error', '--until', until]
+
+    const refused = await ovd(sandbox, [...args, '--export', file, '--json'])
+    expect(refused.exitCode).toBe(2)
+    expect(refused.json()).toMatchObject({ ok: false, error: { code: 'EXPORT_FILE_EXISTS' } })
+    expect(readFileSync(file, 'utf8')).toBe('kept\n')
+    expect(sandbox.calls().filter((c) => c.includes('loggingctl'))).toEqual([])
+
+    const forced = await ovd(sandbox, [...args, '--export', file, '--force'])
+    expect(forced.exitCode).toBe(0)
+    expect(forced.stdout).toBe(`Exported 2 lines to ${file}\n`)
+    const lines = readFileSync(file, 'utf8').split('\n')
+    expect(lines).toHaveLength(3)
+    for (const [i, n] of [1, 2].entries()) {
+      expect(lines[i]).toMatch(
+        new RegExp(
+          `^\\d{2}:\\d{2}:\\d{2}\\.\\d{3} E com\\.amazon\\.keplerscript +27178 \\[KeplerScript-JavaScript\\] player error tick ${n}$`
+        )
+      )
+    }
+    expect(sandbox.calls().filter((c) => c.includes('loggingctl'))).toEqual([LOG])
   })
 
   test('an offline target exits 4 without starting the stream', async () => {
