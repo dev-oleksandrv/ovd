@@ -44,13 +44,14 @@ interface LogsOptions {
   force?: boolean
 }
 
-const COLORS: Record<LogEntry['level'], string> = {
+// The level letter's color on a terminal; `ovd run` follows the log the same way.
+export const LOG_COLORS: Record<LogEntry['level'], string> = {
   E: '\u001b[31m',
   W: '\u001b[33m',
   I: '\u001b[32m',
   D: '\u001b[36m'
 }
-const RESET = '\u001b[0m'
+export const LOG_COLOR_RESET = '\u001b[0m'
 
 export function registerLogs(
   program: Command,
@@ -87,7 +88,8 @@ export function registerLogs(
       const ctx = reportContext(cmd, deps, setExitCode)
       const color = deps.stdoutTty === true && deps.env.NO_COLOR === undefined
       const paintLevel = color
-        ? (level: LogEntry['level'], text: string) => `${COLORS[level]}${text}${RESET}`
+        ? (level: LogEntry['level'], text: string) =>
+            `${LOG_COLORS[level]}${text}${LOG_COLOR_RESET}`
         : undefined
       // Set with `--export`: the lines go to the file instead of stdout.
       let exported: LogExportWriter | undefined
