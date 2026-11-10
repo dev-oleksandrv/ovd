@@ -1,6 +1,7 @@
 import { stat } from 'node:fs/promises'
 import type { ActivityLog } from '../activity/activityLog.js'
 import { createLogged, createPreflight } from '../activity/logged.js'
+import type { BuildType } from '../adapters/parseAppConfig.js'
 import type { PackageArch } from '../adapters/parseVptContents.js'
 import type { PackageBuild, PackageInfo } from '../packages/packages.js'
 import type { ArchVerdict } from './archGuard.js'
@@ -37,7 +38,15 @@ export interface InstallResult {
   installed: true
   package: Pick<
     PackageInfo,
-    'path' | 'displayPath' | 'file' | 'id' | 'title' | 'version' | 'buildNumber' | 'architecture'
+    | 'path'
+    | 'displayPath'
+    | 'file'
+    | 'id'
+    | 'title'
+    | 'version'
+    | 'buildNumber'
+    | 'architecture'
+    | 'buildType'
   >
   target: InstallTarget
   // The guard blocked this package and `force` overrode it.
@@ -49,7 +58,15 @@ export interface InstallOptions {
   device?: string
   // Install even when the architectures don't match (ADR 0008).
   force?: boolean
+  // For a project folder: the build type tried first among the builds that match the target.
+  prefer?: BuildType
+  // Called once the package is read, before the guard: the run shows it as its build step.
+  onPackage?: (pkg: InstallPackage, target: InstallTarget) => void
 }
+
+// The package an install picked, with the build folder it came from (`build/aarch64-debug/`)
+// when it is a project build.
+export type InstallPackage = InstallResult['package'] & { folder?: string }
 
 // Install a package on the target behind the architecture guard (Stage 2.3, ADR 0008). The SDK
 // installs a package built for another architecture without a word
@@ -90,7 +107,7 @@ export function createInstall(deps: InstallDeps): Install {
           known.target = read.id
           return read
         })
-        const resolved = await steps.resolve(ref, targetOf)
+        const resolved = await steps.resolve(ref, targetOf, opts.prefer)
         // The target before the package: no `vpt` read for a target that isn't there.
         const target = await targetOf()
         const info = await deps.packages.info(resolved.path)
@@ -98,6 +115,10 @@ export function createInstall(deps: InstallDeps): Install {
       })
       const args = { package: info.file, ...(force ? { force: 'true' } : {}) }
       return logged('app.install', target.id, args, async () => {
+        opts.onPackage?.(
+          { ...packageOf(info), ...(resolved.build ? { folder: resolved.build.folder } : {}) },
+          target
+        )
         const guard = await steps.guard(info, target, {
           force,
           command: 'install',
@@ -139,7 +160,8 @@ export function packageOf(info: PackageInfo): InstallResult['package'] {
     title: info.title,
     version: info.version,
     buildNumber: info.buildNumber,
-    architecture: info.architecture
+    architecture: info.architecture,
+    buildType: info.buildType
   }
 }
 

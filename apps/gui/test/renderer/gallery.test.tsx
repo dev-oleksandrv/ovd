@@ -21,7 +21,8 @@ describe('Gallery', () => {
       'Text field',
       'Title bar controls',
       'Log controls',
-      'Log rows'
+      'Log rows',
+      'Run steps'
     ]) {
       expect(screen.getByText(section)).toBeTruthy()
     }

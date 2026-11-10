@@ -55,6 +55,12 @@ export interface World {
     ignoreFirstSigterm?: boolean
     reboot?: boolean
   }
+  // How many `loggingctl log -f` streams the Virtual Device has started. The first prints
+  // `loggingctl-log/virtual-device-restart-before.txt`, every later one
+  // `virtual-device-restart-after.txt` (as recorded: a stream started right after another was
+  // stopped), then each follows until its process group is signalled (fixtures/0.24/README.md,
+  // Synthesized sequences).
+  vvdLogStreams: number
   // When signed out, `vega devmode login --json` waits before it prints anything until it is
   // stopped, so a test can stop OVD while a probe runs. Doctor's own 5 s probe timeout still
   // applies. A timing knob (docs/conventions/testing.md): it delays the recorded answer, never
@@ -107,6 +113,7 @@ export function defaultWorld(): World {
     playerStopsOnLaunch: false,
     playerCrashed: false,
     logStream: { ends: false, holdAfterLine: null },
+    vvdLogStreams: 0,
     loginHold: false
   }
 }

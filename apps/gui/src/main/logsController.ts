@@ -6,8 +6,8 @@ import {
   type LogSession,
   type Ovd
 } from '@ovd/core'
-import type { IpcResult, LogsFilter, LogsState, LogsUpdate } from '../preload/api'
-import { createLogBatcher, type Timers } from './logBatcher'
+import type { FollowOutcome, IpcResult, LogsFilter, LogsState, LogsUpdate } from '../preload/api'
+import { createLogBatcher, realTimers, type Timers } from './logBatcher'
 import { toResult } from './ipcResult'
 
 export interface LogsController {
@@ -27,7 +27,24 @@ export interface LogsController {
   running(): boolean
   // The device of the current session, if any.
   device(): string | null
+  // Before a run's install: the next restart after an install of a session for `device`
+  // resolves `restarted`. `cancel` drops the wait.
+  armRestart(device: string): RestartArm
+  // The run's log step: a session for `device` that restarts after installs is waited on until
+  // it restarted (`restarted`, or `timeout` after FOLLOW_TIMEOUT_MS); one with the toggle off is
+  // left alone (`skipped`, the user's choice); without one, a session starts (`started`).
+  // Never a second session. Rejects with the start's error when a new session fails.
+  follow(device: string, arm: RestartArm): Promise<FollowOutcome>
 }
+
+export interface RestartArm {
+  restarted: Promise<void>
+  cancel(): void
+}
+
+// A session restarts within about a second of an install (the activity feed's 500 ms tail,
+// then the stream's start); past this, the run goes on without waiting.
+export const FOLLOW_TIMEOUT_MS = 15_000
 
 // One log session at a time, for one device (spec AC 17). Every update carries the session
 // number, so the renderer ignores what an old session still sends.
@@ -36,6 +53,7 @@ export function createLogsController(opts: {
   send: (update: LogsUpdate) => void
   timers?: Timers
 }): LogsController {
+  const timers = opts.timers ?? realTimers
   const batcher = createLogBatcher({
     send: opts.send,
     ...(opts.timers ? { timers: opts.timers } : {})
@@ -48,6 +66,10 @@ export function createLogsController(opts: {
   let current: LogSession | undefined
   // Stops whatever the current session number started (a start in progress included).
   let stopCurrent: () => Promise<void> = async () => undefined
+  // The current session's start, which `follow` waits for.
+  let starting: Promise<LogSession> | undefined
+  // Runs waiting for a session of their device to restart after their install.
+  const armed = new Set<{ device: string; resolve: () => void }>()
 
   const push = (n: number, next: LogsState) => {
     if (n !== session) return
@@ -85,7 +107,7 @@ export function createLogsController(opts: {
       startedAt: s.startedAt,
       restartAfterInstall
     })
-    const starting = opts.logs.start({
+    const start = opts.logs.start({
       device,
       filter: startFilter,
       restartAfterInstall,
@@ -95,17 +117,26 @@ export function createLogsController(opts: {
       },
       onState: () => {
         if (started && n === session) push(n, following(started))
+      },
+      onRestart: (reason) => {
+        if (reason !== 'install' || n !== session) return
+        for (const arm of armed) {
+          if (arm.device !== device) continue
+          armed.delete(arm)
+          arm.resolve()
+        }
       }
     })
+    starting = start
     const startToggle = restartAfterInstall
     stopCurrent = async () => {
       controller.abort()
-      await starting.then(
+      await start.then(
         (s) => s.stop(),
         () => undefined
       )
     }
-    starting.then(
+    start.then(
       (s) => {
         if (n !== session) return
         current = s
@@ -150,6 +181,8 @@ export function createLogsController(opts: {
   }
 
   const isFor = (device: string | null) => state.status !== 'idle' && state.device === device
+  const live = () =>
+    state.status === 'starting' || state.status === 'running' || state.status === 'reconnecting'
 
   return {
     async open(device) {
@@ -198,9 +231,39 @@ export function createLogsController(opts: {
       await replace()
       state = { status: 'idle' }
     },
-    running: () =>
-      state.status === 'starting' || state.status === 'running' || state.status === 'reconnecting',
-    device: () => (state.status === 'idle' ? null : state.device)
+    running: () => live(),
+    device: () => (state.status === 'idle' ? null : state.device),
+    armRestart(device) {
+      let resolve = (): void => undefined
+      const restarted = new Promise<void>((r) => (resolve = r))
+      const arm = { device, resolve }
+      armed.add(arm)
+      return { restarted, cancel: () => void armed.delete(arm) }
+    },
+    async follow(device, arm) {
+      if (live() && isFor(device)) {
+        if (!restartAfterInstall) {
+          arm.cancel()
+          return 'skipped'
+        }
+        let timer: unknown
+        const timedOut = new Promise<'timeout'>((resolve) => {
+          timer = timers.setTimeout(() => resolve('timeout'), FOLLOW_TIMEOUT_MS)
+        })
+        const outcome = await Promise.race([
+          arm.restarted.then(() => 'restarted' as const),
+          timedOut
+        ])
+        timers.clearTimeout(timer)
+        arm.cancel()
+        return outcome
+      }
+      arm.cancel()
+      await begin(device)
+      // `begin` set it for this session; a failed start also shows in Logs, as an ended session.
+      if (starting) await starting
+      return 'started'
+    }
   }
 }
 

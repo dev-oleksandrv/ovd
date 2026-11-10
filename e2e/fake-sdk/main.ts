@@ -192,6 +192,33 @@ async function logStream(w: World): Promise<Reply> {
   return new Promise(() => setInterval(() => undefined, 60_000))
 }
 
+// `loggingctl log -f` on the Virtual Device (fixtures/0.24/loggingctl-log): the first stream
+// prints the session recorded before a stop, every later one the stream recorded right after
+// it, in three chunks cut mid-line, then follows until its process group is signalled.
+async function vvdLogStream(): Promise<Reply> {
+  appendFileSync(logStreamsFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
+  // Logged now: the stream is stopped, never answers.
+  log(true)
+  // This command keeps running while others change the world: it writes only its own count.
+  const fresh = readWorld(dir as string)
+  const first = fresh.vvdLogStreams === 0
+  fresh.vvdLogStreams = fresh.vvdLogStreams + 1
+  writeWorld(dir as string, fresh)
+  wroteWorld = true
+  const text = fixture(
+    first
+      ? 'loggingctl-log/virtual-device-restart-before.txt'
+      : 'loggingctl-log/virtual-device-restart-after.txt'
+  )
+  const cuts = [0, Math.floor(text.length / 3), Math.floor((text.length * 2) / 3), text.length]
+  for (let i = 0; i < 3; i++) {
+    process.stdout.write(text.slice(cuts[i], cuts[i + 1]))
+    await sleep(50)
+  }
+  // Default SIGTERM handling ends it when its group is signalled.
+  return new Promise(() => setInterval(() => undefined, 60_000))
+}
+
 function enableDevice(w: World, rest: string[]): Reply | null {
   const code = rest[1]
   if (rest[0] !== '--code' || code === undefined || rest.at(-1) !== '--json') return null
@@ -258,6 +285,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
       w.vvd.developerMode = true
       return { stdout: fixture('vsm-developer-mode-set/enabled.txt') }
     }
+    if (sub === 'shell loggingctl log -f -o short_concise') return vvdLogStream()
     return vvdApps(w, sub)
   }
   if (serial === VVD_VDA_SERIAL) {

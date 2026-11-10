@@ -73,7 +73,8 @@ const reinstalled: ReinstallResult = {
     title: 'Sample Player',
     version: '1.4.2',
     buildNumber: 142,
-    architecture: 'aarch64'
+    architecture: 'aarch64',
+    buildType: 'debug'
   },
   forced: false
 }

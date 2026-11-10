@@ -20,6 +20,8 @@ import type {
   ProjectMode,
   ReinstallResult,
   RestartResult,
+  RunOutcome,
+  RunStep,
   TerminateResult,
   UninstallResult,
   VvdState
@@ -97,6 +99,14 @@ export type LogsExportResult =
       until: string
       replaced: boolean
     }
+
+// How a run's log step went: a session started, the running one restarted after the install
+// (or `timeout`: it didn't within 15 s, and the run went on), or `skipped`: the running one has
+// restart after install off, the user's choice.
+export type FollowOutcome = 'started' | 'restarted' | 'skipped' | 'timeout'
+
+// What main pushes while a run goes: each step as it starts, and how its log step went.
+export type RunProgress = { kind: 'step'; step: RunStep } | { kind: 'logs'; outcome: FollowOutcome }
 
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson }
@@ -211,6 +221,12 @@ export interface OvdApi {
     export(request: LogsExportRequest): Promise<IpcResult<LogsExportResult>>
     onUpdate(listener: (update: LogsUpdate) => void): () => void
   }
+  run: {
+    // `ovd run --device <id>`: installs the open project's build (or .vpkg) for the device,
+    // follows its log and launches it, verified. An unverified launch is returned, not an error.
+    start(device: string): Promise<IpcResult<RunOutcome>>
+    onProgress(listener: (progress: RunProgress) => void): () => void
+  }
 }
 
 export const channels = {
@@ -257,5 +273,7 @@ export const channels = {
   logsRestartAfterInstall: 'ovd:logs:restart-after-install',
   logsClear: 'ovd:logs:clear',
   logsExport: 'ovd:logs:export',
-  logsUpdate: 'ovd:logs:update'
+  logsUpdate: 'ovd:logs:update',
+  run: 'ovd:run',
+  runProgress: 'ovd:run:progress'
 } as const

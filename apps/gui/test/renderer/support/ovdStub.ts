@@ -16,6 +16,7 @@ import type {
   ProjectMode,
   ReinstallResult,
   RestartResult,
+  RunOutcome,
   TerminateResult,
   UninstallResult,
   VvdState
@@ -27,6 +28,7 @@ import type {
   LogsState,
   LogsUpdate,
   OvdApi,
+  RunProgress,
   SdkSummary
 } from '../../../src/preload/api'
 
@@ -38,6 +40,8 @@ export interface OvdStub {
   prompt: (prompt: LoginPrompt) => void
   // Pushes a log session update as main's batcher would.
   pushLogs: (update: LogsUpdate) => void
+  // Pushes a run's progress as main does.
+  pushRun: (progress: RunProgress) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -130,9 +134,11 @@ export function stubOvd(opts: {
   apps?: Partial<OvdApi['apps']>
   // A session that starts and sends nothing unless a test says otherwise.
   logs?: Partial<Omit<OvdApi['logs'], 'onUpdate'>>
+  run?: Partial<Omit<OvdApi['run'], 'onProgress'>>
 }): OvdStub {
   let listener: ((update: DevicesUpdate) => void) | undefined
   let logsListener: ((update: LogsUpdate) => void) | undefined
+  let runListener: ((progress: RunProgress) => void) | undefined
   const starting = (device: string): IpcResult<LogsState> => ({
     ok: true,
     data: { status: 'starting', device, name: device, restartAfterInstall: true }
@@ -288,6 +294,15 @@ export function stubOvd(opts: {
           logsListener = undefined
         }
       }
+    },
+    run: {
+      start: vi.fn(opts.run?.start ?? (async () => unexpected<RunOutcome>('run.start'))),
+      onProgress: (l) => {
+        runListener = l
+        return () => {
+          runListener = undefined
+        }
+      }
     }
   }
   window.ovd = api
@@ -295,6 +310,7 @@ export function stubOvd(opts: {
     api,
     push: (update) => listener?.(update),
     prompt: (p) => promptListener?.(p),
-    pushLogs: (u) => logsListener?.(u)
+    pushLogs: (u) => logsListener?.(u),
+    pushRun: (p) => runListener?.(p)
   }
 }

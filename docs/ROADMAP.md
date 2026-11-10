@@ -224,7 +224,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** an exported JSON-lines file can be read back line by line.
 
-### 3.4 Run button (one-click deploy) — next
+### 3.4 Run button (one-click deploy) — done
 
 - CLI `ovd run` = install + launch + verify + follow logs; Ctrl+C stops cleanly.
 - Title bar "Run ▸ <project>" (or the dropped .vpkg) with a live steps dropdown: found build → installing → restarting log session → launching → verifying → following logs; ends with the CLI equivalent and opens Logs.

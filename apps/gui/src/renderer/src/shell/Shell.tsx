@@ -8,6 +8,7 @@ import { CommandPalette } from '../frame/CommandPalette'
 import { NavGroup } from '../frame/NavGroup'
 import { NavItem } from '../frame/NavItem'
 import { ProjectCard } from '../frame/ProjectCard'
+import { RunButton } from '../frame/RunButton'
 import { SdkStatus } from '../frame/SdkStatus'
 import { SearchButton } from '../frame/SearchButton'
 import { TargetPicker } from '../frame/TargetPicker'
@@ -19,6 +20,7 @@ import { PackagesScreen } from '../screens/packages/PackagesScreen'
 import { PairWizard } from '../pairing/PairWizard'
 import { useFileDrop } from '../project/useFileDrop'
 import { useProject } from '../project/useProject'
+import { useRun } from '../run/useRun'
 import { SetupWizard } from '../setup/SetupWizard'
 import { firstRunNeeded, gateFailure, gateOpen } from '../screens/environment/doctorView'
 import { EnvironmentScreen } from '../screens/environment/EnvironmentScreen'
@@ -109,6 +111,10 @@ export function Shell() {
     return true
   }
 
+  // A verified run opens Logs; a crash's toast and the steps offer it.
+  const openLogs = (): void => void go('logs')
+  const run = useRun({ onDone: openLogs, onOpenLogs: openLogs })
+
   const runDoctor = async (): Promise<void> => {
     const result = await doctor.run()
     if (result.ok) notify({ tone: 'info', text: 'ovd doctor finished', cli: 'ovd doctor --json' })
@@ -167,6 +173,13 @@ export function Shell() {
             onSetup={() => setSettingUp(true)}
             onPair={() => setPairing(true)}
             vvdBusy={vvd.busy}
+          />
+          <RunButton
+            mode={projectMode}
+            target={target}
+            state={run.state}
+            onRun={(device) => void run.start(device)}
+            onOpenLogs={openLogs}
           />
           <div className="flex-1" />
           <SearchButton

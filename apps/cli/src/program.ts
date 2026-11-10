@@ -10,6 +10,7 @@ import { registerLogs } from './commands/logs.js'
 import { registerPairing } from './commands/pair.js'
 import { registerPkg } from './commands/pkg.js'
 import { registerProject } from './commands/project.js'
+import { registerRun } from './commands/run.js'
 import { registerSetupStick } from './commands/setupStick.js'
 import { registerTarget } from './commands/target.js'
 import { registerVvd } from './commands/vvd.js'
@@ -76,5 +77,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerApps(program, deps, setExitCode)
   registerInstall(program, deps, setExitCode)
   registerLogs(program, deps, setExitCode)
+  registerRun(program, deps, setExitCode)
   return program
 }

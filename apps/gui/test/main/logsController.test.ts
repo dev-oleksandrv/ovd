@@ -11,7 +11,7 @@ import {
   type Ovd
 } from '@ovd/core'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { createLogsController } from '../../src/main/logsController'
+import { createLogsController, FOLLOW_TIMEOUT_MS } from '../../src/main/logsController'
 import type { LogsUpdate } from '../../src/preload/api'
 import { LOG_RING_SIZE } from '../../src/renderer/src/screens/logs/logStore'
 
@@ -421,5 +421,80 @@ describe('createLogsController', () => {
 
   test('the renderer’s ring size is core’s buffer size', () => {
     expect(LOG_RING_SIZE).toBe(LOG_BUFFER_SIZE)
+  })
+})
+
+describe('follow (a run’s log step)', () => {
+  test('without a session: starts one for the device and resolves once it started', async () => {
+    const { controller, start } = setup()
+
+    const outcome = await controller.follow(VVD, controller.armRestart(VVD))
+
+    expect(outcome).toBe('started')
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(start.mock.calls[0]?.[0]).toMatchObject({ device: VVD, restartAfterInstall: true })
+    expect(controller.running()).toBe(true)
+    expect(controller.device()).toBe(VVD)
+  })
+
+  test('a session for another device is replaced, never a second one', async () => {
+    const { controller, start, sessions } = setup()
+    await controller.open(STICK)
+    await settle()
+
+    expect(await controller.follow(VVD, controller.armRestart(VVD))).toBe('started')
+
+    expect(start).toHaveBeenCalledTimes(2)
+    expect(sessions[0]?.ended()).toEqual({ reason: 'stopped' })
+    expect(controller.device()).toBe(VVD)
+  })
+
+  test('a running session for the device: waits for its restart after the install', async () => {
+    const { controller, start, sessions } = setup()
+    await controller.open(VVD)
+    await settle()
+    const arm = controller.armRestart(VVD)
+    // The restart the install caused may come before the run's log step.
+    sessions[0]?.opts.onRestart?.('install')
+
+    expect(await controller.follow(VVD, arm)).toBe('restarted')
+    expect(start).toHaveBeenCalledTimes(1)
+  })
+
+  test('a reconnect is not the restart a run waits for; it times out and goes on', async () => {
+    const { controller, sessions } = setup()
+    await controller.open(VVD)
+    await settle()
+    const arm = controller.armRestart(VVD)
+    sessions[0]?.opts.onRestart?.('reconnect')
+
+    const following = controller.follow(VVD, arm)
+    await vi.advanceTimersByTimeAsync(FOLLOW_TIMEOUT_MS - 1)
+    let done = false
+    void following.then(() => (done = true))
+    await settle()
+    expect(done).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await following).toBe('timeout')
+  })
+
+  test('with restart after install off: the session is left alone and the step skipped', async () => {
+    const { controller, start } = setup()
+    await controller.open(VVD)
+    await settle()
+    controller.setRestartAfterInstall(false)
+
+    expect(await controller.follow(VVD, controller.armRestart(VVD))).toBe('skipped')
+    expect(start).toHaveBeenCalledTimes(1)
+  })
+
+  test('a session that fails to start rejects with its error', async () => {
+    const { controller } = setup({
+      failWith: new OvdError('TARGET_OFFLINE', 'Vega Virtual Device is stopped', 'hint')
+    })
+
+    await expect(controller.follow(VVD, controller.armRestart(VVD))).rejects.toMatchObject({
+      code: 'TARGET_OFFLINE'
+    })
   })
 })

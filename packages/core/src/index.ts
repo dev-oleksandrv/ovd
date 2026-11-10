@@ -140,6 +140,7 @@ export type {
   Install,
   InstallDeps,
   InstallOptions,
+  InstallPackage,
   InstallResult,
   InstallTarget
 } from './install/install.js'
@@ -196,3 +197,5 @@ export type {
   LogSessionState,
   LogStartOptions
 } from './logs/logSession.js'
+export { createRun, preferredBuildType } from './run/run.js'
+export type { Run, RunDeps, RunOptions, RunOutcome, RunStep, RunStepName } from './run/run.js'

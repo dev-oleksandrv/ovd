@@ -13,7 +13,8 @@ const result: InstallResult = {
     title: 'Sample Player',
     version: '1.4.2',
     buildNumber: 142,
-    architecture: 'armv7'
+    architecture: 'armv7',
+    buildType: 'release'
   },
   target: { id: 'G070000000000001', name: 'Fire TV Stick 4K Select', architecture: 'armv7' },
   forced: false

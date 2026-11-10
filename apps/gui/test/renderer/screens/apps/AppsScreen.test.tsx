@@ -464,7 +464,8 @@ describe('Apps screen actions', () => {
               title: player.title,
               version: '1.4.2',
               buildNumber: 142,
-              architecture: 'armv7'
+              architecture: 'armv7',
+              buildType: 'release'
             },
             forced: false
           }

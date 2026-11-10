@@ -40,6 +40,9 @@ export interface LogStartOptions {
   restartAfterInstall?: boolean
   // Called when the session starts reconnecting, and when it follows again.
   onState?: (state: LogSessionState) => void
+  // Called when a restarted stream has started, after an install OVD made on the target or a
+  // reconnect (beside the OVD line), so a surface can wait for the restart an install causes.
+  onRestart?: (reason: 'install' | 'reconnect') => void
 }
 
 export type LogSessionEnd =
@@ -305,6 +308,7 @@ export function createLogs(deps: LogsDeps): Logs {
             deadlineTimer = undefined
             state = 'following'
             opts.onState?.('following')
+            opts.onRestart?.('reconnect')
           })
           watchEnd(stream)
         }
@@ -382,6 +386,7 @@ export function createLogs(deps: LogsDeps): Logs {
               args: { reason: 'install' },
               result: 'ok'
             })
+            opts.onRestart?.('install')
             if (queued) {
               queued = false
               // After this chunk's entries are delivered.
