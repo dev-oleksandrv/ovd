@@ -37,6 +37,18 @@ describe('installExitHooks', () => {
     expect(order).toEqual(['stopAll', 'exit 143'])
   })
 
+  test('SIGHUP calls stopAll, then exits 129', () => {
+    const proc = fakeProcess()
+    const order: string[] = []
+    const stopAll = vi.fn(() => order.push('stopAll'))
+    proc.exit.mockImplementation((code) => order.push(`exit ${code}`))
+    installExitHooks(proc, stopAll)
+
+    proc.emit('SIGHUP')
+
+    expect(order).toEqual(['stopAll', 'exit 129'])
+  })
+
   test("the first SIGINT calls the command's abort only", () => {
     const proc = fakeProcess()
     const stopAll = vi.fn()

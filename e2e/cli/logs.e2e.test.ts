@@ -152,6 +152,16 @@ describe('ovd logs', () => {
     await noStreamLeftAfterExit(sandbox)
   })
 
+  test("SIGHUP (the terminal closed) stops the stream's process group and exits 129", async () => {
+    const sandbox = withStick()
+    const running = startOvd(sandbox, ['logs', '--json'])
+    await running.waitForStdout((out) => out.includes('\n'))
+    running.signal('SIGHUP')
+    const run = await running.done
+    expect(run.exitCode).toBe(129)
+    await noStreamLeftAfterExit(sandbox)
+  })
+
   test('a second Ctrl+C stops a stream that ignores the first SIGTERM, and exits 130', async () => {
     const sandbox = withStick({
       logStream: { ends: false, holdAfterLine: null, ignoreFirstSigterm: true }
