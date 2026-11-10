@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -498,6 +498,35 @@ describe('ovd logs --export', () => {
     expect(stdout.trim().split('\n')).toHaveLength(1)
     expect(JSON.parse(stdout)).toMatchObject({ ok: false, error: { code: 'LOG_STREAM_ENDED' } })
     expect(exitCode).toBe(1)
+  })
+
+  test('a write that fails stops the session and exits 1 with EXPORT_FAILED', async () => {
+    const file = join(dir, 'taken.txt')
+    const stub = stubLogs([[errorTick(1, 0)]])
+    const start = stub.start as unknown as Ovd['logs']['start']
+    // The path passes the preflight, then becomes a folder before the first write: opening it
+    // fails with EISDIR (on macOS and Linux, also as root).
+    const ovd = {
+      logs: {
+        start: (async (opts: LogStartOptions) => {
+          await mkdir(file)
+          return start(opts)
+        }) as unknown as Ovd['logs']['start']
+      }
+    } as Partial<Ovd>
+    // The session is never finished here: the command only ends because the failed write
+    // aborted it.
+    const { stdout, exitCode } = await cli(['logs', '--export', file, '--force', '--json'], {
+      ovd
+    })
+    expect(stdout.trim().split('\n')).toHaveLength(1)
+    expect(JSON.parse(stdout)).toMatchObject({
+      ok: false,
+      error: { code: 'EXPORT_FAILED', hint: expect.any(String) }
+    })
+    expect(exitCode).toBe(1)
+    const [started] = stub.start.mock.calls[0] as [LogStartOptions]
+    expect(started.signal?.aborted).toBe(true)
   })
 
   test('a start that fails leaves no file, and an existing --force target unchanged', async () => {
