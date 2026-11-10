@@ -52,8 +52,11 @@ export function registerRun(
           : entries.map((entry) => logText(entry, paintLevel ? { paintLevel } : {})).join('')
       // Lines that arrive before the run is printed wait here; `undefined` once it is.
       let held: LogEntry[] | undefined = []
+      // Set once the run fails or is aborted: lines the stream still delivers (while its session
+      // stops) are dropped, so stdout carries only the error document, or nothing.
+      let dropping = false
       const print = (entries: LogEntry[]) => {
-        if (entries.length === 0) return
+        if (entries.length === 0 || dropping) return
         if (held) held.push(...entries)
         else deps.output.stdout(format(entries))
       }
@@ -83,7 +86,7 @@ export function registerRun(
             }
           })
         } catch (error) {
-          held = undefined
+          dropping = true
           await session?.stop()
           // Ctrl+C before the launch is verified is a normal stop.
           if (error instanceof Error && error.name === 'AbortError') return
@@ -93,7 +96,7 @@ export function registerRun(
         const failed = launchNotVerified(result.launch)
         if (failed) {
           // The crash's own lines are in `launch.crash.logs`; the held ones are dropped.
-          held = undefined
+          dropping = true
           await session?.stop()
           if (ctx.json) {
             const doc = { ok: false, error: toErrorJson(failed), run: result }

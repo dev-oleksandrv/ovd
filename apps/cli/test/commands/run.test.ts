@@ -91,14 +91,24 @@ interface Stub {
 
 // A core whose `run.run` emits its steps, starts the log through `followLogs` (whose session
 // prints `before` right away), then returns `result` or throws it; `hold` makes the run wait
-// for the abort instead (Ctrl+C during the steps).
+// for the abort instead (Ctrl+C during the steps); `whileStopping` is what the stream still
+// delivers while the session stops.
 function stub(
   result: RunOutcome | OvdError,
-  opts: { before?: LogEntry[]; hold?: boolean; followFirst?: boolean } = {}
+  opts: {
+    before?: LogEntry[]
+    hold?: boolean
+    followFirst?: boolean
+    whileStopping?: LogEntry[]
+  } = {}
 ): Stub {
   let onEntries: LogStartOptions['onEntries']
   let finish: (end: LogSessionEnd) => void = () => undefined
-  const stop = vi.fn(async () => finish({ reason: 'stopped' }))
+  const stop = vi.fn(async () => {
+    await Promise.resolve()
+    if (opts.whileStopping) onEntries?.(opts.whileStopping, { lines: 0, errors: 0, shown: 0 }, [])
+    finish({ reason: 'stopped' })
+  })
   const start = vi.fn(async (start: LogStartOptions = {}) => {
     onEntries = start.onEntries
     const done = new Promise<LogSessionEnd>((resolve) => {
@@ -248,6 +258,48 @@ describe('ovd run', () => {
 
   test('Ctrl+C during the steps: exit 0, nothing on stdout, the session stopped', async () => {
     const s = stub(outcome(verified), { before: [line(0)], hold: true })
+    let interrupt = (): void => undefined
+    const running = cli(['run', '--json'], {
+      ovd: s.ovd,
+      onInterrupt: (abort) => (interrupt = abort)
+    })
+    await vi.waitFor(() => expect(s.start).toHaveBeenCalled())
+    await new Promise((resolve) => setImmediate(resolve))
+    interrupt()
+    const { stdout, exitCode } = await running
+
+    expect(stdout).toBe('')
+    expect(exitCode).toBe(0)
+    expect(s.stop).toHaveBeenCalled()
+  })
+
+  test('lines delivered while a failed run stops its session are dropped', async () => {
+    const s = stub(new OvdError('APP_NOT_INSTALLED', 'failed', 'hint'), {
+      followFirst: true,
+      whileStopping: [line(5)]
+    })
+
+    const { stdout, exitCode } = await cli(['run', '--json'], { ovd: s.ovd })
+
+    expect(jsonLines(stdout)).toEqual([
+      { ok: false, error: { code: 'APP_NOT_INSTALLED', message: 'failed', hint: 'hint' } }
+    ])
+    expect(exitCode).toBe(1)
+  })
+
+  test('lines delivered while an unverified launch stops its session are dropped', async () => {
+    const s = stub(outcome(crashed), { whileStopping: [line(5)] })
+
+    const { stdout, exitCode } = await cli(['run', '--json'], { ovd: s.ovd })
+
+    const lines = jsonLines(stdout)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatchObject({ ok: false, error: { code: 'LAUNCH_NOT_VERIFIED' } })
+    expect(exitCode).toBe(7)
+  })
+
+  test('Ctrl+C during the steps: lines delivered while stopping are dropped', async () => {
+    const s = stub(outcome(verified), { hold: true, whileStopping: [line(5)] })
     let interrupt = (): void => undefined
     const running = cli(['run', '--json'], {
       ovd: s.ovd,
