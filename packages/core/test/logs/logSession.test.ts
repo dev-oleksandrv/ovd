@@ -650,6 +650,23 @@ describe('restart after install', () => {
     await s.session.stop()
   })
 
+  test('a build change on the target is an OVD line, restarts nothing; another target’s is not shown', async () => {
+    const s = await startWith()
+    s.feed.emit({
+      action: 'build.changed',
+      target: STICK,
+      args: { folder: 'build/armv7-release/', file: 'player_armv7.vpkg', redeploy: true }
+    })
+    s.feed.emit({
+      action: 'build.changed',
+      target: 'VirtualDevice',
+      args: { folder: 'build/aarch64-debug/', file: 'player_aarch64.vpkg', redeploy: true }
+    })
+    expect(s.ovd()).toEqual(['Build folder changed: build/armv7-release/player_armv7.vpkg'])
+    expect(s.runner.count(LOG)).toBe(1)
+    await s.session.stop()
+  })
+
   test('OVD lines match every filter, count in shown only and seq keeps increasing across a restart', async () => {
     const s = await startWith({ filter: { app: PLAYER, level: 'error' } }, FOLLOW, {
       streams: streamsOf(2)

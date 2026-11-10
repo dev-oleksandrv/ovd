@@ -203,6 +203,16 @@ test.each<[string, OvdEvent, string]>([
       errorCode: 'LAUNCH_FAILED'
     },
     'Launch of com.example.player failed: LAUNCH_FAILED'
+  ],
+  [
+    'build folder changed',
+    { kind: 'build', folder: 'build/aarch64-debug/', file: 'player_aarch64.vpkg' },
+    'Build folder changed: build/aarch64-debug/player_aarch64.vpkg'
+  ],
+  [
+    'build folder changed, no folder',
+    { kind: 'build', file: 'player_aarch64.vpkg' },
+    'Build folder changed: player_aarch64.vpkg'
   ]
 ])('ovdEventText: %s', (_name, event, text) => {
   expect(ovdEventText(event)).toBe(text)

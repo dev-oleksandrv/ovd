@@ -50,6 +50,12 @@ export function ovdEventOf(entry: ActivityEntry): OvdEvent | undefined {
         ...(entry.errorCode === undefined ? {} : { errorCode: entry.errorCode })
       }
     }
+    case 'build.changed': {
+      const file = text(entry.args.file)
+      if (file === undefined) return undefined
+      const folder = text(entry.args.folder)
+      return { kind: 'build', ...(folder === undefined ? {} : { folder }), file }
+    }
     default:
       return undefined
   }

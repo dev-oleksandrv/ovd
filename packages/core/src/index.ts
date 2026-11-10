@@ -199,3 +199,15 @@ export type {
 } from './logs/logSession.js'
 export { createRun, preferredBuildType } from './run/run.js'
 export type { Run, RunDeps, RunOptions, RunOutcome, RunStep, RunStepName } from './run/run.js'
+export { BUILD_POLL_MS, watchBuilds } from './watch/buildWatcher.js'
+export type { BuildWatcher, BuildWatcherOptions } from './watch/buildWatcher.js'
+export { createWatch } from './watch/watch.js'
+export type {
+  BuildChange,
+  Watch,
+  WatchDeps,
+  WatchEnd,
+  WatchFolder,
+  WatchHandle,
+  WatchOptions
+} from './watch/watch.js'

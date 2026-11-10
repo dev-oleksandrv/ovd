@@ -120,7 +120,31 @@ test.each<[string, ActivityEntry, OvdEvent | undefined]>([
   ],
   ['logs', at({ action: 'logs' }), undefined],
   ['logs.restart', at({ action: 'logs.restart', args: { reason: 'install' } }), undefined],
-  ['app.uninstall', at({ action: 'app.uninstall', args: { app: PLAYER } }), undefined]
+  ['app.uninstall', at({ action: 'app.uninstall', args: { app: PLAYER } }), undefined],
+  [
+    'build.changed',
+    at({
+      action: 'build.changed',
+      target: 'VirtualDevice',
+      args: { folder: 'build/aarch64-debug/', file: 'player_aarch64.vpkg', redeploy: true }
+    }),
+    { kind: 'build', folder: 'build/aarch64-debug/', file: 'player_aarch64.vpkg' }
+  ],
+  [
+    'build.changed with the target offline',
+    at({
+      action: 'build.changed',
+      args: { folder: 'build/armv7-release/', file: 'player_armv7.vpkg', redeploy: false },
+      result: 'error',
+      errorCode: 'TARGET_OFFLINE'
+    }),
+    { kind: 'build', folder: 'build/armv7-release/', file: 'player_armv7.vpkg' }
+  ],
+  [
+    'build.changed without a file',
+    at({ action: 'build.changed', args: { folder: 'build/', file: '', redeploy: false } }),
+    undefined
+  ]
 ])('ovdEventOf: %s', (_name, entry, event) => {
   expect(ovdEventOf(entry)).toEqual(event)
 })
@@ -189,5 +213,19 @@ test('ovdEventOf: an arg of only control characters counts as missing', () => {
     action: 'app.install',
     surface: 'cli',
     result: 'ok'
+  })
+})
+
+test('ovdEventOf: control characters in a build file name never reach the OVD line', () => {
+  const event = ovdEventOf(
+    at({
+      action: 'build.changed',
+      args: { folder: 'build/aarch64-debug/\u001b[2J', file: 'player\u202e_aarch64.vpkg' }
+    })
+  )
+  expect(event).toEqual({
+    kind: 'build',
+    folder: 'build/aarch64-debug/[2J',
+    file: 'player_aarch64.vpkg'
   })
 })

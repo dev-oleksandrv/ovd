@@ -24,7 +24,8 @@ export const ACTIVITY_ACTIONS = [
   'app.uninstall',
   'app.reinstall',
   'logs',
-  'logs.restart'
+  'logs.restart',
+  'build.changed'
 ] as const
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]

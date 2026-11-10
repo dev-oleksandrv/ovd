@@ -75,6 +75,8 @@ export function ovdEventText(event: OvdEvent): string {
       return 'Device dropped · reconnecting…'
     case 'reconnected':
       return 'Log session reconnected'
+    case 'build':
+      return `Build folder changed: ${event.folder ?? ''}${event.file}`
     case 'launch': {
       const what = event.action === 'app.restart' ? 'Restart' : 'Launch'
       const app = event.app ?? 'the app'
