@@ -52,12 +52,13 @@ function setup(run: (ref: string | undefined, opts: RunOptions) => Promise<RunOu
     order.push('run')
     return run(ref, opts)
   })
-  const handle = createRunHandler({
+  const handler = createRunHandler({
     run: { run: runFn } as unknown as Ovd['run'],
     logs: { armRestart, follow },
     send: (p) => sent.push(p)
   })
-  return { handle, sent, order, armRestart, follow, runFn, arm }
+  const handle = (device: unknown) => handler.run(device)
+  return { handle, handler, sent, order, armRestart, follow, runFn, arm }
 }
 
 describe('createRunHandler', () => {
@@ -123,5 +124,43 @@ describe('createRunHandler', () => {
     await expect(s.handle('')).rejects.toThrow(TypeError)
     await expect(s.handle(42)).rejects.toThrow(TypeError)
     expect(s.runFn).not.toHaveBeenCalled()
+  })
+
+  test('a redeploy runs the build on the device, through the same log step', async () => {
+    const s = setup(async (_ref, opts) => {
+      await opts.followLogs(target, pkg.id)
+      return outcome
+    })
+
+    expect(await s.handler.redeploy('VirtualDevice', pkg.path)).toEqual({ ok: true, data: outcome })
+    expect(s.runFn.mock.calls[0]?.[0]).toBe(pkg.path)
+    expect(s.runFn.mock.calls[0]?.[1]).toMatchObject({ device: 'VirtualDevice' })
+    expect(s.order).toEqual(['arm', 'run', 'follow', 'cancel'])
+  })
+
+  test('a redeploy waits for a run in flight; a run is refused while a redeploy goes', async () => {
+    const finishers: Array<() => void> = []
+    let active = 0
+    let most = 0
+    const s = setup(async () => {
+      active++
+      most = Math.max(most, active)
+      await new Promise<void>((resolve) => finishers.push(resolve))
+      active--
+      return outcome
+    })
+    const first = s.handle('VirtualDevice')
+    await vi.waitFor(() => expect(s.runFn).toHaveBeenCalledTimes(1))
+    const redeploy = s.handler.redeploy('VirtualDevice', pkg.path)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(s.runFn).toHaveBeenCalledTimes(1)
+
+    finishers.shift()?.()
+    await first
+    await vi.waitFor(() => expect(s.runFn).toHaveBeenCalledTimes(2))
+    await expect(s.handle('VirtualDevice')).rejects.toThrow('a run is already in progress')
+    finishers.shift()?.()
+    expect(await redeploy).toEqual({ ok: true, data: outcome })
+    expect(most).toBe(1)
   })
 })

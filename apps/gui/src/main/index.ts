@@ -16,6 +16,8 @@ import { registerRunIpc } from './runIpc'
 import { registerSetupIpc } from './setupIpc'
 import { showWhenReady } from './showWindow'
 import { registerVvdIpc } from './vvdIpc'
+import { registerWatchIpc } from './watchIpc'
+import type { WatchController } from './watchController'
 
 // One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
 const ovd = createOvd({ surface: 'desktop' })
@@ -32,6 +34,9 @@ const devices = registerDevicesIpc(
 // Quitting stops the probes and the log stream in flight and waits for the log session, then
 // SIGTERMs any SDK process group still running.
 const quitting = registerQuitHooks(app, { logs, stopAll: () => processGroups.stopAll() })
+// Set once the IPC handlers are registered; watching stops on quit and with the window.
+let watch: WatchController | undefined
+app.on('before-quit', () => watch?.stop())
 
 function createWindow(): void {
   // Create the browser window.
@@ -62,6 +67,7 @@ function createWindow(): void {
   })
   // The log stream's process group goes with the window (no orphans on the host or device).
   win.on('closed', () => void logs.stop())
+  win.on('closed', () => watch?.stop())
 
   showWhenReady(win)
 
@@ -97,7 +103,8 @@ app.whenReady().then(() => {
   registerPackagesIpc(ovd, () => mainWindow)
   registerInstallIpc(ovd)
   registerAppsIpc(ovd)
-  registerRunIpc(ovd, logs, () => mainWindow)
+  const run = registerRunIpc(ovd, logs, () => mainWindow)
+  watch = registerWatchIpc(ovd, run, logs, () => mainWindow)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
 
   createWindow()

@@ -56,6 +56,9 @@ export type OvdEvent =
       signal?: string
       errorCode?: ErrorCode
     }
+  // A watched build folder got a new build (`ovd run --watch`, the desktop's Watch): `folder`
+  // is relative to the project (`build/aarch64-debug/`).
+  | { kind: 'build'; folder?: string; file: string }
 
 export interface LogCounts {
   // Lines (entries) and E entries received since the start or the last Clear.

@@ -16,7 +16,7 @@ interface Line {
   ok?: boolean
   run?: RunOutcome
   error?: { code: string }
-  ovd?: { kind: string }
+  ovd?: { kind: string; folder?: string; file?: string }
   level?: string
   message?: string
 }
@@ -141,5 +141,191 @@ describe('ovd run', () => {
         errorCode: 'TARGET_OFFLINE'
       })
     ])
+  })
+})
+
+// A rebuild as `react-native build-vega` leaves it: the same package rewritten in place, with a
+// new mtime (ARCHITECTURE §8). The recorded content stays, so the fake SDK still answers for it.
+function rebuild(
+  sandbox: Sandbox,
+  path: string,
+  recording: 'player-aarch64-debug' | 'player-armv7-release'
+) {
+  makeRecordedVpkg(sandbox.home, path, recording, new Date())
+}
+
+const runDocs = (lines: Line[]) => lines.filter((l) => l.ok !== undefined)
+const deviceLine = (l: Line) => l.level !== undefined && l.ovd === undefined
+const installCalls = (sandbox: Sandbox, path: string) =>
+  sandbox
+    .calls()
+    .filter(
+      (c) => c === `vega device install-app -p ${sandbox.home}/${path} --device VirtualDevice`
+    ).length
+
+describe('ovd run --watch', () => {
+  test('a rebuild reinstalls and relaunches the app, and the log goes on', async () => {
+    const sandbox = await withPlayerProject()
+    const running = startOvd(sandbox, ['run', '--watch', '--json'], { timeoutMs: 90_000 })
+    await running.waitForStdout((s) => {
+      const lines = linesOf(s)
+      return runDocs(lines).length === 1 && lines.some((l) => l.ovd?.kind === 'launch')
+    })
+
+    rebuild(sandbox, AARCH64, 'player-aarch64-debug')
+    const out = await running.waitForStdout((s) => {
+      const lines = linesOf(s)
+      const restarted = lines.findIndex((l) => l.ovd?.kind === 'restarted')
+      return (
+        runDocs(lines).length === 2 && restarted !== -1 && lines.slice(restarted).some(deviceLine)
+      )
+    }, 30_000)
+    running.signal('SIGINT')
+    const done = await running.done
+
+    expect(done.exitCode).toBe(0)
+    const lines = linesOf(out)
+    expect(runDocs(lines)).toEqual([
+      expect.objectContaining({ ok: true }),
+      expect.objectContaining({
+        ok: true,
+        run: expect.objectContaining({
+          package: expect.objectContaining({ path: `${sandbox.home}/${AARCH64}` }),
+          launch: expect.objectContaining({ verified: true })
+        })
+      })
+    ])
+    const build = lines.findIndex((l) => l.ovd?.kind === 'build')
+    expect(lines[build]).toMatchObject({
+      ovd: { kind: 'build', folder: 'build/aarch64-debug/', file: 'player_aarch64.vpkg' },
+      message: 'Build folder changed: build/aarch64-debug/player_aarch64.vpkg'
+    })
+    expect(lines.findIndex((l) => l.ovd?.kind === 'restarted')).toBeGreaterThan(build)
+    expect(done.stderr).toContain('Watching build/ for new builds (Ctrl+C to stop)…')
+    expect(done.stderr).toContain(
+      'Build changed: build/aarch64-debug/player_aarch64.vpkg, redeploying…'
+    )
+
+    // Two installs and two launches; the session's stream restarted after the second install,
+    // so one stream per install, never two at once, and none left running.
+    expect(installCalls(sandbox, AARCH64)).toBe(2)
+    expect(sandbox.calls().filter((c) => c === LAUNCH)).toHaveLength(2)
+    expect(sandbox.calls().filter((c) => c === LOG)).toHaveLength(2)
+    expect(sandbox.activity().map((a) => [a.action, a.result])).toEqual([
+      ['app.install', 'ok'],
+      ['logs', 'ok'],
+      ['app.restart', 'ok'],
+      ['build.changed', 'ok'],
+      ['app.install', 'ok'],
+      ['logs.restart', 'ok'],
+      ['app.restart', 'ok']
+    ])
+    expect(sandbox.activity().find((a) => a.action === 'build.changed')).toMatchObject({
+      surface: 'cli',
+      target: 'VirtualDevice',
+      args: { folder: 'build/aarch64-debug/', file: 'player_aarch64.vpkg', redeploy: true }
+    })
+    noStreamLeft(sandbox)
+  })
+
+  test('a rebuild of only the stick build shows the change and installs nothing', async () => {
+    const sandbox = await withPlayerProject()
+    const running = startOvd(sandbox, ['run', '--watch', '--json'], { timeoutMs: 90_000 })
+    await running.waitForStdout((s) => runDocs(linesOf(s)).length === 1)
+
+    rebuild(sandbox, ARMV7, 'player-armv7-release')
+    await running.waitForStdout((s) => linesOf(s).some((l) => l.ovd?.kind === 'build'))
+    // Batches go one at a time: had the armv7 batch redeployed, it would install before this one.
+    rebuild(sandbox, AARCH64, 'player-aarch64-debug')
+    const out = await running.waitForStdout((s) => runDocs(linesOf(s)).length === 2, 30_000)
+    running.signal('SIGINT')
+    const done = await running.done
+
+    expect(done.exitCode).toBe(0)
+    expect(
+      linesOf(out)
+        .filter((l) => l.ovd?.kind === 'build')
+        .map((l) => l.message)
+    ).toEqual([
+      'Build folder changed: build/armv7-release/player_armv7.vpkg',
+      'Build folder changed: build/aarch64-debug/player_aarch64.vpkg'
+    ])
+    expect(done.stderr).toContain(
+      'Build changed: build/armv7-release/player_armv7.vpkg, no build for Vega Virtual Device'
+    )
+    expect(sandbox.calls().some((c) => c.includes(`install-app -p ${sandbox.home}/${ARMV7}`))).toBe(
+      false
+    )
+    expect(installCalls(sandbox, AARCH64)).toBe(2)
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.action === 'build.changed')
+        .map((a) => a.args.redeploy)
+    ).toEqual([false, true])
+    noStreamLeft(sandbox)
+  })
+
+  test('a failed redeploy keeps watching and the log session goes on', async () => {
+    const sandbox = await withPlayerProject()
+    const running = startOvd(sandbox, ['run', '--watch', '--json'], { timeoutMs: 120_000 })
+    await running.waitForStdout((s) => runDocs(linesOf(s)).length === 1)
+
+    sandbox.update((w) => {
+      w.playerStopsOnLaunch = true
+    })
+    rebuild(sandbox, AARCH64, 'player-aarch64-debug')
+    await running.waitForStdout((s) => runDocs(linesOf(s)).length === 2, 30_000)
+    sandbox.update((w) => {
+      w.playerStopsOnLaunch = false
+    })
+    rebuild(sandbox, AARCH64, 'player-aarch64-debug')
+    const out = await running.waitForStdout((s) => {
+      const docs = runDocs(linesOf(s))
+      return docs.length === 3
+    }, 30_000)
+    running.signal('SIGINT')
+    const done = await running.done
+
+    expect(done.exitCode).toBe(0)
+    const lines = linesOf(out)
+    expect(runDocs(lines)).toEqual([
+      expect.objectContaining({ ok: true }),
+      expect.objectContaining({
+        ok: false,
+        error: expect.objectContaining({ code: 'LAUNCH_NOT_VERIFIED' })
+      }),
+      expect.objectContaining({ ok: true })
+    ])
+    // The session kept running: after the failed redeploy's document it still printed the next
+    // build's OVD lines and restarted its stream after the third install. (Every later stream
+    // of the fake Virtual Device prints the same recording, which the session drops as backlog
+    // it already delivered, so no new device lines come after it.)
+    const failed = lines.findIndex((l) => l.ok === false)
+    expect(
+      lines
+        .slice(failed)
+        .map((l) => l.ovd?.kind)
+        .filter(Boolean)
+    ).toEqual(expect.arrayContaining(['build', 'install', 'restarted']))
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.action === 'logs')
+        .map((a) => a.result)
+    ).toEqual(['ok'])
+    expect(sandbox.calls().filter((c) => c === LOG)).toHaveLength(3)
+    noStreamLeft(sandbox)
+  }, 120_000)
+
+  test('--watch on a .vpkg exits 2 before any SDK call', async () => {
+    const sandbox = await withPlayerProject()
+
+    const run = await ovd(sandbox, ['run', `~/${AARCH64}`, '--watch', '--json'])
+
+    expect(run.exitCode).toBe(2)
+    expect(run.json<Line>()).toMatchObject({ ok: false, error: { code: 'NOT_A_PROJECT' } })
+    expect(sandbox.calls()).toEqual([])
+    expect(sandbox.activity()).toEqual([])
   })
 })

@@ -21,6 +21,7 @@ import { createSerialRunner } from './sdk/serialRunner.js'
 import { resolveOvdHome } from './state/ovdHome.js'
 import { createStateStore } from './state/stateStore.js'
 import { createVvd, type Vvd } from './vvd/vvd.js'
+import { createWatch, type Watch } from './watch/watch.js'
 
 export interface OvdOptions {
   surface: Surface
@@ -46,6 +47,7 @@ export interface Ovd {
   apps: Apps
   logs: Logs
   run: Run
+  watch: Watch
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -116,6 +118,7 @@ export function createOvd(opts: OvdOptions): Ovd {
     now: opts.now ?? (() => new Date())
   })
   const run = createRun({ install, apps, steps, activity })
+  const watch = createWatch({ devices, packages, project, activity, homedir, cwd })
   return {
     sdk,
     devices,
@@ -128,6 +131,7 @@ export function createOvd(opts: OvdOptions): Ovd {
     install,
     apps,
     logs,
-    run
+    run,
+    watch
   }
 }

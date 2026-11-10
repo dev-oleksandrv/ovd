@@ -10,6 +10,9 @@ export interface RunHook {
   state: RunState
   running: boolean
   start(device: string): Promise<void>
+  // A Watch redeploy main runs (Stage 3.5): its steps show as a run's; Watch toasts its outcome.
+  redeployStarted(device: string): void
+  redeployFinished(result: IpcResult<RunOutcome>, device: string): void
 }
 
 // The title bar's Run (Stage 3.4): echoes `ovd run --device <id>` when it starts, shows each
@@ -61,5 +64,16 @@ export function useRun(opts: { onDone: () => void; onOpenLogs: () => void }): Ru
     [echo, notify, onDone, onOpenLogs]
   )
 
-  return { state, running, start }
+  const redeployStarted = useCallback((device: string) => {
+    dispatch({ kind: 'start', device })
+  }, [])
+
+  const redeployFinished = useCallback((result: IpcResult<RunOutcome>, device: string) => {
+    dispatch({ kind: 'finish', result })
+    if (!result.ok) return
+    const { launch } = result.data
+    setLaunchOutcome(outcomeKey(device, launch.app.packageId), outcomeOf(launch))
+  }, [])
+
+  return { state, running, start, redeployStarted, redeployFinished }
 }
