@@ -411,6 +411,65 @@ describe('ovd run --watch', () => {
     expect(s.stopWatch).toHaveBeenCalled()
   })
 
+  test('Ctrl+C while a redeploy waits for the session restart: exit 0 at once, no launch', async () => {
+    const launched = vi.fn()
+    // As core's run: an abort after the log step stops it before the launch.
+    const redeploy: RunImpl = async (_ref, run) => {
+      run.onStep?.({ step: 'install', package: pkg, target })
+      await run.followLogs(target, pkg.id)
+      if (run.signal?.aborted) {
+        const error = new Error('The operation was aborted')
+        error.name = 'AbortError'
+        throw error
+      }
+      launched()
+      return outcome
+    }
+    const s = stub([runs(), redeploy])
+    const running = cli(['run', '--watch', '--json'], { ovd: s.ovd, onInterrupt: s.onInterrupt })
+    await vi.waitFor(() => expect(s.run).toHaveBeenCalledTimes(1))
+    await tick()
+
+    void s.build(change())
+    await vi.waitFor(() => expect(s.run).toHaveBeenCalledTimes(2))
+    await tick()
+    // No restart comes: the wait would otherwise last FOLLOW_TIMEOUT_MS (15 s).
+    const started = Date.now()
+    s.interrupt()
+    const { stdout, exitCode } = await running
+
+    expect(Date.now() - started).toBeLessThan(1_000)
+    expect(exitCode).toBe(0)
+    expect(launched).not.toHaveBeenCalled()
+    expect(jsonLines(stdout).filter((l) => l.ok !== undefined)).toEqual([
+      { ok: true, run: outcome }
+    ])
+  })
+
+  test('the session ending while a redeploy waits for its restart ends the wait at once', async () => {
+    const s = stub([runs(), runs()])
+    const running = cli(['run', '--watch', '--json'], { ovd: s.ovd, onInterrupt: s.onInterrupt })
+    await vi.waitFor(() => expect(s.run).toHaveBeenCalledTimes(1))
+    await tick()
+
+    void s.build(change())
+    await vi.waitFor(() => expect(s.run).toHaveBeenCalledTimes(2))
+    await tick()
+    const started = Date.now()
+    s.finish({
+      reason: 'ended',
+      error: new OvdError('LOG_STREAM_ENDED', 'Vega Virtual Device’s log stream ended', 'hint')
+    })
+    const { stdout, exitCode } = await running
+
+    expect(Date.now() - started).toBeLessThan(1_000)
+    expect(exitCode).toBe(1)
+    expect(jsonLines(stdout).at(-1)).toMatchObject({
+      ok: false,
+      error: { code: 'LOG_STREAM_ENDED' }
+    })
+  })
+
   test('human: the run lines on stdout, the watch and the redeploy on stderr', async () => {
     const s = stub([runs()])
     const running = cli(['run', '--watch'], { ovd: s.ovd, onInterrupt: s.onInterrupt })

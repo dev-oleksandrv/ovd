@@ -95,6 +95,32 @@ export async function runWatch(deps: CliDeps, opts: RunWatchOptions): Promise<vo
     })
   }
 
+  // A redeploy's log step: the restart its install causes, or FOLLOW_TIMEOUT_MS. Ctrl+C and the
+  // session ending end the wait at once; on Ctrl+C the run then stops after this step
+  // (AbortError), before its launch.
+  const restartOf = async (waiting: Promise<void>, running: LogSession): Promise<void> => {
+    const { signal } = controller
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let onAbort = (): void => undefined
+    try {
+      await Promise.race([
+        waiting,
+        running.done.then(() => undefined),
+        new Promise<void>((resolve) => (timer = setTimeout(resolve, FOLLOW_TIMEOUT_MS))),
+        new Promise<void>((resolve) => {
+          onAbort = resolve
+          if (signal.aborted) resolve()
+          else signal.addEventListener('abort', onAbort, { once: true })
+        })
+      ])
+    } finally {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
+      onRestart = () => undefined
+    }
+    if (signal.aborted) throw abortError()
+  }
+
   const runOnce = async (ref: string, device: string | undefined, first: boolean) => {
     try {
       const result = await ovd.run.run(ref, {
@@ -112,13 +138,8 @@ export async function runWatch(deps: CliDeps, opts: RunWatchOptions): Promise<vo
         followLogs: async (target) => {
           const waiting = restarted
           restarted = undefined
-          if (live && waiting) {
-            let timer: ReturnType<typeof setTimeout> | undefined
-            await Promise.race([
-              waiting,
-              new Promise<void>((resolve) => (timer = setTimeout(resolve, FOLLOW_TIMEOUT_MS)))
-            ])
-            clearTimeout(timer)
+          if (live && waiting && session) {
+            await restartOf(waiting, session)
             return
           }
           if (!live) await startSession(target.id)
@@ -198,4 +219,10 @@ export async function runWatch(deps: CliDeps, opts: RunWatchOptions): Promise<vo
   } finally {
     dispose()
   }
+}
+
+function abortError(): Error {
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
 }
