@@ -66,6 +66,12 @@ export interface World {
   // applies. A timing knob (docs/conventions/testing.md): it delays the recorded answer, never
   // changes it.
   loginHold: boolean
+  // Commands that wait before they answer: while a command starts with one of these, the fake
+  // re-reads the world every 100 ms; once the test removes the entry it answers from the latest
+  // world with its normal recording, so a flow can see the screen while the SDK works. Core's
+  // runner is serial, so a held command holds every SDK call after it too. A timing knob
+  // (docs/conventions/testing.md): it delays the recorded answer, never changes it.
+  hold: string[]
 }
 
 export interface Stick {
@@ -114,7 +120,8 @@ export function defaultWorld(): World {
     playerCrashed: false,
     logStream: { ends: false, holdAfterLine: null },
     vvdLogStreams: 0,
-    loginHold: false
+    loginHold: false,
+    hold: []
   }
 }
 
