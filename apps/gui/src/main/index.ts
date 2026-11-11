@@ -6,6 +6,7 @@ import { createOvd, processGroups } from '@ovd/core'
 import { registerAppsIpc } from './appsIpc'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerInstallIpc } from './installIpc'
+import { registerInputIpc } from './inputIpc'
 import { registerIpcHandlers } from './ipc'
 import { registerLogsIpc } from './logsIpc'
 import { registerPackagesIpc } from './packagesIpc'
@@ -17,6 +18,7 @@ import { registerSetupIpc } from './setupIpc'
 import { showWhenReady } from './showWindow'
 import { registerVvdIpc } from './vvdIpc'
 import { registerWatchIpc } from './watchIpc'
+import type { InputController } from './inputController'
 import type { WatchController } from './watchController'
 
 // One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
@@ -24,11 +26,15 @@ const ovd = createOvd({ surface: 'desktop' })
 let mainWindow: BrowserWindow | undefined
 // Before `devices`: main's log session follows every target change the device watcher sees.
 const logs = registerLogsIpc(ovd, () => mainWindow)
+// Set once the IPC handlers are registered; the input session follows the target too.
+let input: InputController | undefined
 const devices = registerDevicesIpc(
   ovd,
   () => mainWindow,
   (update) => {
-    if (update.ok) logs.targetChanged(update.target)
+    if (!update.ok) return
+    logs.targetChanged(update.target)
+    input?.targetChanged(update.target)
   }
 )
 // Quitting stops the probes and the log stream in flight and waits for the log session, then
@@ -37,6 +43,8 @@ const quitting = registerQuitHooks(app, { logs, stopAll: () => processGroups.sto
 // Set once the IPC handlers are registered; watching stops on quit and with the window.
 let watch: WatchController | undefined
 app.on('before-quit', () => watch?.stop())
+// A stick's console gets `exit` on the way out; `will-quit` SIGTERMs its group if it is still there.
+app.on('before-quit', () => void input?.close())
 
 function createWindow(): void {
   // Create the browser window.
@@ -68,6 +76,7 @@ function createWindow(): void {
   // The log stream's process group goes with the window (no orphans on the host or device).
   win.on('closed', () => void logs.stop())
   win.on('closed', () => watch?.stop())
+  win.on('closed', () => void input?.close())
 
   showWhenReady(win)
 
@@ -106,6 +115,7 @@ app.whenReady().then(() => {
   const run = registerRunIpc(ovd, logs, () => mainWindow)
   watch = registerWatchIpc(ovd, run, logs, () => mainWindow)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
+  input = registerInputIpc(ovd, () => mainWindow)
 
   createWindow()
 

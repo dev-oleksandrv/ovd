@@ -19,6 +19,7 @@ describe('Gallery', () => {
       'Doctor rows',
       'Modal and wizard',
       'Text field',
+      'Remote keys',
       'Title bar controls',
       'Log controls',
       'Log rows',

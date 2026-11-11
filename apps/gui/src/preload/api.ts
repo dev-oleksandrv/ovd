@@ -8,6 +8,8 @@ import type {
   EnableResult,
   ErrorJson,
   ForgetResult,
+  InputBackend,
+  InputTarget,
   InstallResult,
   InstallTarget,
   LaunchResult,
@@ -18,12 +20,15 @@ import type {
   LoginPrompt,
   PackageBuild,
   PackageInfo,
+  PressResult,
   ProjectMode,
   ReinstallResult,
+  RemoteKey,
   RestartResult,
   RunOutcome,
   RunStep,
   TerminateResult,
+  TextResult,
   UninstallResult,
   VvdStartResult,
   VvdState
@@ -131,6 +136,33 @@ export type WatchEvent =
   | { kind: 'changed'; change: WatchChange }
   | { kind: 'redeployed'; device: string; result: IpcResult<RunOutcome> }
   | { kind: 'stopped' }
+
+// One key press or text sent from the Remote screen, as the input session panel lists it.
+// `label` is the key (`down`) or the text in quotes; `cli` is its `ovd input …` equivalent.
+// Kept in main's memory only: the activity log has a text's length, never the text.
+export interface InputSent {
+  time: string
+  kind: 'press' | 'text'
+  label: string
+  cli: string
+  ok: boolean
+  error?: ErrorJson
+}
+
+// The input session main keeps for the target (one at a time, ADR 0010). `opening` while a
+// stick's `inputd-cli` console starts; `error` when it couldn't open (Retry opens it again).
+// `sent` is the last 50, newest first.
+export interface InputState {
+  status: 'idle' | 'opening' | 'ready' | 'error'
+  target: InputTarget | null
+  backend: InputBackend | null
+  error?: ErrorJson
+  sent: InputSent[]
+}
+
+// What a press or a text did: the entry it added to `sent`, with the result when it worked.
+export type InputOutcome =
+  { ok: true; sent: InputSent; result: PressResult | TextResult } | { ok: false; sent: InputSent }
 
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson }
@@ -251,6 +283,17 @@ export interface OvdApi {
     start(device: string): Promise<IpcResult<RunOutcome>>
     onProgress(listener: (progress: RunProgress) => void): () => void
   }
+  input: {
+    // Opens the input session for the device (a stick's console starts), or replays the open
+    // one when it is for that device. Resolves with the state once it is ready or failed.
+    open(device: string): Promise<InputState>
+    // `ovd input press <key> --device <id>` through the open session.
+    press(key: RemoteKey): Promise<InputOutcome>
+    // `ovd input text "<text>" --device <id>` through the open session.
+    text(text: string): Promise<InputOutcome>
+    state(): Promise<InputState>
+    onState(listener: (state: InputState) => void): () => void
+  }
   watch: {
     // `ovd run --watch --device <id>` without the first run: watches the open project folder and
     // redeploys each new build on the target. Idempotent; NOT_A_PROJECT without a folder open.
@@ -309,5 +352,10 @@ export const channels = {
   runProgress: 'ovd:run:progress',
   watchSet: 'ovd:watch:set',
   watchState: 'ovd:watch:state',
-  watchEvent: 'ovd:watch:event'
+  watchEvent: 'ovd:watch:event',
+  inputOpen: 'ovd:input:open',
+  inputPress: 'ovd:input:press',
+  inputText: 'ovd:input:text',
+  inputState: 'ovd:input:state',
+  inputUpdate: 'ovd:input:update'
 } as const

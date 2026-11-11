@@ -35,6 +35,7 @@ import { Segmented } from '../ui/Segmented'
 import { Select } from '../ui/Select'
 import { StepList } from '../ui/StepList'
 import { OfflineState } from '../ui/OfflineState'
+import { PadButton } from '../ui/PadButton'
 import { StatusDot } from '../ui/StatusDot'
 import { StatusPill } from '../ui/StatusPill'
 import { Table, type Column } from '../ui/Table'
@@ -683,6 +684,22 @@ export function Gallery() {
 
       <GallerySection title="Text field">
         <TextField label="Device name" value={name} onChange={setName} />
+      </GallerySection>
+
+      <GallerySection title="Remote keys">
+        <div className="flex flex-wrap items-center gap-3">
+          <PadButton label="Up" icon="keyboard_arrow_up" onPress={() => undefined} />
+          <PadButton label="OK" text="OK" size="lg" onPress={() => undefined} />
+          <PadButton label="Down" icon="keyboard_arrow_down" flash onPress={() => undefined} />
+          <PadButton
+            label="Home"
+            icon="home"
+            disabled
+            disabledReason="Home can’t be sent to the Virtual Device"
+            onPress={() => undefined}
+          />
+          <PadButton label="Play/pause" icon="play_pause" onPress={() => undefined} />
+        </div>
       </GallerySection>
 
       <GallerySection title="Log controls">
