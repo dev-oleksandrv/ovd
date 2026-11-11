@@ -53,6 +53,11 @@ export function EnvironmentScreen({
   const enableVvdDevmode = async (): Promise<void> => {
     if (await vvd.enableDeveloperMode()) await doctor.run()
   }
+  // The row reads again whether it worked or not: a failed start may have changed the device.
+  const enableVvdGrpc = async (): Promise<void> => {
+    await vvd.enableGrpc()
+    await doctor.run()
+  }
 
   const recheck = async (check: Check): Promise<void> => {
     const cli = DOCTOR_CLI
@@ -147,6 +152,7 @@ export function EnvironmentScreen({
             onRun={onRunDoctor}
             {...(firstRun ? { onSetupDone: onGoDevices } : {})}
             enableVvdDevmode={{ busy: vvd.enabling, onEnable: () => void enableVvdDevmode() }}
+            enableVvdGrpc={{ busy: vvd.grpcBusy, onEnable: () => void enableVvdGrpc() }}
             onSetup={onSetup}
             onOpenFolder={onOpenFolder}
             onProjectDetails={() => setDetails(true)}

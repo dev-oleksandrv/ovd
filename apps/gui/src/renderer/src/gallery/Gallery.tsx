@@ -134,7 +134,8 @@ const DOCTOR_ROWS: Check[] = [
     detail: 'vega exec vda version didn’t respond',
     command: 'vega exec vda version'
   },
-  { id: 'devmode', name: 'Developer Mode', status: 'skipped', detail: 'Waiting for the Vega SDK' }
+  { id: 'devmode', name: 'Developer Mode', status: 'skipped', detail: 'Waiting for the Vega SDK' },
+  { id: 'grpc', name: 'Emulator gRPC', status: 'ok', detail: 'On · :8554' }
 ]
 
 interface SampleApp {
@@ -529,6 +530,20 @@ export function Gallery() {
           {DOCTOR_ROWS.map((check) => (
             <DoctorRow key={check.id} check={check} />
           ))}
+          <DoctorRow
+            check={{
+              id: 'grpc',
+              name: 'Emulator gRPC',
+              status: 'warn',
+              detail: 'Couldn’t enable',
+              hint: 'Turn it on with ovd vvd start',
+              fix: 'enable-vvd-grpc'
+            }}
+            enableVvdGrpc={{
+              busy: false,
+              onEnable: () => notify({ tone: 'ok', text: 'Emulator gRPC on', cli: 'ovd vvd start' })
+            }}
+          />
           <DoctorRow check={{ id: 'node', name: 'Node', status: 'ok', detail: '' }} checking />
         </ul>
       </GallerySection>

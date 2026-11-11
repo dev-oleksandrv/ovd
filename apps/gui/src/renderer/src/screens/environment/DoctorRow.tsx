@@ -9,6 +9,8 @@ interface DoctorRowProps {
   checking?: boolean
   // Turns on Virtual Device Developer Mode (fix `enable-vvd-devmode`).
   enableVvdDevmode?: { busy: boolean; onEnable: () => void }
+  // Turns on emulator gRPC by starting the Virtual Device again (fix `enable-vvd-grpc`).
+  enableVvdGrpc?: { busy: boolean; onEnable: () => void }
   // Opens the new-stick wizard (fix `setup-stick`).
   onSetup?: () => void
   // Project row: opens the folder picker while no project is open.
@@ -22,11 +24,13 @@ export function DoctorRow({
   check,
   checking = false,
   enableVvdDevmode,
+  enableVvdGrpc,
   onSetup,
   onOpenFolder,
   onDetails
 }: DoctorRowProps) {
   const enable = !checking && check.fix === 'enable-vvd-devmode' ? enableVvdDevmode : undefined
+  const grpc = !checking && check.fix === 'enable-vvd-grpc' ? enableVvdGrpc : undefined
   const setup = !checking && check.fix === 'setup-stick' ? onSetup : undefined
   const openFolder =
     !checking && check.id === 'project' && check.status === 'info' ? onOpenFolder : undefined
@@ -52,6 +56,11 @@ export function DoctorRow({
       {enable && (
         <Button size="sm" loading={enable.busy} onClick={enable.onEnable}>
           {enable.busy ? 'Enabling…' : 'Enable'}
+        </Button>
+      )}
+      {grpc && (
+        <Button size="sm" loading={grpc.busy} onClick={grpc.onEnable}>
+          {grpc.busy ? 'Turning on…' : 'Turn on'}
         </Button>
       )}
       {setup && (

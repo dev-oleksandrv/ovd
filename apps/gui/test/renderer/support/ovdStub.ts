@@ -19,6 +19,7 @@ import type {
   RunOutcome,
   TerminateResult,
   UninstallResult,
+  VvdStartResult,
   VvdState
 } from '@ovd/core'
 import { vi } from 'vitest'
@@ -97,6 +98,7 @@ export function doctorReport(
       detail: '8081, 8097 free on this computer · no target device',
       command: 'vega device is-port-forwarded'
     },
+    { id: 'grpc', name: 'Emulator gRPC', status: 'ok', detail: 'On · :8554' },
     { id: 'node', name: 'Node', status: 'ok', detail: 'v24.2.0 (requires ≥ 22)' }
   ]
   return { host, checks: rows.map((row) => ({ ...row, ...overrides[row.id] })) }
@@ -181,7 +183,7 @@ export function stubOvd(opts: {
       }
     },
     vvd: {
-      start: vi.fn(opts.vvd?.start ?? (async () => unexpected<VvdState>('vvd.start'))),
+      start: vi.fn(opts.vvd?.start ?? (async () => unexpected<VvdStartResult>('vvd.start'))),
       stop: vi.fn(opts.vvd?.stop ?? (async () => unexpected<VvdState>('vvd.stop'))),
       enableDeveloperMode: vi.fn(
         opts.vvd?.enableDeveloperMode ??
