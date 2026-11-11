@@ -1,0 +1,3 @@
+OK: { "port": "8554" }
+OK: gRPC endpoint available at port 8554
+OK

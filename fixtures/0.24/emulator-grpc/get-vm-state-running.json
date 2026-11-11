@@ -1,0 +1,11 @@
+{
+  "headers": {
+    ":status": 200,
+    "content-type": "application/grpc",
+    "grpc-accept-encoding": "identity, deflate, gzip"
+  },
+  "trailers": {
+    "grpc-status": "0"
+  },
+  "body": "00000000020801"
+}

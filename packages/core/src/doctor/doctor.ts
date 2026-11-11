@@ -20,7 +20,7 @@ export interface DoctorDeps {
   runner: Runner
   sdk: SdkLocator
   devices: Devices
-  vvd: Pick<Vvd, 'developerMode'>
+  vvd: Pick<Vvd, 'developerMode' | 'grpc'>
   project: Pick<Project, 'current'>
   homedir: string
   // The user's login shell ($SHELL): it finds the Node that Metro and builds use.
@@ -42,6 +42,7 @@ const NAMES: Record<CheckId, string> = {
   devices: 'Devices',
   devmode: 'Developer Mode',
   metro: 'Metro',
+  grpc: 'Emulator gRPC',
   node: 'Node'
 }
 // Row labels: the main command each check runs. Metro runs it per port with `--port`,
@@ -196,6 +197,36 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     } catch (error) {
       if (!(error instanceof OvdError)) throw error
       return null
+    }
+  }
+
+  // Read-only: doctor never turns gRPC on (docs/conventions/sdk.md); `ovd vvd start` does.
+  async function grpcCheck(devices: Device[]): Promise<Result> {
+    const notRunning: Result = {
+      status: 'info',
+      detail: 'Not running',
+      hint: 'Start it with ovd vvd start'
+    }
+    const vvd = devices.find((d) => d.id === VVD_ID)
+    if (!vvd) return notRunning
+    const probe = await deps.vvd.grpc(vvd).catch((error: unknown) => {
+      if (!(error instanceof OvdError)) throw error
+      return { status: 'off' } as const
+    })
+    switch (probe.status) {
+      case 'on':
+        return { status: 'ok', detail: `On · :${probe.port}` }
+      case 'not-running':
+        return notRunning
+      case 'starting':
+        return { status: 'info', detail: 'Waiting for the Virtual Device' }
+      case 'off':
+        return {
+          status: 'warn',
+          detail: 'Couldn’t enable',
+          hint: 'Turn it on with ovd vvd start',
+          fix: 'enable-vvd-grpc'
+        }
     }
   }
 
@@ -377,7 +408,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
       const results: Partial<Record<CheckId, Result>> = { sdk: sdkResult }
       let devices: Device[] = []
       if (!sdk) {
-        for (const id of ['vda', 'devices', 'devmode', 'metro'] as const) {
+        for (const id of ['vda', 'devices', 'devmode', 'metro', 'grpc'] as const) {
           results[id] = skipped('Waiting for the Vega SDK')
         }
       } else {
@@ -385,6 +416,7 @@ export function createDoctor(deps: DoctorDeps): Doctor {
         if (results.vda.status === 'fail') {
           results.devices = skipped('Waiting for VDA')
           results.metro = skipped('Waiting for VDA')
+          results.grpc = skipped('Waiting for VDA')
         } else {
           const snapshot = await deps.devices.list().then(
             (s) => s,
@@ -400,10 +432,13 @@ export function createDoctor(deps: DoctorDeps): Doctor {
               hint: snapshot.hint
             })
             results.metro = skipped('Waiting for VDA')
+            results.grpc = skipped('Waiting for VDA')
           } else {
             devices = snapshot.devices
             results.devices = ran('devices', devicesCheck(snapshot.devices))
             results.metro = await metroCheck(sdk, snapshot, signal)
+            signal?.throwIfAborted()
+            results.grpc = await grpcCheck(snapshot.devices)
           }
         }
         signal?.throwIfAborted()
@@ -419,7 +454,16 @@ export function createDoctor(deps: DoctorDeps): Doctor {
       const { result: nodeResult, node } = await nodeCheck(signal)
       signal?.throwIfAborted()
       results.node = nodeResult
-      const order: CheckId[] = ['sdk', 'vda', 'project', 'devices', 'devmode', 'metro', 'node']
+      const order: CheckId[] = [
+        'sdk',
+        'vda',
+        'project',
+        'devices',
+        'devmode',
+        'metro',
+        'grpc',
+        'node'
+      ]
       return {
         host: node === undefined ? host : { ...host, node },
         checks: order.flatMap((id) => {
