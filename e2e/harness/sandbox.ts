@@ -10,9 +10,11 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { FAKE_CONSOLE_TOKEN, startFakeEmulator, type GrpcCall } from '../fake-sdk/emulator.ts'
 import {
   callsFile,
   defaultWorld,
+  discoveryDir,
   loginProbesFile,
   logStreamsFile,
   readWorld,
@@ -55,6 +57,8 @@ export interface Sandbox {
   probePids(): number[]
   hostState(): unknown
   activity(): ActivityLine[]
+  // The emulator gRPC calls made with the right token (fake-sdk/emulator.ts).
+  grpcCalls(): GrpcCall[]
   // Removes the sandbox; throws when a surface ran an SDK command the fake has no recording
   // for, since that flow ran something unverified.
   close(): void
@@ -68,8 +72,13 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
   const sdkDir = join(root, 'fake-sdk')
   mkdirSync(home)
   mkdirSync(sdkDir)
-  writeWorld(sdkDir, { ...defaultWorld(), ...world })
+  const initial = { ...defaultWorld(), ...world }
+  writeWorld(sdkDir, initial)
   writeFileSync(callsFile(sdkDir), '')
+  if (initial.consoleToken === 'present') {
+    writeFileSync(join(home, '.emulator_console_auth_token'), `${FAKE_CONSOLE_TOKEN}\n`)
+  }
+  const emulator = startFakeEmulator(sdkDir)
 
   const path = [dirname(process.execPath), '/usr/bin', '/bin']
   const env: Record<string, string> = {
@@ -79,6 +88,10 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     SHELL: '/bin/sh',
     PATH: path.join(':'),
     TMPDIR: tmpdir(),
+    // This sandbox's fake emulator, never a Virtual Device running on this host.
+    OVD_EMULATOR_CONSOLE_PORT: String(emulator.consolePort),
+    OVD_EMULATOR_GRPC_PORT: String(emulator.grpcPort),
+    OVD_EMULATOR_DISCOVERY_DIR: discoveryDir(sdkDir),
     LANG: 'en_US.UTF-8',
     // The display of a headless Ubuntu runner (xvfb-run), for the desktop app.
     ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
@@ -149,12 +162,20 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
         .map((l) => JSON.parse(l) as ActivityLine)
     },
 
+    grpcCalls: () => emulator.grpcCalls(),
+
     close() {
-      const unhandled = readCalls().filter((c) => !c.handled)
+      const unhandled = [
+        ...readCalls()
+          .filter((c) => !c.handled)
+          .map((c) => c.command),
+        ...emulator.unhandled()
+      ]
+      emulator.close()
       rmSync(root, { recursive: true, force: true })
       if (unhandled.length > 0) {
         throw new Error(
-          `The fake SDK has no recording for:\n${unhandled.map((c) => `  ${c.command}`).join('\n')}`
+          `The fake SDK has no recording for:\n${unhandled.map((c) => `  ${c}`).join('\n')}`
         )
       }
     }

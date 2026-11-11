@@ -103,6 +103,95 @@ test.describe('Virtual Device with Developer Mode off', () => {
   })
 })
 
+test.describe('Emulator gRPC', () => {
+  function toast(page: import('@playwright/test').Page, text: string) {
+    return page.getByRole('status').filter({ hasText: text })
+  }
+
+  async function startFromDevices(page: import('@playwright/test').Page): Promise<void> {
+    await page
+      .getByRole('list', { name: 'Devices' })
+      .getByRole('button', { name: /Vega Virtual Device/ })
+      .click()
+    await page.getByRole('button', { name: 'Start Virtual Device' }).click()
+  }
+
+  test('starting the Virtual Device turns it on, and Doctor shows its port', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { page } = await launch()
+    // The doctor run at launch must finish before the start: its last SDK call is the
+    // sign-in probe.
+    await expect.poll(() => sandbox.calls()).toContain('vega devmode login --json')
+    await startFromDevices(page)
+    await expect(toast(page, 'Virtual Device started')).toContainText('$ ovd vvd start')
+
+    await nav(page, 'Doctor').click()
+    await page.getByRole('button', { name: 'Run ovd doctor' }).click()
+
+    await expect(row(page, 'Emulator gRPC')).toContainText(
+      `On · :${sandbox.env.OVD_EMULATOR_GRPC_PORT}`
+    )
+    expect(sandbox.grpcCalls()).toEqual([{ method: 'getVmState' }])
+    expect(sandbox.activity().map((a) => [a.action, a.result])).toEqual([
+      ['vvd.start', 'ok'],
+      ['vvd.grpc.enable', 'ok']
+    ])
+  })
+
+  test.describe('without the console token', () => {
+    test.use({ world: { consoleToken: 'missing' } })
+
+    test('the start warns, and Doctor offers Turn on', async ({ sandbox, launch }) => {
+      sandbox.installSdk()
+      const { page } = await launch()
+      await expect.poll(() => sandbox.calls()).toContain('vega devmode login --json')
+      await startFromDevices(page)
+
+      const warning = toast(
+        page,
+        'Virtual Device started, but emulator gRPC couldn’t be turned on.'
+      )
+      await expect(warning).toContainText(
+        'Restart the Virtual Device with ovd vvd stop, then ovd vvd start.'
+      )
+      await expect(warning).toContainText('$ ovd vvd start')
+
+      await nav(page, 'Doctor').click()
+      await page.getByRole('button', { name: 'Run ovd doctor' }).click()
+      const grpc = row(page, 'Emulator gRPC')
+      await expect(grpc).toContainText('Couldn’t enable')
+      await expect(grpc.getByRole('button', { name: 'Turn on' })).toBeVisible()
+      expect(sandbox.activity().at(-1)).toMatchObject({
+        action: 'vvd.grpc.enable',
+        result: 'error',
+        errorCode: 'VVD_GRPC_FAILED'
+      })
+    })
+  })
+
+  test.describe('on a running Virtual Device with gRPC off', () => {
+    test.use({ world: { vvd: { running: true, developerMode: true } } })
+
+    test('Turn on in Doctor turns it on and the row passes', async ({ sandbox, launch }) => {
+      sandbox.installSdk()
+      const { page } = await launch()
+      await nav(page, 'Doctor').click()
+      const grpc = row(page, 'Emulator gRPC')
+      await expect(grpc).toContainText('Couldn’t enable')
+
+      await grpc.getByRole('button', { name: 'Turn on' }).click()
+
+      await expect(toast(page, 'Emulator gRPC on')).toContainText('$ ovd vvd start')
+      await expect(grpc).toContainText(`On · :${sandbox.env.OVD_EMULATOR_GRPC_PORT}`)
+      // Already running: only gRPC was turned on.
+      expect(sandbox.calls()).not.toContain('vega virtual-device start')
+    })
+  })
+})
+
 test.describe('VDA not answering', () => {
   test.use({ world: { vda: 'broken' } })
 
