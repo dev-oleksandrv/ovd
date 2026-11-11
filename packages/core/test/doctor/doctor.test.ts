@@ -8,7 +8,8 @@ import {
   type Devices,
   type ProjectMode,
   type DevicesSnapshot,
-  type SdkInfo
+  type SdkInfo,
+  type VvdGrpcProbe
 } from '../../src/index.js'
 import { FakeRunner } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
@@ -73,6 +74,8 @@ interface Setup {
   vvdDevmode?: boolean | OvdError
   // What `project.current()` answers; nothing open by default.
   project?: ProjectMode | null
+  // What `vvd.grpc(device)` answers for an online Virtual Device; on by default.
+  vvdGrpc?: VvdGrpcProbe | OvdError
 }
 
 const VSM = 'vega exec vda -s emulator-5554 shell vsm developer-mode'
@@ -102,12 +105,22 @@ function setup(opts: Setup = {}) {
     invalidate: forbidden('invalidate')
   }
   const vvdAsked: string[] = []
+  const grpcAsked: string[] = []
   const vvdDeps = {
     developerMode: async () => {
       vvdAsked.push('developerMode')
       const answer = opts.vvdDevmode ?? true
       if (answer instanceof OvdError) throw answer
       return { developerMode: answer, command: VSM }
+    },
+    // As core's: only an online Virtual Device is probed.
+    grpc: async (device: Device): Promise<VvdGrpcProbe> => {
+      grpcAsked.push(device.status)
+      if (device.status === 'stopped') return { status: 'not-running' }
+      if (device.status !== 'online') return { status: 'starting' }
+      const answer = opts.vvdGrpc ?? { status: 'on', port: 8554 }
+      if (answer instanceof OvdError) throw answer
+      return answer
     }
   }
   const doctor = createDoctor({
@@ -121,7 +134,7 @@ function setup(opts: Setup = {}) {
     host: async () => ({ os: 'macOS', osVersion: '26.6', arch: 'arm64' }),
     portInUse: async (port) => (opts.inUse ?? []).includes(port)
   })
-  return { doctor, runner, discovered, sdk, vvdAsked }
+  return { doctor, runner, discovered, sdk, vvdAsked, grpcAsked }
 }
 
 const statuses = (checks: { status: string }[]) => checks.map((c) => c.status)
@@ -139,9 +152,10 @@ describe('Doctor.run', () => {
       'devices',
       'devmode',
       'metro',
+      'grpc',
       'node'
     ])
-    expect(statuses(report.checks)).toEqual(['ok', 'ok', 'info', 'ok', 'ok', 'info', 'ok'])
+    expect(statuses(report.checks)).toEqual(['ok', 'ok', 'info', 'ok', 'ok', 'info', 'info', 'ok'])
     expect(report.checks).toMatchObject([
       {
         name: 'Vega SDK',
@@ -166,6 +180,7 @@ describe('Doctor.run', () => {
         detail: '8081, 8097 free on this computer · not reversed on Fire TV Stick 4K Select',
         command: 'vega device is-port-forwarded'
       },
+      { name: 'Emulator gRPC', detail: 'Not running', hint: 'Start it with ovd vvd start' },
       { name: 'Node', detail: 'v24.2.0 (requires ≥ 22)', command: NODE }
     ])
   })
@@ -199,7 +214,7 @@ describe('Doctor.run', () => {
       hint: 'Install the Vega SDK',
       fix: 'install-sdk'
     })
-    for (const id of ['vda', 'devices', 'devmode', 'metro']) {
+    for (const id of ['vda', 'devices', 'devmode', 'metro', 'grpc']) {
       expect(check(checks, id)).toMatchObject({
         status: 'skipped',
         detail: 'Waiting for the Vega SDK'
@@ -255,7 +270,7 @@ describe('Doctor.run', () => {
       detail: 'vega exec vda version didn’t respond',
       hint: 'Start it with vega exec vda start-server, then re-check'
     })
-    for (const id of ['devices', 'metro']) {
+    for (const id of ['devices', 'metro', 'grpc']) {
       expect(check(checks, id)).toMatchObject({ status: 'skipped', detail: 'Waiting for VDA' })
       expect(check(checks, id)).not.toHaveProperty('command')
     }
@@ -284,6 +299,7 @@ describe('Doctor.run', () => {
       detail: 'VDA is not available',
       hint: 'Check VDA'
     })
+    expect(check(checks, 'grpc')).toMatchObject({ status: 'skipped', detail: 'Waiting for VDA' })
   })
 
   test('signed out: the probe stops at the pending answer and the row warns', async () => {
@@ -434,6 +450,62 @@ describe('Doctor.run', () => {
       const { doctor, vvdAsked } = setup({ vvdDevmode: false })
       await doctor.run()
       expect(vvdAsked).toEqual([])
+    })
+  })
+
+  describe('Emulator gRPC', () => {
+    const vvdOnline: Device = { ...vvd, status: 'online', vdaSerial: 'emulator-5554' }
+    const grpcRow = async (opts: Setup) => {
+      const { doctor, runner, grpcAsked } = setup(opts)
+      const row = check((await doctor.run()).checks, 'grpc')
+      return { row, runner, grpcAsked }
+    }
+
+    test('on: ok with the port, no command, and probed from doctor’s own device list', async () => {
+      const { row, grpcAsked } = await grpcRow({
+        snapshot: { devices: [stick, vvdOnline], target: stick.id }
+      })
+      expect(row).toEqual({ id: 'grpc', name: 'Emulator gRPC', status: 'ok', detail: 'On · :8554' })
+      expect(grpcAsked).toEqual(['online'])
+    })
+
+    test.each([
+      ['off', { status: 'off' } as const],
+      ['an error', new OvdError('VVD_GRPC_FAILED', 'x', 'y')]
+    ])('online but %s: warn with the enable fix', async (_, answer) => {
+      const { row } = await grpcRow({
+        snapshot: { devices: [vvdOnline], target: null },
+        vvdGrpc: answer
+      })
+      expect(row).toEqual({
+        id: 'grpc',
+        name: 'Emulator gRPC',
+        status: 'warn',
+        detail: 'Couldn’t enable',
+        hint: 'Turn it on with ovd vvd start',
+        fix: 'enable-vvd-grpc'
+      })
+    })
+
+    test.each([
+      ['stopped', [stick, vvd], { status: 'info', detail: 'Not running' }],
+      ['absent', [stick], { status: 'info', detail: 'Not running' }],
+      [
+        'starting',
+        [stick, { ...vvd, status: 'starting' as const }],
+        { status: 'info', detail: 'Waiting for the Virtual Device' }
+      ]
+    ])('%s Virtual Device', async (_, devices, expected) => {
+      const { row } = await grpcRow({ snapshot: { devices, target: stick.id } })
+      expect(row).toMatchObject(expected)
+    })
+
+    test('doctor never turns gRPC on: no command runs for the row', async () => {
+      const { runner } = await grpcRow({
+        snapshot: { devices: [vvdOnline], target: null },
+        vvdGrpc: { status: 'off' }
+      })
+      expect(runner.calls.map((c) => c.display)).not.toContainEqual(expect.stringContaining('grpc'))
     })
   })
 })

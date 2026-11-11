@@ -1,4 +1,4 @@
-import type { Device, VvdState } from '@ovd/core'
+import type { Device, VvdStartResult, VvdState } from '@ovd/core'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 import type { IpcResult, OvdApi } from '../../../../src/preload/api'
@@ -34,9 +34,25 @@ function pending<T>(): Pending<T> {
   return { promise, resolve }
 }
 
-const started: IpcResult<VvdState> = {
+const started: IpcResult<VvdStartResult> = {
   ok: true,
-  data: { running: true, status: 'online', device: vvdOnline }
+  data: { running: true, status: 'online', device: vvdOnline, grpc: { status: 'on', port: 8554 } }
+}
+const startedWithoutGrpc: IpcResult<VvdStartResult> = {
+  ok: true,
+  data: {
+    running: true,
+    status: 'online',
+    device: vvdOnline,
+    grpc: {
+      status: 'failed',
+      error: {
+        code: 'VVD_GRPC_FAILED',
+        message: '~/.emulator_console_auth_token is missing or unreadable',
+        hint: 'Restart the Virtual Device with ovd vvd stop, then ovd vvd start'
+      }
+    }
+  }
 }
 const failed = (code: 'VVD_START_FAILED' | 'VVD_STOP_FAILED' | 'VVD_DEVMODE_FAILED') => ({
   ok: false as const,
@@ -60,7 +76,7 @@ async function openVvd(): Promise<HTMLElement> {
 
 describe('Virtual Device start / stop', () => {
   test('the stopped card starts it; the button and status show progress, then a toast', async () => {
-    const start = pending<IpcResult<VvdState>>()
+    const start = pending<IpcResult<VvdStartResult>>()
     const api = renderWith([stick, vvd], { start: () => start.promise })
     const list = await openVvd()
     expect(screen.getByText('The Virtual Device is stopped.')).toBeTruthy()
@@ -75,6 +91,19 @@ describe('Virtual Device start / stop', () => {
     await act(async () => start.resolve(started))
     expect(screen.getByText('Virtual Device started')).toBeTruthy()
     expect(screen.getAllByText(/ovd vvd start/).length).toBeGreaterThan(0)
+  })
+
+  test('started without emulator gRPC: a warning toast with the hint and the echo', async () => {
+    renderWith([stick, vvd], { start: async () => startedWithoutGrpc })
+    await openVvd()
+    fireEvent.click(screen.getByRole('button', { name: 'Start Virtual Device' }))
+    expect(
+      await screen.findByText(
+        'Virtual Device started, but emulator gRPC couldn’t be turned on. Restart the Virtual Device with ovd vvd stop, then ovd vvd start.'
+      )
+    ).toBeTruthy()
+    expect(screen.queryByText('Virtual Device started')).toBeNull()
+    expect(screen.getAllByText(/ovd vvd start$/).length).toBeGreaterThan(0)
   })
 
   test('the header Start button starts it too', async () => {

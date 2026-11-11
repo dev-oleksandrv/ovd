@@ -72,6 +72,9 @@ export interface World {
   // runner is serial, so a held command holds every SDK call after it too. A timing knob
   // (docs/conventions/testing.md): it delays the recorded answer, never changes it.
   hold: string[]
+  // Whether `~/.emulator_console_auth_token` exists, which the emulator console's `auth` needs.
+  // Read when the sandbox opens.
+  consoleToken: 'present' | 'missing'
 }
 
 export interface Stick {
@@ -121,7 +124,8 @@ export function defaultWorld(): World {
     logStream: { ends: false, holdAfterLine: null },
     vvdLogStreams: 0,
     loginHold: false,
-    hold: []
+    hold: [],
+    consoleToken: 'present'
   }
 }
 
@@ -139,6 +143,12 @@ export function usbStick(overrides: Partial<Stick> = {}): Stick {
 
 export function worldFile(dir: string): string {
   return join(dir, 'world.json')
+}
+
+// Where the fake emulator writes its discovery file (`OVD_EMULATOR_DISCOVERY_DIR`); the fake
+// `vega virtual-device start` and `stop` empty it, as a restart turns gRPC off.
+export function discoveryDir(dir: string): string {
+  return join(dir, 'avd-running')
 }
 
 export function callsFile(dir: string): string {

@@ -20,6 +20,8 @@ import { createSdkLocator, type SdkLocator } from './sdk/sdkLocator.js'
 import { createSerialRunner } from './sdk/serialRunner.js'
 import { resolveOvdHome } from './state/ovdHome.js'
 import { createStateStore } from './state/stateStore.js'
+import { createEmulator } from './vvd/emulator.js'
+import { discoveryDirectories } from './vvd/emulatorDiscovery.js'
 import { createVvd, type Vvd } from './vvd/vvd.js'
 import { createWatch, type Watch } from './watch/watch.js'
 
@@ -66,7 +68,17 @@ export function createOvd(opts: OvdOptions): Ovd {
   })
   const state = createStateStore(home)
   const devices = createDevices({ runner, sdk, state, activity, env })
-  const vvd = createVvd({ runner, sdk, devices, activity })
+  const emulator = createEmulator({
+    homedir,
+    env,
+    directories: discoveryDirectories({
+      homedir,
+      env,
+      platform: process.platform,
+      ...(process.getuid ? { uid: process.getuid() } : {})
+    })
+  })
+  const vvd = createVvd({ runner, sdk, devices, activity, emulator })
   const project = createProject({ state, homedir, cwd: opts.cwd ?? process.cwd() })
   const doctor = createDoctor({
     runner,

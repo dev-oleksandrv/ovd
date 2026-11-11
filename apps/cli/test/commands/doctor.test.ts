@@ -20,7 +20,8 @@ const healthy: DoctorReport = {
       status: 'info',
       detail: '8081, 8097 free on this computer · no target device',
       command: 'vega device is-port-forwarded'
-    }
+    },
+    { id: 'grpc', name: 'Emulator gRPC', status: 'ok', detail: 'On · :8554' }
   ]
 }
 
@@ -75,6 +76,29 @@ describe('ovd doctor', () => {
     })
     expect(JSON.parse(stdout)).toMatchObject({ ok: false, error: { code: 'UNEXPECTED_OUTPUT' } })
     expect(exitCode).toBe(1)
+  })
+
+  test('the Emulator gRPC row: a warning keeps exit 0 and comes through as is', async () => {
+    const grpcOff: DoctorReport = {
+      host,
+      checks: [
+        {
+          id: 'grpc',
+          name: 'Emulator gRPC',
+          status: 'warn',
+          detail: 'Couldn’t enable',
+          hint: 'Turn it on with ovd vvd start',
+          fix: 'enable-vvd-grpc'
+        }
+      ]
+    }
+    const json = await cli(['doctor', '--json'], { ovd: withReport(async () => grpcOff) })
+    expect(JSON.parse(json.stdout)).toEqual({ ok: true, ...grpcOff })
+    expect(json.exitCode).toBe(0)
+    const human = await cli(['doctor'], { ovd: withReport(async () => grpcOff) })
+    expect(human.stdout).toContain(
+      '! Emulator gRPC  Couldn’t enable\n  → Turn it on with ovd vvd start'
+    )
   })
 
   test('doctor.run gets an abort signal', async () => {

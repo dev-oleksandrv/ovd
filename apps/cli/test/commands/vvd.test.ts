@@ -1,4 +1,4 @@
-import type { VvdState } from '@ovd/core'
+import type { VvdStartResult, VvdState } from '@ovd/core'
 import { describe, expect, test, vi } from 'vitest'
 import { cli } from '../support/runCli.js'
 import { fail, stubVvd, vvd } from '../support/sample.js'
@@ -23,6 +23,18 @@ const online: VvdState = {
   }
 }
 const stopped: VvdState = { running: false, status: 'stopped', device: vvd }
+const started: VvdStartResult = { ...online, grpc: { status: 'on', port: 8554 } }
+const grpcFailed: VvdStartResult = {
+  ...online,
+  grpc: {
+    status: 'failed',
+    error: {
+      code: 'VVD_GRPC_FAILED',
+      message: '~/.emulator_console_auth_token is missing or unreadable',
+      hint: 'Restart the Virtual Device with ovd vvd stop, then ovd vvd start'
+    }
+  }
+}
 
 describe('ovd vvd status', () => {
   test.each([online, stopped])('--json prints the state ($status)', async (state) => {
@@ -51,19 +63,46 @@ describe('ovd vvd status', () => {
 
 describe('ovd vvd start', () => {
   test('--json prints the started device; progress goes to stderr', async () => {
-    const start = vi.fn(async () => online)
+    const start = vi.fn(async () => started)
     const { stdout, stderr, exitCode } = await cli(['vvd', 'start', '--json'], {
       ovd: stubVvd({ start })
     })
-    expect(JSON.parse(stdout)).toEqual({ ok: true, vvd: online })
+    expect(JSON.parse(stdout)).toEqual({ ok: true, vvd: started })
     expect(stderr).toBe('Starting the Virtual Device…\n')
     expect(exitCode).toBe(0)
     expect(start).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) })
   })
 
-  test('human output', async () => {
-    const { stdout } = await cli(['vvd', 'start'], { ovd: stubVvd({ start: async () => online }) })
+  test('human output names the gRPC port', async () => {
+    const { stdout, stderr } = await cli(['vvd', 'start'], {
+      ovd: stubVvd({ start: async () => started })
+    })
+    expect(stdout).toBe(
+      'Virtual Device started (VirtualDevice · aarch64)\nEmulator gRPC on · :8554\n'
+    )
+    expect(stderr).toBe('Starting the Virtual Device…\n')
+  })
+
+  test('gRPC failed: the start still succeeds, the warning and hint go to stderr', async () => {
+    const { stdout, stderr, exitCode } = await cli(['vvd', 'start'], {
+      ovd: stubVvd({ start: async () => grpcFailed })
+    })
     expect(stdout).toBe('Virtual Device started (VirtualDevice · aarch64)\n')
+    expect(stderr).toBe(
+      'Starting the Virtual Device…\n' +
+        '! Emulator gRPC couldn’t be turned on: ~/.emulator_console_auth_token is missing or unreadable\n' +
+        '  → Restart the Virtual Device with ovd vvd stop, then ovd vvd start\n'
+    )
+    expect(exitCode).toBe(0)
+  })
+
+  test('gRPC failed with --json: only the document says so, exit 0', async () => {
+    const { stdout, stderr, exitCode } = await cli(['vvd', 'start', '--json'], {
+      ovd: stubVvd({ start: async () => grpcFailed })
+    })
+    expect(JSON.parse(stdout)).toEqual({ ok: true, vvd: grpcFailed })
+    expect(stderr).toBe('Starting the Virtual Device…\n')
+    expect(exitCode).toBe(0)
   })
 
   test('a failed start exits 1', async () => {
@@ -77,7 +116,7 @@ describe('ovd vvd start', () => {
   test('Ctrl+C aborts the start', async () => {
     let interrupt: (() => void) | undefined
     const start = ({ signal }: { signal?: AbortSignal } = {}) =>
-      new Promise<VvdState>((_resolve, reject) => {
+      new Promise<VvdStartResult>((_resolve, reject) => {
         signal?.addEventListener('abort', () => {
           const error = new Error('The operation was aborted')
           error.name = 'AbortError'

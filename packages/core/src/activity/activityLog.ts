@@ -12,6 +12,7 @@ export const ACTIVITY_ACTIONS = [
   'vvd.start',
   'vvd.stop',
   'vvd.devmode.enable',
+  'vvd.grpc.enable',
   'devmode.enable',
   'pair.tcpip',
   'pair.connect',

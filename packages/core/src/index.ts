@@ -106,7 +106,26 @@ export type {
   ProjectDoctorReport
 } from './doctor/types.js'
 export { createVvd } from './vvd/vvd.js'
-export type { Vvd, VvdDeps, VvdState, VvdStatus } from './vvd/vvd.js'
+export type {
+  Vvd,
+  VvdDeps,
+  VvdGrpc,
+  VvdGrpcProbe,
+  VvdStartResult,
+  VvdState,
+  VvdStatus
+} from './vvd/vvd.js'
+export {
+  consoleReplyDone,
+  isConsoleGreeting,
+  parseConsoleReply,
+  parseGrpcEnabled
+} from './adapters/parseEmulatorConsole.js'
+export type { ConsoleReply } from './adapters/parseEmulatorConsole.js'
+export { parseEmulatorDiscovery } from './adapters/parseEmulatorDiscovery.js'
+export type { EmulatorDiscovery } from './adapters/parseEmulatorDiscovery.js'
+export { createEmulator } from './vvd/emulator.js'
+export type { Emulator, EmulatorDeps, EmulatorGrpcState } from './vvd/emulator.js'
 export { createPairing } from './pairing/pairing.js'
 export { TV_USB_MODE } from './pairing/pairing.js'
 export type { ForgetResult, Pairing, PairingDeps } from './pairing/pairing.js'

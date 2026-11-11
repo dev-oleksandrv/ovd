@@ -33,6 +33,15 @@ const noDevices = doctorReport({
   devices: { status: 'warn', detail: 'No devices connected', fix: 'start-vvd' }
 })
 
+const grpcOff = doctorReport({
+  grpc: {
+    status: 'warn',
+    detail: 'Couldn’t enable',
+    hint: 'Turn it on with ovd vvd start',
+    fix: 'enable-vvd-grpc'
+  }
+})
+
 const vvdDevmodeOff = doctorReport({
   devmode: {
     status: 'warn',
@@ -45,6 +54,13 @@ const vvdDevmodeOff = doctorReport({
 
 // Each call to doctor.run answers with the next report; the last one repeats.
 async function renderApp(...reports: DoctorReport[]): Promise<OvdApi> {
+  return renderWithVvd({}, ...reports)
+}
+
+async function renderWithVvd(
+  vvdApi: Partial<OvdApi['vvd']>,
+  ...reports: DoctorReport[]
+): Promise<OvdApi> {
   let call = 0
   const { api } = stubOvd({
     list: async () => ready([stick, vvd], stick.id),
@@ -53,9 +69,15 @@ async function renderApp(...reports: DoctorReport[]): Promise<OvdApi> {
     vvd: {
       start: async () => ({
         ok: true,
-        data: { running: true, status: 'online', device: { ...vvd, status: 'online' } }
+        data: {
+          running: true,
+          status: 'online',
+          device: { ...vvd, status: 'online' },
+          grpc: { status: 'on', port: 8554 }
+        }
       }),
-      enableDeveloperMode: async () => ({ ok: true, data: { developerMode: true } })
+      enableDeveloperMode: async () => ({ ok: true, data: { developerMode: true } }),
+      ...vvdApi
     }
   })
   render(
@@ -158,12 +180,79 @@ describe('Doctor tab', () => {
     expect(within(rows).queryByRole('button', { name: 'Enable' })).toBeNull()
   })
 
+  test('Emulator gRPC off: Turn on starts the Virtual Device again and checks again', async () => {
+    const api = await renderApp(grpcOff, doctorReport())
+    fireEvent.click(nav('Doctor'))
+    const rows = await screen.findByRole('list', { name: 'Checks' })
+    expect(within(rows).getByText('Couldn’t enable')).toBeTruthy()
+    fireEvent.click(within(rows).getByRole('button', { name: 'Turn on' }))
+    expect(api.vvd.start).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('Emulator gRPC on')).toBeTruthy()
+    expect(screen.getAllByText(/ovd vvd start$/).length).toBeGreaterThan(0)
+    expect(api.doctor.run).toHaveBeenCalledTimes(2)
+    expect(await within(rows).findByText('On · :8554')).toBeTruthy()
+    expect(within(rows).queryByRole('button', { name: 'Turn on' })).toBeNull()
+  })
+
+  test('Turn on that fails: an error toast with the hint and Retry, then checks again', async () => {
+    const api = await renderWithVvd(
+      {
+        start: async () => ({
+          ok: true,
+          data: {
+            running: true,
+            status: 'online',
+            device: { ...vvd, status: 'online' },
+            grpc: {
+              status: 'failed',
+              error: {
+                code: 'VVD_GRPC_FAILED',
+                message: '~/.emulator_console_auth_token is missing or unreadable',
+                hint: 'Restart the Virtual Device with ovd vvd stop, then ovd vvd start'
+              }
+            }
+          }
+        })
+      },
+      grpcOff
+    )
+    fireEvent.click(nav('Doctor'))
+    const rows = await screen.findByRole('list', { name: 'Checks' })
+    fireEvent.click(within(rows).getByRole('button', { name: 'Turn on' }))
+    expect(
+      await screen.findByText(
+        'Emulator gRPC couldn’t be turned on. Restart the Virtual Device with ovd vvd stop, then ovd vvd start.'
+      )
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+    expect(api.doctor.run).toHaveBeenCalledTimes(2)
+    expect(await within(rows).findByRole('button', { name: 'Turn on' })).toBeTruthy()
+  })
+
+  test('Turn on with an IPC error toasts its hint', async () => {
+    await renderWithVvd(
+      {
+        start: async () => ({
+          ok: false,
+          error: { code: 'VVD_START_FAILED', message: 'failed', hint: 'Run it in a terminal' }
+        })
+      },
+      grpcOff
+    )
+    fireEvent.click(nav('Doctor'))
+    const rows = await screen.findByRole('list', { name: 'Checks' })
+    fireEvent.click(within(rows).getByRole('button', { name: 'Turn on' }))
+    expect(
+      await screen.findByText('Emulator gRPC couldn’t be turned on. Run it in a terminal.')
+    ).toBeTruthy()
+  })
+
   test('the sidebar opens Doctor with the summary and every row', async () => {
     await renderApp(noDevices)
     fireEvent.click(nav('Doctor'))
     expect(await screen.findByText('0 failing · 1 warning')).toBeTruthy()
     const rows = screen.getByRole('list', { name: 'Checks' })
-    expect(within(rows).getAllByRole('listitem')).toHaveLength(6)
+    expect(within(rows).getAllByRole('listitem')).toHaveLength(7)
     expect(within(rows).getByText('No devices connected')).toBeTruthy()
     expect(within(rows).getByText('vega exec vda devices -l')).toBeTruthy()
   })

@@ -11,6 +11,7 @@ interface DoctorTabProps {
   // Shown once first run completes: "Setup complete" with a way to Devices.
   onSetupDone?: () => void
   enableVvdDevmode?: { busy: boolean; onEnable: () => void }
+  enableVvdGrpc?: { busy: boolean; onEnable: () => void }
   onSetup?: () => void
   onOpenFolder?: () => void
   onProjectDetails?: () => void
@@ -22,6 +23,7 @@ export function DoctorTab({
   onRun,
   onSetupDone,
   enableVvdDevmode,
+  enableVvdGrpc,
   onSetup,
   onOpenFolder,
   onProjectDetails
@@ -56,6 +58,7 @@ export function DoctorTab({
             check={check}
             checking={running}
             {...(enableVvdDevmode ? { enableVvdDevmode } : {})}
+            {...(enableVvdGrpc ? { enableVvdGrpc } : {})}
             {...(onSetup ? { onSetup } : {})}
             {...(onOpenFolder ? { onOpenFolder } : {})}
             {...(onProjectDetails ? { onDetails: onProjectDetails } : {})}

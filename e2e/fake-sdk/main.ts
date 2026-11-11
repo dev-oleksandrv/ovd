@@ -1,12 +1,13 @@
 // The fake `vega`: answers each command core runs with a recorded output from fixtures/0.24
 // and its recorded exit code, and applies the command's effect to the world. A command with
 // no recording fails loudly and is logged as unhandled, which fails the test.
-import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   ALL_PACKAGES,
   callsFile,
+  discoveryDir,
   loginProbesFile,
   logStreamsFile,
   readWorld,
@@ -514,6 +515,8 @@ function virtualDevice(w: World, sub: string | undefined): Reply | null {
       return { stderr: fixture('vega-virtual-device-start/already-running.stderr.txt') }
     }
     w.vvd.running = true
+    // Emulator gRPC is off after every start (ARCHITECTURE §8).
+    rmSync(discoveryDir(dir as string), { recursive: true, force: true })
     return { stdout: fixture('vega-virtual-device-start/started.txt') }
   }
   if (sub === 'stop') {
@@ -522,6 +525,7 @@ function virtualDevice(w: World, sub: string | undefined): Reply | null {
     }
     // No recording: core only reads the exit code of a successful stop.
     w.vvd.running = false
+    rmSync(discoveryDir(dir as string), { recursive: true, force: true })
     return {}
   }
   return null

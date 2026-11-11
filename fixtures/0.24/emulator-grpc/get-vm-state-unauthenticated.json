@@ -1,0 +1,10 @@
+{
+  "headers": {
+    ":status": 200,
+    "content-type": "application/grpc",
+    "grpc-status": "16",
+    "grpc-message": "Missing the 'authorization' header with security credentials."
+  },
+  "trailers": {},
+  "body": ""
+}

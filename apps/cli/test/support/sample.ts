@@ -97,6 +97,7 @@ export function stubVvd(vvd: Partial<Vvd>): Partial<Ovd> {
       stop: missing('stop'),
       developerMode: missing('developerMode'),
       enableDeveloperMode: missing('enableDeveloperMode'),
+      grpc: missing('grpc'),
       ...vvd
     }
   }

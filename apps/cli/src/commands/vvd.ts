@@ -1,7 +1,7 @@
 import type { Command } from 'commander'
-import { OvdError } from '@ovd/core'
+import { OvdError, type VvdStartResult } from '@ovd/core'
 import type { CliDeps } from '../program.js'
-import { vvdStartedLine, vvdStatusLine } from '../format/vvd.js'
+import { vvdGrpcWarning, vvdStartedLine, vvdStatusLine } from '../format/vvd.js'
 import { report } from '../report.js'
 import { reportContext } from './context.js'
 
@@ -27,10 +27,15 @@ export function registerVvd(
     .description('Start the Virtual Device and wait until it is ready')
     .action(async (_opts, cmd: Command) => {
       const ctx = reportContext(cmd, deps, setExitCode)
-      await report(ctx, () => cancellable((signal) => deps.ovd().vvd.start({ signal })), {
-        json: (state) => ({ vvd: state }),
-        human: vvdStartedLine
-      })
+      let started: VvdStartResult | undefined
+      await report(
+        ctx,
+        async () => (started = await cancellable((signal) => deps.ovd().vvd.start({ signal }))),
+        { json: (state) => ({ vvd: state }), human: vvdStartedLine }
+      )
+      // A gRPC failure doesn't fail the start (exit 0); `--json` carries it in `vvd.grpc`.
+      const warning = started && !ctx.json ? vvdGrpcWarning(started) : null
+      if (warning) deps.output.stderr(warning)
     })
 
   vvd

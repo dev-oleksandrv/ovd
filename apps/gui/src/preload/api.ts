@@ -25,6 +25,7 @@ import type {
   RunStep,
   TerminateResult,
   UninstallResult,
+  VvdStartResult,
   VvdState
 } from '@ovd/core'
 
@@ -156,8 +157,8 @@ export interface OvdApi {
     onChange(listener: (update: DevicesUpdate) => void): () => void
   }
   vvd: {
-    // Resolves once VDA lists the Virtual Device online.
-    start(): Promise<IpcResult<VvdState>>
+    // Resolves once VDA lists the Virtual Device online, with emulator gRPC on or why not.
+    start(): Promise<IpcResult<VvdStartResult>>
     stop(): Promise<IpcResult<VvdState>>
     enableDeveloperMode(): Promise<IpcResult<{ developerMode: true }>>
   }

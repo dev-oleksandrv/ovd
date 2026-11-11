@@ -44,7 +44,7 @@ describe('ovd doctor', () => {
     expect(checks.sdk?.hint).toContain(
       'https://developer.amazon.com/docs/vega/0.24/sdk-manager.html'
     )
-    for (const id of ['vda', 'devices', 'devmode', 'metro']) {
+    for (const id of ['vda', 'devices', 'devmode', 'metro', 'grpc']) {
       expect(checks[id]).toMatchObject({ status: 'skipped', detail: 'Waiting for the Vega SDK' })
     }
     expect(sandbox.calls()).toEqual([])

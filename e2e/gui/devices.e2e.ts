@@ -227,7 +227,11 @@ test.describe('Virtual Device', () => {
 
     await expect(toast(page, 'Virtual Device stopped')).toContainText('$ ovd vvd stop')
     await expect(deviceRow(page, /Vega Virtual Device.*Stopped/)).toBeVisible()
-    expect(sandbox.activity().map((a) => a.action)).toEqual(['vvd.start', 'vvd.stop'])
+    expect(sandbox.activity().map((a) => a.action)).toEqual([
+      'vvd.start',
+      'vvd.grpc.enable',
+      'vvd.stop'
+    ])
     expect(sandbox.activity().every((a) => a.surface === 'desktop')).toBe(true)
   })
 
