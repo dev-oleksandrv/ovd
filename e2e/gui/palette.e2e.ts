@@ -11,14 +11,7 @@ async function runCommand(page: Page, query: string): Promise<void> {
 }
 
 // The screens of later stages (ADR 0018): listed in the palette, never in the sidebar.
-const LATER = [
-  'Crashes',
-  'Remote & Screen',
-  'Shell',
-  'Deep links',
-  'Performance',
-  'Scenarios & MCP'
-]
+const LATER = ['Crashes', 'Shell', 'Deep links', 'Performance', 'Scenarios & MCP']
 
 test.use({ world: { stick: usbStick(), vvd: { running: true, developerMode: true } } })
 

@@ -166,6 +166,18 @@ export function loginProbesFile(dir: string): string {
   return join(dir, 'login-probes.jsonl')
 }
 
+// One `{ line }` per line the fake `inputd-cli start` console read on stdin, in order, across
+// consoles.
+export function inputConsoleFile(dir: string): string {
+  return join(dir, 'input-console.jsonl')
+}
+
+// One `{ pid }` line per `inputd-cli start` console the fake started, so a test can check none
+// is left.
+export function inputConsolesFile(dir: string): string {
+  return join(dir, 'input-consoles.jsonl')
+}
+
 export function readWorld(dir: string): World {
   return JSON.parse(readFileSync(worldFile(dir), 'utf8')) as World
 }

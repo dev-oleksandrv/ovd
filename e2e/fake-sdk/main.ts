@@ -8,6 +8,8 @@ import {
   ALL_PACKAGES,
   callsFile,
   discoveryDir,
+  inputConsoleFile,
+  inputConsolesFile,
   loginProbesFile,
   logStreamsFile,
   readWorld,
@@ -226,6 +228,51 @@ async function vvdLogStream(): Promise<Reply> {
   return new Promise(() => setInterval(() => undefined, 60_000))
 }
 
+// `inputd-cli start` on the stick (fixtures/0.24/inputd-cli-console, recorded on the Virtual
+// Device): the welcome, then one recorded answer per stdin line, with the key or text asked for
+// put where the recording has its own (fixtures/0.24/README.md). `exit` prints `exiting...` and
+// exits 0; so do stdin's end and SIGTERM (default handling) to its group.
+function inputdAnswer(line: string): string {
+  const press = /^button_press (\S+)$/.exec(line)
+  if (press?.[1] && /^KEY_[A-Z]+$/.test(press[1]) && press[1] !== 'KEY_NOPE') {
+    const key = press[1]
+    return fixture('inputd-cli-console/button-press.txt').replace('KEY_UP', () => key)
+  }
+  const text = /^send_text "((?:[^"\\]|\\.)*)"$/.exec(line)
+  if (text?.[1] !== undefined) {
+    const typed = text[1].replace(/\\(.)/g, '$1')
+    return fixture('inputd-cli-console/send-text.txt').replace('hello world', () => typed)
+  }
+  const name = press?.[1] ?? line.split(' ')[1] ?? ''
+  return fixture('inputd-cli-console/invalid-button.txt').replace('KEY_NOPE', () => name)
+}
+
+async function inputdConsole(): Promise<Reply> {
+  appendFileSync(inputConsolesFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
+  // Logged now: the console runs until `exit` or its group is signalled.
+  log(true)
+  wroteWorld = true
+  process.stdout.write(fixture('inputd-cli-console/welcome.txt'))
+  let pending = ''
+  process.stdin.setEncoding('utf8')
+  process.stdin.on('data', (chunk: string) => {
+    pending += chunk
+    let at: number
+    while ((at = pending.indexOf('\n')) >= 0) {
+      const line = pending.slice(0, at)
+      pending = pending.slice(at + 1)
+      appendFileSync(inputConsoleFile(dir as string), `${JSON.stringify({ line })}\n`)
+      if (line === 'exit') {
+        process.stdout.write(fixture('inputd-cli-console/exit.txt'), () => process.exit(0))
+        return
+      }
+      process.stdout.write(inputdAnswer(line))
+    }
+  })
+  process.stdin.on('end', () => process.exit(0))
+  return new Promise(() => setInterval(() => undefined, 60_000))
+}
+
 function enableDevice(w: World, rest: string[]): Reply | null {
   const code = rest[1]
   if (rest[0] !== '--code' || code === undefined || rest.at(-1) !== '--json') return null
@@ -311,6 +358,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
     }
     if (!stickOnUsb(w)) return notFound(sub, 'vda-shell/stick-usb-not-found.stderr.txt')
     if (sub === 'shell loggingctl log -f -o short_concise') return logStream(w)
+    if (sub === 'shell inputd-cli start') return inputdConsole()
     return stickApps(w, serial, sub)
   }
   if (serial === STICK_ADDRESS && sub === 'usb' && w.stick && stickOnWifi(w)) {
@@ -322,7 +370,10 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
     return notFound(sub, 'vda-shell/stick-wifi-not-found.stderr.txt')
   }
   // Listed but offline (connected, stick unreachable): not recorded, so not answered.
-  if (serial === STICK_ADDRESS && stickOnWifi(w)) return stickApps(w, serial, sub)
+  if (serial === STICK_ADDRESS && stickOnWifi(w)) {
+    if (sub === 'shell inputd-cli start') return inputdConsole()
+    return stickApps(w, serial, sub)
+  }
   return null
 }
 
