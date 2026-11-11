@@ -30,7 +30,8 @@ How core calls the Vega SDK. What the SDK actually does, quirks included, is in 
 - A long-running SDK stream (`loggingctl log -f`) runs in its own process group and is stopped by signalling the group (SIGTERM, then SIGKILL after a grace period); signalling the top `vega` alone orphans the chain (ARCHITECTURE §8).
 - A background device capture is always stopped in a `finally` with `pkill -P <timeout pid>` (plain `kill` orphans `loggingctl`), and runs under a `timeout` that outlives the action, so it ends even when OVD can't stop it.
 - Restart the log stream after every install OVD makes (ADR 0014). A restarted stream first prints the journal backlog again, and core drops what it already delivered (ARCHITECTURE §8). Release builds send `console.log`, `info`, `warn` and `error`; Debug builds have sent each line twice (once on a stick in a later check; ARCHITECTURE §8); `console.debug` and anything logged before `AppRegistry.registerComponent` never show up, and a bundler config such as Babel `transform-remove-console` may still strip logs (ARCHITECTURE §8).
-- On the Virtual Device, send keys and take screenshots through emulator gRPC, enabling it after every start (ADR 0010).
+- On the Virtual Device, send keys and take screenshots through emulator gRPC, enabling it after every start (ADR 0010). Type text there as one evdev key per character (US layout, explicit `KEY_LEFTSHIFT`), never with `KeyboardEvent.text` (ARCHITECTURE §8), and refuse non-ASCII text before sending anything.
+- On a stick, send keys and text through one persistent `inputd-cli start` console per session. Judge each command by its reply (`Injecting …`), never by an exit code: the one-shot form exits 0 for an invalid key. Put `send_text`'s text in double quotes with `"` and `\` escaped; never log the text, only its length.
 - Report KPI Visualizer failures on warm starts on the Virtual Device and on offline apps as warnings.
 
 ## Architectures
