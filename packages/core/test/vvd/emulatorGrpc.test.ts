@@ -16,7 +16,7 @@ afterEach(() => {
 
 describe('createEmulatorGrpc', () => {
   test('has only getVmState and sendKey: never getStatus, which kills the Virtual Device', () => {
-    expect(Object.keys(client('silent').grpc).sort()).toEqual(['sendKey', 'vmState'])
+    expect(Object.keys(client('silent').grpc).sort()).toEqual(['sendKey', 'sendKeys', 'vmState'])
   })
 
   test('vmState calls getVmState over h2c with the Bearer token', async () => {
@@ -78,5 +78,66 @@ describe('createEmulatorGrpc', () => {
       message: 'Emulator gRPC didn’t answer getVmState in time'
     })
     expect(fake.sessions[0]?.destroyed).toBe(true)
+  })
+
+  describe('sendKeys', () => {
+    const DOWN = { keyCode: 108, eventType: 'down' as const }
+    const UP = { keyCode: 108, eventType: 'up' as const }
+
+    test('sends every event in order over one session, then closes it', async () => {
+      const { fake, grpc } = client('send-key.json')
+      await grpc.sendKeys([DOWN, UP, { keyCode: 96, eventType: 'down' }])
+      expect(fake.requests.map((r) => r.body.toString('hex'))).toEqual([
+        '0000000004080118' + '6c',
+        '000000000608011001186c',
+        '0000000004080118' + '60'
+      ])
+      expect(new Set(fake.requests.map((r) => r.headers[':path']))).toEqual(
+        new Set([`${SERVICE}/sendKey`])
+      )
+      expect(fake.sessions).toEqual([{ closed: true, destroyed: false }])
+    })
+
+    test('nothing to send opens no session', async () => {
+      const { fake, grpc } = client('send-key.json')
+      await grpc.sendKeys([])
+      expect(fake.sessions).toEqual([])
+    })
+
+    test('an error mid-sequence stops it and destroys the session', async () => {
+      let n = 0
+      const { fake, grpc } = client(() =>
+        ++n === 2 ? 'get-vm-state-unauthenticated.json' : 'send-key.json'
+      )
+      await expect(grpc.sendKeys([DOWN, UP, DOWN, UP])).rejects.toMatchObject({
+        code: 'VVD_GRPC_FAILED',
+        message: 'Emulator gRPC rejected OVD’s token'
+      })
+      expect(fake.requests).toHaveLength(2)
+      expect(fake.sessions).toEqual([{ closed: false, destroyed: true }])
+    })
+
+    test('the sequence gets 3 s plus 50 ms per event', async () => {
+      vi.useFakeTimers()
+      const { fake, grpc } = client('silent')
+      const result = grpc.sendKeys([DOWN, UP, DOWN, UP]).catch((e: unknown) => e)
+      await vi.advanceTimersByTimeAsync(3_199)
+      expect(fake.sessions[0]?.destroyed).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(await result).toMatchObject({
+        code: 'VVD_GRPC_FAILED',
+        message: 'Emulator gRPC didn’t answer sendKey in time'
+      })
+      expect(fake.sessions[0]?.destroyed).toBe(true)
+    })
+
+    test('an abort rejects with an AbortError and destroys the session', async () => {
+      const controller = new AbortController()
+      const { fake, grpc } = client('silent')
+      const result = grpc.sendKeys([DOWN], { signal: controller.signal }).catch((e: unknown) => e)
+      controller.abort()
+      expect(await result).toMatchObject({ name: 'AbortError' })
+      expect(fake.sessions[0]?.destroyed).toBe(true)
+    })
   })
 })

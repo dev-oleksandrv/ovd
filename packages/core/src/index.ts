@@ -66,7 +66,7 @@ export { createSdkLocator } from './sdk/sdkLocator.js'
 export type { SdkLocator } from './sdk/sdkLocator.js'
 export { createExecaRunner } from './sdk/runner.js'
 export { createSerialRunner } from './sdk/serialRunner.js'
-export type { CommandSpec, Runner, RunResult } from './sdk/runner.js'
+export type { CommandSpec, Runner, RunResult, StreamWriter } from './sdk/runner.js'
 export { processGroups } from './sdk/processGroups.js'
 export type { ProcessGroups } from './sdk/processGroups.js'
 export { resolveOvdHome } from './state/ovdHome.js'
@@ -231,3 +231,17 @@ export type {
   WatchHandle,
   WatchOptions
 } from './watch/watch.js'
+export { createInput, MAX_TEXT_LENGTH } from './input/input.js'
+export type {
+  Input,
+  InputBackend,
+  InputDeps,
+  InputOptions,
+  InputSession,
+  InputTarget,
+  PressResult,
+  TextResult
+} from './input/input.js'
+export { GRPC_KEYS, INPUTD_KEYS, isRemoteKey, REMOTE_KEYS } from './input/keys.js'
+export type { RemoteKey } from './input/keys.js'
+export type { KeyEvent } from './vvd/emulatorGrpc.js'

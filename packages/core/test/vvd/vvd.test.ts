@@ -94,6 +94,9 @@ function fakeEmulator(enables: Enable[] = ['on']) {
     async grpc(serial) {
       probes.push(serial)
       return { status: 'on', port: 8554 }
+    },
+    async sendKeys() {
+      throw new Error('vvd must not send keys')
     }
   }
   return { emulator, attempts, probes }
@@ -329,6 +332,54 @@ describe('Vvd.grpc', () => {
     expect(await vvd.grpc(d)).toEqual(expected)
     expect(probes).toEqual(probed)
     expect(runner.calls).toEqual([])
+  })
+})
+
+describe('Vvd.ensureGrpc', () => {
+  const vvdDevice = (status: Device['status']): Device => ({
+    id: 'VirtualDevice',
+    serial: 'VirtualDevice',
+    vdaSerial: 'emulator-5556',
+    name: 'Vega Virtual Device',
+    kind: 'vvd',
+    connection: 'local',
+    status,
+    isTarget: false,
+    saved: false
+  })
+
+  test('turns gRPC on for the device’s VDA serial and logs it once', async () => {
+    const { vvd, attempts, runner } = setup(phases(online))
+    expect(await vvd.ensureGrpc(vvdDevice('online'))).toEqual({ port: 8554 })
+    expect(attempts.map((a) => a.serial)).toEqual(['emulator-5556'])
+    expect(runner.calls).toEqual([])
+    expect(await activity()).toEqual([{ action: 'vvd.grpc.enable', result: 'ok' }])
+  })
+
+  test('retries a console that isn’t up yet, as start does', async () => {
+    const { vvd, attempts, sleeps } = setup(phases(online), ['refused', 'on'])
+    await vvd.ensureGrpc(vvdDevice('online'))
+    expect(attempts).toHaveLength(2)
+    expect(sleeps).toEqual([1_000])
+  })
+
+  test('a refusal throws VVD_GRPC_FAILED and is logged as an error', async () => {
+    const { vvd } = setup(phases(online), ['rejected'])
+    await expect(vvd.ensureGrpc(vvdDevice('online'))).rejects.toMatchObject({
+      code: 'VVD_GRPC_FAILED'
+    })
+    expect(await activity()).toEqual([
+      { action: 'vvd.grpc.enable', result: 'error', errorCode: 'VVD_GRPC_FAILED' }
+    ])
+  })
+
+  test('a stopped Virtual Device is TARGET_OFFLINE, and the console isn’t tried', async () => {
+    const { vvd, attempts } = setup(phases(stopped))
+    await expect(vvd.ensureGrpc(vvdDevice('stopped'))).rejects.toMatchObject({
+      code: 'TARGET_OFFLINE',
+      hint: 'Start it with ovd vvd start'
+    })
+    expect(attempts).toEqual([])
   })
 })
 

@@ -42,7 +42,11 @@ export const ERROR_CODES = [
   'COMMAND_FAILED',
   'UNEXPECTED_OUTPUT',
   'EXPORT_FILE_EXISTS',
-  'EXPORT_FAILED'
+  'EXPORT_FAILED',
+  'INVALID_KEY',
+  'KEY_UNSUPPORTED',
+  'INVALID_TEXT',
+  'INPUT_FAILED'
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

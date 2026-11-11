@@ -29,7 +29,19 @@ export interface CommandSpec {
   // only the top `vega` orphans the chain (ARCHITECTURE §8). An abort resolves with `stopped`.
   // A stream whose leader ends by itself has what is left of its group stopped the same way
   // before the run resolves, without `stopped`.
-  stream?: { onChunk: (chunk: string) => void; graceMs?: number }
+  // With `input` the stream's stdin is a pipe (else it is ignored): `input` gets a writer once
+  // the child is spawned, for consoles that read commands (`inputd-cli start`). Writes after
+  // stdin closed are dropped, and stdin is ended when the stream is stopped.
+  stream?: {
+    onChunk: (chunk: string) => void
+    graceMs?: number
+    input?: (writer: StreamWriter) => void
+  }
+}
+
+// What a stream's `input` writes to its stdin with.
+export interface StreamWriter {
+  write(text: string): void
 }
 
 export interface RunResult {
@@ -209,12 +221,22 @@ async function runStream(
     reject: false,
     buffer: false,
     detached: true,
-    stdin: 'ignore',
+    stdin: stream.input ? 'pipe' : 'ignore',
     env: spec.env,
     cwd: spec.cwd
   })
   const unregister = registerGroup(groups, subprocess.pid)
   try {
+    const { stdin } = subprocess
+    if (stream.input && stdin) {
+      // EPIPE once the child is gone: the write is lost, as the child can't read it anyway.
+      stdin.on('error', () => undefined)
+      stream.input({
+        write(text) {
+          if (!stdin.destroyed && !stdin.writableEnded) stdin.write(text)
+        }
+      })
+    }
     const decoder = new StringDecoder('utf8')
     subprocess.stdout.on('data', (chunk: Buffer) => {
       const text = decoder.write(chunk)
@@ -232,6 +254,7 @@ async function runStream(
     let stopping: Promise<void> | undefined
     const exited = subprocess.then(() => undefined)
     const stop = () => {
+      if (stdin && !stdin.destroyed && !stdin.writableEnded) stdin.end()
       stopping ??= stopGroup(subprocess.pid, exited, stream.graceMs ?? STREAM_GRACE_MS)
     }
     const { signal } = spec

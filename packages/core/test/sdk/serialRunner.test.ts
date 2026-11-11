@@ -98,3 +98,33 @@ test('a stream that prints nothing releases the queue after 5 s', async () => {
     vi.useRealTimers()
   }
 })
+
+test('a console stream gets its stdin writer, and its banner releases the queue', async () => {
+  let finishConsole = (): void => undefined
+  const order: string[] = []
+  const written: string[] = []
+  const inner: Runner = {
+    async run(s) {
+      order.push(`start ${s.display}`)
+      if (s.display === 'inputd-cli') {
+        s.stream?.input?.({ write: (text) => written.push(text) })
+        s.stream?.onChunk('Welcome to the Inputd command line!\n')
+        await new Promise<void>((resolve) => (finishConsole = resolve))
+      }
+      order.push(`end ${s.display}`)
+      return { stdout: '', stderr: '', exitCode: 0, durationMs: 0, command: s.display }
+    }
+  }
+  const runner = createSerialRunner(inner)
+  let writer: { write(text: string): void } | undefined
+  const console = runner.run({
+    ...spec('inputd-cli'),
+    stream: { onChunk: () => undefined, input: (w) => (writer = w) }
+  })
+  await runner.run(spec('devices'))
+  writer?.write('button_press KEY_UP\n')
+  expect(written).toEqual(['button_press KEY_UP\n'])
+  finishConsole()
+  await console
+  expect(order).toEqual(['start inputd-cli', 'start devices', 'end devices', 'end inputd-cli'])
+})

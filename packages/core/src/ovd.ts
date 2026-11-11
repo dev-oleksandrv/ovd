@@ -11,6 +11,7 @@ import { createExecaRunner, type Runner } from './sdk/runner.js'
 import { createPackages, type Packages } from './packages/packages.js'
 import { createInstall, type Install } from './install/install.js'
 import { createInstallSteps } from './install/installSteps.js'
+import { createInput, type Input } from './input/input.js'
 import { createApps, type Apps } from './deviceApps/deviceApps.js'
 import { createLogs, type Logs } from './logs/logSession.js'
 import { createPairing, type Pairing } from './pairing/pairing.js'
@@ -50,6 +51,7 @@ export interface Ovd {
   logs: Logs
   run: Run
   watch: Watch
+  input: Input
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -131,6 +133,7 @@ export function createOvd(opts: OvdOptions): Ovd {
   })
   const run = createRun({ install, apps, steps, activity })
   const watch = createWatch({ devices, packages, project, activity, homedir, cwd })
+  const input = createInput({ runner, sdk, devices, activity, emulator, vvd })
   return {
     sdk,
     devices,
@@ -144,6 +147,7 @@ export function createOvd(opts: OvdOptions): Ovd {
     apps,
     logs,
     run,
-    watch
+    watch,
+    input
   }
 }

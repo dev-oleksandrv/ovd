@@ -306,6 +306,67 @@ describe('createExecaRunner streams', () => {
     await expect(run).rejects.toMatchObject({ code: 'COMMAND_FAILED' })
     expect(register).not.toHaveBeenCalled()
   })
+
+  // A console in the shape of `inputd-cli start`: a prompt, one answer per stdin line, `exit`
+  // ends it.
+  const ECHO_CONSOLE =
+    "process.stdout.write('> ');let b='';process.stdin.on('data',(c)=>{b+=c;let i;" +
+    "while((i=b.indexOf('\\n'))>=0){const l=b.slice(0,i);b=b.slice(i+1);" +
+    "if(l==='exit'){process.stdout.write('bye\\n');process.exit(0)}" +
+    "process.stdout.write('got '+l+'\\n> ')}})"
+
+  test('input writes reach the stream’s stdin, and its answers reach onChunk', async () => {
+    const chunks: string[] = []
+    let write: (text: string) => void = () => undefined
+    const result = runner.run({
+      ...node(ECHO_CONSOLE),
+      stream: {
+        onChunk: (chunk) => {
+          chunks.push(chunk)
+          const seen = chunks.join('')
+          if (seen === '> ') write('one\n')
+          else if (seen.endsWith('got one\n> ')) write('exit\n')
+        },
+        input: (writer) => (write = (text) => writer.write(text))
+      }
+    })
+    expect(await result).toMatchObject({ exitCode: 0 })
+    expect(chunks.join('')).toBe('> got one\n> bye\n')
+    // After the child is gone, a write is dropped instead of throwing EPIPE.
+    expect(() => write('late\n')).not.toThrow()
+  })
+
+  test('a stream without input has stdin ignored: the child reads EOF at once', async () => {
+    const { spec, chunks } = streamOf(
+      "process.stdin.on('end',()=>process.stdout.write('eof\\n'));process.stdin.resume()"
+    )
+    await runner.run(spec)
+    expect(chunks.join('')).toBe('eof\n')
+  })
+
+  test('stopping a console ends its stdin: a child that exits on EOF ends before SIGTERM', async () => {
+    const controller = new AbortController()
+    const chunks: string[] = []
+    const run = runner.run({
+      ...node(
+        "process.on('SIGTERM',()=>{});process.stdin.on('end',()=>{process.stdout.write('eof\\n');" +
+          "process.exit(0)});process.stdin.resume();process.stdout.write('ready\\n')"
+      ),
+      signal: controller.signal,
+      stream: {
+        onChunk: (chunk) => {
+          chunks.push(chunk)
+          if (chunk.includes('ready')) controller.abort()
+        },
+        input: () => undefined,
+        graceMs: 5_000
+      }
+    })
+    const started = Date.now()
+    expect(await run).toMatchObject({ stopped: true, exitCode: 0 })
+    expect(chunks.join('')).toContain('eof\n')
+    expect(Date.now() - started).toBeLessThan(4_000)
+  })
 })
 
 describe('createExecaRunner stopWhen', () => {

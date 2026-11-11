@@ -6,7 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { OvdError } from '../errors/ovdError.js'
 import { consoleError, enableGrpc, type ConsoleConnect } from './emulatorConsole.js'
 import { findDiscovery, processAlive } from './emulatorDiscovery.js'
-import { createEmulatorGrpc, type Http2Connect } from './emulatorGrpc.js'
+import { createEmulatorGrpc, type Http2Connect, type KeyEvent } from './emulatorGrpc.js'
 
 export type EmulatorGrpcState = { status: 'on'; port: number } | { status: 'off' }
 
@@ -21,6 +21,10 @@ export interface Emulator {
   enableGrpc(vdaSerial: string, opts?: { signal?: AbortSignal }): Promise<{ port: number }>
   // Read-only: whether gRPC answers `getVmState` with the discovery file's token.
   grpc(vdaSerial: string): Promise<EmulatorGrpcState>
+  // Sends the key events over one gRPC session with the discovery file's token. Send only: with
+  // gRPC off (no discovery file) it throws `VVD_GRPC_FAILED` with `details.off`, and the caller
+  // decides whether to turn it on (`Vvd.ensureGrpc`).
+  sendKeys(vdaSerial: string, events: KeyEvent[], opts?: { signal?: AbortSignal }): Promise<void>
 }
 
 export interface EmulatorDeps {
@@ -134,6 +138,24 @@ export function createEmulator(deps: EmulatorDeps): Emulator {
       } catch {
         return { status: 'off' }
       }
+    },
+
+    async sendKeys(vdaSerial, events, opts = {}) {
+      const found = await findDiscovery(discovery, consolePort(vdaSerial))
+      if (!found) {
+        throw new OvdError(
+          'VVD_GRPC_FAILED',
+          'Emulator gRPC is off',
+          'Turn it on with ovd vvd start',
+          {
+            off: true
+          }
+        )
+      }
+      await createEmulatorGrpc({ port: found.grpcPort, token: found.token, connect: h2 }).sendKeys(
+        events,
+        opts
+      )
     }
   }
 }

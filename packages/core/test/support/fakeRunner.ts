@@ -3,10 +3,23 @@ import type { CommandSpec, Runner, RunResult } from '../../src/sdk/runner.js'
 
 // A fake long-running stream (`loggingctl log -f`): the test prints chunks with `emit` and ends
 // it with `end`; an abort of the run's signal resolves it as stopped, as the real runner does.
+// A stream with `input` (a console) gets a writer: what core writes is in `written`, and
+// `onWrite` answers it, as the console would. Writes after the stream ended are dropped.
 export class FakeStream {
   spec?: CommandSpec
   stopped = false
+  readonly written: string[] = []
+  onWrite: ((text: string) => void) | undefined
   private finish: ((result: RunResult) => void) | undefined
+
+  constructor(opts: { onWrite?: (text: string, stream: FakeStream) => void } = {}) {
+    const { onWrite } = opts
+    if (onWrite) this.onWrite = (text) => onWrite(text, this)
+  }
+
+  get ended(): boolean {
+    return this.spec !== undefined && this.finish === undefined
+  }
 
   emit(chunk: string): void {
     if (!this.spec?.stream) throw new Error('FakeStream: not started')
@@ -20,6 +33,13 @@ export class FakeStream {
   start(spec: CommandSpec): Promise<RunResult> {
     this.spec = spec
     const result = new Promise<RunResult>((resolve) => (this.finish = resolve))
+    spec.stream?.input?.({
+      write: (text) => {
+        if (this.finish === undefined) return
+        this.written.push(text)
+        this.onWrite?.(text)
+      }
+    })
     const stop = () => {
       this.stopped = true
       this.settle({ exitCode: 143, stopped: true })
