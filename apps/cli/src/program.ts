@@ -5,6 +5,7 @@ import { registerApps } from './commands/apps.js'
 import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
+import { registerInput } from './commands/input.js'
 import { registerInstall } from './commands/install.js'
 import { registerLogs } from './commands/logs.js'
 import { registerPairing } from './commands/pair.js'
@@ -78,5 +79,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerInstall(program, deps, setExitCode)
   registerLogs(program, deps, setExitCode)
   registerRun(program, deps, setExitCode)
+  registerInput(program, deps, setExitCode)
   return program
 }
