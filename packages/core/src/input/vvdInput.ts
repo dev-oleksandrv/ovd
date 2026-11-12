@@ -38,14 +38,16 @@ function tap(keyCode: number): KeyEvent[] {
 }
 
 // Sends a sequence; a sequence with a shift down that failed part-way still gets a shift up, so
-// a stuck shift doesn't garble whatever is typed next. With gRPC off nothing was sent.
+// a stuck shift doesn't garble whatever is typed next. With gRPC off nothing was sent. An abort
+// (`signal`) stops the sequence; the shift up still goes, without the signal.
 export async function sendEvents(
   emulator: Pick<Emulator, 'sendKeys'>,
   vdaSerial: string,
-  events: KeyEvent[]
+  events: KeyEvent[],
+  signal?: AbortSignal
 ): Promise<void> {
   try {
-    await emulator.sendKeys(vdaSerial, events)
+    await emulator.sendKeys(vdaSerial, events, signal ? { signal } : {})
   } catch (error) {
     const off = error instanceof OvdError && error.details?.off === true
     const shifted = events.some((e) => e.keyCode === KEY_LEFTSHIFT && e.eventType === 'down')

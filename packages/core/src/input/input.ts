@@ -196,6 +196,8 @@ export function createInput(deps: InputDeps): Input {
     let inputdConsole: InputdConsole | undefined
     let closed = false
     let aborted = false
+    // Ctrl+C: stops a gRPC sequence in flight.
+    const stop = new AbortController()
     let queue: Promise<unknown> = Promise.resolve()
     const enqueue = <T>(run: () => Promise<T>): Promise<T> => {
       const result = queue.then(run)
@@ -223,12 +225,13 @@ export function createInput(deps: InputDeps): Input {
     async function grpc(events: KeyEvent[]): Promise<void> {
       const serial = device.vdaSerial ?? VVD_VDA_SERIAL
       try {
-        await sendEvents(deps.emulator, serial, events)
+        await sendEvents(deps.emulator, serial, events, stop.signal)
       } catch (error) {
-        if (!(error instanceof OvdError) || error.details?.off !== true) throw error
+        if (aborted || !(error instanceof OvdError) || error.details?.off !== true) throw error
         // Off after a restart OVD didn't make: turned on once (and logged), then sent again.
         await deps.vvd.ensureGrpc(device)
-        await sendEvents(deps.emulator, serial, events)
+        if (aborted) throw abortError()
+        await sendEvents(deps.emulator, serial, events, stop.signal)
       }
     }
 
@@ -243,12 +246,16 @@ export function createInput(deps: InputDeps): Input {
     }
 
     async function attempt<T>(run: () => Promise<T>): Promise<T> {
+      let result: T
       try {
-        return await run()
+        result = await run()
       } catch (error) {
         if (aborted) throw abortError()
         return failure(device, error)
       }
+      // Ctrl+C while a send finished anyway: still a cancel, never a success.
+      if (aborted) throw abortError()
+      return result
     }
 
     return {
@@ -318,6 +325,7 @@ export function createInput(deps: InputDeps): Input {
       async abort() {
         aborted = true
         closed = true
+        stop.abort()
         await inputdConsole?.stop()
       }
     }

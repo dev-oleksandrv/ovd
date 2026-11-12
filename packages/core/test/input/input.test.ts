@@ -53,7 +53,7 @@ beforeEach(async () => {
   home = join(await mkdtemp(join(tmpdir(), 'ovd-input-')), 'ovd')
 })
 
-type Send = (events: KeyEvent[]) => void | Promise<void>
+type Send = (events: KeyEvent[], signal?: AbortSignal) => void | Promise<void>
 
 interface Setup {
   // The target and the device list; `get` answers from `now` once set.
@@ -104,10 +104,10 @@ function setup(opts: Setup = {}) {
     devices,
     activity: createActivityLog({ home, surface: 'cli' }),
     emulator: {
-      async sendKeys(serial, events) {
+      async sendKeys(serial, events, sendOpts) {
         sent.push({ serial, events })
         const send = sends[Math.min(sent.length, sends.length) - 1]
-        await send?.(events)
+        await send?.(events, sendOpts?.signal)
       }
     },
     vvd: {
@@ -366,6 +366,42 @@ describe('Input on the Virtual Device (gRPC)', () => {
     const { input, sent } = setup({ target: vvd, sends: [broken, () => undefined] })
     await expect(input.text('A')).rejects.toMatchObject({ code: 'VVD_GRPC_FAILED' })
     expect(sent.map((s) => s.events)).toEqual([[down(SHIFT), ...tap(30), up(SHIFT)], [up(SHIFT)]])
+  })
+
+  test('Ctrl+C mid-text stops the sequence, still releases shift, and is an AbortError', async () => {
+    const controller = new AbortController()
+    let started = () => undefined as void
+    const sending = new Promise<void>((resolve) => (started = resolve))
+    // Like emulator gRPC: the sequence rejects when its signal aborts.
+    const hang: Send = (_events, signal) =>
+      new Promise<void>((_resolve, reject) => {
+        started()
+        signal?.addEventListener('abort', () =>
+          reject(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' }))
+        )
+      })
+    const { input, sent, ensured } = setup({ target: vvd, sends: [hang, () => undefined] })
+    const typed = input.text('Hi', { signal: controller.signal })
+    await sending
+    controller.abort()
+    await expect(typed).rejects.toMatchObject({ name: 'AbortError' })
+    expect(sent.map((s) => s.events)).toEqual([
+      [down(SHIFT), ...tap(35), up(SHIFT), ...tap(23)],
+      [up(SHIFT)]
+    ])
+    expect(ensured).toEqual([])
+    expect(await activity()).toEqual([])
+  })
+
+  test('a send that finishes after Ctrl+C is still an AbortError, not a success', async () => {
+    const controller = new AbortController()
+    const late: Send = () => {
+      controller.abort()
+    }
+    const { input } = setup({ target: vvd, sends: [late] })
+    await expect(input.press(['up'], { signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError'
+    })
   })
 
   test('stopped meanwhile: TARGET_OFFLINE', async () => {
