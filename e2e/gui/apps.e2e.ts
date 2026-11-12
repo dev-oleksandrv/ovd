@@ -4,6 +4,7 @@ import { ALL_PACKAGES, STICK_SERIAL, usbStick } from '../fake-sdk/world.ts'
 import { ovd } from '../harness/cli.ts'
 import { expect, test } from '../harness/gui.ts'
 import { MANIFEST, makeProject, makeRecordedVpkg } from '../harness/project.ts'
+import type { Sandbox } from '../harness/sandbox.ts'
 
 const SHELL = 'vega exec vda -s emulator-5554 shell'
 const STICK_SHELL = `vega exec vda -s ${STICK_SERIAL} shell`
@@ -32,12 +33,26 @@ function toast(page: Page, text: string) {
   return page.getByRole('status').filter({ hasText: text })
 }
 
-// A launch is verified for about 5 s (ADR 0012) while the 2 s device polls share the serial
-// runner, so wait for "Verifying…" to show and then to go before the toast: no single wait has
-// to cover the whole verification.
+// The verification (launchVerification.ts) sleeps about 7 s: 5 × 1 s settle polls, then a 1 s
+// recheck or up to 1 s of tombstone retries. It also makes about 14 SDK calls of its own, and
+// the 2 s device polls (2 calls each) queue between them on the serial runner. Click to result
+// measured 12–15 s on a loaded host, so 30 s is twice the measured worst case. Only the waits
+// that cover the verification use it.
+const VERIFY_MS = 30_000
+
+// A launch is verified (ADR 0012) before the toast shows. The renderer shows "Verifying…" at the
+// click, so the first wait passes at once; the second covers the whole verification.
 async function verified(row: Locator): Promise<void> {
   await expect(row).toContainText('Verifying…')
-  await expect(row).not.toContainText('Verifying…')
+  await expect(row).not.toContainText('Verifying…', { timeout: VERIFY_MS })
+}
+
+// The doctor run at app start shares the serial runner with the launch verification, so its
+// calls would queue in front of it. With the Vega CLI and Developer Mode on, as in these worlds,
+// and no project open, its sign-in probe is its last SDK call (as in reboot.e2e.ts). A call is
+// logged when it starts, so the probe may still be finishing; that is one call, not the run.
+async function doctorDone(sandbox: Sandbox): Promise<void> {
+  await expect.poll(() => sandbox.calls()).toContain('vega devmode login --json')
 }
 
 // The device script a `… shell echo <base64> | base64 -d | sh` call ran, or null.
@@ -243,6 +258,10 @@ test.describe('Apps', () => {
     sandbox,
     launch
   }) => {
+    // Three verified launches (launch, relaunch, restart), each up to VERIFY_MS (30 s) on a
+    // loaded host, plus the navigation, the stop and the uninstall. It took 49–54 s of the 60 s
+    // test timeout even on a light host and hit it in CI run 42803119952; slow() gives 3 × 60 s.
+    test.slow()
     sandbox.installSdk()
     sandbox.update((w) => {
       w.vvd.running = true
@@ -252,6 +271,7 @@ test.describe('Apps', () => {
     await nav(page, 'Apps').click()
     const row = page.getByRole('row').filter({ hasText: TITLE })
     await expect(row).toContainText('Stopped')
+    await doctorDone(sandbox)
 
     await row.getByRole('button', { name: 'Launch' }).click()
     await verified(row)
@@ -423,12 +443,13 @@ test.describe('Apps', () => {
     const row = page.getByRole('row').filter({ hasText: TITLE })
     const detail = page.getByRole('complementary', { name: `${TITLE} details` })
     await expect(row).toContainText('Stopped')
+    await doctorDone(sandbox)
 
     await row.getByRole('button', { name: 'Launch' }).click()
 
     await expect(row).toContainText('Verifying…')
     await expect(detail.getByText('Verifying launch…')).toBeVisible()
-    await expect(row).toContainText('Crashed on launch')
+    await expect(row).toContainText('Crashed on launch', { timeout: VERIFY_MS })
     await expect(detail.getByText('Crashed on launch')).toBeVisible()
     const cli = '$ ovd apps launch com.example.player --device VirtualDevice'
     await expect(toast(page, 'Launch reported success, but the app crashed')).toContainText(cli)
@@ -473,6 +494,7 @@ test.describe('Apps', () => {
     const row = page.getByRole('row').filter({ hasText: TITLE })
     const detail = page.getByRole('complementary', { name: `${TITLE} details` })
     await expect(row).toContainText('Stopped')
+    await doctorDone(sandbox)
 
     await row.getByRole('button', { name: 'Launch' }).click()
     await verified(row)

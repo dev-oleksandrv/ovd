@@ -38,6 +38,19 @@ async function openPlayerProject(sandbox: Sandbox): Promise<void> {
 const installOf = (sandbox: Sandbox, path: string) =>
   `vega device install-app -p ${sandbox.home}/${path} --device VirtualDevice`
 
+// The doctor run at app start shares the serial runner with the run, so its calls would queue in
+// front of the run's. With the Vega CLI and Developer Mode on, as in these worlds, its devmode
+// check runs, and the project check after it is its last SDK call (doctor.ts; `node --version`
+// after that is not an SDK call): `vega project doctor` with a project folder open. With a .vpkg
+// open the project check calls nothing, so the sign-in probe is the last one. A call is logged
+// when it starts, so the last one may still be finishing; that is one call, not the run.
+const PROJECT_DOCTOR = 'vega project doctor'
+const SIGN_IN_PROBE = 'vega devmode login --json'
+
+async function doctorDone(sandbox: Sandbox, last: string): Promise<void> {
+  await expect.poll(() => sandbox.calls()).toContain(last)
+}
+
 test.use({ world: { vvd: { running: true, developerMode: true } } })
 
 test.describe('Run', () => {
@@ -51,6 +64,7 @@ test.describe('Run', () => {
 
     const run = page.getByRole('button', { name: 'Run ▸ player' })
     await expect(run).toBeEnabled()
+    await doctorDone(sandbox, PROJECT_DOCTOR)
     await run.click()
 
     // The status bar echoes the run while it goes; once Logs opens, it echoes the session's.
@@ -102,6 +116,7 @@ test.describe('Run', () => {
     await expect(
       page.getByRole('list', { name: 'Log lines' }).getByRole('listitem').first()
     ).toBeVisible()
+    await doctorDone(sandbox, PROJECT_DOCTOR)
 
     await page.getByRole('button', { name: 'Run ▸ player' }).click()
 
@@ -198,6 +213,7 @@ test.describe('Run', () => {
     })
     await openPlayerProject(sandbox)
     const { page } = await launch()
+    await doctorDone(sandbox, PROJECT_DOCTOR)
 
     await page.getByRole('button', { name: 'Run ▸ player' }).click()
 
@@ -230,6 +246,7 @@ test.describe('Run', () => {
     )
     expect((await ovd(sandbox, ['open', file])).exitCode).toBe(0)
     const { page } = await launch()
+    await doctorDone(sandbox, SIGN_IN_PROBE)
 
     await page.getByRole('button', { name: 'Run ▸ player_aarch64.vpkg' }).click()
     await expect(echo(page)).toContainText(`$ ${RUN_CLI}`)
@@ -258,9 +275,14 @@ test.describe('Watch', () => {
     sandbox,
     launch
   }) => {
+    // Two full runs (the first Run, then the redeploy after the rebuild), each pick, install, log
+    // session, launch and verification; click to result measured about 26 s on a loaded host, so
+    // the pair can pass the 60 s test timeout; slow() gives 3 × 60 s.
+    test.slow()
     sandbox.installSdk()
     await openPlayerProject(sandbox)
     const { page } = await launch()
+    await doctorDone(sandbox, PROJECT_DOCTOR)
     await page.getByRole('button', { name: 'Run ▸ player' }).click()
     await expect(steps(page).getByRole('listitem', { name: 'Following logs: done' })).toBeVisible({
       timeout: 30_000
