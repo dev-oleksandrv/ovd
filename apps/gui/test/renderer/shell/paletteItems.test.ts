@@ -23,13 +23,14 @@ const build = (
 }
 
 describe('paletteItems', () => {
-  test('lists Devices, Apps, Packages, Logs, Doctor, a switch per other device, then every later screen', () => {
+  test('lists Devices, Apps, Packages, Logs, Remote & Screen, Doctor, a switch per other device, then every later screen', () => {
     const { items } = build(stick.id)
     expect(items.map((i) => [i.label, i.kind])).toEqual([
       ['Go to Devices', 'Screen'],
       ['Go to Apps', 'Screen'],
       ['Go to Packages', 'Screen'],
       ['Go to Logs', 'Screen'],
+      ['Go to Remote & Screen', 'Screen'],
       ['Go to Doctor', 'Screen'],
       ['Set up a new stick (Developer Mode)', 'Action'],
       ['Pair a device over Wi‑Fi…', 'Action'],
@@ -64,22 +65,25 @@ describe('paletteItems', () => {
     items[3]?.run()
     expect(opts.go).toHaveBeenCalledWith('logs')
     items[4]?.run()
-    expect(opts.go).toHaveBeenCalledWith('doctor')
+    expect(opts.go).toHaveBeenCalledWith('remote')
     items[5]?.run()
-    expect(opts.setup).toHaveBeenCalled()
+    expect(opts.go).toHaveBeenCalledWith('doctor')
     items[6]?.run()
+    expect(opts.setup).toHaveBeenCalled()
+    items[7]?.run()
     expect(opts.pair).toHaveBeenCalled()
-    items[8]?.run()
-    expect(opts.runDoctor).toHaveBeenCalled()
     items[9]?.run()
-    expect(opts.exportLogs).toHaveBeenLastCalledWith('text')
+    expect(opts.runDoctor).toHaveBeenCalled()
     items[10]?.run()
+    expect(opts.exportLogs).toHaveBeenLastCalledWith('text')
+    items[11]?.run()
     expect(opts.exportLogs).toHaveBeenLastCalledWith('jsonl')
   })
 
   test('filters by a case-insensitive substring, ignoring surrounding spaces', () => {
     const { items } = build(stick.id)
     expect(filterItems(items, '  DEEP ').map((i) => i.label)).toEqual(['Deep links'])
+    expect(LATER.map(([label]) => label)).not.toContain('Remote & Screen')
     expect(filterItems(items, '')).toHaveLength(items.length)
   })
 

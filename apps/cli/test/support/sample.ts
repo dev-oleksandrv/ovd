@@ -5,6 +5,7 @@ import {
   type Devices,
   type Devmode,
   type ErrorCode,
+  type Input,
   type Install,
   type Ovd,
   type Packages,
@@ -98,6 +99,7 @@ export function stubVvd(vvd: Partial<Vvd>): Partial<Ovd> {
       developerMode: missing('developerMode'),
       enableDeveloperMode: missing('enableDeveloperMode'),
       grpc: missing('grpc'),
+      ensureGrpc: missing('ensureGrpc'),
       ...vvd
     }
   }
@@ -157,6 +159,18 @@ export function stubInstall(install: Partial<Install>): Partial<Ovd> {
       install: missing('install'),
       resolve: missing('resolve'),
       ...install
+    }
+  }
+}
+
+export function stubInput(input: Partial<Input>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    input: {
+      session: missing('session'),
+      press: missing('press'),
+      text: missing('text'),
+      ...input
     }
   }
 }

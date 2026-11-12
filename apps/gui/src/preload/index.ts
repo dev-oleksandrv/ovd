@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import type { DevicesUpdate, LoginPrompt } from '@ovd/core'
-import { channels, type LogsUpdate, type OvdApi, type RunProgress, type WatchEvent } from './api'
+import {
+  channels,
+  type InputState,
+  type LogsUpdate,
+  type OvdApi,
+  type RunProgress,
+  type WatchEvent
+} from './api'
 
 const api: OvdApi = {
   // macOS and Ubuntu only (ADR 0013).
@@ -91,6 +98,17 @@ const api: OvdApi = {
       const handler = (_event: IpcRendererEvent, progress: RunProgress): void => listener(progress)
       ipcRenderer.on(channels.runProgress, handler)
       return () => ipcRenderer.removeListener(channels.runProgress, handler)
+    }
+  },
+  input: {
+    open: (device) => ipcRenderer.invoke(channels.inputOpen, device),
+    press: (key) => ipcRenderer.invoke(channels.inputPress, key),
+    text: (text) => ipcRenderer.invoke(channels.inputText, text),
+    state: () => ipcRenderer.invoke(channels.inputState),
+    onState: (listener) => {
+      const handler = (_event: IpcRendererEvent, state: InputState): void => listener(state)
+      ipcRenderer.on(channels.inputUpdate, handler)
+      return () => ipcRenderer.removeListener(channels.inputUpdate, handler)
     }
   },
   watch: {

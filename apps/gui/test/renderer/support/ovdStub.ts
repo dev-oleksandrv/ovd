@@ -24,6 +24,8 @@ import type {
 } from '@ovd/core'
 import { vi } from 'vitest'
 import type {
+  InputOutcome,
+  InputState,
   IpcResult,
   LogsExportResult,
   LogsState,
@@ -47,6 +49,8 @@ export interface OvdStub {
   pushRun: (progress: RunProgress) => void
   // Pushes a watch event as main does.
   pushWatch: (event: WatchEvent) => void
+  // Pushes the input session's state as main does.
+  pushInput: (state: InputState) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -143,7 +147,10 @@ export function stubOvd(opts: {
   run?: Partial<Omit<OvdApi['run'], 'onProgress'>>
   // Off, and turned on and off as main does, unless a test says otherwise.
   watch?: Partial<Omit<OvdApi['watch'], 'onEvent'>>
+  // Idle, and an open that never answers, unless a test says otherwise.
+  input?: Partial<Omit<OvdApi['input'], 'onState'>>
 }): OvdStub {
+  let inputListener: ((state: InputState) => void) | undefined
   let listener: ((update: DevicesUpdate) => void) | undefined
   let logsListener: ((update: LogsUpdate) => void) | undefined
   let runListener: ((progress: RunProgress) => void) | undefined
@@ -313,6 +320,36 @@ export function stubOvd(opts: {
         }
       }
     },
+    input: {
+      open: vi.fn(opts.input?.open ?? (() => new Promise<InputState>(() => undefined))),
+      press: vi.fn(
+        opts.input?.press ??
+          (async (): Promise<InputOutcome> => {
+            throw new Error('unexpected input.press')
+          })
+      ),
+      text: vi.fn(
+        opts.input?.text ??
+          (async (): Promise<InputOutcome> => {
+            throw new Error('unexpected input.text')
+          })
+      ),
+      state: vi.fn(
+        opts.input?.state ??
+          (async (): Promise<InputState> => ({
+            status: 'idle',
+            target: null,
+            backend: null,
+            sent: []
+          }))
+      ),
+      onState: (l) => {
+        inputListener = l
+        return () => {
+          inputListener = undefined
+        }
+      }
+    },
     watch: {
       set: vi.fn(
         opts.watch?.set ??
@@ -337,6 +374,7 @@ export function stubOvd(opts: {
     prompt: (p) => promptListener?.(p),
     pushLogs: (u) => logsListener?.(u),
     pushRun: (p) => runListener?.(p),
-    pushWatch: (e) => watchListener?.(e)
+    pushWatch: (e) => watchListener?.(e),
+    pushInput: (s) => inputListener?.(s)
   }
 }

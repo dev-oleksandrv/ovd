@@ -7,6 +7,7 @@ import {
 } from '../adapters/parseVsmDeveloperMode.js'
 import { VVD_ID } from '../devices/deviceModel.js'
 import type { Devices } from '../devices/devices.js'
+import { offline } from '../devices/onlineTarget.js'
 import type { Device } from '../devices/types.js'
 import { OvdError, toErrorJson, type ErrorJson } from '../errors/ovdError.js'
 import { vdaCmd, vegaCmd } from '../sdk/commands.js'
@@ -55,6 +56,10 @@ export interface Vvd {
   enableDeveloperMode(): Promise<{ developerMode: true }>
   // For a device the caller already read (doctor's snapshot), so nothing is listed twice.
   grpc(device: Device): Promise<VvdGrpcProbe>
+  // Turns emulator gRPC on for an online Virtual Device (input found it off), logged as
+  // `vvd.grpc.enable`. Throws `TARGET_OFFLINE` when it isn't online, `VVD_GRPC_FAILED` when the
+  // console won't turn it on.
+  ensureGrpc(device: Device, signal?: AbortSignal): Promise<{ port: number }>
 }
 
 // `start` returns after "Virtual device ready." (about 6 s); its own `--timeout` is 60 s.
@@ -118,23 +123,29 @@ export function createVvd(deps: VvdDeps): Vvd {
     return { vegaPath, vdaSerial: s.device.vdaSerial ?? DEFAULT_VDA_SERIAL }
   }
 
-  // Its own activity entry; only an `OvdError` becomes a `failed` result, so an abort or a bug
-  // still propagates.
-  async function enableGrpc(started: VvdState, signal?: AbortSignal): Promise<VvdGrpc> {
+  // Its own activity entry, with retries while the console comes up; throws the `OvdError`.
+  async function turnOnGrpc(device: Device, signal?: AbortSignal): Promise<{ port: number }> {
+    if (device.status !== 'online') throw offline(device)
+    const serial = device.vdaSerial ?? DEFAULT_VDA_SERIAL
     const port = deps.emulator.grpcPort
-    const serial = started.device.vdaSerial ?? DEFAULT_VDA_SERIAL
-    try {
-      const on = await logged('vvd.grpc.enable', VVD_ID, { port: String(port) }, async () => {
-        for (let attempt = 1; ; attempt++) {
-          try {
-            return await deps.emulator.enableGrpc(serial, signal ? { signal } : {})
-          } catch (error) {
-            if (!(error instanceof OvdError) || !isRetryable(error)) throw error
-            if (attempt >= GRPC_ATTEMPTS) throw error
-            await sleep(GRPC_RETRY_MS, signal)
-          }
+    return logged('vvd.grpc.enable', VVD_ID, { port: String(port) }, async () => {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await deps.emulator.enableGrpc(serial, signal ? { signal } : {})
+        } catch (error) {
+          if (!(error instanceof OvdError) || !isRetryable(error)) throw error
+          if (attempt >= GRPC_ATTEMPTS) throw error
+          await sleep(GRPC_RETRY_MS, signal)
         }
-      })
+      }
+    })
+  }
+
+  // A start reports a failed enable as a `failed` result; only an `OvdError` becomes one, so an
+  // abort or a bug still propagates.
+  async function enableGrpc(started: VvdState, signal?: AbortSignal): Promise<VvdGrpc> {
+    try {
+      const on = await turnOnGrpc(started.device, signal)
       return { status: 'on', port: on.port }
     } catch (error) {
       if (!(error instanceof OvdError)) throw error
@@ -252,7 +263,9 @@ export function createVvd(deps: VvdDeps): Vvd {
       if (device.status === 'stopped') return { status: 'not-running' }
       if (device.status !== 'online') return { status: 'starting' }
       return deps.emulator.grpc(device.vdaSerial ?? DEFAULT_VDA_SERIAL)
-    }
+    },
+
+    ensureGrpc: (device, signal) => turnOnGrpc(device, signal)
   }
 }
 

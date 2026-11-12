@@ -39,7 +39,11 @@ test.each<[ErrorCode, number]>([
   ['INVALID_LOG_FILTER', 2],
   ['LOG_STREAM_ENDED', 1],
   ['EXPORT_FILE_EXISTS', 2],
-  ['EXPORT_FAILED', 1]
+  ['EXPORT_FAILED', 1],
+  ['INVALID_KEY', 2],
+  ['KEY_UNSUPPORTED', 2],
+  ['INVALID_TEXT', 2],
+  ['INPUT_FAILED', 1]
 ])('%s → %i', (code, exit) => {
   expect(exitCodeFor(code)).toBe(exit)
 })

@@ -1,0 +1,3 @@
+Welcome to the Inputd command line!
+Type 'h' or any valid command to continue.
+inputd-cli > 

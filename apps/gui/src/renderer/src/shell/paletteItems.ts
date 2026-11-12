@@ -1,7 +1,7 @@
 import type { Device, LogExportFormat } from '@ovd/core'
 import type { VvdBusy } from '../screens/devices/deviceView'
 
-export type Screen = 'devices' | 'apps' | 'packages' | 'logs' | 'doctor'
+export type Screen = 'devices' | 'apps' | 'packages' | 'logs' | 'remote' | 'doctor'
 
 export interface PaletteItem {
   // Unique per entry; labels are not (two devices can share a name).
@@ -16,7 +16,6 @@ export interface PaletteItem {
 // Screens of later stages: listed, never drawn as dead buttons (ADR 0018). Order from the design.
 export const LATER: readonly (readonly [label: string, icon: string])[] = [
   ['Crashes', 'bug_report'],
-  ['Remote & Screen', 'settings_remote'],
   ['Shell', 'terminal'],
   ['Deep links', 'link'],
   ['Performance', 'monitoring'],
@@ -69,6 +68,14 @@ export function paletteItems(opts: {
       kind: 'Screen',
       later: false,
       run: () => opts.go('logs')
+    },
+    {
+      id: 'screen:remote',
+      label: 'Go to Remote & Screen',
+      icon: 'settings_remote',
+      kind: 'Screen',
+      later: false,
+      run: () => opts.go('remote')
     },
     {
       id: 'screen:doctor',

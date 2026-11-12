@@ -1,4 +1,4 @@
-import { LOG_EXPORT_FORMATS, type LogExportFormat } from '@ovd/core'
+import { isRemoteKey, LOG_EXPORT_FORMATS, type LogExportFormat, type RemoteKey } from '@ovd/core'
 import type { LogsExportRequest, LogsFilter } from '../preload/api'
 
 // IPC payloads come from the renderer; check them before they reach core.
@@ -69,4 +69,28 @@ export function logsExportRequest(value: unknown): LogsExportRequest {
   }
   const seq = optionalSeq(throughSeq)
   return { format: format as LogExportFormat, ...(seq === undefined ? {} : { throughSeq: seq }) }
+}
+
+// A remote key the pad or the keyboard sent (`down`, `play-pause`).
+export function inputKey(value: unknown): RemoteKey {
+  if (typeof value !== 'string' || !isRemoteKey(value))
+    throw new TypeError('key is not a remote key')
+  return value
+}
+
+// Core checks what a device can type (INVALID_TEXT); this only bounds the payload.
+const MAX_INPUT_TEXT = 10_000
+
+// A string from the renderer: a device ID, or the text to type (which may be empty, so core
+// answers INVALID_TEXT for it).
+export function inputText(
+  value: unknown,
+  field: string,
+  opts: { allowEmpty?: boolean } = {}
+): string {
+  if (typeof value !== 'string' || (value === '' && !opts.allowEmpty)) {
+    throw new TypeError(`${field} must be a${opts.allowEmpty ? '' : ' non-empty'} string`)
+  }
+  if (value.length > MAX_INPUT_TEXT) throw new TypeError(`${field} is too long`)
+  return value
 }

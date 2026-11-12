@@ -1,0 +1,3 @@
+invalid button value: [KEY_NOPE]
+
+inputd-cli > 

@@ -18,6 +18,7 @@ import { DevicesScreen } from '../screens/devices/DevicesScreen'
 import { AppsScreen } from '../screens/apps/AppsScreen'
 import { LogsScreen } from '../screens/logs/LogsScreen'
 import { PackagesScreen } from '../screens/packages/PackagesScreen'
+import { RemoteScreen } from '../screens/remote/RemoteScreen'
 import { PairWizard } from '../pairing/PairWizard'
 import { useFileDrop } from '../project/useFileDrop'
 import { useProject } from '../project/useProject'
@@ -250,6 +251,12 @@ export function Shell() {
               active={!gallery && screen === 'logs'}
               onClick={() => go('logs')}
             />
+            <NavItem
+              label="Remote & Screen"
+              icon="settings_remote"
+              active={!gallery && screen === 'remote'}
+              onClick={() => go('remote')}
+            />
           </NavGroup>
           <NavGroup label="Setup">
             <NavItem
@@ -290,6 +297,8 @@ export function Shell() {
           exportRequest={exportRequest}
           onExportHandled={clearExportRequest}
         />
+      ) : screen === 'remote' ? (
+        <RemoteScreen onSwitchTarget={() => setMenu(true)} />
       ) : screen === 'packages' ? (
         <PackagesScreen
           projectPath={projectMode?.path ?? null}

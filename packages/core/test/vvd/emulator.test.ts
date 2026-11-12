@@ -173,3 +173,42 @@ describe('Emulator.grpc', () => {
     expect(grpc.requests).toEqual([])
   })
 })
+
+describe('Emulator.sendKeys', () => {
+  const events = [
+    { keyCode: 158, eventType: 'down' as const },
+    { keyCode: 158, eventType: 'up' as const }
+  ]
+
+  test('sends over one session with the discovery file’s token and port', async () => {
+    await withDiscovery()
+    const { emulator, grpc, console } = setup({ grpc: 'send-key.json' })
+    await emulator.sendKeys('emulator-5554', events)
+    expect(grpc.requests.map((r) => r.authority)).toEqual([
+      'http://127.0.0.1:8554',
+      'http://127.0.0.1:8554'
+    ])
+    expect(grpc.requests[0]?.headers.authorization).toMatch(/^Bearer b3Zk/)
+    expect(grpc.sessions).toHaveLength(1)
+    // Send only: it never turns gRPC on.
+    expect(console.ports).toEqual([])
+  })
+
+  test('without a discovery file: VVD_GRPC_FAILED with off, and nothing is sent', async () => {
+    const { emulator, grpc, console } = setup()
+    await expect(emulator.sendKeys('emulator-5554', events)).rejects.toMatchObject({
+      code: 'VVD_GRPC_FAILED',
+      details: { off: true }
+    })
+    expect(grpc.requests).toEqual([])
+    expect(console.ports).toEqual([])
+  })
+
+  test('a rejected token is VVD_GRPC_FAILED, not off', async () => {
+    await withDiscovery()
+    const { emulator } = setup({ grpc: 'get-vm-state-unauthenticated.json' })
+    const error: unknown = await emulator.sendKeys('emulator-5554', events).catch((e: unknown) => e)
+    expect(error).toMatchObject({ code: 'VVD_GRPC_FAILED' })
+    expect((error as { details?: Record<string, unknown> }).details?.off).toBeUndefined()
+  })
+})

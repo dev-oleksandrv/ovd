@@ -15,6 +15,8 @@ import {
   callsFile,
   defaultWorld,
   discoveryDir,
+  inputConsoleFile,
+  inputConsolesFile,
   loginProbesFile,
   logStreamsFile,
   readWorld,
@@ -59,6 +61,10 @@ export interface Sandbox {
   activity(): ActivityLine[]
   // The emulator gRPC calls made with the right token (fake-sdk/emulator.ts).
   grpcCalls(): GrpcCall[]
+  // Every line the fake `inputd-cli start` consoles read, in order.
+  inputConsole(): string[]
+  // The pid of every `inputd-cli start` console the fake SDK started.
+  inputConsolePids(): number[]
   // Removes the sandbox; throws when a surface ran an SDK command the fake has no recording
   // for, since that flow ran something unverified.
   close(): void
@@ -163,6 +169,17 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     },
 
     grpcCalls: () => emulator.grpcCalls(),
+
+    inputConsole() {
+      const file = inputConsoleFile(sdkDir)
+      if (!existsSync(file)) return []
+      return readFileSync(file, 'utf8')
+        .split('\n')
+        .filter((l) => l !== '')
+        .map((l) => (JSON.parse(l) as { line: string }).line)
+    },
+
+    inputConsolePids: () => pidsIn(inputConsolesFile(sdkDir)),
 
     close() {
       const unhandled = [
