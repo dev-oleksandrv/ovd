@@ -6,7 +6,8 @@ import {
   kindLabel,
   serialLine,
   statusView,
-  subtitle
+  subtitle,
+  usable
 } from '../../../../src/renderer/src/screens/devices/deviceView'
 import { stick, vvd, wifiOffline } from './sample'
 
@@ -18,6 +19,26 @@ describe('statusView', () => {
     ['starting', { label: 'Starting…', tone: 'warning', pulse: true }]
   ])('%s', (status, expected) => {
     expect(statusView({ ...stick, status })).toEqual(expected)
+  })
+})
+
+describe('rebooting', () => {
+  test.each<[Device, string | null, ReturnType<typeof statusView>]>([
+    [stick, stick.id, { label: 'Rebooting…', tone: 'warning', pulse: true }],
+    [
+      { ...stick, status: 'offline' },
+      stick.id,
+      { label: 'Rebooting…', tone: 'warning', pulse: true }
+    ],
+    [vvd, stick.id, { label: 'Stopped', tone: 'muted', pulse: false }]
+  ])('%#', (device, rebooting, expected) => {
+    expect(statusView(device, null, rebooting)).toEqual(expected)
+  })
+
+  test('a rebooting device isn’t usable or dimmed', () => {
+    expect(usable(stick, null, stick.id)).toBe(false)
+    expect(usable(stick, null, 'VirtualDevice')).toBe(true)
+    expect(dimmed({ ...stick, status: 'offline' }, null, stick.id)).toBe(false)
   })
 })
 

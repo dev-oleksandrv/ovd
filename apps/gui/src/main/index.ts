@@ -13,6 +13,7 @@ import { registerPackagesIpc } from './packagesIpc'
 import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
 import { registerQuitHooks } from './quitHooks'
+import { registerRebootIpc } from './rebootIpc'
 import { registerRunIpc } from './runIpc'
 import { registerScreenIpc } from './screenIpc'
 import { registerScreenshotIpc } from './screenshotIpc'
@@ -137,6 +138,7 @@ app.whenReady().then(() => {
   input = registerInputIpc(ovd, () => mainWindow)
   registerScreenshotIpc(ovd, () => mainWindow)
   screen = registerScreenIpc(ovd, () => mainWindow)
+  registerRebootIpc(ovd, { input, screen, refresh: devices.refresh })
 
   createWindow()
 

@@ -281,3 +281,45 @@ describe('createInputController', () => {
     expect(controller.running()).toBe(false)
   })
 })
+
+describe('reboot', () => {
+  test('a session on the rebooting device closes without a push, then goes idle when back', async () => {
+    const { controller, sent, sessions } = setup()
+    await controller.open(STICK)
+    const pushed = sent.length
+    await controller.deviceRebooting(STICK)
+    expect(sessions[0]?.close).toHaveBeenCalled()
+    expect(sent).toHaveLength(pushed)
+    expect(controller.state().status).toBe('idle')
+    controller.deviceBack(STICK)
+    expect(sent.at(-1)).toEqual({ status: 'idle', target: null, backend: null, sent: [] })
+  })
+
+  test('no session opens on a rebooting device; the refused open is made once it is back', async () => {
+    const { controller, session } = setup()
+    await controller.deviceRebooting(STICK)
+    expect(await controller.open(STICK)).toMatchObject({ status: 'idle' })
+    expect(session).not.toHaveBeenCalled()
+    controller.deviceBack(STICK)
+    await vi.waitFor(() => expect(controller.state().status).toBe('ready'))
+    expect(session).toHaveBeenCalledTimes(1)
+  })
+
+  test('a session on another device is left alone', async () => {
+    const { controller, sent, sessions, session } = setup()
+    await controller.open('VirtualDevice')
+    const pushed = sent.length
+    await controller.deviceRebooting(STICK)
+    controller.deviceBack(STICK)
+    expect(sessions[0]?.close).not.toHaveBeenCalled()
+    expect(sent).toHaveLength(pushed)
+    expect(controller.state()).toMatchObject({ status: 'ready', backend: 'grpc' })
+    expect(session).toHaveBeenCalledTimes(1)
+  })
+
+  test('back without a reboot does nothing', () => {
+    const { controller, sent } = setup()
+    controller.deviceBack(STICK)
+    expect(sent).toEqual([])
+  })
+})

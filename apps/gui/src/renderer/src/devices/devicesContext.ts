@@ -1,6 +1,7 @@
 import type { Device, DevicesUpdate } from '@ovd/core'
 import { createContext, useContext } from 'react'
 import type { DevicesState } from './useDevices'
+import type { RebootActions } from './useReboot'
 import type { VvdActions } from './useVvdActions'
 
 export interface DevicesValue {
@@ -9,6 +10,7 @@ export interface DevicesValue {
   // Sets the target and reports it (toast + CLI echo); the picker, palette and detail share it.
   setTarget: (device: Device) => Promise<void>
   vvd: VvdActions
+  reboot: RebootActions
 }
 
 export const DevicesContext = createContext<DevicesValue | null>(null)

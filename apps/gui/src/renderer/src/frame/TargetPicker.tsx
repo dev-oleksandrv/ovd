@@ -15,6 +15,7 @@ interface TargetPickerProps {
   onSetup: () => void
   onPair: () => void
   vvdBusy?: VvdBusy
+  rebooting?: string | null
 }
 
 // The title bar's target switch, ending with the setup and pairing wizards.
@@ -26,7 +27,8 @@ export function TargetPicker({
   onPick,
   onSetup,
   onPair,
-  vvdBusy = null
+  vvdBusy = null,
+  rebooting = null
 }: TargetPickerProps) {
   const root = useRef<HTMLDivElement>(null)
 
@@ -56,7 +58,7 @@ export function TargetPicker({
         onClick={() => onOpenChange(!open)}
         className="flex h-[30px] max-w-[360px] min-w-[230px] cursor-pointer items-center gap-2 rounded-field border border-line-menu bg-field px-2.5 hover:bg-field-hover"
       >
-        <StatusDot tone={target ? statusView(target, vvdBusy).tone : 'muted'} size={8} />
+        <StatusDot tone={target ? statusView(target, vvdBusy, rebooting).tone : 'muted'} size={8} />
         <span className="min-w-0 truncate font-medium">{target?.name ?? 'No device'}</span>
         {target?.info && (
           <span className="font-mono text-label text-muted">{target.info.architecture}</span>
@@ -79,7 +81,7 @@ export function TargetPicker({
             Target device
           </div>
           {devices.map((device) => {
-            const status = statusView(device, vvdBusy)
+            const status = statusView(device, vvdBusy, rebooting)
             const arch = device.info?.architecture
             return (
               <button
@@ -94,7 +96,7 @@ export function TargetPicker({
                 className={cx(
                   'flex cursor-pointer items-center gap-2.5 rounded-control p-2 text-left hover:bg-control-hover',
                   device.id === target?.id && 'bg-selected',
-                  dimmed(device, vvdBusy) && 'opacity-55'
+                  dimmed(device, vvdBusy, rebooting) && 'opacity-55'
                 )}
               >
                 <StatusDot tone={status.tone} size={8} pulse={status.pulse} />

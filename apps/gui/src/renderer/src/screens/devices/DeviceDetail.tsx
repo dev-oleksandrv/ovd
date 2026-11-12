@@ -29,6 +29,12 @@ interface DeviceDetailProps {
     onReconnect: () => void
     onForget: () => void
   }
+  // Reboot & wait; absent where it isn't offered.
+  reboot?: {
+    // This device is rebooting and OVD waits for it.
+    rebooting: boolean
+    onReboot: () => void
+  }
   // "All apps →" in Running now.
   onOpenApps?: () => void
 }
@@ -39,15 +45,18 @@ export function DeviceDetail({
   onSetTarget,
   vvd,
   saved,
+  reboot,
   onOpenApps
 }: DeviceDetailProps) {
   // The device whose Forget waits for confirmation; another selection drops it.
   const [confirmForget, setConfirmForget] = useState<string | null>(null)
   const busy = vvd?.busy ?? null
   const reconnecting = saved?.reconnecting === true
+  const rebooting = reboot?.rebooting === true
+  const rebootingId = rebooting ? device.id : null
   const status = reconnecting
     ? ({ label: 'Reconnecting…', tone: 'warning', pulse: true } as const)
-    : statusView(device, busy)
+    : statusView(device, busy, rebootingId)
   const savedWifi =
     saved !== undefined &&
     device.saved &&
@@ -78,9 +87,14 @@ export function DeviceDetail({
           {serial && <div className="font-mono text-meta text-subtle">{serial}</div>}
         </div>
         <div className="flex flex-wrap gap-2">
-          {!device.isTarget && usable(device, busy) && (
+          {!device.isTarget && usable(device, busy, rebootingId) && (
             <Button variant="primary" onClick={onSetTarget}>
               Use as target
+            </Button>
+          )}
+          {reboot && (rebooting || usable(device, busy)) && (
+            <Button icon="restart_alt" loading={rebooting} onClick={reboot.onReboot}>
+              {rebooting ? 'Rebooting…' : 'Reboot & wait'}
             </Button>
           )}
           {isVvd && (
@@ -137,7 +151,15 @@ export function DeviceDetail({
         </div>
       )}
 
-      {device.status === 'stopped' && busy === null && (
+      {rebooting && (
+        <div className="flex items-center gap-3 rounded-card border border-line-menu bg-row-hover px-4 py-3.5">
+          <Icon name="restart_alt" size={20} className="text-warning" />
+          <div className="flex-1 text-text-soft">
+            Rebooting {device.name}… OVD waits until it’s back online.
+          </div>
+        </div>
+      )}
+      {!rebooting && device.status === 'stopped' && busy === null && (
         <div className="flex items-center gap-3 rounded-card border border-line-menu bg-row-hover px-4 py-3.5">
           <Icon name="power_settings_new" size={20} className="text-muted" />
           <div className="flex-1 text-text-soft">The Virtual Device is stopped.</div>
@@ -148,7 +170,7 @@ export function DeviceDetail({
           )}
         </div>
       )}
-      {isVvd && usable(device, busy) && device.info?.developerMode === false && (
+      {isVvd && usable(device, busy, rebootingId) && device.info?.developerMode === false && (
         <div className="flex items-center gap-3 rounded-card border border-line-menu bg-row-hover px-4 py-3.5">
           <Icon name="developer_mode" size={20} className="text-warning" />
           <div className="flex flex-1 flex-col gap-[3px]">
@@ -165,7 +187,7 @@ export function DeviceDetail({
           </Button>
         </div>
       )}
-      {device.status === 'offline' && (
+      {!rebooting && device.status === 'offline' && (
         <OfflineState deviceName={device.name} title="Device info unavailable" />
       )}
 

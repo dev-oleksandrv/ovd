@@ -1,4 +1,5 @@
 import type { Device } from '@ovd/core'
+import type { RebootActions } from '../../devices/useReboot'
 import type { VvdActions } from '../../devices/useVvdActions'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
@@ -14,6 +15,7 @@ interface DevicesBodyProps {
   onRename: (device: Device, name: string) => void
   onSetTarget: (device: Device) => void
   vvd: VvdActions
+  reboot: RebootActions
   reconnecting: string | null
   onReconnect: (device: Device) => void
   onForget: (device: Device) => void
@@ -29,6 +31,7 @@ export function DevicesBody({
   onRename,
   onSetTarget,
   vvd,
+  reboot,
   reconnecting,
   onReconnect,
   onForget,
@@ -48,6 +51,7 @@ export function DevicesBody({
               selected={device.id === selected?.id}
               onSelect={() => onSelect(device.id)}
               vvdBusy={vvd.busy}
+              rebooting={reboot.rebooting}
             />
           ))}
           {devices.length > 0 && (
@@ -69,6 +73,10 @@ export function DevicesBody({
             onStart: () => void vvd.start(),
             onStop: () => void vvd.stop(),
             onEnableDeveloperMode: () => void vvd.enableDeveloperMode()
+          }}
+          reboot={{
+            rebooting: reboot.rebooting === selected.id,
+            onReboot: () => void reboot.reboot(selected)
           }}
           saved={{
             reconnecting: reconnecting === selected.id,

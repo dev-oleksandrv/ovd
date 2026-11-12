@@ -24,6 +24,7 @@ const api: OvdApi = {
   devices: {
     list: () => ipcRenderer.invoke(channels.devicesList),
     rename: (id, name) => ipcRenderer.invoke(channels.devicesRename, id, name),
+    reboot: (id) => ipcRenderer.invoke(channels.devicesReboot, id),
     setTarget: (id) => ipcRenderer.invoke(channels.targetSet, id),
     onChange: (listener) => {
       const handler = (_event: IpcRendererEvent, update: DevicesUpdate): void => listener(update)
