@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createEmulatorGrpc } from '../../src/vvd/emulatorGrpc.js'
 import { pngSize } from '../../src/screenshot/png.js'
 import { fakeGrpc, type GrpcAnswer } from '../support/fakeGrpc.js'
+import { fakeGrpcStream, recordedStream } from '../support/fakeGrpcStream.js'
+import { frame } from '../../src/vvd/grpcWire.js'
 
 const TOKEN = 'ovd-fake-grpc-token'
 const SERVICE = '/android.emulation.control.EmulatorController'
@@ -16,11 +18,12 @@ afterEach(() => {
 })
 
 describe('createEmulatorGrpc', () => {
-  test('has only getVmState, sendKey and getScreenshot: never getStatus, which kills the Virtual Device', () => {
+  test('has only getVmState, sendKey, getScreenshot and streamScreenshot: never getStatus, which kills the Virtual Device', () => {
     expect(Object.keys(client('silent').grpc).sort()).toEqual([
       'screenshot',
       'sendKey',
       'sendKeys',
+      'streamScreenshot',
       'vmState'
     ])
   })
@@ -187,6 +190,202 @@ describe('createEmulatorGrpc', () => {
         code: 'VVD_GRPC_FAILED',
         message: 'Could not read the emulator gRPC getScreenshot answer'
       })
+    })
+  })
+
+  describe('streamScreenshot', () => {
+    const FORMAT = { format: 'rgba8888' as const, width: 960, height: 540 }
+    const recorded = recordedStream()
+    const [m0, m1, m2] = recorded.messages as [Uint8Array, Uint8Array, Uint8Array]
+
+    function open(signal?: AbortSignal) {
+      const fake = fakeGrpcStream()
+      const grpc = createEmulatorGrpc({ port: 8554, token: TOKEN, connect: fake.connect })
+      const stream = grpc.streamScreenshot(FORMAT, signal ? { signal } : {})
+      // The server side of the one request.
+      const server = fake.streams[0]
+      if (!server) throw new Error('no request')
+      return { fake, stream, server, session: () => fake.sessions[0] }
+    }
+
+    const tick = () => new Promise((resolve) => setImmediate(resolve))
+
+    test('asks for RGBA8888 at 960x540 with the Bearer token, then yields the frames', async () => {
+      const { stream, server, session } = open()
+      expect(server.headers).toMatchObject({
+        ':path': `${SERVICE}/streamScreenshot`,
+        authorization: `Bearer ${TOKEN}`
+      })
+      expect(server.body.toString('hex')).toBe('0000000008' + '0801' + '18c007' + '209c04')
+      server.respond(recorded.headers)
+      server.send(m0)
+      server.send(m1)
+      expect(await stream.next()).toMatchObject({ width: 64, height: 36, seq: 0 })
+      expect(await stream.next()).toMatchObject({ width: 64, height: 36, seq: 1 })
+      server.end(recorded.trailers)
+      // Status 14 when the Virtual Device stops: the stream ended, not failed.
+      expect(await stream.next()).toBeNull()
+      expect(session()?.destroyed).toBe(false)
+    })
+
+    test('frames split across chunks, and two frames in one chunk', async () => {
+      const { stream, server } = open()
+      server.respond(recorded.headers)
+      const f0 = frame(m0)
+      server.write(f0.subarray(0, 3))
+      server.write(f0.subarray(3, 2000))
+      server.write(Buffer.concat([f0.subarray(2000), frame(m1), frame(m2)]))
+      expect((await stream.next())?.seq).toBe(0)
+      expect((await stream.next())?.seq).toBe(1)
+      expect((await stream.next())?.seq).toBe(2)
+    })
+
+    test('holds one frame: the stream pauses until next takes it', async () => {
+      const { stream, server } = open()
+      server.respond(recorded.headers)
+      server.send(m0)
+      server.send(m1)
+      await tick()
+      expect(server.paused()).toBe(true)
+      expect((await stream.next())?.seq).toBe(0)
+      await tick()
+      // The second frame was parsed and is held now.
+      expect(server.paused()).toBe(true)
+      expect((await stream.next())?.seq).toBe(1)
+      await tick()
+      expect(server.paused()).toBe(false)
+    })
+
+    test('the held frame comes before the end', async () => {
+      const { stream, server } = open()
+      server.respond(recorded.headers)
+      server.send(m0)
+      server.end(recorded.trailers)
+      await tick()
+      expect((await stream.next())?.seq).toBe(0)
+      expect(await stream.next()).toBeNull()
+    })
+
+    test('a clean status 0 end is an end', async () => {
+      const { stream, server } = open()
+      server.respond(recorded.headers)
+      server.send(m0)
+      server.end({ 'grpc-status': '0' })
+      expect((await stream.next())?.seq).toBe(0)
+      expect(await stream.next()).toBeNull()
+    })
+
+    test('the session closes (GOAWAY) after frames: an end', async () => {
+      const { stream, server, session } = open()
+      server.respond(recorded.headers)
+      server.send(m0)
+      expect((await stream.next())?.seq).toBe(0)
+      const next = stream.next()
+      session()?.close()
+      expect(await next).toBeNull()
+    })
+
+    test.each([
+      [
+        'status 16 in the headers (trailers-only)',
+        { ':status': 200, 'grpc-status': '16' },
+        undefined,
+        'Emulator gRPC rejected OVD’s token'
+      ],
+      [
+        'another status in the trailers',
+        recorded.headers,
+        { 'grpc-status': '13' },
+        'Emulator gRPC streamScreenshot failed'
+      ],
+      [
+        'a trailers-only status 14',
+        { ':status': 200, 'grpc-status': '14' },
+        undefined,
+        'Emulator gRPC streamScreenshot failed'
+      ],
+      [
+        'HTTP 404',
+        { ':status': 404 },
+        undefined,
+        'Emulator gRPC streamScreenshot answered HTTP 404'
+      ]
+    ])('%s is VVD_GRPC_FAILED, without the token', async (_name, headers, trailers, message) => {
+      const { stream, server, session } = open()
+      server.respond(headers)
+      server.end(trailers)
+      const error: unknown = await stream.next().catch((e: unknown) => e)
+      expect(error).toMatchObject({ code: 'VVD_GRPC_FAILED', message })
+      expect(JSON.stringify(error)).not.toContain(TOKEN)
+      expect(session()?.destroyed).toBe(true)
+    })
+
+    test.each([
+      ['a frame that isn’t RGBA8888', frame(Uint8Array.from([0x0a, 0x00]))],
+      ['a compressed frame', Uint8Array.from([1, 0, 0, 0, 0])]
+    ])('%s is VVD_GRPC_FAILED', async (_name, bytes) => {
+      const { stream, server, session } = open()
+      server.respond(recorded.headers)
+      server.write(bytes)
+      await expect(stream.next()).rejects.toMatchObject({ code: 'VVD_GRPC_FAILED' })
+      expect(session()?.destroyed).toBe(true)
+    })
+
+    test('a refused connection is VVD_GRPC_FAILED', async () => {
+      const { stream, session } = open()
+      session()?.error('ECONNREFUSED')
+      await expect(stream.next()).rejects.toMatchObject({
+        code: 'VVD_GRPC_FAILED',
+        message: 'Couldn’t reach emulator gRPC on port 8554',
+        details: { cause: 'ECONNREFUSED' }
+      })
+    })
+
+    test('no first frame in 10 s is VVD_GRPC_FAILED; later silence is fine', async () => {
+      vi.useFakeTimers()
+      const silent = open()
+      silent.server.respond(recorded.headers)
+      const result = silent.stream.next().catch((e: unknown) => e)
+      await vi.advanceTimersByTimeAsync(9_999)
+      expect(silent.session()?.destroyed).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(await result).toMatchObject({
+        code: 'VVD_GRPC_FAILED',
+        message: 'Emulator gRPC sent no screen frame in 10 s'
+      })
+
+      const idle = open()
+      idle.server.respond(recorded.headers)
+      idle.server.send(m0)
+      await vi.advanceTimersByTimeAsync(0)
+      expect((await idle.stream.next())?.seq).toBe(0)
+      const next = idle.stream.next()
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(idle.session()?.destroyed).toBe(false)
+      idle.stream.close()
+      expect(await next).toBeNull()
+    })
+
+    test('close destroys the session and a pending next resolves null', async () => {
+      const { stream, server, session } = open()
+      server.respond(recorded.headers)
+      const next = stream.next()
+      stream.close()
+      expect(await next).toBeNull()
+      expect(await stream.next()).toBeNull()
+      expect(session()?.destroyed).toBe(true)
+    })
+
+    test('an abort closes it', async () => {
+      const controller = new AbortController()
+      const { stream, server, session } = open(controller.signal)
+      server.respond(recorded.headers)
+      server.send(m0)
+      await tick()
+      controller.abort()
+      // The held frame is dropped too.
+      expect(await stream.next()).toBeNull()
+      expect(session()?.destroyed).toBe(true)
     })
   })
 })

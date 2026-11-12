@@ -58,7 +58,8 @@ export interface Vvd {
   grpc(device: Device): Promise<VvdGrpcProbe>
   // Turns emulator gRPC on for an online Virtual Device (input found it off), logged as
   // `vvd.grpc.enable`. Throws `TARGET_OFFLINE` when it isn't online, `VVD_GRPC_FAILED` when the
-  // console won't turn it on.
+  // console won't turn it on. Calls while one runs share it (one `grpc` command, one entry);
+  // `signal` only stops this caller's wait.
   ensureGrpc(device: Device, signal?: AbortSignal): Promise<{ port: number }>
 }
 
@@ -79,6 +80,8 @@ const GRPC_RETRY_MS = 1_000
 export function createVvd(deps: VvdDeps): Vvd {
   const logged = createLogged(deps.activity)
   const sleep = deps.sleep ?? ((ms, signal) => delay(ms, undefined, { signal }))
+  // The enable in flight: the input session and the live view find gRPC off at the same time.
+  let enabling: Promise<{ port: number }> | undefined
 
   async function state(): Promise<VvdState> {
     const { devices } = await deps.devices.list()
@@ -265,8 +268,47 @@ export function createVvd(deps: VvdDeps): Vvd {
       return deps.emulator.grpc(device.vdaSerial ?? DEFAULT_VDA_SERIAL)
     },
 
-    ensureGrpc: (device, signal) => turnOnGrpc(device, signal)
+    ensureGrpc(device, signal) {
+      if (!enabling) {
+        // Without any one caller's signal: another caller may still be waiting for it.
+        const shared = turnOnGrpc(device)
+        enabling = shared
+        void shared
+          .finally(() => {
+            if (enabling === shared) enabling = undefined
+          })
+          .catch(() => undefined)
+      }
+      return signal ? untilAborted(enabling, signal) : enabling
+    }
   }
+}
+
+// `work`, or an AbortError as soon as `signal` aborts (`work` itself goes on).
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(abortError(signal))
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError(signal))
+    signal.addEventListener('abort', onAbort, { once: true })
+    work.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      }
+    )
+  })
+}
+
+function abortError(signal: AbortSignal): Error {
+  const reason: unknown = signal.reason
+  if (reason instanceof Error && reason.name === 'AbortError') return reason
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
 }
 
 // The SDK logs to stderr before the actual error, which is the last line.

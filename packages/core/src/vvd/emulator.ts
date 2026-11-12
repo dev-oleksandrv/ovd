@@ -9,9 +9,11 @@ import { findDiscovery, processAlive } from './emulatorDiscovery.js'
 import {
   createEmulatorGrpc,
   type EmulatorGrpc,
+  type FrameStream,
   type Http2Connect,
   type KeyEvent
 } from './emulatorGrpc.js'
+import type { ImageFormat } from './grpcWire.js'
 
 export type EmulatorGrpcState = { status: 'on'; port: number } | { status: 'off' }
 
@@ -33,6 +35,13 @@ export interface Emulator {
   // A PNG of the screen over gRPC (`getScreenshot`), as `sendKeys` sends: with gRPC off it
   // throws `VVD_GRPC_FAILED` with `details.off`.
   screenshot(vdaSerial: string, opts?: { signal?: AbortSignal }): Promise<Uint8Array>
+  // The live screen over gRPC (`streamScreenshot`), as `screenshot` takes one: with gRPC off it
+  // throws `VVD_GRPC_FAILED` with `details.off`; the stream's own failures come from `next`.
+  streamScreenshot(
+    vdaSerial: string,
+    format: ImageFormat,
+    opts?: { signal?: AbortSignal }
+  ): Promise<FrameStream>
 }
 
 export interface EmulatorDeps {
@@ -170,6 +179,10 @@ export function createEmulator(deps: EmulatorDeps): Emulator {
 
     async screenshot(vdaSerial, opts = {}) {
       return (await client(vdaSerial)).screenshot(opts)
+    },
+
+    async streamScreenshot(vdaSerial, format, opts = {}) {
+      return (await client(vdaSerial)).streamScreenshot(format, opts)
     }
   }
 }
