@@ -1,6 +1,10 @@
 // @vitest-environment node
+import { mkdir, mkdtemp, realpath, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
+  capturePath,
   logsExportRequest,
   logsFilter,
   optionalFlag,
@@ -127,5 +131,47 @@ describe('logsExportRequest', () => {
     ['an unknown key', { format: 'text', path: '/tmp/x' }]
   ])('rejects %s', (_label, value) => {
     expect(() => logsExportRequest(value)).toThrow(TypeError)
+  })
+})
+
+describe('capturePath', () => {
+  const setup = async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ovd-reveal-'))
+    const dir = join(root, 'captures')
+    await mkdir(dir)
+    await mkdir(join(root, 'captures-evil'))
+    await writeFile(join(dir, 'shot.png'), 'png')
+    await writeFile(join(dir, 'notes.txt'), 'x')
+    await writeFile(join(root, 'captures-evil', 'shot.png'), 'png')
+    await writeFile(join(root, 'secret.png'), 'png')
+    await symlink(join(root, 'secret.png'), join(dir, 'link.png'))
+    return { root, dir }
+  }
+
+  test('a .png inside the captures folder resolves to its real path', async () => {
+    const { dir } = await setup()
+    expect(await capturePath(join(dir, 'shot.png'), dir, realpath)).toBe(
+      await realpath(join(dir, 'shot.png'))
+    )
+  })
+
+  test.each([
+    ['a path out with ..', (root: string) => join(root, 'captures', '..', 'secret.png')],
+    [
+      'a sibling folder sharing the prefix',
+      (root: string) => join(root, 'captures-evil', 'shot.png')
+    ],
+    ['a symlink out of the folder', (root: string) => join(root, 'captures', 'link.png')],
+    ['a file that isn’t a .png', (root: string) => join(root, 'captures', 'notes.txt')],
+    ['the folder itself', (root: string) => join(root, 'captures')]
+  ])('refuses %s', async (_label, path) => {
+    const { root, dir } = await setup()
+    await expect(capturePath(path(root), dir, realpath)).rejects.toThrow(
+      new TypeError('path is not a capture')
+    )
+  })
+
+  test.each([[''], [42], [null]])('refuses a payload that isn’t a path: %j', async (value) => {
+    await expect(capturePath(value, '/tmp', realpath)).rejects.toThrow(TypeError)
   })
 })

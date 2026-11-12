@@ -31,6 +31,8 @@ export function paletteItems(opts: {
   // Goes to Logs and exports the shown lines, as the toolbar's Export does.
   exportLogs: (format: LogExportFormat) => void
   vvd: { busy: VvdBusy; start: () => void; stop: () => void }
+  // The Remote screen's Screenshot: one take at a time, on an online target.
+  screenshot: { busy: boolean; unavailable: string | null; take: () => void }
   setup: () => void
   pair: () => void
   switchTarget: (device: Device) => void
@@ -126,6 +128,7 @@ export function paletteItems(opts: {
       later: false,
       run: () => opts.exportLogs('jsonl')
     },
+    screenshotItem(opts.screenshot),
     ...opts.devices
       .filter((device) => device.id !== opts.target)
       .map((device): PaletteItem => ({
@@ -145,6 +148,24 @@ export function paletteItems(opts: {
       run: () => opts.later(label)
     }))
   ]
+}
+
+// Listed but unavailable while a take runs or without an online target.
+function screenshotItem(shot: {
+  busy: boolean
+  unavailable: string | null
+  take: () => void
+}): PaletteItem {
+  const base = { id: 'action:screenshot', label: 'Take screenshot', icon: 'photo_camera' }
+  if (shot.busy || shot.unavailable !== null) {
+    return {
+      ...base,
+      kind: `Unavailable · ${shot.busy ? 'Taking a screenshot' : 'No online target'}`,
+      later: true,
+      run: () => {}
+    }
+  }
+  return { ...base, kind: 'Action', later: false, run: shot.take }
 }
 
 // While a start or stop runs, the other action is listed but unavailable (design `vvdPal`).

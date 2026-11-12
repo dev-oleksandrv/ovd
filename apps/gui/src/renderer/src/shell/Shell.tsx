@@ -24,6 +24,7 @@ import { useFileDrop } from '../project/useFileDrop'
 import { useProject } from '../project/useProject'
 import { useRun } from '../run/useRun'
 import { useWatch } from '../run/useWatch'
+import { useScreenshot } from '../screenshot/screenshotContext'
 import { SetupWizard } from '../setup/SetupWizard'
 import { firstRunNeeded, gateFailure, gateOpen } from '../screens/environment/doctorView'
 import { EnvironmentScreen } from '../screens/environment/EnvironmentScreen'
@@ -74,6 +75,7 @@ export function Shell() {
   const projectMode = project.state.status === 'ready' ? project.state.mode : null
   const { state, setTarget, vvd } = useDevicesContext()
   const { notify } = useFeedback()
+  const screenshot = useScreenshot()
   const report = doctor.state.status === 'ready' ? doctor.state.report : null
   // Each new device error or doctor result may mean the SDK changed (installed, removed), so
   // it asks again.
@@ -156,6 +158,11 @@ export function Shell() {
       if (go('logs')) setExportRequest({ format, n: ++exportCount.current })
     },
     vvd: { busy: vvd.busy, start: () => void vvd.start(), stop: () => void vvd.stop() },
+    screenshot: {
+      busy: screenshot.busy,
+      unavailable: screenshot.unavailable,
+      take: () => void screenshot.take()
+    },
     setup: () => setSettingUp(true),
     pair: () => setPairing(true),
     switchTarget: (device) => void setTarget(device),

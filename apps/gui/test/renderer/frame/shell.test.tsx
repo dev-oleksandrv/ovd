@@ -133,7 +133,7 @@ describe('command palette', () => {
   test('⌘K opens it with Devices, Apps, Packages, Logs, Remote & Screen, Doctor, the other devices and later screens', async () => {
     await renderShell()
     open()
-    expect(options().slice(0, 14)).toEqual([
+    expect(options().slice(0, 15)).toEqual([
       'Go to Devices',
       'Go to Apps',
       'Go to Packages',
@@ -146,6 +146,7 @@ describe('command palette', () => {
       'Run ovd doctor',
       'Export logs as plain text…',
       'Export logs as JSON lines…',
+      'Take screenshot',
       'Switch target to Vega Virtual Device',
       'Switch target to Bedroom stick'
     ])
@@ -194,11 +195,56 @@ describe('command palette', () => {
     const { api } = await renderShell()
     open()
     const input = screen.getByRole('combobox')
-    for (let i = 0; i < 13; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
+    for (let i = 0; i < 14; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'ArrowUp' })
-    expect(screen.getAllByRole('option')[12]?.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getAllByRole('option')[13]?.getAttribute('aria-selected')).toBe('true')
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(api.devices.setTarget).toHaveBeenCalledWith('VirtualDevice')
+  })
+
+  test('Take screenshot takes one on the online target, with the toast and CLI echo', async () => {
+    const stub = stubOvd({
+      list: async () => ready(devices, stick.id),
+      devices,
+      screenshot: {
+        take: async () => ({
+          ok: true,
+          data: {
+            target: { id: stick.id, name: stick.name },
+            backend: 'gwsi-tool-screenshooter',
+            path: '/home/developer/ovd/captures/fire-tv-stick-20261112-021100.png',
+            width: 1920,
+            height: 1080,
+            bytes: 9780,
+            takenAt: '2026-11-12T02:11:00.000Z',
+            copied: true
+          }
+        })
+      }
+    })
+    render(
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
+    )
+    await screen.findByRole('list', { name: 'Devices' })
+    open()
+    fireEvent.click(screen.getByRole('option', { name: /Take screenshot/ }))
+    expect(stub.api.screenshot.take).toHaveBeenCalledWith(stick.id)
+    expect(
+      await screen.findByText('Saved fire-tv-stick-20261112-021100.png · copied to the clipboard')
+    ).toBeTruthy()
+    expect(
+      screen.getAllByText(new RegExp(`ovd screenshot --clipboard --device ${stick.id}`)).length
+    ).toBeGreaterThan(0)
+  })
+
+  test('Take screenshot is unavailable without an online target', async () => {
+    await renderShell(ready(devices, wifiOffline.id))
+    open()
+    expect(screen.getByRole('option', { name: /Take screenshot/ }).textContent).toContain(
+      'Unavailable · No online target'
+    )
   })
 
   test('a click on the backdrop closes it', async () => {
