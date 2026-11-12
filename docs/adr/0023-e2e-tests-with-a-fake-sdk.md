@@ -23,3 +23,7 @@ Unit tests cover parsers against fixtures, core actions with a fake runner, CLI 
 - A new SDK command needs a recorded fixture before its flow can be e2e-tested; the fake SDK learns it from that fixture.
 - The fake SDK models timing loosely: a stick reboots in one poll, not 41 s. Flows that depend on real timing, and SDK behavior itself, stay with the hardware checks and the nightly SDK check (Stage 3.7).
 - E2E runs are slower than unit tests (seconds per flow), so they run as their own CI job.
+
+## Amendments
+
+- 2026-11-12 (Stage 4 sign-off, maintainer decision): one narrow exception to "it never makes up output". A stick path whose hardware check is still open may be answered with hand-written output, so its flow is covered before a stick is available. Each such answer is listed in `fixtures/<sdk-version>/README.md` under "Synthesized sequences" and marked in the fake SDK's source, names its `[HW]` issue, and is replaced by a recording when that check runs. Today: the stick's `inputd-cli` console, answered with the Virtual Device's recordings (#43); the stick's `gwsi-tool-screenshooter` answer and pulled PNG (#44); and the stick's `vda reboot` answer (#117).
