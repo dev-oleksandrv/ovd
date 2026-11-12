@@ -251,6 +251,8 @@ describe('Screenshot.take on the Virtual Device (gRPC)', () => {
 
   test('Ctrl+C during getScreenshot: an AbortError, no file, no activity entry', async () => {
     const controller = new AbortController()
+    let started = (): void => undefined
+    const waiting = new Promise<void>((resolve) => (started = resolve))
     const { screenshot } = setup({
       target: vvd,
       shots: [
@@ -259,11 +261,13 @@ describe('Screenshot.take on the Virtual Device (gRPC)', () => {
             signal?.addEventListener('abort', () =>
               reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
             )
+            started()
           })
       ]
     })
     const taken = screenshot.take({ signal: controller.signal })
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    // Aborted once getScreenshot is in flight.
+    await waiting
     controller.abort()
     await expect(taken).rejects.toMatchObject({ name: 'AbortError' })
     expect(await files()).toEqual([])
@@ -401,17 +405,21 @@ describe('Screenshot.take on a stick (gwsi-tool-screenshooter)', () => {
 
   test('Ctrl+C during the screenshooter: AbortError, rm runs, no file, no entry', async () => {
     const controller = new AbortController()
+    let started = (): void => undefined
+    const waiting = new Promise<void>((resolve) => (started = resolve))
     const runner = fakeRunner({
       shoot: (spec) =>
-        new Promise((_resolve, reject) =>
+        new Promise((_resolve, reject) => {
           spec.signal?.addEventListener('abort', () =>
             reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
           )
-        )
+          started()
+        })
     })
     const { screenshot } = setup({ runner })
     const taken = screenshot.take({ signal: controller.signal })
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    // Aborted once the screenshooter runs.
+    await waiting
     controller.abort()
     await expect(taken).rejects.toMatchObject({ name: 'AbortError' })
     expect(runner.displays()).toEqual([SHOOT, RM])
