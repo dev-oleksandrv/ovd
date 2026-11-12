@@ -6,7 +6,12 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { OvdError } from '../errors/ovdError.js'
 import { consoleError, enableGrpc, type ConsoleConnect } from './emulatorConsole.js'
 import { findDiscovery, processAlive } from './emulatorDiscovery.js'
-import { createEmulatorGrpc, type Http2Connect, type KeyEvent } from './emulatorGrpc.js'
+import {
+  createEmulatorGrpc,
+  type EmulatorGrpc,
+  type Http2Connect,
+  type KeyEvent
+} from './emulatorGrpc.js'
 
 export type EmulatorGrpcState = { status: 'on'; port: number } | { status: 'off' }
 
@@ -25,6 +30,9 @@ export interface Emulator {
   // gRPC off (no discovery file) it throws `VVD_GRPC_FAILED` with `details.off`, and the caller
   // decides whether to turn it on (`Vvd.ensureGrpc`).
   sendKeys(vdaSerial: string, events: KeyEvent[], opts?: { signal?: AbortSignal }): Promise<void>
+  // A PNG of the screen over gRPC (`getScreenshot`), as `sendKeys` sends: with gRPC off it
+  // throws `VVD_GRPC_FAILED` with `details.off`.
+  screenshot(vdaSerial: string, opts?: { signal?: AbortSignal }): Promise<Uint8Array>
 }
 
 export interface EmulatorDeps {
@@ -110,6 +118,22 @@ export function createEmulator(deps: EmulatorDeps): Emulator {
     }
   }
 
+  // A client for the discovery file's port and token; off (`details.off`) without one.
+  async function client(vdaSerial: string): Promise<EmulatorGrpc> {
+    const found = await findDiscovery(discovery, consolePort(vdaSerial))
+    if (!found) {
+      throw new OvdError(
+        'VVD_GRPC_FAILED',
+        'Emulator gRPC is off',
+        'Turn it on with ovd vvd start',
+        {
+          off: true
+        }
+      )
+    }
+    return createEmulatorGrpc({ port: found.grpcPort, token: found.token, connect: h2 })
+  }
+
   return {
     grpcPort,
 
@@ -141,21 +165,11 @@ export function createEmulator(deps: EmulatorDeps): Emulator {
     },
 
     async sendKeys(vdaSerial, events, opts = {}) {
-      const found = await findDiscovery(discovery, consolePort(vdaSerial))
-      if (!found) {
-        throw new OvdError(
-          'VVD_GRPC_FAILED',
-          'Emulator gRPC is off',
-          'Turn it on with ovd vvd start',
-          {
-            off: true
-          }
-        )
-      }
-      await createEmulatorGrpc({ port: found.grpcPort, token: found.token, connect: h2 }).sendKeys(
-        events,
-        opts
-      )
+      await (await client(vdaSerial)).sendKeys(events, opts)
+    },
+
+    async screenshot(vdaSerial, opts = {}) {
+      return (await client(vdaSerial)).screenshot(opts)
     }
   }
 }

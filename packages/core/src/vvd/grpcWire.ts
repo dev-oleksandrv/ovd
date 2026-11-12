@@ -80,3 +80,41 @@ export function decodeVmRunState(message: Uint8Array): { state: number; running:
   }
   return { state, running: state === 1 }
 }
+
+// `Image { ImageFormat format = 1; …; bytes image = 4; …; uint64 timestampUs = 6; }`: the PNG in
+// field 4 (fixtures/0.24/emulator-grpc/get-screenshot.json). Every other field is skipped by its
+// wire type, so fields this doesn't know don't break it. Throws when field 4 is absent.
+export function decodeImage(message: Uint8Array): Uint8Array {
+  let at = 0
+  let image: Uint8Array | undefined
+  const read = (): number => {
+    let value = 0
+    let scale = 1
+    for (;;) {
+      const byte = message[at++]
+      if (byte === undefined) throw new Error('Truncated protobuf varint')
+      value += (byte & 0x7f) * scale
+      if ((byte & 0x80) === 0) return value
+      scale *= 128
+    }
+  }
+  const skip = (bytes: number) => {
+    if (at + bytes > message.length) throw new Error('Truncated protobuf field')
+    at += bytes
+  }
+  while (at < message.length) {
+    const tag = read()
+    const wireType = tag & 7
+    if (wireType === 0) read()
+    else if (wireType === 1) skip(8)
+    else if (wireType === 5) skip(4)
+    else if (wireType === 2) {
+      const length = read()
+      const start = at
+      skip(length)
+      if (Math.floor(tag / 8) === 4) image = message.subarray(start, start + length)
+    } else throw new Error(`Unexpected protobuf wire type ${wireType}`)
+  }
+  if (!image) throw new Error('The Image message has no image')
+  return image
+}

@@ -12,6 +12,7 @@ export type GrpcAnswer =
   | 'get-vm-state-running.json'
   | 'get-vm-state-unauthenticated.json'
   | 'send-key.json'
+  | 'get-screenshot.json'
   // Never answers.
   | 'silent'
   // The session fails, as `http2.connect` to a closed port does.

@@ -97,6 +97,9 @@ function fakeEmulator(enables: Enable[] = ['on']) {
     },
     async sendKeys() {
       throw new Error('vvd must not send keys')
+    },
+    async screenshot() {
+      throw new Error('vvd must not take screenshots')
     }
   }
   return { emulator, attempts, probes }

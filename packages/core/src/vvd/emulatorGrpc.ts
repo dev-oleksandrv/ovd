@@ -1,6 +1,7 @@
 import type { ClientHttp2Session, IncomingHttpHeaders } from 'node:http2'
 import { OvdError } from '../errors/ovdError.js'
 import {
+  decodeImage,
   decodeVmRunState,
   encodeKeyboardEvent,
   frame,
@@ -14,10 +15,12 @@ export type Http2Connect = (authority: string) => ClientHttp2Session
 // The only methods OVD calls. Never add `getStatus`: an authenticated `getStatus` call killed
 // the Virtual Device (qemu exited) twice on SDK 0.24.12112 (ARCHITECTURE §8); `getVmState` is
 // the probe instead.
-export type GrpcMethod = 'getVmState' | 'sendKey'
+export type GrpcMethod = 'getVmState' | 'sendKey' | 'getScreenshot'
 
 const SERVICE = '/android.emulation.control.EmulatorController'
 const TIMEOUT_MS = 3_000
+// A native-size PNG (about 940 KB) took 345 ms on the Virtual Device (ARCHITECTURE §8).
+const SCREENSHOT_TIMEOUT_MS = 10_000
 const UNAUTHENTICATED = '16'
 
 export interface KeyEvent {
@@ -32,6 +35,9 @@ export interface EmulatorGrpc {
   // Every event in order over ONE h2c session (a press or a typed text is a sequence of
   // events); the first failure ends it. The whole sequence gets 3 s + 50 ms per event.
   sendKeys(events: KeyEvent[], opts?: { signal?: AbortSignal }): Promise<void>
+  // `getScreenshot` with an empty `ImageFormat` (PNG at the display's size): the PNG bytes.
+  // 10 s, or an abort, ends it.
+  screenshot(opts?: { signal?: AbortSignal }): Promise<Uint8Array>
 }
 
 export interface EmulatorGrpcOptions {
@@ -187,6 +193,19 @@ export function createEmulatorGrpc(opts: EmulatorGrpcOptions): EmulatorGrpc {
           }
         }
       )
+    },
+    async screenshot(shotOpts = {}) {
+      const message = await withSession(
+        'getScreenshot',
+        SCREENSHOT_TIMEOUT_MS,
+        shotOpts.signal,
+        (call) => call('getScreenshot', new Uint8Array())
+      )
+      try {
+        return decodeImage(message)
+      } catch {
+        throw grpcError('Could not read the emulator gRPC getScreenshot answer')
+      }
     }
   }
 }
