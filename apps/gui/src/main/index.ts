@@ -14,6 +14,7 @@ import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
 import { registerQuitHooks } from './quitHooks'
 import { registerRunIpc } from './runIpc'
+import { registerScreenshotIpc } from './screenshotIpc'
 import { registerSetupIpc } from './setupIpc'
 import { showWhenReady } from './showWindow'
 import { registerVvdIpc } from './vvdIpc'
@@ -122,6 +123,7 @@ app.whenReady().then(() => {
   watch = registerWatchIpc(ovd, run, logs, () => mainWindow)
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
   input = registerInputIpc(ovd, () => mainWindow)
+  registerScreenshotIpc(ovd, () => mainWindow)
 
   createWindow()
 

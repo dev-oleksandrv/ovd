@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createEmulatorGrpc } from '../../src/vvd/emulatorGrpc.js'
+import { pngSize } from '../../src/screenshot/png.js'
 import { fakeGrpc, type GrpcAnswer } from '../support/fakeGrpc.js'
 
 const TOKEN = 'ovd-fake-grpc-token'
@@ -15,8 +16,13 @@ afterEach(() => {
 })
 
 describe('createEmulatorGrpc', () => {
-  test('has only getVmState and sendKey: never getStatus, which kills the Virtual Device', () => {
-    expect(Object.keys(client('silent').grpc).sort()).toEqual(['sendKey', 'sendKeys', 'vmState'])
+  test('has only getVmState, sendKey and getScreenshot: never getStatus, which kills the Virtual Device', () => {
+    expect(Object.keys(client('silent').grpc).sort()).toEqual([
+      'screenshot',
+      'sendKey',
+      'sendKeys',
+      'vmState'
+    ])
   })
 
   test('vmState calls getVmState over h2c with the Bearer token', async () => {
@@ -138,6 +144,49 @@ describe('createEmulatorGrpc', () => {
       controller.abort()
       expect(await result).toMatchObject({ name: 'AbortError' })
       expect(fake.sessions[0]?.destroyed).toBe(true)
+    })
+  })
+
+  describe('screenshot', () => {
+    test('calls getScreenshot with an empty ImageFormat and returns the PNG', async () => {
+      const { fake, grpc } = client('get-screenshot.json')
+      const png = await grpc.screenshot()
+      expect(fake.requests.map((r) => [r.headers[':path'], r.body.toString('hex')])).toEqual([
+        [`${SERVICE}/getScreenshot`, '0000000000']
+      ])
+      expect(pngSize(png)).toEqual({ width: 1920, height: 1080 })
+      expect(png.length).toBe(9780)
+      expect(fake.sessions).toEqual([{ closed: true, destroyed: false }])
+    })
+
+    test('no answer in 10 s', async () => {
+      vi.useFakeTimers()
+      const { fake, grpc } = client('silent')
+      const result = grpc.screenshot().catch((e: unknown) => e)
+      await vi.advanceTimersByTimeAsync(9_999)
+      expect(fake.sessions[0]?.destroyed).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(await result).toMatchObject({
+        code: 'VVD_GRPC_FAILED',
+        message: 'Emulator gRPC didn’t answer getScreenshot in time'
+      })
+    })
+
+    test('an abort rejects with an AbortError and destroys the session', async () => {
+      const controller = new AbortController()
+      const { fake, grpc } = client('silent')
+      const result = grpc.screenshot({ signal: controller.signal }).catch((e: unknown) => e)
+      controller.abort()
+      expect(await result).toMatchObject({ name: 'AbortError' })
+      expect(fake.sessions[0]?.destroyed).toBe(true)
+    })
+
+    test('an answer without an image is VVD_GRPC_FAILED', async () => {
+      const { grpc } = client('send-key.json')
+      await expect(grpc.screenshot()).rejects.toMatchObject({
+        code: 'VVD_GRPC_FAILED',
+        message: 'Could not read the emulator gRPC getScreenshot answer'
+      })
     })
   })
 })

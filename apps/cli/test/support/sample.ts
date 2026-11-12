@@ -11,6 +11,7 @@ import {
   type Packages,
   type Pairing,
   type Project,
+  type Screenshot,
   type Vvd
 } from '@ovd/core'
 
@@ -171,6 +172,19 @@ export function stubInput(input: Partial<Input>): Partial<Ovd> {
       press: missing('press'),
       text: missing('text'),
       ...input
+    }
+  }
+}
+
+export function stubScreenshot(screenshot: Partial<Screenshot>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return {
+    screenshot: {
+      take: missing('take'),
+      captures: missing('captures'),
+      dir: () => '/home/developer/ovd/captures',
+      copy: missing('copy'),
+      ...screenshot
     }
   }
 }

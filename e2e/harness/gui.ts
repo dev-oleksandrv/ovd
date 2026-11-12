@@ -26,6 +26,9 @@ export interface Desktop {
   page: Page
   // URLs the app opened in the default browser (shell.openExternal is stubbed).
   opened(): Promise<string[]>
+  // Paths the app showed or opened in the file manager (shell.showItemInFolder and openPath
+  // are stubbed, so no Finder or Files window opens).
+  shown(): Promise<string[]>
   // Quits the app, as the user would; launch() again to restart it on the same sandbox.
   quit(): Promise<void>
 }
@@ -65,9 +68,17 @@ export const test = base.extend<Fixtures>({
       // Links open in the user's browser through shell.openExternal; record them instead.
       await app.evaluate(({ shell }) => {
         const opened: string[] = []
-        Object.assign(globalThis, { __ovdOpened: opened })
+        const shown: string[] = []
+        Object.assign(globalThis, { __ovdOpened: opened, __ovdShown: shown })
         shell.openExternal = async (url: string) => {
           opened.push(url)
+        }
+        shell.showItemInFolder = (path: string) => {
+          shown.push(path)
+        }
+        shell.openPath = async (path: string) => {
+          shown.push(path)
+          return ''
         }
       })
       const page = await app.firstWindow()
@@ -76,6 +87,8 @@ export const test = base.extend<Fixtures>({
         page,
         opened: () =>
           app.evaluate(() => (globalThis as unknown as { __ovdOpened: string[] }).__ovdOpened),
+        shown: () =>
+          app.evaluate(() => (globalThis as unknown as { __ovdShown: string[] }).__ovdShown),
         quit: async () => {
           running.splice(running.indexOf(desktop), 1)
           await stop(app, testInfo.outputPath(`trace-${running.length}.zip`), false)

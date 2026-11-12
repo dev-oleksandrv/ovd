@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
-import type { DevicesUpdate, LoginPrompt } from '@ovd/core'
+import type { CapturesList, DevicesUpdate, LoginPrompt } from '@ovd/core'
 import {
   channels,
   type InputState,
@@ -109,6 +109,17 @@ const api: OvdApi = {
       const handler = (_event: IpcRendererEvent, state: InputState): void => listener(state)
       ipcRenderer.on(channels.inputUpdate, handler)
       return () => ipcRenderer.removeListener(channels.inputUpdate, handler)
+    }
+  },
+  screenshot: {
+    take: (device) => ipcRenderer.invoke(channels.screenshotTake, device),
+    captures: () => ipcRenderer.invoke(channels.screenshotCaptures),
+    reveal: (path) => ipcRenderer.invoke(channels.screenshotReveal, path),
+    openFolder: () => ipcRenderer.invoke(channels.screenshotOpenFolder),
+    onCaptures: (listener) => {
+      const handler = (_event: IpcRendererEvent, list: CapturesList): void => listener(list)
+      ipcRenderer.on(channels.screenshotCapturesUpdate, handler)
+      return () => ipcRenderer.removeListener(channels.screenshotCapturesUpdate, handler)
     }
   },
   watch: {

@@ -1,5 +1,6 @@
 import type {
   AppDetails,
+  CapturesList,
   AppList,
   ArchCheck,
   Check,
@@ -51,6 +52,8 @@ export interface OvdStub {
   pushWatch: (event: WatchEvent) => void
   // Pushes the input session's state as main does.
   pushInput: (state: InputState) => void
+  // Pushes the captures list as main does after a take.
+  pushCaptures: (list: CapturesList) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -149,7 +152,10 @@ export function stubOvd(opts: {
   watch?: Partial<Omit<OvdApi['watch'], 'onEvent'>>
   // Idle, and an open that never answers, unless a test says otherwise.
   input?: Partial<Omit<OvdApi['input'], 'onState'>>
+  // An empty captures folder, and a take that never answers, unless a test says otherwise.
+  screenshot?: Partial<Omit<OvdApi['screenshot'], 'onCaptures'>>
 }): OvdStub {
+  let capturesListener: ((list: CapturesList) => void) | undefined
   let inputListener: ((state: InputState) => void) | undefined
   let listener: ((update: DevicesUpdate) => void) | undefined
   let logsListener: ((update: LogsUpdate) => void) | undefined
@@ -350,6 +356,30 @@ export function stubOvd(opts: {
         }
       }
     },
+    screenshot: {
+      take: vi.fn(opts.screenshot?.take ?? (() => new Promise<never>(() => undefined))),
+      captures: vi.fn(
+        opts.screenshot?.captures ??
+          (async (): Promise<IpcResult<CapturesList>> => ({
+            ok: true,
+            data: { dir: '/home/developer/ovd/captures', captures: [] }
+          }))
+      ),
+      reveal: vi.fn(
+        opts.screenshot?.reveal ??
+          (async (): Promise<IpcResult<null>> => ({ ok: true, data: null }))
+      ),
+      openFolder: vi.fn(
+        opts.screenshot?.openFolder ??
+          (async (): Promise<IpcResult<null>> => ({ ok: true, data: null }))
+      ),
+      onCaptures: (l) => {
+        capturesListener = l
+        return () => {
+          capturesListener = undefined
+        }
+      }
+    },
     watch: {
       set: vi.fn(
         opts.watch?.set ??
@@ -375,6 +405,7 @@ export function stubOvd(opts: {
     pushLogs: (u) => logsListener?.(u),
     pushRun: (p) => runListener?.(p),
     pushWatch: (e) => watchListener?.(e),
-    pushInput: (s) => inputListener?.(s)
+    pushInput: (s) => inputListener?.(s),
+    pushCaptures: (l) => capturesListener?.(l)
   }
 }

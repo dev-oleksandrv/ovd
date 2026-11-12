@@ -7,6 +7,7 @@ import { FeedbackProvider } from '../../../../src/renderer/src/feedback/Feedback
 import { ToastViewport } from '../../../../src/renderer/src/feedback/ToastViewport'
 import { StatusBar } from '../../../../src/renderer/src/frame/StatusBar'
 import { RemoteScreen } from '../../../../src/renderer/src/screens/remote/RemoteScreen'
+import { ScreenshotProvider } from '../../../../src/renderer/src/screenshot/ScreenshotProvider'
 import { ready, stubOvd, type OvdStub } from '../../support/ovdStub'
 import { stick, vvd, wifiOffline } from '../devices/sample'
 
@@ -36,6 +37,7 @@ async function renderScreen(
     open?: (device: string) => Promise<InputState>
     press?: (key: RemoteKey) => Promise<InputOutcome>
     text?: (text: string) => Promise<InputOutcome>
+    screenshot?: Parameters<typeof stubOvd>[0]['screenshot']
   } = {}
 ): Promise<OvdStub> {
   const devices = opts.devices ?? [stick]
@@ -59,12 +61,15 @@ async function renderScreen(
           result: { target: { id: stick.id, name: stick.name }, backend: 'inputd-cli', keys: [key] }
         })),
       ...(opts.text ? { text: opts.text } : {})
-    }
+    },
+    ...(opts.screenshot ? { screenshot: opts.screenshot } : {})
   })
   render(
     <FeedbackProvider>
       <DevicesProvider>
-        <RemoteScreen onSwitchTarget={() => undefined} />
+        <ScreenshotProvider>
+          <RemoteScreen onSwitchTarget={() => undefined} />
+        </ScreenshotProvider>
       </DevicesProvider>
       <StatusBar />
       <ToastViewport />
@@ -197,5 +202,141 @@ describe('RemoteScreen', () => {
     act(() => stub.pushInput({ ...readyFor(stick), sent: [sentEntry('ok', stick)] }))
     const list = await screen.findByRole('list', { name: 'Sent' })
     expect(within(list).getByText('Pressed ok')).toBeTruthy()
+  })
+})
+
+describe('RemoteScreen screenshots', () => {
+  const PATH = '/home/developer/ovd/captures/fire-tv-stick-20261112-021100.png'
+  const taken = (copied: boolean) => ({
+    ok: true as const,
+    data: {
+      target: { id: stick.id, name: stick.name },
+      backend: 'gwsi-tool-screenshooter' as const,
+      path: PATH,
+      width: 1920,
+      height: 1080,
+      bytes: 9780,
+      takenAt: '2026-11-12T02:11:00.000Z',
+      copied
+    }
+  })
+  const capture = {
+    name: 'fire-tv-stick-20261112-021100.png',
+    path: PATH,
+    bytes: 9780,
+    width: 1920,
+    height: 1080,
+    takenAt: '2026-11-12T02:11:00.000Z'
+  }
+  const shotButton = () => screen.getByRole('button', { name: /Screenshot|Taking screenshot/ })
+
+  test('Screenshot takes one for the target, toasts the file and echoes the CLI', async () => {
+    const stub = await renderScreen({ screenshot: { take: async () => taken(true) } })
+    await screen.findByRole('group', { name: 'Remote' })
+    fireEvent.click(shotButton())
+    expect(stub.api.screenshot.take).toHaveBeenCalledWith(stick.id)
+    expect(
+      await screen.findByText('Saved fire-tv-stick-20261112-021100.png · copied to the clipboard')
+    ).toBeTruthy()
+    expect(
+      screen.getAllByText(new RegExp(`ovd screenshot --clipboard --device ${stick.id}`)).length
+    ).toBeGreaterThan(0)
+  })
+
+  test('not copied: a warning that still says it was saved', async () => {
+    await renderScreen({ screenshot: { take: async () => taken(false) } })
+    await screen.findByRole('group', { name: 'Remote' })
+    fireEvent.click(shotButton())
+    expect(
+      await screen.findByText(
+        'Saved fire-tv-stick-20261112-021100.png · couldn’t copy it to the clipboard'
+      )
+    ).toBeTruthy()
+  })
+
+  test('a failed take toasts the error with the CLI', async () => {
+    await renderScreen({
+      screenshot: {
+        take: async () => ({
+          ok: false,
+          error: {
+            code: 'SCREENSHOT_FAILED',
+            message: 'Fire TV stick gave an empty or invalid screenshot',
+            hint: 'h'
+          }
+        })
+      }
+    })
+    await screen.findByRole('group', { name: 'Remote' })
+    fireEvent.click(shotButton())
+    expect(
+      await screen.findByText('Fire TV stick gave an empty or invalid screenshot')
+    ).toBeTruthy()
+  })
+
+  test('while a take runs the button is busy and a second click sends nothing', async () => {
+    const stub = await renderScreen()
+    await screen.findByRole('group', { name: 'Remote' })
+    fireEvent.click(shotButton())
+    expect(await screen.findByRole('button', { name: 'Taking screenshot…' })).toBeTruthy()
+    fireEvent.click(shotButton())
+    expect(stub.api.screenshot.take).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([
+    ['an offline target', [wifiOffline], 'Bedroom stick is offline'],
+    ['no target', [], 'No target device']
+  ])('with %s the button is disabled with the reason', async (_label, devices, reason) => {
+    const stub = await renderScreen({ devices })
+    await waitFor(() => expect(shotButton().getAttribute('title')).toBe(reason))
+    expect((shotButton() as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(shotButton())
+    expect(stub.api.screenshot.take).not.toHaveBeenCalled()
+  })
+
+  test('Captures: empty, then the pushed list, with Show in folder (no echo)', async () => {
+    const stub = await renderScreen()
+    expect(await screen.findByText('No screenshots yet')).toBeTruthy()
+    act(() => stub.pushCaptures({ dir: '/home/developer/ovd/captures', captures: [capture] }))
+    const list = await screen.findByRole('list', { name: 'Captures' })
+    expect(within(list).getByText(capture.name)).toBeTruthy()
+    expect(within(list).getByText(/1920×1080 · 9\.6 KB/)).toBeTruthy()
+    fireEvent.click(within(list).getByRole('button', { name: 'Show in folder' }))
+    expect(stub.api.screenshot.reveal).toHaveBeenCalledWith(PATH)
+    fireEvent.click(screen.getByRole('button', { name: 'Open folder' }))
+    expect(stub.api.screenshot.openFolder).toHaveBeenCalled()
+    expect(screen.queryByTitle('Copy CLI equivalent')).toBeNull()
+  })
+
+  test('Captures: an error with Retry, which reads the folder again', async () => {
+    let fail = true
+    const stub = await renderScreen({
+      screenshot: {
+        captures: async () =>
+          fail
+            ? {
+                ok: false,
+                error: {
+                  code: 'COMMAND_FAILED',
+                  message: 'Can’t read the folder',
+                  hint: 'Check it'
+                }
+              }
+            : { ok: true, data: { dir: '/home/developer/ovd/captures', captures: [capture] } }
+      }
+    })
+    expect(await screen.findByText('Can’t read the folder')).toBeTruthy()
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByRole('list', { name: 'Captures' })).toBeTruthy()
+    expect(stub.api.screenshot.captures).toHaveBeenCalledTimes(2)
+  })
+
+  test('the list is read on mount and again on window focus', async () => {
+    const stub = await renderScreen()
+    await screen.findByText('No screenshots yet')
+    expect(stub.api.screenshot.captures).toHaveBeenCalledTimes(1)
+    act(() => void window.dispatchEvent(new Event('focus')))
+    await waitFor(() => expect(stub.api.screenshot.captures).toHaveBeenCalledTimes(2))
   })
 })

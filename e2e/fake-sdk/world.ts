@@ -75,6 +75,12 @@ export interface World {
   // Whether `~/.emulator_console_auth_token` exists, which the emulator console's `auth` needs.
   // Read when the sandbox opens.
   consoleToken: 'present' | 'missing'
+  // Device temp files `gwsi-tool-screenshooter` wrote on the stick, until `rm -f` removes them.
+  stickFiles: string[]
+  // What the stick's screenshot holds: the synthetic PNG, or nothing (as verified on the
+  // Virtual Device, an empty remote pulls an empty file with exit 0). Synthesized: the stick
+  // backend is unverified on hardware (#44; fixtures/0.24/README.md, Synthesized sequences).
+  stickScreenshot: 'image' | 'empty'
 }
 
 export interface Stick {
@@ -125,7 +131,9 @@ export function defaultWorld(): World {
     vvdLogStreams: 0,
     loginHold: false,
     hold: [],
-    consoleToken: 'present'
+    consoleToken: 'present',
+    stickFiles: [],
+    stickScreenshot: 'image'
   }
 }
 
@@ -176,6 +184,12 @@ export function inputConsoleFile(dir: string): string {
 // is left.
 export function inputConsolesFile(dir: string): string {
   return join(dir, 'input-consoles.jsonl')
+}
+
+// One `{ tool, args, stdinBytes }` line per clipboard tool the CLI ran (`osascript`, `xclip`,
+// `wl-copy` from the sandbox's fake bin folder), so no test touches the real clipboard.
+export function clipboardCallsFile(dir: string): string {
+  return join(dir, 'clipboard-calls.jsonl')
 }
 
 export function readWorld(dir: string): World {

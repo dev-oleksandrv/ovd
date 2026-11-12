@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { OvdError } from '../../src/index.js'
 import { createProcessGroups } from '../../src/sdk/processGroups.js'
 import { createExecaRunner } from '../../src/sdk/runner.js'
+import { createSerialRunner } from '../../src/sdk/serialRunner.js'
 
 // Real child processes, but `node` itself stands in for the SDK: no SDK or device needed.
 const node = (code: string) => ({ file: process.execPath, args: ['-e', code], display: 'node' })
@@ -422,6 +423,30 @@ describe('createExecaRunner stopWhen', () => {
     expect(grandchild).toBeGreaterThan(0)
     await expect.poll(() => gone(grandchild)).toBe(true)
     await expect.poll(() => groupGone(child)).toBe(true)
+  })
+
+  // A hung `gwsi-tool-screenshooter` (ARCHITECTURE §8) holds the serial runner until its
+  // timeout stops its group; the next SDK call waits for that, then runs.
+  test('a timed-out command holds the serial runner until it is stopped, then frees it', async () => {
+    const serial = createSerialRunner(runner)
+    const order: string[] = []
+    const hung = serial
+      .run({ ...probe, timeoutMs: 300, stopWhen: () => false })
+      .catch((error: unknown) => {
+        order.push('hung stopped')
+        throw error
+      })
+    const next = serial.run(node('console.log("next")')).then((result) => {
+      order.push('next')
+      return result
+    })
+
+    await expect(hung).rejects.toMatchObject({
+      code: 'COMMAND_FAILED',
+      details: { timedOut: true }
+    })
+    expect((await next).stdout).toBe('next')
+    expect(order).toEqual(['hung stopped', 'next'])
   })
 
   test('an abort rejects with an AbortError and leaves no grandchild', async () => {

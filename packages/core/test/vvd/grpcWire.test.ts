@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { decodeVmRunState, encodeKeyboardEvent, frame, unframe } from '../../src/vvd/grpcWire.js'
+import {
+  decodeImage,
+  decodeVmRunState,
+  encodeKeyboardEvent,
+  frame,
+  unframe
+} from '../../src/vvd/grpcWire.js'
 import { fixture } from '../support/fixtures.js'
 
 const body = (name: string) => {
@@ -67,5 +73,35 @@ describe('decodeVmRunState', () => {
 
   test.each(['08', '0a0101'])('rejects %j', (hex) => {
     expect(() => decodeVmRunState(new Uint8Array(Buffer.from(hex, 'hex')))).toThrow()
+  })
+})
+
+describe('decodeImage', () => {
+  test('the recorded getScreenshot answer carries a 1920x1080 PNG in field 4', () => {
+    const [message] = unframe(body('get-screenshot.json'))
+    const image = decodeImage(message ?? new Uint8Array())
+    expect(image.length).toBe(9780)
+    expect(Buffer.from(image.subarray(0, 8)).toString('hex')).toBe('89504e470d0a1a0a')
+    expect(Buffer.from(image.subarray(16, 24)).toString('hex')).toBe('0000078000000438')
+  })
+
+  test.each([
+    // Field 4 alone.
+    ['2203010203', '010203'],
+    // Varint (0), 64-bit (1), length-delimited (2) and 32-bit (5) fields are skipped.
+    ['0801' + '110102030405060708' + '0a0100' + '1d01020304' + '220109' + '3005', '09']
+  ])('%s', (hex, image) => {
+    expect(Buffer.from(decodeImage(new Uint8Array(Buffer.from(hex, 'hex')))).toString('hex')).toBe(
+      image
+    )
+  })
+
+  test.each([
+    ['', 'no image'],
+    ['0801', 'no image'],
+    ['2205', 'Truncated'],
+    ['1b', 'wire type 3']
+  ])('rejects %j', (hex, message) => {
+    expect(() => decodeImage(new Uint8Array(Buffer.from(hex, 'hex')))).toThrow(message)
   })
 })

@@ -1,0 +1,1 @@
+vda: error: failed to stat remote object '/tmp/ovd-nope.png': No such file or directory

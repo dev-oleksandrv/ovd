@@ -1,6 +1,7 @@
 import type {
   AppDetails,
   AppList,
+  CapturesList,
   ArchCheck,
   Device,
   DevicesUpdate,
@@ -27,6 +28,7 @@ import type {
   RestartResult,
   RunOutcome,
   RunStep,
+  ScreenshotResult,
   TerminateResult,
   TextResult,
   UninstallResult,
@@ -164,6 +166,9 @@ export interface InputState {
 export type InputOutcome =
   { ok: true; sent: InputSent; result: PressResult | TextResult } | { ok: false; sent: InputSent }
 
+// A screenshot the desktop took, and whether it reached the clipboard.
+export type ScreenshotTaken = ScreenshotResult & { copied: boolean }
+
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson }
 
@@ -294,6 +299,18 @@ export interface OvdApi {
     state(): Promise<InputState>
     onState(listener: (state: InputState) => void): () => void
   }
+  screenshot: {
+    // `ovd screenshot --clipboard --device <id>`: saved in the captures folder, then copied.
+    take(device: string): Promise<IpcResult<ScreenshotTaken>>
+    // The captures folder's newest PNGs, newest first.
+    captures(): Promise<IpcResult<CapturesList>>
+    // Shows a capture in the file manager (view-only).
+    reveal(path: string): Promise<IpcResult<null>>
+    // Opens the captures folder, created when missing.
+    openFolder(): Promise<IpcResult<null>>
+    // Main pushes the list after each take.
+    onCaptures(listener: (list: CapturesList) => void): () => void
+  }
   watch: {
     // `ovd run --watch --device <id>` without the first run: watches the open project folder and
     // redeploys each new build on the target. Idempotent; NOT_A_PROJECT without a folder open.
@@ -357,5 +374,10 @@ export const channels = {
   inputPress: 'ovd:input:press',
   inputText: 'ovd:input:text',
   inputState: 'ovd:input:state',
-  inputUpdate: 'ovd:input:update'
+  inputUpdate: 'ovd:input:update',
+  screenshotTake: 'ovd:screenshot:take',
+  screenshotCaptures: 'ovd:screenshot:captures',
+  screenshotCapturesUpdate: 'ovd:screenshot:captures-update',
+  screenshotReveal: 'ovd:screenshot:reveal',
+  screenshotOpenFolder: 'ovd:screenshot:open-folder'
 } as const

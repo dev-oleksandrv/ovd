@@ -212,3 +212,25 @@ describe('Emulator.sendKeys', () => {
     expect((error as { details?: Record<string, unknown> }).details?.off).toBeUndefined()
   })
 })
+
+describe('Emulator.screenshot', () => {
+  test('takes a PNG over gRPC with the discovery file’s token and port', async () => {
+    await withDiscovery()
+    const { emulator, grpc, console } = setup({ grpc: 'get-screenshot.json' })
+    const png = await emulator.screenshot('emulator-5554')
+    expect(Buffer.from(png.subarray(1, 4)).toString()).toBe('PNG')
+    expect(grpc.requests.map((r) => r.headers[':path'])).toEqual([
+      '/android.emulation.control.EmulatorController/getScreenshot'
+    ])
+    expect(console.ports).toEqual([])
+  })
+
+  test('without a discovery file: VVD_GRPC_FAILED with off, and nothing is called', async () => {
+    const { emulator, grpc } = setup()
+    await expect(emulator.screenshot('emulator-5554')).rejects.toMatchObject({
+      code: 'VVD_GRPC_FAILED',
+      details: { off: true }
+    })
+    expect(grpc.requests).toEqual([])
+  })
+})

@@ -21,6 +21,7 @@ const GRPC_TOKEN = /^grpc\.token=(.*)$/m.exec(DISCOVERY)?.[1] ?? ''
 
 export type GrpcCall =
   | { method: 'getVmState' }
+  | { method: 'getScreenshot' }
   | { method: 'sendKey'; codeType: number; eventType: number; keyCode: number }
 
 interface Recorded {
@@ -148,6 +149,9 @@ export function startFakeEmulator(sdkDir: string): FakeEmulator {
       if (method === 'getVmState') {
         calls.push({ method })
         answer('get-vm-state-running.json')
+      } else if (method === 'getScreenshot') {
+        calls.push({ method })
+        answer('get-screenshot.json')
       } else if (method === 'sendKey') {
         const fields = varintFields(body.subarray(5))
         calls.push({

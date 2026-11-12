@@ -7,7 +7,8 @@ import { stick, vvd, wifiOffline } from '../screens/devices/sample'
 const build = (
   target: string | null,
   busy: VvdBusy = null,
-  devices: Device[] = [stick, vvd, wifiOffline]
+  devices: Device[] = [stick, vvd, wifiOffline],
+  shot: { busy: boolean; unavailable: string | null } = { busy: false, unavailable: null }
 ) => {
   const opts = {
     go: vi.fn(),
@@ -19,7 +20,13 @@ const build = (
     later: vi.fn()
   }
   const vvdOpts = { busy, start: vi.fn(), stop: vi.fn() }
-  return { opts, vvdOpts, items: paletteItems({ devices, target, vvd: vvdOpts, ...opts }) }
+  const screenshot = { ...shot, take: vi.fn() }
+  return {
+    opts,
+    vvdOpts,
+    screenshot,
+    items: paletteItems({ devices, target, vvd: vvdOpts, screenshot, ...opts })
+  }
 }
 
 describe('paletteItems', () => {
@@ -38,6 +45,7 @@ describe('paletteItems', () => {
       ['Run ovd doctor', 'Action'],
       ['Export logs as plain text…', 'Action'],
       ['Export logs as JSON lines…', 'Action'],
+      ['Take screenshot', 'Action'],
       ['Switch target to Vega Virtual Device', 'Device'],
       ['Switch target to Bedroom stick', 'Device'],
       ...LATER.map(([label]) => [label, 'Coming in a later version'])
@@ -109,5 +117,25 @@ describe('paletteItems', () => {
     item?.run()
     expect(vvdOpts.start).not.toHaveBeenCalled()
     expect(vvdOpts.stop).not.toHaveBeenCalled()
+  })
+
+  test('Take screenshot runs the shared take', () => {
+    const { screenshot, items } = build(stick.id)
+    const item = items.find((i) => i.id === 'action:screenshot')
+    expect(item).toMatchObject({ label: 'Take screenshot', icon: 'photo_camera', later: false })
+    item?.run()
+    expect(screenshot.take).toHaveBeenCalled()
+  })
+
+  test.each([
+    [{ busy: true, unavailable: 'Taking a screenshot' }, 'Unavailable · Taking a screenshot'],
+    [{ busy: false, unavailable: 'Bedroom stick is offline' }, 'Unavailable · No online target'],
+    [{ busy: false, unavailable: 'No target device' }, 'Unavailable · No online target']
+  ])('Take screenshot is unavailable: %o', (shot, kind) => {
+    const { screenshot, items } = build(stick.id, null, undefined, shot)
+    const item = items.find((i) => i.id === 'action:screenshot')
+    expect(item).toMatchObject({ kind, later: true })
+    item?.run()
+    expect(screenshot.take).not.toHaveBeenCalled()
   })
 })

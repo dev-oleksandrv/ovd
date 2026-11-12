@@ -1,3 +1,4 @@
+import { sep } from 'node:path'
 import { isRemoteKey, LOG_EXPORT_FORMATS, type LogExportFormat, type RemoteKey } from '@ovd/core'
 import type { LogsExportRequest, LogsFilter } from '../preload/api'
 
@@ -93,4 +94,21 @@ export function inputText(
   }
   if (value.length > MAX_INPUT_TEXT) throw new TypeError(`${field} is too long`)
   return value
+}
+
+// A capture the renderer asks main to show in its folder: a `.png` whose real path (symlinks
+// resolved) is inside the captures folder's real path, so a renderer can't reveal anything else.
+export async function capturePath(
+  value: unknown,
+  capturesDir: string,
+  realpath: (path: string) => Promise<string>
+): Promise<string> {
+  if (typeof value !== 'string' || value === '' || value.length > 4_096) {
+    throw new TypeError('path must be a non-empty string')
+  }
+  const [real, dir] = await Promise.all([realpath(value), realpath(capturesDir)])
+  if (!real.startsWith(dir.endsWith(sep) ? dir : dir + sep) || !/\.png$/i.test(real)) {
+    throw new TypeError('path is not a capture')
+  }
+  return real
 }

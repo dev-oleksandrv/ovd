@@ -46,7 +46,10 @@ export const ERROR_CODES = [
   'INVALID_KEY',
   'KEY_UNSUPPORTED',
   'INVALID_TEXT',
-  'INPUT_FAILED'
+  'INPUT_FAILED',
+  'SCREENSHOT_FAILED',
+  'CLIPBOARD_UNAVAILABLE',
+  'INVALID_PATH'
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

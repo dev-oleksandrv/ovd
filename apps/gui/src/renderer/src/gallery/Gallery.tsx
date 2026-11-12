@@ -635,6 +635,7 @@ export function Gallery() {
               runDoctor: () => undefined,
               exportLogs: () => undefined,
               vvd: { busy: null, start: () => undefined, stop: () => undefined },
+              screenshot: { busy: false, unavailable: null, take: () => undefined },
               setup: () => undefined,
               pair: () => undefined,
               switchTarget: setTarget,

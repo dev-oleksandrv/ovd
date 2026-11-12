@@ -70,6 +70,22 @@ describe('createActivityFeed', () => {
     off()
   })
 
+  test('a failed screenshot entry passes validation', async () => {
+    const feed = createActivityFeed({ home })
+    const seen: ActivityEntry[] = []
+    const off = feed.subscribe((e) => seen.push(e))
+    await log().append({
+      action: 'screenshot',
+      target: 'G070000000000001',
+      args: { backend: 'gwsi-tool-screenshooter' },
+      result: 'error',
+      errorCode: 'SCREENSHOT_FAILED'
+    })
+    await pollUntil(() => seen.length === 1)
+    expect(seen[0]).toMatchObject({ action: 'screenshot', errorCode: 'SCREENSHOT_FAILED' })
+    off()
+  })
+
   test('a partial last line waits for its newline', async () => {
     const feed = createActivityFeed({ home })
     await log().append(install('first'))

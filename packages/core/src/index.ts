@@ -245,3 +245,25 @@ export type {
 export { GRPC_KEYS, INPUTD_KEYS, isRemoteKey, REMOTE_KEYS } from './input/keys.js'
 export type { RemoteKey } from './input/keys.js'
 export type { KeyEvent } from './vvd/emulatorGrpc.js'
+export { parseVdaPull } from './adapters/parseVdaPull.js'
+export type { VdaPull } from './adapters/parseVdaPull.js'
+export { createScreenshot, screenshotBackend } from './screenshot/screenshot.js'
+export type {
+  Screenshot,
+  ScreenshotBackend,
+  ScreenshotDeps,
+  ScreenshotOptions,
+  ScreenshotResult
+} from './screenshot/screenshot.js'
+export { captureBase, captureName, capturesDir, listCaptures, slug } from './screenshot/captures.js'
+export type { Capture, CapturesList } from './screenshot/captures.js'
+export { pngSize } from './screenshot/png.js'
+export { clipboardCommand, createClipboard } from './screenshot/clipboard.js'
+export type {
+  Clipboard,
+  ClipboardCommand,
+  ClipboardDeps,
+  ClipboardTool
+} from './screenshot/clipboard.js'
+export { commitFile, resolveDestination } from './screenshot/saveFile.js'
+export type { Destination, SaveFs } from './screenshot/saveFile.js'

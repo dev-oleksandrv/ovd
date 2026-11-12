@@ -25,3 +25,4 @@ Stage 1 needs state that outlives one command: the selected target device ("the 
 ## Amendments
 
 - 2026-10-31 (`53c4611`, Stage 2.1): `state.json` gained an optional `project` field (`kind: folder | vpkg`, `path`); `version` stays `1`. Edited in place before this rule existed.
+- 2026-11-12 (Stage 4.3): screenshots are the user's own files, not host state: they go to `~/ovd/captures` (or `OVD_CAPTURES`), outside this directory, and OVD only lists the PNGs it finds there. Nothing about them is kept in `state.json`.
