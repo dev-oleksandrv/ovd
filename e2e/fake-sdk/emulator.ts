@@ -4,7 +4,11 @@
 // emulator-grpc. gRPC is on exactly while the sandbox's discovery file exists: the console
 // writes it on `grpc <port>`, the fake `vega virtual-device start` and `stop` delete it.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { createServer as createHttp2Server, type Http2Session } from 'node:http2'
+import {
+  createServer as createHttp2Server,
+  type Http2Session,
+  type ServerHttp2Stream
+} from 'node:http2'
 import { createServer, type Socket } from 'node:net'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,12 +26,33 @@ const GRPC_TOKEN = /^grpc\.token=(.*)$/m.exec(DISCOVERY)?.[1] ?? ''
 export type GrpcCall =
   | { method: 'getVmState' }
   | { method: 'getScreenshot' }
+  | { method: 'streamScreenshot' }
   | { method: 'sendKey'; codeType: number; eventType: number; keyCode: number }
 
 interface Recorded {
   headers: Record<string, string | number>
   trailers: Record<string, string>
   body: string
+}
+
+interface RecordedStream {
+  headers: Record<string, string | number>
+  messages: string[]
+  trailers: Record<string, string>
+}
+
+// fixtures/0.24/emulator-grpc/stream-screenshot.json: the first frame at once, then one per
+// screen change; the trailers when the Virtual Device stops.
+const STREAM = JSON.parse(fixture('emulator-grpc/stream-screenshot.json')) as RecordedStream
+// How often an open stream checks whether the Virtual Device stopped.
+const STREAM_POLL_MS = 200
+
+// A gRPC length-prefixed message (not compressed).
+function framed(hex: string): Buffer {
+  const message = Buffer.from(hex, 'hex')
+  const head = Buffer.alloc(5)
+  head.writeUInt32BE(message.length, 1)
+  return Buffer.concat([head, message])
 }
 
 export interface FakeEmulator {
@@ -67,6 +92,8 @@ export function startFakeEmulator(sdkDir: string): FakeEmulator {
   const unhandled: string[] = []
   const sockets = new Set<Socket>()
   const sessions = new Set<Http2Session>()
+  // Open `streamScreenshot` streams and the recorded frame each sends next (1, 2, 1, …).
+  const screens = new Map<ServerHttp2Stream, { next: number; poll: NodeJS.Timeout }>()
   const dir = discoveryDir(sdkDir)
   const discoveryFile = join(dir, `pid_${process.pid}.ini`)
   let consolePort = 0
@@ -116,6 +143,37 @@ export function startFakeEmulator(sdkDir: string): FakeEmulator {
   consoleServer.listen(0)
   consolePort = (consoleServer.address() as { port: number }).port
 
+  // A stream stays open: a key changes the screen, so every open stream gets the next recorded
+  // frame on each keyup; a stopped Virtual Device ends it with the recorded trailers.
+  const openScreen = (stream: ServerHttp2Stream) => {
+    stream.respond(STREAM.headers, { waitForTrailers: true })
+    stream.write(framed(STREAM.messages[0] ?? ''))
+    const poll = setInterval(() => {
+      if (readWorld(sdkDir).vvd.running && existsSync(discoveryFile)) return
+      endScreen(stream)
+    }, STREAM_POLL_MS)
+    screens.set(stream, { next: 1, poll })
+    stream.on('close', () => {
+      clearInterval(poll)
+      screens.delete(stream)
+    })
+  }
+  const endScreen = (stream: ServerHttp2Stream) => {
+    const screen = screens.get(stream)
+    if (screen) clearInterval(screen.poll)
+    screens.delete(stream)
+    if (stream.closed || stream.destroyed) return
+    stream.on('wantTrailers', () => stream.sendTrailers(STREAM.trailers))
+    stream.end()
+  }
+  const screenChanged = () => {
+    for (const [stream, screen] of screens) {
+      if (stream.closed || stream.destroyed) continue
+      stream.write(framed(STREAM.messages[screen.next] ?? ''))
+      screen.next = screen.next === 1 ? 2 : 1
+    }
+  }
+
   const grpc = createHttp2Server()
   grpc.on('session', (session) => {
     sessions.add(session)
@@ -152,6 +210,9 @@ export function startFakeEmulator(sdkDir: string): FakeEmulator {
       } else if (method === 'getScreenshot') {
         calls.push({ method })
         answer('get-screenshot.json')
+      } else if (method === 'streamScreenshot') {
+        calls.push({ method })
+        openScreen(stream)
       } else if (method === 'sendKey') {
         const fields = varintFields(body.subarray(5))
         calls.push({
@@ -161,6 +222,7 @@ export function startFakeEmulator(sdkDir: string): FakeEmulator {
           keyCode: fields[3] ?? 0
         })
         answer('send-key.json')
+        if (fields[2] === 1) screenChanged()
       } else {
         unhandled.push(`grpc: ${String(headers[':path'])}`)
         stream.close()
@@ -176,6 +238,8 @@ export function startFakeEmulator(sdkDir: string): FakeEmulator {
     grpcCalls: () => [...calls],
     unhandled: () => [...unhandled],
     close() {
+      for (const screen of screens.values()) clearInterval(screen.poll)
+      screens.clear()
       for (const socket of sockets) socket.destroy()
       for (const session of sessions) session.destroy()
       consoleServer.close()
