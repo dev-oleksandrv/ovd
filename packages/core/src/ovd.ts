@@ -13,6 +13,7 @@ import { createInstall, type Install } from './install/install.js'
 import { createInstallSteps } from './install/installSteps.js'
 import { createInput, type Input } from './input/input.js'
 import { createScreenshot, type Screenshot } from './screenshot/screenshot.js'
+import { createScreen, type Screen } from './screen/screen.js'
 import { createApps, type Apps } from './deviceApps/deviceApps.js'
 import { createLogs, type Logs } from './logs/logSession.js'
 import { createPairing, type Pairing } from './pairing/pairing.js'
@@ -54,6 +55,7 @@ export interface Ovd {
   watch: Watch
   input: Input
   screenshot: Screenshot
+  screen: Screen
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -149,6 +151,7 @@ export function createOvd(opts: OvdOptions): Ovd {
     platform: process.platform,
     ...(opts.now ? { now: opts.now } : {})
   })
+  const screen = createScreen({ devices, activity, emulator, vvd })
   return {
     sdk,
     devices,
@@ -164,6 +167,7 @@ export function createOvd(opts: OvdOptions): Ovd {
     run,
     watch,
     input,
-    screenshot
+    screenshot,
+    screen
   }
 }

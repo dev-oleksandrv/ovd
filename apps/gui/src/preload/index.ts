@@ -6,6 +6,8 @@ import {
   type LogsUpdate,
   type OvdApi,
   type RunProgress,
+  type ScreenFramePush,
+  type ScreenState,
   type WatchEvent
 } from './api'
 
@@ -120,6 +122,23 @@ const api: OvdApi = {
       const handler = (_event: IpcRendererEvent, list: CapturesList): void => listener(list)
       ipcRenderer.on(channels.screenshotCapturesUpdate, handler)
       return () => ipcRenderer.removeListener(channels.screenshotCapturesUpdate, handler)
+    }
+  },
+  screen: {
+    start: (device) => ipcRenderer.invoke(channels.screenStart, device),
+    stop: () => ipcRenderer.invoke(channels.screenStop),
+    ack: (seq) => ipcRenderer.invoke(channels.screenAck, seq),
+    refresh: (device) => ipcRenderer.invoke(channels.screenRefresh, device),
+    image: (path) => ipcRenderer.invoke(channels.screenImage, path),
+    onFrame: (listener) => {
+      const handler = (_event: IpcRendererEvent, frame: ScreenFramePush): void => listener(frame)
+      ipcRenderer.on(channels.screenFrame, handler)
+      return () => ipcRenderer.removeListener(channels.screenFrame, handler)
+    },
+    onState: (listener) => {
+      const handler = (_event: IpcRendererEvent, state: ScreenState): void => listener(state)
+      ipcRenderer.on(channels.screenState, handler)
+      return () => ipcRenderer.removeListener(channels.screenState, handler)
     }
   },
   watch: {

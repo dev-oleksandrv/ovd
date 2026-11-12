@@ -267,3 +267,7 @@ export type {
 } from './screenshot/clipboard.js'
 export { commitFile, resolveDestination } from './screenshot/saveFile.js'
 export type { Destination, SaveFs } from './screenshot/saveFile.js'
+export { createScreen, LIVE_FORMAT } from './screen/screen.js'
+export type { LiveOptions, LiveScreen, Screen, ScreenBackend, ScreenDeps } from './screen/screen.js'
+export type { FrameStream } from './vvd/emulatorGrpc.js'
+export type { ImageFormat, ImageFormatName, ScreenFrame } from './vvd/grpcWire.js'

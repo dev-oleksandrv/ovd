@@ -22,3 +22,7 @@ On Fire TV sticks, `inputd-cli` sends keys and text, and `gwsi-tool-screenshoote
 - Two code paths to maintain and test.
 - Doctor gets an "Emulator gRPC" row.
 - This is the one place OVD talks to an endpoint directly instead of through an SDK tool, and only because the SDK tools don't work there (ADR 0002).
+
+## Amendments
+
+- 2026-11-12 (PR #112): the Virtual Device's live view uses gRPC `streamScreenshot` (RGBA8888, a frame per screen change, held back by HTTP/2 flow control); `getScreenshot` stays the backend for screenshots (ARCHITECTURE §8).

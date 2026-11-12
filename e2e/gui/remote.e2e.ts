@@ -133,6 +133,12 @@ test.describe('Remote & Screen on the Virtual Device', () => {
         { method: 'sendKey', codeType: 1, eventType: 0, keyCode: 96 },
         { method: 'sendKey', codeType: 1, eventType: 1, keyCode: 96 }
       ])
-    expect(sandbox.activity().map((a) => a.action)).toEqual(['vvd.grpc.enable', 'input.press'])
+    // The live view found gRPC off too: the input session and it share one enable.
+    expect(
+      sandbox
+        .activity()
+        .map((a) => a.action)
+        .filter((action) => action !== 'screen.live')
+    ).toEqual(['vvd.grpc.enable', 'input.press'])
   })
 })

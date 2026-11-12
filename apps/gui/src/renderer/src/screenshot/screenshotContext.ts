@@ -1,5 +1,6 @@
 import type { CapturesList, ErrorJson } from '@ovd/core'
 import { createContext, useContext } from 'react'
+import type { ScreenshotTaken } from '../../../preload/api'
 
 export type CapturesState =
   | { status: 'loading' }
@@ -13,6 +14,8 @@ export interface ScreenshotValue {
   unavailable: string | null
   // Takes one for the target, copies it, toasts and echoes `ovd screenshot --clipboard …`.
   take(): Promise<void>
+  // The last take that saved, from this window: a stick's screen view shows it.
+  latest: ScreenshotTaken | null
   captures: CapturesState
   // Reads the captures folder again (the Remote screen on mount and focus, Retry).
   refresh(): Promise<void>

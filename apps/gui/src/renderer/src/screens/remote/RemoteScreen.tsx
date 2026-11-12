@@ -12,6 +12,7 @@ import { KeyboardHint } from './KeyboardHint'
 import { keyFor, overlayOpen } from './remoteKeys'
 import { remoteView } from './remoteView'
 import { RemotePad } from './RemotePad'
+import { ScreenView } from './ScreenView'
 import { TypeIntoTv } from './TypeIntoTv'
 import { useInput } from './useInput'
 
@@ -21,7 +22,8 @@ interface RemoteScreenProps {
 }
 
 // Debug → Remote & Screen (Stage 4.2): the target's remote and "Type into TV", through one
-// input session main keeps open (sticks: inputd-cli, the Virtual Device: emulator gRPC).
+// input session main keeps open (sticks: inputd-cli, the Virtual Device: emulator gRPC). Above
+// them the target's screen (Stage 4.4), whatever the session's state.
 export function RemoteScreen({ onSwitchTarget }: RemoteScreenProps) {
   const { state: devices } = useDevicesContext()
   const target = targetDevice(devices)
@@ -115,7 +117,18 @@ export function RemoteScreen({ onSwitchTarget }: RemoteScreenProps) {
           {shot.busy ? 'Taking screenshot…' : 'Screenshot'}
         </Button>
       </header>
-      {body}
+      {target && view !== null && view.kind !== 'no-target' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+          <div className="px-6 pt-5">
+            <ScreenView target={target} sentCount={input.sentCount} />
+          </div>
+          {/* Its natural height: the outer column scrolls, so the pad isn't squeezed into a
+              scroller of its own under the screen. */}
+          <div className="flex shrink-0 flex-col">{body}</div>
+        </div>
+      ) : (
+        body
+      )}
     </div>
   )
 }

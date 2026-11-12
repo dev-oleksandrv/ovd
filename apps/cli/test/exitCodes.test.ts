@@ -46,7 +46,8 @@ test.each<[ErrorCode, number]>([
   ['INPUT_FAILED', 1],
   ['SCREENSHOT_FAILED', 1],
   ['CLIPBOARD_UNAVAILABLE', 1],
-  ['INVALID_PATH', 2]
+  ['INVALID_PATH', 2],
+  ['LIVE_UNSUPPORTED', 1]
 ])('%s → %i', (code, exit) => {
   expect(exitCodeFor(code)).toBe(exit)
 })

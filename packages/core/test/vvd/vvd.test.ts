@@ -100,6 +100,9 @@ function fakeEmulator(enables: Enable[] = ['on']) {
     },
     async screenshot() {
       throw new Error('vvd must not take screenshots')
+    },
+    async streamScreenshot() {
+      throw new Error('vvd must not stream the screen')
     }
   }
   return { emulator, attempts, probes }
@@ -374,6 +377,70 @@ describe('Vvd.ensureGrpc', () => {
     expect(await activity()).toEqual([
       { action: 'vvd.grpc.enable', result: 'error', errorCode: 'VVD_GRPC_FAILED' }
     ])
+  })
+
+  // An enable that waits until the test lets it answer.
+  function held(fake: ReturnType<typeof setup>) {
+    let release = (): void => undefined
+    fake.emulator.enableGrpc = (serial, opts = {}) => {
+      fake.attempts.push({ serial, signal: opts.signal })
+      return new Promise((resolve) => {
+        release = () => resolve({ port: 8554 })
+      })
+    }
+    return { release: () => release() }
+  }
+
+  test('calls while one runs share it: one console enable, one activity entry', async () => {
+    const fake = setup(phases(online))
+    const gate = held(fake)
+    const first = fake.vvd.ensureGrpc(vvdDevice('online'))
+    const second = fake.vvd.ensureGrpc(vvdDevice('online'))
+    await Promise.resolve()
+    gate.release()
+    expect(await Promise.all([first, second])).toEqual([{ port: 8554 }, { port: 8554 }])
+    expect(fake.attempts).toHaveLength(1)
+    // The shared enable runs without any one caller's signal.
+    expect(fake.attempts[0]?.signal).toBeUndefined()
+    expect(await activity()).toEqual([{ action: 'vvd.grpc.enable', result: 'ok' }])
+  })
+
+  test('a failed enable is shared too, and a later call runs a new one', async () => {
+    const fake = setup(phases(online), ['rejected', 'on'])
+    const both = await Promise.allSettled([
+      fake.vvd.ensureGrpc(vvdDevice('online')),
+      fake.vvd.ensureGrpc(vvdDevice('online'))
+    ])
+    expect(both.map((r) => r.status)).toEqual(['rejected', 'rejected'])
+    expect(fake.attempts).toHaveLength(1)
+    expect(await fake.vvd.ensureGrpc(vvdDevice('online'))).toEqual({ port: 8554 })
+    expect(fake.attempts).toHaveLength(2)
+    expect(await activity()).toEqual([
+      { action: 'vvd.grpc.enable', result: 'error', errorCode: 'VVD_GRPC_FAILED' },
+      { action: 'vvd.grpc.enable', result: 'ok' }
+    ])
+  })
+
+  test('the first caller aborts: it stops waiting, and the second still gets gRPC on', async () => {
+    const fake = setup(phases(online))
+    const gate = held(fake)
+    const controller = new AbortController()
+    const first = fake.vvd.ensureGrpc(vvdDevice('online'), controller.signal)
+    const second = fake.vvd.ensureGrpc(vvdDevice('online'))
+    controller.abort()
+    await expect(first).rejects.toMatchObject({ name: 'AbortError' })
+    gate.release()
+    expect(await second).toEqual({ port: 8554 })
+    expect(fake.attempts).toHaveLength(1)
+    expect(await activity()).toEqual([{ action: 'vvd.grpc.enable', result: 'ok' }])
+  })
+
+  test('an already aborted signal rejects at once', async () => {
+    const fake = setup(phases(online))
+    held(fake)
+    await expect(
+      fake.vvd.ensureGrpc(vvdDevice('online'), AbortSignal.abort())
+    ).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   test('a stopped Virtual Device is TARGET_OFFLINE, and the console isn’t tried', async () => {

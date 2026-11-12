@@ -10,6 +10,7 @@ export function ScreenshotProvider({ children }: { children: ReactNode }) {
   const { notify } = useFeedback()
   const target = targetDevice(useDevicesContext().state)
   const [busy, setBusy] = useState(false)
+  const [latest, setLatest] = useState<ScreenshotValue['latest']>(null)
   const [captures, setCaptures] = useState<CapturesState>({ status: 'loading' })
   // A second click while one runs is ignored, even before `busy` renders.
   const running = useRef(false)
@@ -36,8 +37,10 @@ export function ScreenshotProvider({ children }: { children: ReactNode }) {
     const cli = screenshotCli(device)
     try {
       const result = await window.ovd.screenshot.take(device)
-      if (result.ok) notify({ ...savedToast(result.data), cli })
-      else notify({ tone: 'error', text: result.error.message, cli })
+      if (result.ok) {
+        setLatest(result.data)
+        notify({ ...savedToast(result.data), cli })
+      } else notify({ tone: 'error', text: result.error.message, cli })
     } finally {
       running.current = false
       setBusy(false)
@@ -65,12 +68,13 @@ export function ScreenshotProvider({ children }: { children: ReactNode }) {
       busy,
       unavailable: busy ? 'Taking a screenshot' : blocker,
       take,
+      latest,
       captures,
       refresh,
       reveal,
       openFolder
     }),
-    [busy, blocker, take, captures, refresh, reveal, openFolder]
+    [busy, blocker, take, latest, captures, refresh, reveal, openFolder]
   )
   return <ScreenshotContext.Provider value={value}>{children}</ScreenshotContext.Provider>
 }
