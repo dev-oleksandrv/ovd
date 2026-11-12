@@ -146,6 +146,8 @@ export function createScreenController(deps: {
   // One view: opens the stream (logged unless `quiet`), pumps it, and on its end reopens it
   // once while the device still lists online.
   async function run(gen: number, id: string): Promise<void> {
+    // One automatic reopen per view (`start`), never reset: a stream that yields a frame and
+    // ends again each time would otherwise reopen forever instead of showing the error and Retry.
     let reopened = false
     let quiet = false
     for (;;) {
@@ -160,8 +162,6 @@ export function createScreenController(deps: {
         }
         current.live = live
         set(gen, { status: 'live', target: live.target })
-        // A stream that delivered frames again gets its own reopen when it ends.
-        reopened = false
         error = await pump(gen, live)
         live.close()
       } catch (thrown) {

@@ -241,6 +241,33 @@ describe('screen controller', () => {
     expect(s.frames.map((f) => f.seq)).toEqual([1, 2])
   })
 
+  test('a stream that yields one frame then ends, again and again, while online: one reopen, then error', async () => {
+    const streams = [fakeLive(), fakeLive(), fakeLive()]
+    let opened = 0
+    const s = setup({
+      lives: streams.map((stream) => async () => {
+        opened++
+        stream.push(frameOf(0))
+        stream.end()
+        return stream.live
+      })
+    })
+    s.controller.start('VirtualDevice')
+    for (let i = 0; i < 5; i++) {
+      await flush()
+      const last = s.frames.at(-1)
+      if (last) s.controller.ack(last.seq)
+    }
+    await flush()
+    expect(opened).toBe(2)
+    expect(s.liveCalls.map((c) => c.quiet)).toEqual([false, true])
+    expect(s.statuses()).toEqual(['connecting', 'live', 'connecting', 'live', 'error'])
+    expect(s.states.at(-1)).toMatchObject({
+      status: 'error',
+      error: { code: 'VVD_GRPC_FAILED', message: 'The Virtual Device’s screen stream keeps ending' }
+    })
+  })
+
   test('VVD_GRPC_FAILED while online: one reopen, and when that fails too, error', async () => {
     const stream = fakeLive()
     const s = setup({
