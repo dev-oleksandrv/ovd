@@ -18,7 +18,10 @@ export interface InputController {
   state(): InputState
   // Main heard of a new target: a session for another device closes (the screen opens the next).
   targetChanged(target: string | null): void
-  // On quit and when the window closes: the stick's console exits.
+  // True while a stick's console is open or still closing (quit waits for its `exit`).
+  running(): boolean
+  // On quit and when the window closes: the stick's console exits and the state goes idle (not
+  // pushed, so nothing reopens it).
   close(): Promise<void>
 }
 
@@ -62,10 +65,13 @@ export function createInputController(deps: {
   now?: () => Date
 }): InputController {
   const now = deps.now ?? (() => new Date())
-  let state: InputState = { status: 'idle', target: null, backend: null, sent: [] }
+  const idle = (): InputState => ({ status: 'idle', target: null, backend: null, sent: [] })
+  let state: InputState = idle()
   let session: InputSession | undefined
   let device: string | null = null
   let opening: Promise<InputState> | undefined
+  // Stick consoles still closing (`exit` sent, the group not gone yet): quit waits for them.
+  const closing = new Set<Promise<void>>()
   // Bumped by every open and close: an open that finishes in another generation is dropped.
   let generation = 0
 
@@ -74,17 +80,29 @@ export function createInputController(deps: {
     deps.send(state)
   }
 
-  // Drops the current session (and any open in flight) and waits for it to close.
-  const closeCurrent = async () => {
-    generation++
+  // Drops the current session (and any open in flight), waits for it to close and goes idle,
+  // unless another open started meanwhile (its state stands). `push: false` (window closing,
+  // quit) only resets the state: the screen opens a session when it sees idle, and a reopened
+  // window reads the state when it mounts.
+  const closeCurrent = async (push: boolean) => {
+    const gen = ++generation
     await closeSession()
+    if (gen !== generation) return
+    if (push) set(idle())
+    else state = idle()
   }
   const closeSession = async () => {
     const old = session
     session = undefined
     opening = undefined
     device = null
-    await old?.close().catch(() => undefined)
+    if (!old) return
+    const done = old.close().catch(() => undefined)
+    if (old.backend === 'inputd-cli') {
+      closing.add(done)
+      void done.then(() => closing.delete(done))
+    }
+    await done
   }
 
   const record = (entry: InputSent) => {
@@ -187,14 +205,21 @@ export function createInputController(deps: {
       )
     },
 
-    state: () => state,
+    // Ready without a session (it closed) reads as idle, so the screen opens a new one.
+    running: () => session?.backend === 'inputd-cli' || closing.size > 0,
+
+    state: () => (state.status === 'ready' && !session ? idle() : state),
 
     targetChanged(target) {
       // No target at all (the device is likely rebooting) keeps the session, as Logs does.
       if (target === null || device === null || target === device) return
-      void closeCurrent().then(() => set({ status: 'idle', target: null, backend: null, sent: [] }))
+      void closeCurrent(true)
     },
 
-    close: closeCurrent
+    // Also waits for a console the window's close already started closing (quit on Ubuntu).
+    close: async () => {
+      await closeCurrent(false)
+      await Promise.all([...closing])
+    }
   }
 }

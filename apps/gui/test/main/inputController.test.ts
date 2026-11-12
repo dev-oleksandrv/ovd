@@ -219,4 +219,65 @@ describe('createInputController', () => {
     await opened
     expect(late.close).toHaveBeenCalled()
   })
+
+  test('close goes idle, so a reopened window opens a new session that takes presses', async () => {
+    const { controller, sent, session, sessions } = setup()
+    await controller.open(STICK)
+    await controller.close()
+    expect(sessions[0]?.close).toHaveBeenCalled()
+    expect(controller.state()).toEqual({ status: 'idle', target: null, backend: null, sent: [] })
+    // Not pushed: the screen would open a new session on quit.
+    expect(sent.map((s) => s.status)).toEqual(['opening', 'ready'])
+    expect(await controller.open(STICK)).toMatchObject({ status: 'ready' })
+    expect(session).toHaveBeenCalledTimes(2)
+    expect(await controller.press('up')).toMatchObject({ ok: true })
+    expect(sessions[1]?.press).toHaveBeenCalledWith(['up'])
+  })
+
+  test('an open while a target change still closes the old session ends ready for it', async () => {
+    let finishClose: () => void = () => undefined
+    const { controller, sessions } = setup()
+    await controller.open(STICK)
+    sessions[0]?.close.mockImplementationOnce(
+      () => new Promise<undefined>((r) => (finishClose = () => r(undefined)))
+    )
+    controller.targetChanged('VirtualDevice')
+    const opened = controller.open('VirtualDevice')
+    expect(await opened).toMatchObject({ status: 'ready', backend: 'grpc' })
+    await controller.press('down')
+    finishClose()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(controller.state()).toMatchObject({
+      status: 'ready',
+      backend: 'grpc',
+      sent: [{ label: 'down', ok: true }]
+    })
+  })
+
+  test('running: while a stick console is open or still closing; close waits for that', async () => {
+    let finishClose: () => void = () => undefined
+    const { controller, sessions } = setup()
+    expect(controller.running()).toBe(false)
+    await controller.open(STICK)
+    expect(controller.running()).toBe(true)
+    sessions[0]?.close.mockImplementationOnce(
+      () => new Promise<undefined>((r) => (finishClose = () => r(undefined)))
+    )
+    // The window's close starts it; quit's close must still wait for the `exit`.
+    void controller.close()
+    expect(controller.running()).toBe(true)
+    let quitClosed = false
+    const quit = controller.close().then(() => (quitClosed = true))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(quitClosed).toBe(false)
+    finishClose()
+    await quit
+    expect(controller.running()).toBe(false)
+  })
+
+  test('running: false for the Virtual Device (gRPC has no console)', async () => {
+    const { controller } = setup()
+    await controller.open('VirtualDevice')
+    expect(controller.running()).toBe(false)
+  })
 })

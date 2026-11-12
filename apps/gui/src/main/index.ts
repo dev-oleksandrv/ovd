@@ -37,14 +37,20 @@ const devices = registerDevicesIpc(
     input?.targetChanged(update.target)
   }
 )
-// Quitting stops the probes and the log stream in flight and waits for the log session, then
-// SIGTERMs any SDK process group still running.
-const quitting = registerQuitHooks(app, { logs, stopAll: () => processGroups.stopAll() })
+// Quitting stops the probes and the log stream in flight and waits for the log session and the
+// stick's input console (`exit`), then SIGTERMs any SDK process group still running. `input` is
+// set later, once the IPC handlers are registered.
+const quitting = registerQuitHooks(app, {
+  logs,
+  input: {
+    running: () => input?.running() ?? false,
+    close: () => input?.close() ?? Promise.resolve()
+  },
+  stopAll: () => processGroups.stopAll()
+})
 // Set once the IPC handlers are registered; watching stops on quit and with the window.
 let watch: WatchController | undefined
 app.on('before-quit', () => watch?.stop())
-// A stick's console gets `exit` on the way out; `will-quit` SIGTERMs its group if it is still there.
-app.on('before-quit', () => void input?.close())
 
 function createWindow(): void {
   // Create the browser window.
