@@ -86,6 +86,22 @@ describe('createActivityFeed', () => {
     off()
   })
 
+  test('a reboot entry passes validation', async () => {
+    const feed = createActivityFeed({ home })
+    const seen: ActivityEntry[] = []
+    const off = feed.subscribe((e) => seen.push(e))
+    await log().append({
+      action: 'reboot',
+      target: 'VirtualDevice',
+      args: { timeout: '120' },
+      result: 'error',
+      errorCode: 'REBOOT_TIMEOUT'
+    })
+    await pollUntil(() => seen.length === 1)
+    expect(seen[0]).toMatchObject({ action: 'reboot', errorCode: 'REBOOT_TIMEOUT' })
+    off()
+  })
+
   test('a partial last line waits for its newline', async () => {
     const feed = createActivityFeed({ home })
     await log().append(install('first'))

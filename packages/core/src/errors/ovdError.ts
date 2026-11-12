@@ -50,7 +50,10 @@ export const ERROR_CODES = [
   'SCREENSHOT_FAILED',
   'CLIPBOARD_UNAVAILABLE',
   'INVALID_PATH',
-  'LIVE_UNSUPPORTED'
+  'LIVE_UNSUPPORTED',
+  'REBOOT_FAILED',
+  'REBOOT_TIMEOUT',
+  'INVALID_TIMEOUT'
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

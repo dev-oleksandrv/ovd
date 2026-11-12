@@ -407,6 +407,27 @@ describe('reconnectSaved', () => {
   })
 })
 
+describe('reconnect', () => {
+  test('one unlogged connect: true when VDA answers connected', async () => {
+    const { pairing, runner, ready } = setup({ [CONNECT]: connect.ok })
+    await ready
+    await expect(pairing.reconnect(WIFI)).resolves.toBe(true)
+    expect(runner.calls.map((c) => [c.display, c.timeoutMs])).toEqual([[CONNECT, 5_000]])
+    expect(await activity()).toEqual([])
+  })
+
+  test.each([
+    ['refused', connect.refused],
+    ['timed out', connect.timedOut]
+  ])('false when the connect is %s', async (_name, answer) => {
+    const { pairing, runner, ready } = setup({ [CONNECT]: answer })
+    await ready
+    await expect(pairing.reconnect(WIFI)).resolves.toBe(false)
+    expect(runner.count(CONNECT)).toBe(1)
+    expect(await activity()).toEqual([])
+  })
+})
+
 describe('saved devices in the list', () => {
   test('an offline saved stick keeps its serial and name', async () => {
     const { devices, ready } = setup(
