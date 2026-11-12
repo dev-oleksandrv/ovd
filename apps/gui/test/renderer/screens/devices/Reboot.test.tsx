@@ -82,6 +82,29 @@ describe('Reboot & wait', () => {
     expect(api.devices.reboot).toHaveBeenCalledTimes(2)
   })
 
+  test('a rejected call clears Rebooting…, toasts the error with Retry, and a second click works', async () => {
+    let calls = 0
+    const api = renderWith([stick, vvdOnline], async () => {
+      calls += 1
+      if (calls === 1) throw new TypeError('malformed reply')
+      return back
+    })
+    const list = await open(/Vega Virtual Device/)
+    fireEvent.click(screen.getByRole('button', { name: 'Reboot & wait' }))
+    expect(
+      await screen.findByText(
+        'Vega Virtual Device didn’t reboot. Run ovd reboot --device VirtualDevice in a terminal to see why.'
+      )
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Rebooting…' })).toBeNull()
+    expect(within(list).queryByText('Rebooting…')).toBeNull()
+    expect(screen.queryByText(/OVD waits until it’s back online/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Reboot & wait' }))
+    expect(await screen.findByText('Vega Virtual Device is back online · 16 s')).toBeTruthy()
+    expect(api.devices.reboot).toHaveBeenCalledTimes(2)
+  })
+
   test('a stick reboots too', async () => {
     const api = renderWith([stick, vvd], async () => back)
     await screen.findByText('TV Ship/529')

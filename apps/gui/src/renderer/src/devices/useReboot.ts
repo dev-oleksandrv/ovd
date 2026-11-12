@@ -1,5 +1,6 @@
-import type { Device } from '@ovd/core'
+import type { Device, RebootResult } from '@ovd/core'
 import { useCallback, useMemo, useRef, useState } from 'react'
+import type { IpcResult } from '../../../preload/api'
 import { useFeedback } from '../feedback/feedbackContext'
 
 export interface RebootActions {
@@ -28,9 +29,24 @@ export function useReboot(): RebootActions {
       setRebooting(device.id)
       const cli = rebootCli(device)
       echo(cli)
-      const result = await window.ovd.devices.reboot(device.id)
-      running.current = false
-      setRebooting(null)
+      const retry = { label: 'Retry', run: () => void reboot(device) }
+      let result: IpcResult<RebootResult>
+      try {
+        result = await window.ovd.devices.reboot(device.id)
+      } catch {
+        // The IPC call rejects on a non-OVD error (an abort on quit, a malformed reply); the
+        // window must not stay stuck on Rebooting….
+        notify({
+          tone: 'error',
+          text: `${device.name} didn’t reboot. Run ${cli} in a terminal to see why.`,
+          cli,
+          action: retry
+        })
+        return false
+      } finally {
+        running.current = false
+        setRebooting(null)
+      }
       if (result.ok) {
         notify({
           tone: 'ok',
@@ -43,7 +59,7 @@ export function useReboot(): RebootActions {
         tone: 'error',
         text: `${result.error.message}. ${result.error.hint}`,
         cli,
-        action: { label: 'Retry', run: () => void reboot(device) }
+        action: retry
       })
       return false
     },
