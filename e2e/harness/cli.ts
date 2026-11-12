@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -42,6 +42,7 @@ export function startOvd(
     env: { ...sandbox.env, ...opts.env },
     stdio: ['ignore', 'pipe', 'pipe']
   })
+  sandbox.track(child)
   let stdout = ''
   let stderr = ''
   const waiters = new Set<() => void>()
@@ -53,7 +54,7 @@ export function startOvd(
   const timeoutMs = opts.timeoutMs ?? 30_000
   const done = new Promise<number>((resolveExit, fail) => {
     const timer = setTimeout(() => {
-      child.kill('SIGKILL')
+      stop(child)
       fail(new Error(`ovd ${args.join(' ')} did not exit within ${timeoutMs} ms\n${stderr}`))
     }, timeoutMs)
     child.on('error', fail)
@@ -99,6 +100,7 @@ export async function ovd(
     env: { ...sandbox.env, ...opts.env },
     stdio: ['ignore', 'pipe', 'pipe']
   })
+  sandbox.track(child)
   let stdout = ''
   let stderr = ''
   child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()))
@@ -106,7 +108,7 @@ export async function ovd(
   const timeoutMs = opts.timeoutMs ?? 30_000
   const exitCode = await new Promise<number>((done, fail) => {
     const timer = setTimeout(() => {
-      child.kill('SIGKILL')
+      stop(child)
       fail(new Error(`ovd ${args.join(' ')} did not exit within ${timeoutMs} ms\n${stderr}`))
     }, timeoutMs)
     child.on('error', fail)
@@ -116,6 +118,16 @@ export async function ovd(
     })
   })
   return result(exitCode, stdout, stderr)
+}
+
+// SIGTERM first, so ovd stops its SDK process groups (a SIGKILL would leave them running), then
+// SIGKILL if it is still there.
+const KILL_AFTER_MS = 3_000
+function stop(child: ChildProcess): void {
+  child.kill('SIGTERM')
+  const timer = setTimeout(() => child.kill('SIGKILL'), KILL_AFTER_MS)
+  timer.unref()
+  child.once('close', () => clearTimeout(timer))
 }
 
 function result(exitCode: number, stdout: string, stderr: string): CliRun {

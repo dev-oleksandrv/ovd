@@ -19,6 +19,7 @@ import {
   inputConsolesFile,
   loginProbesFile,
   logStreamsFile,
+  processesFile,
   readWorld,
   STICK_ADDRESS,
   STICK_IP,
@@ -47,6 +48,8 @@ if (!dir) {
   process.stderr.write('fake-sdk: OVD_FAKE_SDK_DIR is not set\n')
   process.exit(UNHANDLED)
 }
+// Recorded first, so the sandbox finds every fake process a test left running (sandbox.ts).
+appendFileSync(processesFile(dir), `${JSON.stringify({ pid: process.pid })}\n`)
 
 const args = process.argv.slice(2)
 const command = ['vega', ...args].join(' ')
