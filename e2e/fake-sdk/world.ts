@@ -172,6 +172,12 @@ export function callsFile(dir: string): string {
   return join(dir, 'calls.jsonl')
 }
 
+// One `{ pid }` line per fake SDK process (every `vega` run), so the sandbox can check, when a
+// test ends, that none is still running.
+export function processesFile(dir: string): string {
+  return join(dir, 'processes.jsonl')
+}
+
 // One `{ pid }` line per log stream the fake started, so a test can check none is left.
 export function logStreamsFile(dir: string): string {
   return join(dir, 'log-streams.jsonl')

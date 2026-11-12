@@ -1,3 +1,4 @@
+import { spawnSync, type ChildProcess } from 'node:child_process'
 import {
   chmodSync,
   existsSync,
@@ -20,6 +21,7 @@ import {
   inputConsolesFile,
   loginProbesFile,
   logStreamsFile,
+  processesFile,
   readWorld,
   writeWorld,
   type Call,
@@ -32,6 +34,14 @@ const CLIPBOARD_TOOLS = ['osascript', 'xclip', 'wl-copy']
 // Where the SDK Manager installs the Vega CLI, and where an SDK keeps its bundled `vega`.
 const MANAGER_VEGA = 'vega/bin/vega'
 const BUNDLED_BIN = 'vega/sdk/0.24.12112/bin'
+// When a test ends: how long a surface process gets to exit by itself (a test that signalled it
+// but didn't await it), then after SIGTERM, before SIGKILL; and how long a fake SDK process gets
+// to go (the desktop's will-quit SIGTERMs its groups without waiting for them).
+const EXIT_BY_ITSELF_MS = 1_000
+const EXIT_AFTER_SIGTERM_MS = 2_000
+const FAKE_EXIT_MS = 3_000
+// And how long a fake started during that shutdown (or one a SIGKILLed surface left) gets after.
+const LATE_FAKE_EXIT_MS = 1_000
 
 export interface ClipboardCall {
   tool: string
@@ -80,9 +90,12 @@ export interface Sandbox {
   inputConsolePids(): number[]
   // Every clipboard tool the CLI ran from the sandbox's fake bin folder.
   clipboardCalls(): ClipboardCall[]
-  // Removes the sandbox; throws when a surface ran an SDK command the fake has no recording
-  // for, since that flow ran something unverified.
-  close(): void
+  // A surface process the harness started (ovd, Electron), stopped by close() if still running.
+  track(child: ChildProcess): void
+  // Stops what the test left running, then removes the sandbox. Throws when a surface ran an SDK
+  // command the fake has no recording for (that flow ran something unverified), or when a
+  // surface or fake SDK process was still running after the test (it would outlive the run).
+  close(): Promise<void>
 }
 
 // Test runners wrap this so each test gets its own sandbox (vitest.ts, gui.ts).
@@ -144,6 +157,34 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
       .filter((l) => l !== '')
       .map((l) => (JSON.parse(l) as { pid: number }).pid)
   }
+
+  // Like pidsIn, but a fake killed while appending may leave a cut last line.
+  function fakePids(): number[] {
+    const file = processesFile(sdkDir)
+    if (!existsSync(file)) return []
+    return readFileSync(file, 'utf8')
+      .split('\n')
+      .flatMap((l) => {
+        try {
+          const { pid } = JSON.parse(l) as { pid: unknown }
+          return typeof pid === 'number' ? [pid] : []
+        } catch {
+          return []
+        }
+      })
+  }
+
+  // Held commands answer and end once the hold is released (the fake re-polls it every 100 ms).
+  function releaseHolds(): void {
+    try {
+      const w = readWorld(sdkDir)
+      if (w.hold.length > 0) writeWorld(sdkDir, { ...w, hold: [] })
+    } catch {
+      // A world being rewritten right now: the cleanup below stops what it holds anyway.
+    }
+  }
+
+  const tracked: ChildProcess[] = []
 
   function readCalls(): Call[] {
     return readFileSync(callsFile(sdkDir), 'utf8')
@@ -225,22 +266,129 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
         .map((l) => JSON.parse(l) as ClipboardCall)
     },
 
-    close() {
-      const unhandled = [
-        ...readCalls()
-          .filter((c) => !c.handled)
-          .map((c) => c.command),
-        ...emulator.unhandled()
-      ]
-      emulator.close()
-      rmSync(root, { recursive: true, force: true })
+    track(child) {
+      tracked.push(child)
+    },
+
+    async close() {
+      let unhandled: string[] = []
+      // A calls.jsonl that can't be read (a fake killed while appending) must not skip the cleanup.
+      let unreadable: unknown
+      const left: string[] = []
+      try {
+        // Taken first, so nothing the cleanup below triggers changes this check.
+        try {
+          unhandled = [
+            ...readCalls()
+              .filter((c) => !c.handled)
+              .map((c) => c.command),
+            ...emulator.unhandled()
+          ]
+        } catch (error) {
+          unreadable = error
+        }
+        releaseHolds()
+        const [children, fakes] = await Promise.all([
+          Promise.all(tracked.map(stopChild)),
+          waitForPids(fakePids, FAKE_EXIT_MS)
+        ])
+        left.push(...children.flat(), ...fakes)
+        // A fake started while a surface was being stopped, or one a SIGKILLed surface left
+        // (a fake SIGKILLed above may still show here: listed once).
+        for (const p of await waitForPids(fakePids, LATE_FAKE_EXIT_MS)) {
+          if (!left.includes(p)) left.push(p)
+        }
+      } finally {
+        emulator.close()
+        rmSync(root, { recursive: true, force: true })
+      }
+      const problems: string[] = []
+      if (unreadable !== undefined) {
+        const message = unreadable instanceof Error ? unreadable.message : String(unreadable)
+        problems.push(`Could not read the SDK commands the test ran: ${message}`)
+      }
       if (unhandled.length > 0) {
-        throw new Error(
+        problems.push(
           `The fake SDK has no recording for:\n${unhandled.map((c) => `  ${c}`).join('\n')}`
         )
       }
+      if (left.length > 0) {
+        problems.push(
+          `Still running after the test, stopped now:\n${left.map((p) => `  ${p}`).join('\n')}`
+        )
+      }
+      if (problems.length > 0) {
+        throw new Error(problems.join('\n'), unreadable === undefined ? {} : { cause: unreadable })
+      }
     }
   }
+}
+
+const isRunning = (child: ChildProcess) => child.exitCode === null && child.signalCode === null
+
+// Resolves true once the child has exited, false after `ms`.
+function exitWithin(child: ChildProcess, ms: number): Promise<boolean> {
+  if (!isRunning(child)) return Promise.resolve(true)
+  return new Promise((resolveExit) => {
+    const onExit = () => {
+      clearTimeout(timer)
+      resolveExit(true)
+    }
+    const timer = setTimeout(() => {
+      child.off('exit', onExit)
+      resolveExit(false)
+    }, ms)
+    child.once('exit', onExit)
+  })
+}
+
+// Stops a surface process still running: SIGTERM first, so ovd or the desktop stops its SDK
+// groups, then SIGKILL. Returns it ("pid command") when the harness had to stop it.
+async function stopChild(child: ChildProcess): Promise<string[]> {
+  if (await exitWithin(child, EXIT_BY_ITSELF_MS)) return []
+  const what = `${child.pid ?? '?'} ${child.spawnargs.join(' ')}`
+  child.kill('SIGTERM')
+  if (!(await exitWithin(child, EXIT_AFTER_SIGTERM_MS))) {
+    child.kill('SIGKILL')
+    await exitWithin(child, EXIT_AFTER_SIGTERM_MS)
+  }
+  return [what]
+}
+
+// The command of a pid, or null when it is gone.
+function commandOf(pid: number): string | null {
+  const ps = spawnSync('ps', ['-ww', '-o', 'command=', '-p', String(pid)], { encoding: 'utf8' })
+  const command = ps.status === 0 ? ps.stdout.trim() : ''
+  return command === '' ? null : command
+}
+
+// The fake SDK processes among `pids` still running, with their command. The command check
+// guards against a reused pid; a zombie (`<defunct>`, its parent hasn't reaped it yet) no longer
+// runs main.ts and is left to its parent. `ps` runs only for the pids that still answer.
+function liveFakes(pids: number[]): { pid: number; command: string }[] {
+  return stillRunning(pids).flatMap((pid) => {
+    const command = commandOf(pid)
+    return command !== null && command.includes(FAKE_SDK_MAIN) ? [{ pid, command }] : []
+  })
+}
+
+// Gives the fake SDK processes up to `ms` to exit, then SIGKILLs the ones still running and
+// returns them ("pid command").
+async function waitForPids(pids: () => number[], ms: number): Promise<string[]> {
+  const deadline = Date.now() + ms
+  while (liveFakes(pids()).length > 0 && Date.now() < deadline) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100))
+  }
+  const left: string[] = []
+  for (const { pid, command } of liveFakes(pids())) {
+    try {
+      process.kill(pid, 'SIGKILL')
+    } catch {
+      // Exited just now.
+    }
+    left.push(`${pid} ${command}`)
+  }
+  return left
 }
 
 // The pids that are still running (a pid that is gone answers ESRCH).
