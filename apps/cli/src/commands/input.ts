@@ -54,7 +54,11 @@ export function registerInput(
       return await run(controller.signal)
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new OvdError('COMMAND_FAILED', 'Cancelled', 'Nothing more was sent to the device')
+        throw new OvdError(
+          'COMMAND_FAILED',
+          'Cancelled',
+          'Sending stopped; what was sent before may have reached the device'
+        )
       }
       throw error
     } finally {
