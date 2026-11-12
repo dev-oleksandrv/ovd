@@ -6,9 +6,9 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | ----- | --------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- | -------- | ------------- |
 | 0     | Setup                       | Work on a ready repo with agent instructions                             | Empty app frame, design tokens                                      | Fixed    | Done (v0.0.1) |
 | 1     | Connect my devices          | See every stick and the Virtual Device, set up a new stick               | App shell, Doctor (first run), Devices, setup and pairing wizards   | Fixed    | Done (v0.1.0) |
-| 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | Done          |
-| 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Next          |
-| 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Planned       |
+| 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | Done (v0.2.0) |
+| 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Done          |
+| 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Done          |
 | 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Planned       |
 | 6     | Faster dev loop             | Deep links, Metro, device shell, memory, SDK versions                    | Deep links, Shell, Performance → Memory, Environment → SDK versions | Flexible | Planned       |
 | 7     | Agents and CI               | Let AI agents and GitHub Actions use OVD                                 | Scenarios & MCP                                                     | Flexible | Planned       |
@@ -16,7 +16,7 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
 | 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
 
-**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. Stage 2 is done on `main`; its release isn’t tagged yet.
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. v0.2.0 closed Stage 2 and carried 3.1–3.2. Stages 3 and 4 are done on `main` and ship together in the next tagged release; Stage 3’s success metrics are still to be measured (#116).
 
 The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
@@ -257,16 +257,16 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 ## Stage 4 — Control it from the desktop
 
-**Goal:** test without reaching for the physical remote. **Hardware checks first:** `inputd-cli button_press` reaches apps on a stick; stick screenshot rate.
+**Goal:** test without reaching for the physical remote. **Hardware checks first:** `inputd-cli button_press` reaches apps on a stick; stick screenshot rate. Stage 4 was signed off on the Virtual Device with both checks still open (maintainer decision, 2026-11-12): the stick paths of 4.2–4.5 are built and tested against the fake SDK but unverified on hardware (#43, #44, #117).
 
 **Sidebar adds:** Debug → Remote & Screen.
 
-- **4.1 Virtual Device gRPC backend — done (PR #109):** enable the emulator gRPC endpoint on every Virtual Device start (prefer vega-vvd-driver). Doctor gets "Emulator gRPC" (On · :8554 / Not running / couldn't enable). _Expected:_ after `ovd vvd start`, gRPC is on and a key reaches the device.
+- **4.1 Virtual Device gRPC backend — done (PR #109):** enable the emulator gRPC endpoint on every Virtual Device start (a small client in core instead of vega-vvd-driver; ADR 0010, Amendments). Doctor gets "Emulator gRPC" (On · :8554 / Not running / couldn't enable). _Expected:_ after `ovd vvd start`, gRPC is on and a key reaches the device.
 - **4.2 Remote and text input — done (PR #110; the stick backend is unverified on hardware, #43):** `ovd input press <key>`, `ovd input text "<text>"`. Remote pad (D-pad, OK, Back, Home, Menu, play/pause, rewind, fast-forward), keyboard hint, pressed-key flash, "Type into TV". Input session panel (backend, sent commands). Sticks via `inputd-cli`, Virtual Device via gRPC (ADR 0010); Home disabled on the Virtual Device; one persistent session; keys don't fire while typing; "Remote unavailable — <device> is offline". _Expected:_ navigate and type on both device types with immediate feedback.
 - **4.3 Screenshots — done (PR #111; the stick backend is unverified on hardware, #44):** `ovd screenshot [--out] [--clipboard]`; button and palette action; saved to `~/ovd/captures` and the clipboard; Captures list. _Expected:_ one click saves a PNG from either device type.
 - **4.4 Screen view — done (PR #112):** Virtual Device live view ("Live · emulator gRPC", ~16+ fps); stick "Latest screenshot · <time>" with Refresh (marked out of date after a key press); "No signal" when offline.
 - **4.5 Reboot & wait — done (PR #113):** `ovd reboot` returns when the device is back; desktop shows "Rebooting…". _Expected:_ a stick returns to Online without manual reconnecting.
-- **4.6 Homebrew tap:** `brew install ovd` from a tap whose formula installs the published `@ovd/cli` release (ADR 0015, moved from 3.6). A packaging change, so it needs the maintainer's approval first. _Expected:_ `brew install ovd` on macOS and Ubuntu gives a working `ovd`.
+- **4.6 Homebrew tap:** moved to Stage 5 (5.4).
 
 **E2E:** keys and text reaching each device type through its backend; Home disabled on the Virtual Device; screenshots saved and listed; screen view states including "No signal"; reboot returning to Online.
 
@@ -283,6 +283,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 - **5.1 Crash radar:** `ovd crashes [--watch]`, `ovd crash pull <id>`. Crashes screen ("loggingctl vault · scoped to your apps · polling every 5 s"): list (signal chip native/JS, app, NEW, age, summary, pid · build · device); detail with Download ACR, Copy crash report path, Copy prompt for your agent, Logs at crash time; raw stack (symbolication later). New-crash toast and OVD log line. Apps' "Crashed on launch" gets "Open crash report". Never request elevated access. _Expected:_ a crash toasts within 5 s; report on disk in one click.
 - **5.2 Log power tools:** presets (All, Player errors only, Network, Lifecycle) and "Save filter"; advanced filters (PID, TID, tag, identity, facility, boot); per-process level, rate limit, mute; "Bundle" for bug reports. `ovd logs --preset <name>`, `ovd logs bundle`.
 - **5.3 Packages → Manifest, Files, Validate:** manifest from `vpt dump` with line numbers and notes; `vpt show-contents` tree; `vpt validate` table (severity, message, file) with error badge and clickable lines where possible. `ovd pkg manifest | files | validate`. _Expected:_ a broken manifest shows exact errors; clicking opens the line.
+- **5.4 Homebrew tap:** `brew install ovd` from a tap whose formula installs the published `@ovd/cli` release (ADR 0015, moved from 3.6 and then 4.6). A packaging change, so it needs the maintainer's approval first, and an external tap repository. _Expected:_ `brew install ovd` on macOS and Ubuntu gives a working `ovd`.
 
 **E2E:** a new crash toasting and its report downloaded; log presets, saved filters and the bundle; Manifest, Files and Validate showing a broken manifest's errors.
 
@@ -426,16 +427,17 @@ Plugin API · error explainer (log patterns → fix hints) · device farm view �
 
 About an hour each, done just before the stage that needs them.
 
-| Check                                                       | Before                         |
-| ----------------------------------------------------------- | ------------------------------ |
-| `inputd-cli button_press` reaches apps on a real stick      | Stage 4                        |
-| Screenshot rate on a stick with `gwsi-tool-screenshooter`   | Stage 4 (stick live view in 9) |
-| `vpt validate` output format (line numbers?)                | Stage 5.3                      |
-| `perf record` category names                                | Stage 8                        |
-| Uninstall removes app data (verified 2026-11-08: it does)   | Stage 9                        |
-| Virtual Device snapshots save and load                      | Stage 9                        |
-| `vda pull` / shell access to app data on a production stick | Stage 9                        |
-| `network speed` / `network delay` throttle app traffic      | Stage 10.1                     |
+| Check                                                       | Before                                             |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| `inputd-cli button_press` reaches apps on a real stick      | Stage 4 (signed off without)                       |
+| Screenshot rate on a stick with `gwsi-tool-screenshooter`   | Stage 4 (signed off without; stick live view in 9) |
+| `vda reboot` and the Wi‑Fi reconnect on a real stick        | Stage 4 (signed off without)                       |
+| `vpt validate` output format (line numbers?)                | Stage 5.3                                          |
+| `perf record` category names                                | Stage 8                                            |
+| Uninstall removes app data (verified 2026-11-08: it does)   | Stage 9                                            |
+| Virtual Device snapshots save and load                      | Stage 9                                            |
+| `vda pull` / shell access to app data on a production stick | Stage 9                                            |
+| `network speed` / `network delay` throttle app traffic      | Stage 10.1                                         |
 
 ## Success metrics
 
