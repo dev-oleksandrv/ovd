@@ -25,4 +25,4 @@ On Fire TV sticks, `inputd-cli` sends keys and text, and `gwsi-tool-screenshoote
 
 ## Amendments
 
-- 2026-11-12 (PR #TBD): the Virtual Device's live view uses gRPC `streamScreenshot` (RGBA8888, a frame per screen change, held back by HTTP/2 flow control); `getScreenshot` stays the backend for screenshots (ARCHITECTURE §8).
+- 2026-11-12 (PR #112): the Virtual Device's live view uses gRPC `streamScreenshot` (RGBA8888, a frame per screen change, held back by HTTP/2 flow control); `getScreenshot` stays the backend for screenshots (ARCHITECTURE §8).
