@@ -9,3 +9,4 @@ fixtures
 .changeset/*.md
 CHANGELOG.md
 .work/
+.ship/
