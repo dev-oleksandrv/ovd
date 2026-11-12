@@ -12,6 +12,7 @@ import { registerPairing } from './commands/pair.js'
 import { registerPkg } from './commands/pkg.js'
 import { registerProject } from './commands/project.js'
 import { registerRun } from './commands/run.js'
+import { registerReboot } from './commands/reboot.js'
 import { registerScreenshot } from './commands/screenshot.js'
 import { registerSetupStick } from './commands/setupStick.js'
 import { registerTarget } from './commands/target.js'
@@ -82,5 +83,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerRun(program, deps, setExitCode)
   registerInput(program, deps, setExitCode)
   registerScreenshot(program, deps, setExitCode)
+  registerReboot(program, deps, setExitCode)
   return program
 }

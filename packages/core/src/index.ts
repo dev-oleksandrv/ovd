@@ -271,3 +271,11 @@ export { createScreen, LIVE_FORMAT } from './screen/screen.js'
 export type { LiveOptions, LiveScreen, Screen, ScreenBackend, ScreenDeps } from './screen/screen.js'
 export type { FrameStream } from './vvd/emulatorGrpc.js'
 export type { ImageFormat, ImageFormatName, ScreenFrame } from './vvd/grpcWire.js'
+export { createReboot, DEFAULT_REBOOT_TIMEOUT_MS } from './reboot/reboot.js'
+export type {
+  Reboot,
+  RebootDeps,
+  RebootOptions,
+  RebootProgress,
+  RebootResult
+} from './reboot/reboot.js'

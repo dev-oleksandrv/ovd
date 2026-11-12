@@ -73,7 +73,7 @@ export function Shell() {
     )
   )
   const projectMode = project.state.status === 'ready' ? project.state.mode : null
-  const { state, setTarget, vvd } = useDevicesContext()
+  const { state, setTarget, vvd, reboot } = useDevicesContext()
   const { notify } = useFeedback()
   const screenshot = useScreenshot()
   const report = doctor.state.status === 'ready' ? doctor.state.report : null
@@ -184,6 +184,7 @@ export function Shell() {
             onSetup={() => setSettingUp(true)}
             onPair={() => setPairing(true)}
             vvdBusy={vvd.busy}
+            rebooting={reboot.rebooting}
           />
           <RunButton
             mode={projectMode}
@@ -215,6 +216,7 @@ export function Shell() {
             target={target}
             onClick={() => setMenu((open) => !open)}
             vvdBusy={vvd.busy}
+            rebooting={reboot.rebooting}
           />
         </>
       }

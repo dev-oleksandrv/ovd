@@ -15,7 +15,14 @@ export interface World {
   // The Developer Mode code the TV shows.
   tvCode: string
   stick: Stick | null
-  vvd: { running: boolean; developerMode: boolean }
+  // `rebootingUntil` (epoch ms, absent is 0): after `vda reboot` the Virtual Device is listed
+  // `offline` until then, `vega device info` prints empty fields and shell commands fail
+  // (fixtures/0.24/README.md, Synthesized sequences). qemu, its discovery file and emulator gRPC
+  // stay up, as on the real one.
+  vvd: { running: boolean; developerMode: boolean; rebootingUntil?: number }
+  // How long a device is away after it reboots (`vda reboot`, `enable-device`, `logStream.reboot`;
+  // 41 s for a stick in the recording). A timing knob (docs/conventions/testing.md).
+  rebootMs: number
   // Addresses VDA holds a connection to (`vda connect`), kept across stick power cycles.
   vdaConnected: string[]
   // Packages `vega device install-app` put on a device, by device ID and recorded package.
@@ -46,7 +53,7 @@ export interface World {
   // `ignoreFirstSigterm`: the stream ignores the first SIGTERM to its group and sets the flag
   // back to `false` in the world, so a test can see that it arrived. The next SIGTERM ends it.
   // `reboot` (absent is false): the next stream prints `stick-follow-reboot.txt` and ends with
-  // exit 0, the stick is away for REBOOT_MS (not listed by `vda devices -l`), and the flag goes
+  // exit 0, the stick is away for `rebootMs` (not listed by `vda devices -l`), and the flag goes
   // back to false, so the stream after it prints `stick-follow.txt` (fixtures/0.24/README.md,
   // Synthesized sequences).
   logStream: {
@@ -89,7 +96,8 @@ export interface Stick {
   mode: 'usb' | 'tcpip'
   usbCable: boolean
   powered: boolean
-  // Until this time (epoch ms) the stick is rebooting and not listed.
+  // Until this time (epoch ms) the stick is rebooting: not listed on USB, listed `offline` over
+  // Wi‑Fi while VDA holds its connection.
   rebootingUntil: number
 }
 
@@ -121,6 +129,7 @@ export function defaultWorld(): World {
     tvCode: 'ABC123',
     stick: null,
     vvd: { running: false, developerMode: true },
+    rebootMs: 3_000,
     vdaConnected: [],
     installed: [],
     running: [],

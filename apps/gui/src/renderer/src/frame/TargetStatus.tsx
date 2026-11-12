@@ -8,12 +8,18 @@ interface TargetStatusProps {
   target: Device | undefined
   onClick: () => void
   vvdBusy?: VvdBusy
+  rebooting?: string | null
 }
 
-export function TargetStatus({ target, onClick, vvdBusy = null }: TargetStatusProps) {
+export function TargetStatus({
+  target,
+  onClick,
+  vvdBusy = null,
+  rebooting = null
+}: TargetStatusProps) {
   if (!target) return null
-  const status = statusView(target, vvdBusy)
-  const online = usable(target, vvdBusy)
+  const status = statusView(target, vvdBusy, rebooting)
+  const online = usable(target, vvdBusy, rebooting)
   return (
     <button
       type="button"

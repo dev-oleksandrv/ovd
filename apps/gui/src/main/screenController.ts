@@ -26,6 +26,9 @@ export interface ScreenController {
   // The PNG of a capture; TypeError for a path that isn't one.
   image(path: unknown): Promise<IpcResult<Uint8Array>>
   state(): ScreenState
+  // OVD's reboot of `id` ended: a live view of it that shows no signal or an error opens its
+  // stream again, once (not logged again: it is the same view).
+  deviceBack(id: string): void
   // Synchronous, for quit and the window going away: the stream's session is destroyed at once.
   close(): void
 }
@@ -145,11 +148,11 @@ export function createScreenController(deps: {
 
   // One view: opens the stream (logged unless `quiet`), pumps it, and on its end reopens it
   // once while the device still lists online.
-  async function run(gen: number, id: string): Promise<void> {
+  async function run(gen: number, id: string, resumed = false): Promise<void> {
     // One automatic reopen per view (`start`), never reset: a stream that yields a frame and
     // ends again each time would otherwise reopen forever instead of showing the error and Retry.
-    let reopened = false
-    let quiet = false
+    let reopened = resumed
+    let quiet = resumed
     for (;;) {
       const abort = new AbortController()
       current = { abort }
@@ -265,6 +268,17 @@ export function createScreenController(deps: {
     },
 
     state: () => state,
+
+    deviceBack(id) {
+      if (state.target?.id !== id) return
+      if (state.status !== 'no-signal' && state.status !== 'error') return
+      // A stick has no live view; a reboot doesn't change that.
+      if (state.status === 'error' && state.error?.code === 'LIVE_UNSUPPORTED') return
+      drop()
+      const gen = ++generation
+      set(gen, { status: 'connecting', target: state.target })
+      void run(gen, id, true)
+    },
 
     close() {
       generation++

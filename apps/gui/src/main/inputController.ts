@@ -18,6 +18,12 @@ export interface InputController {
   state(): InputState
   // Main heard of a new target: a session for another device closes (the screen opens the next).
   targetChanged(target: string | null): void
+  // OVD is rebooting `id` (Devices → Reboot & wait): a session on it closes without a push (the
+  // screen shows it offline meanwhile) and no session opens on it until `deviceBack`.
+  deviceRebooting(id: string): Promise<void>
+  // The reboot of `id` ended (back, failed or timed out): a session it closed goes idle (pushed),
+  // so a shown Remote screen opens a new one; an open refused meanwhile is made now.
+  deviceBack(id: string): void
   // True while a stick's console is open or still closing (quit waits for its `exit`).
   running(): boolean
   // On quit and when the window closes: the stick's console exits and the state goes idle (not
@@ -74,6 +80,8 @@ export function createInputController(deps: {
   const closing = new Set<Promise<void>>()
   // Bumped by every open and close: an open that finishes in another generation is dropped.
   let generation = 0
+  // Devices OVD is rebooting, and whether a session on it was closed or an open refused.
+  const rebooting = new Map<string, { closed: boolean; refused: boolean }>()
 
   const set = (next: InputState) => {
     state = next
@@ -145,9 +153,14 @@ export function createInputController(deps: {
     }
   }
 
-  return {
+  const controller: InputController = {
     async open(value) {
       const id = inputText(value, 'device')
+      const reboot = rebooting.get(id)
+      if (reboot) {
+        reboot.refused = true
+        return state
+      }
       if (device === id && (state.status === 'ready' || state.status === 'opening')) {
         return opening ?? state
       }
@@ -210,6 +223,22 @@ export function createInputController(deps: {
 
     state: () => (state.status === 'ready' && !session ? idle() : state),
 
+    async deviceRebooting(id) {
+      const reboot = { closed: false, refused: false }
+      rebooting.set(id, reboot)
+      if (device !== id && state.target?.id !== id) return
+      reboot.closed = true
+      await closeCurrent(false)
+    },
+
+    deviceBack(id) {
+      const reboot = rebooting.get(id)
+      rebooting.delete(id)
+      if (!reboot) return
+      if (reboot.refused) void controller.open(id)
+      else if (reboot.closed && state.status === 'idle') set(idle())
+    },
+
     targetChanged(target) {
       // No target at all (the device is likely rebooting) keeps the session, as Logs does.
       if (target === null || device === null || target === device) return
@@ -222,4 +251,5 @@ export function createInputController(deps: {
       await Promise.all([...closing])
     }
   }
+  return controller
 }

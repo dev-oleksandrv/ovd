@@ -10,6 +10,7 @@ import {
   type Ovd,
   type Packages,
   type Pairing,
+  type Reboot,
   type Project,
   type Screenshot,
   type Vvd
@@ -116,6 +117,7 @@ export function stubPairing(pairing: Partial<Pairing>): Partial<Ovd> {
       connect: missing('connect'),
       forget: missing('forget'),
       reconnectSaved: missing('reconnectSaved'),
+      reconnect: missing('reconnect'),
       ...pairing
     }
   }
@@ -187,6 +189,11 @@ export function stubScreenshot(screenshot: Partial<Screenshot>): Partial<Ovd> {
       ...screenshot
     }
   }
+}
+
+export function stubReboot(reboot: Partial<Reboot>): Partial<Ovd> {
+  const missing = (name: string) => () => Promise.reject(new Error(`unexpected ${name}`))
+  return { reboot: { reboot: missing('reboot'), ...reboot } }
 }
 
 export function stubApps(apps: Partial<Apps>): Partial<Ovd> {

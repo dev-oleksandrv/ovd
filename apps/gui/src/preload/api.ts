@@ -18,6 +18,7 @@ import type {
   LogEntry,
   LogExportFormat,
   LogFilterInput,
+  RebootResult,
   LoginPrompt,
   PackageBuild,
   PackageInfo,
@@ -216,6 +217,8 @@ export interface OvdApi {
     list(): Promise<DevicesUpdate>
     rename(id: string, name: string): Promise<IpcResult<Device>>
     setTarget(id: string): Promise<IpcResult<Device>>
+    // `ovd reboot --device <id>`: resolves once the device is back online (or the wait failed).
+    reboot(id: string): Promise<IpcResult<RebootResult>>
     // Main pushes every change while the window is visible; returns an unsubscribe.
     onChange(listener: (update: DevicesUpdate) => void): () => void
   }
@@ -369,6 +372,7 @@ export const channels = {
   devicesList: 'ovd:devices:list',
   devicesRename: 'ovd:devices:rename',
   devicesChanged: 'ovd:devices:changed',
+  devicesReboot: 'ovd:devices:reboot',
   targetSet: 'ovd:target:set',
   vvdStart: 'ovd:vvd:start',
   vvdStop: 'ovd:vvd:stop',

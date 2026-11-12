@@ -58,6 +58,9 @@ export interface Pairing {
   // Connects every remembered device that VDA has lost track of (after a host or VDA restart).
   // For the desktop at launch and on Rescan; failures are left for the user to retry.
   reconnectSaved(): Promise<void>
+  // One unlogged `vda connect` to a Wi‑Fi device VDA lost track of while it rebooted; true when
+  // VDA answered connected. Failures are swallowed: the reboot wait polls on.
+  reconnect(id: string): Promise<boolean>
 }
 
 // VDA gives up after 47–75 s (fixtures/0.24/vda-connect/timed-out.txt); a stick on the same
@@ -349,6 +352,17 @@ export function createPairing(deps: PairingDeps): Pairing {
         } catch (error) {
           if (!(error instanceof OvdError)) throw error
         }
+      }
+    },
+
+    async reconnect(id) {
+      try {
+        // Not logged: the reboot it is part of is.
+        await connectOnce(parseAddress(id), RECONNECT_TIMEOUT_MS)
+        return true
+      } catch (error) {
+        if (!(error instanceof OvdError)) throw error
+        return false
       }
     }
   }

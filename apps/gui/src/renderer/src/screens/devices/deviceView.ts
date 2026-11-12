@@ -7,14 +7,20 @@ import type { Tone } from '../../ui/tone'
 // A Virtual Device start or stop this window is running; the device list catches up after.
 export type VvdBusy = 'start' | 'stop' | null
 
+export type StatusLabel =
+  'Online' | 'Offline' | 'Starting…' | 'Stopping…' | 'Stopped' | 'Rebooting…'
+
+// `rebooting`: the ID of the device this window's Reboot & wait is waiting for.
 export function statusView(
   device: Device,
-  busy: VvdBusy = null
+  busy: VvdBusy = null,
+  rebooting: string | null = null
 ): {
-  label: 'Online' | 'Offline' | 'Starting…' | 'Stopping…' | 'Stopped'
+  label: StatusLabel
   tone: Tone
   pulse: boolean
 } {
+  if (rebooting === device.id) return { label: 'Rebooting…', tone: 'warning', pulse: true }
   if (device.kind === 'vvd' && busy === 'stop') {
     return { label: 'Stopping…', tone: 'warning', pulse: true }
   }
@@ -47,13 +53,26 @@ export function subtitle(device: Device): string {
     .join(' · ')
 }
 
-// Online and not mid start or stop: the only state that can be a working target.
-export function usable(device: Device, busy: VvdBusy = null): boolean {
-  return device.status === 'online' && !(device.kind === 'vvd' && busy !== null)
+// Online and not mid start, stop or reboot: the only state that can be a working target.
+export function usable(
+  device: Device,
+  busy: VvdBusy = null,
+  rebooting: string | null = null
+): boolean {
+  return (
+    device.status === 'online' &&
+    !(device.kind === 'vvd' && busy !== null) &&
+    rebooting !== device.id
+  )
 }
 
-export function dimmed(device: Device, busy: VvdBusy = null): boolean {
+export function dimmed(
+  device: Device,
+  busy: VvdBusy = null,
+  rebooting: string | null = null
+): boolean {
   if (device.kind === 'vvd' && busy !== null) return false
+  if (rebooting === device.id) return false
   return device.status === 'offline' || device.status === 'stopped'
 }
 

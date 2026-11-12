@@ -18,7 +18,7 @@ interface DevicesScreenProps {
 
 // Devices (Stage 1.3–1.7).
 export function DevicesScreen({ onSetup, onPair, onOpenApps }: DevicesScreenProps) {
-  const { state, rescan, setTarget, vvd } = useDevicesContext()
+  const { state, rescan, setTarget, vvd, reboot } = useDevicesContext()
   const { notify } = useFeedback()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [reconnecting, setReconnecting] = useState<string | null>(null)
@@ -107,6 +107,7 @@ export function DevicesScreen({ onSetup, onPair, onOpenApps }: DevicesScreenProp
           onRename={rename}
           onSetTarget={setTarget}
           vvd={vvd}
+          reboot={reboot}
           reconnecting={reconnecting}
           onReconnect={(device) => void reconnect(device)}
           onForget={(device) => void forget(device)}

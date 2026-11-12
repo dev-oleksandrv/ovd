@@ -129,6 +129,8 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     // Never the user's ~/ovd/captures, nor their clipboard (the desktop's testing hook).
     OVD_CAPTURES: captures,
     OVD_CLIPBOARD_FILE: clipboardFile,
+    // `ovd reboot` waits 0.5 s of info answering instead of 8 s (a testing hook, as the ones above).
+    OVD_REBOOT_SETTLE_MS: '500',
     LANG: 'en_US.UTF-8',
     // The display of a headless Ubuntu runner (xvfb-run), for the desktop app.
     ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),

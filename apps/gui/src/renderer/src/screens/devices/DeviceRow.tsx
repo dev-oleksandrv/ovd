@@ -10,10 +10,18 @@ interface DeviceRowProps {
   selected: boolean
   onSelect: () => void
   vvdBusy?: VvdBusy
+  // The device Reboot & wait is waiting for.
+  rebooting?: string | null
 }
 
-export function DeviceRow({ device, selected, onSelect, vvdBusy = null }: DeviceRowProps) {
-  const status = statusView(device, vvdBusy)
+export function DeviceRow({
+  device,
+  selected,
+  onSelect,
+  vvdBusy = null,
+  rebooting = null
+}: DeviceRowProps) {
+  const status = statusView(device, vvdBusy, rebooting)
   return (
     <li className="list-none">
       <button
@@ -23,7 +31,7 @@ export function DeviceRow({ device, selected, onSelect, vvdBusy = null }: Device
         className={cx(
           'flex w-full cursor-pointer items-center gap-3 rounded-card border p-3 text-left hover:border-line-hover',
           selected ? 'border-accent-line bg-selected' : 'border-line-soft bg-panel',
-          dimmed(device, vvdBusy) && 'opacity-60'
+          dimmed(device, vvdBusy, rebooting) && 'opacity-60'
         )}
       >
         <span className="grid size-9 flex-none place-items-center rounded-tile bg-selected text-text-soft">

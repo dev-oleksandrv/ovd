@@ -305,6 +305,44 @@ describe('screen controller', () => {
     })
   })
 
+  test('back from a reboot: a view showing no signal opens its stream again, quietly', async () => {
+    const second = fakeLive()
+    const s = setup({
+      lives: [
+        () => Promise.reject(new OvdError('TARGET_OFFLINE', 'offline', 'h')),
+        async () => second.live
+      ]
+    })
+    s.controller.start('VirtualDevice')
+    await flush()
+    s.controller.deviceBack('G070000000000001')
+    expect(s.liveCalls).toHaveLength(1)
+    s.controller.deviceBack('VirtualDevice')
+    second.push(frameOf(0))
+    await flush()
+    expect(s.liveCalls.map((c) => c.quiet)).toEqual([false, true])
+    expect(s.statuses()).toEqual(['connecting', 'no-signal', 'connecting', 'live'])
+  })
+
+  test('back from a reboot: a live view, an idle one and a stick’s are left alone', async () => {
+    const stream = fakeLive()
+    const live = setup({ lives: [async () => stream.live] })
+    live.controller.deviceBack('VirtualDevice')
+    live.controller.start('VirtualDevice')
+    stream.push(frameOf(0))
+    await flush()
+    live.controller.deviceBack('VirtualDevice')
+    expect(live.liveCalls).toHaveLength(1)
+
+    const stick = setup({
+      lives: [() => Promise.reject(new OvdError('LIVE_UNSUPPORTED', 'no', 'Take a screenshot'))]
+    })
+    stick.controller.start('G070000000000001')
+    await flush()
+    stick.controller.deviceBack('G070000000000001')
+    expect(stick.liveCalls).toHaveLength(1)
+  })
+
   test('stop closes the stream, ends the wait for an ack and goes idle', async () => {
     const stream = fakeLive()
     const s = setup({ lives: [async () => stream.live] })

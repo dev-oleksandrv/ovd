@@ -15,6 +15,7 @@ import type {
   PackageBuild,
   PackageInfo,
   ProjectMode,
+  RebootResult,
   ReinstallResult,
   RestartResult,
   RunOutcome,
@@ -142,6 +143,7 @@ export function stubOvd(opts: {
   doctor?: () => IpcResult<DoctorReport>
   platform?: 'darwin' | 'linux'
   vvd?: Partial<OvdApi['vvd']>
+  reboot?: OvdApi['devices']['reboot']
   pairing?: Partial<OvdApi['pairing']>
   setup?: Partial<Omit<OvdApi['setup'], 'onLoginPrompt'>>
   // Nothing open unless a test says otherwise.
@@ -199,6 +201,7 @@ export function stubOvd(opts: {
         const device = find(id)
         return device ? { ok: true, data: { ...device, isTarget: true } } : notFound
       }),
+      reboot: vi.fn(opts.reboot ?? (async () => unexpected<RebootResult>('devices.reboot'))),
       onChange: (l) => {
         listener = l
         return () => {
