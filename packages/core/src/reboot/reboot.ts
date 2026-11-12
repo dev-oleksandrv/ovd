@@ -104,7 +104,8 @@ export function createReboot(deps: RebootDeps): Reboot {
     }
   }
 
-  // One `vda reboot`; false when VDA answered that it doesn't know the serial.
+  // One `vda reboot`; false when VDA answered that it doesn't know the serial or that it is
+  // offline.
   async function sendOnce(device: Device, signal?: AbortSignal): Promise<boolean> {
     const { vegaPath } = await deps.sdk.get()
     const run = await deps.runner.run(
@@ -116,7 +117,11 @@ export function createReboot(deps: RebootDeps): Reboot {
     if (run.exitCode === 0) return true
     // fixtures/0.24/vda-reboot/device-not-found.stderr.txt: VDA lost it since the preflight.
     if (/not found/.test(run.stderr)) return false
-    const line = `${run.stdout}\n${run.stderr}`.trim().split('\n').at(-1)?.trim() ?? ''
+    const output = `${run.stdout}\n${run.stderr}`
+    // `error: device offline (transport offline)` (as vda-shell/virtual-device-offline.stderr.txt),
+    // seen once right after a start: the same drop, mid-way (ARCHITECTURE §8).
+    if (/device offline/.test(output)) return false
+    const line = output.trim().split('\n').at(-1)?.trim() ?? ''
     throw new OvdError(
       'REBOOT_FAILED',
       `Couldn’t reboot ${device.name}${line ? `: ${line}` : ''}`,
@@ -146,8 +151,8 @@ export function createReboot(deps: RebootDeps): Reboot {
 
   async function send(device: Device, signal?: AbortSignal): Promise<void> {
     if (await sendOnce(device, signal)) return
-    // VDA drops the Virtual Device for a few seconds right after a start (ARCHITECTURE §8):
-    // once it lists the device again (maybe under a new transport ID), one more try.
+    // VDA drops the Virtual Device for a few seconds right after a start (ARCHITECTURE §8),
+    // answering not found or device offline: once it lists the device again (maybe under a new transport ID), one more try.
     const back = await relisted(device.id, signal)
     if (back && (await sendOnce(back, signal))) return
     throw offline({ ...device, status: 'offline' })

@@ -217,6 +217,17 @@ const NOT_FOUND: Partial<RunResult> = {
   stderr: recorded('vda-reboot/device-not-found.stderr.txt'),
   exitCode: 1
 }
+// `vda reboot` sent right after `ovd vvd start`, during VDA's drop (ARCHITECTURE §8).
+const AFTER_START: Partial<RunResult> = {
+  stderr: recorded('vda-reboot/virtual-device-after-start.stderr.txt'),
+  exitCode: 1
+}
+// Seen once from `vda reboot` right after a start, through OVD's error (stderr not kept): the
+// same line as `vda shell` while the Virtual Device is listed offline.
+const OFFLINE: Partial<RunResult> = {
+  stderr: recorded('vda-shell/virtual-device-offline.stderr.txt'),
+  exitCode: 1
+}
 
 // The run recorded on the Virtual Device (ARCHITECTURE §8): gone at ~1 s, offline at ~2 s,
 // listed at ~3.5 s with empty info, info readable at ~7 s.
@@ -397,6 +408,48 @@ describe('reboot', () => {
     ])
   })
 
+  test('right after a start (recorded not found), then listed again: sent once more', async () => {
+    const { run, calls, elapsed } = setup({
+      reboots: [AFTER_START],
+      lost: [
+        [0, 'gone'],
+        [2_000, 'booting']
+      ],
+      timeline: RECORDED
+    })
+    await expect(run()).resolves.toMatchObject({ seconds: 15 })
+    expect(elapsed()).toBe(15_000)
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(2)
+  })
+
+  test('device offline, then back online: sent once more, then the normal wait', async () => {
+    const { run, calls, progress, elapsed } = setup({
+      reboots: [OFFLINE],
+      lost: [
+        [0, 'offline'],
+        [2_000, 'booting']
+      ],
+      timeline: RECORDED
+    })
+    await expect(run()).resolves.toMatchObject({ seconds: 15 })
+    expect(elapsed()).toBe(15_000)
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(2)
+    expect(progress).toEqual(['rebooting', 'waiting', 'settling'])
+    expect(await activity()).toEqual([
+      { action: 'reboot', target: 'VirtualDevice', args: { timeout: '120' }, result: 'ok' }
+    ])
+  })
+
+  test('device offline, and still offline for 5 polls, is TARGET_OFFLINE', async () => {
+    const { run, calls, elapsed } = setup({ reboots: [OFFLINE], lost: [[0, 'offline']] })
+    await expect(run()).rejects.toMatchObject({
+      code: 'TARGET_OFFLINE',
+      message: 'Vega Virtual Device is offline'
+    })
+    expect(elapsed()).toBe(5_000)
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(1)
+  })
+
   test('an abort while re-reading a device VDA lost sends nothing more and writes nothing', async () => {
     const { run, calls } = setup({ reboots: [NOT_FOUND], lost: [[0, 'gone']], abortAt: 2_000 })
     await expect(run()).rejects.toMatchObject({ name: 'AbortError' })
@@ -406,11 +459,12 @@ describe('reboot', () => {
 
   test('any other failure of vda reboot is REBOOT_FAILED', async () => {
     const { run, calls } = setup({
-      reboot: { stderr: recorded('vda-shell/virtual-device-offline.stderr.txt'), exitCode: 1 }
+      // A recorded VDA failure that is neither not found nor device offline.
+      reboot: { stdout: recorded('vda-devices/vda-missing-errno.txt'), exitCode: 2 }
     })
     await expect(run()).rejects.toMatchObject({
       code: 'REBOOT_FAILED',
-      message: 'Couldn’t reboot Vega Virtual Device: error: device offline (transport offline)'
+      message: "Couldn’t reboot Vega Virtual Device: [Errno 2] No such file or directory: 'vda'"
     })
     expect(calls.filter((c) => c === VDA)).toHaveLength(1)
   })

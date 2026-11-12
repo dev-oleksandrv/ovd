@@ -364,6 +364,10 @@ function reboot(w: World, serial: string): Reply {
     w.stick.rebootingUntil = until
     return { stdout: fixture('vda-reboot/virtual-device.txt') }
   }
+  // The Virtual Device's own serial not found: recorded right after a start.
+  if (serial === VVD_VDA_SERIAL) {
+    return { stderr: fixture('vda-reboot/virtual-device-after-start.stderr.txt'), exitCode: 1 }
+  }
   return {
     stderr: fixture('vda-reboot/device-not-found.stderr.txt').replace(
       'emulator-5556',
