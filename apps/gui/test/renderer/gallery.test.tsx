@@ -16,6 +16,7 @@ describe('Gallery', () => {
       'Tabs',
       'Table',
       'Screen states',
+      'Screen view',
       'Doctor rows',
       'Modal and wizard',
       'Text field',
@@ -50,6 +51,20 @@ describe('Gallery', () => {
 
     fireEvent.click(cancel)
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('the screen view shows each of its states', () => {
+    render(
+      <FeedbackProvider>
+        <Gallery />
+      </FeedbackProvider>
+    )
+    expect(screen.getAllByText('Live · emulator gRPC').length).toBeGreaterThan(0)
+    expect(screen.getByText('Connecting to the screen of Vega Virtual Device…')).toBeTruthy()
+    expect(screen.getAllByText('No signal').length).toBeGreaterThan(0)
+    expect(screen.getByText('No screenshot yet')).toBeTruthy()
+    expect(screen.getAllByText(/^Latest screenshot · /)).toHaveLength(2)
+    expect(screen.getAllByText('Out of date')).toHaveLength(1)
   })
 
   test('the log controls include the Export menu button', () => {

@@ -16,6 +16,9 @@ export interface InputValue {
   // Resolves true once the device took the text.
   text(text: string): Promise<boolean>
   retry(): void
+  // Keys and texts the device took, counted up from 0: a stick's screenshot is out of date
+  // once it grew after the shot.
+  sentCount: number
 }
 
 // The Remote screen's session: main keeps one for the target and pushes its state; this hook
@@ -25,6 +28,7 @@ export function useInput(target: Device | undefined): InputValue {
   const { echo, notify } = useFeedback()
   const [state, setState] = useState<InputState>(IDLE)
   const [flash, setFlash] = useState<RemoteKey | null>(null)
+  const [sentCount, setSentCount] = useState(0)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const device = target?.status === 'online' ? target.id : null
 
@@ -52,8 +56,10 @@ export function useInput(target: Device | undefined): InputValue {
 
   const report = useCallback(
     (outcome: InputOutcome) => {
-      if (outcome.ok) echo(outcome.sent.cli)
-      else {
+      if (outcome.ok) {
+        echo(outcome.sent.cli)
+        setSentCount((n) => n + 1)
+      } else {
         notify({
           tone: 'error',
           text: outcome.sent.error?.message ?? 'Couldn’t send it',
@@ -87,5 +93,5 @@ export function useInput(target: Device | undefined): InputValue {
     if (device !== null) void window.ovd.input.open(device)
   }, [device])
 
-  return { state, flash, press, text, retry }
+  return { state, flash, press, text, retry, sentCount }
 }

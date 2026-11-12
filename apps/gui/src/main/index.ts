@@ -14,12 +14,14 @@ import { registerPairingIpc } from './pairingIpc'
 import { registerProjectIpc } from './projectIpc'
 import { registerQuitHooks } from './quitHooks'
 import { registerRunIpc } from './runIpc'
+import { registerScreenIpc } from './screenIpc'
 import { registerScreenshotIpc } from './screenshotIpc'
 import { registerSetupIpc } from './setupIpc'
 import { showWhenReady } from './showWindow'
 import { registerVvdIpc } from './vvdIpc'
 import { registerWatchIpc } from './watchIpc'
 import type { InputController } from './inputController'
+import type { ScreenController } from './screenController'
 import type { WatchController } from './watchController'
 
 // One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
@@ -52,6 +54,10 @@ const quitting = registerQuitHooks(app, {
 // Set once the IPC handlers are registered; watching stops on quit and with the window.
 let watch: WatchController | undefined
 app.on('before-quit', () => watch?.stop())
+// Set once the IPC handlers are registered; the live view's stream closes at once on quit and
+// with the window (its session is destroyed synchronously, nothing to wait for).
+let screen: ScreenController | undefined
+app.on('before-quit', () => screen?.close())
 
 function createWindow(): void {
   // Create the browser window.
@@ -84,6 +90,12 @@ function createWindow(): void {
   win.on('closed', () => void logs.stop())
   win.on('closed', () => watch?.stop())
   win.on('closed', () => void input?.close())
+  win.on('closed', () => screen?.close())
+  win.webContents.on('destroyed', () => screen?.close())
+  // A reload drops the renderer's view without unmounting it: its stream goes too.
+  win.webContents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) screen?.close()
+  })
 
   showWhenReady(win)
 
@@ -124,6 +136,7 @@ app.whenReady().then(() => {
   registerSetupIpc(ovd, () => mainWindow, devices.refresh)
   input = registerInputIpc(ovd, () => mainWindow)
   registerScreenshotIpc(ovd, () => mainWindow)
+  screen = registerScreenIpc(ovd, () => mainWindow)
 
   createWindow()
 

@@ -169,6 +169,32 @@ export type InputOutcome =
 // A screenshot the desktop took, and whether it reached the clipboard.
 export type ScreenshotTaken = ScreenshotResult & { copied: boolean }
 
+// The live view main keeps for the target (one at a time, the Virtual Device only). `no-signal`
+// once the device went away while it streamed; `error` when it couldn't stream.
+export type ScreenStatus = 'idle' | 'connecting' | 'live' | 'no-signal' | 'error'
+
+export interface ScreenState {
+  status: ScreenStatus
+  target: { id: string; name: string } | null
+  error?: ErrorJson
+}
+
+// One frame main pushes: raw RGBA8888 pixels (a binary clone, never base64). `seq` is main's
+// own counter; main sends the next frame only once the renderer acked this one.
+export interface ScreenFramePush {
+  seq: number
+  width: number
+  height: number
+  timestampUs: number
+  pixels: Uint8Array
+}
+
+// A stick's Refresh: the screenshot it saved and its PNG to show.
+export interface ScreenRefreshed {
+  shot: ScreenshotResult
+  png: Uint8Array
+}
+
 // Core errors cross IPC as data: Electron drops custom error fields when a handler throws.
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: ErrorJson }
 
@@ -311,6 +337,22 @@ export interface OvdApi {
     // Main pushes the list after each take.
     onCaptures(listener: (list: CapturesList) => void): () => void
   }
+  screen: {
+    // Starts the live view of the device (logged once as `screen.live`), or replays the one
+    // already running for it. Resolves with the state at once; frames and states are pushed.
+    start(device: string): Promise<ScreenState>
+    // Ends the live view (the screen unmounted).
+    stop(): Promise<void>
+    // The renderer drew (or dropped) frame `seq`: main may send the next one.
+    ack(seq: number): Promise<void>
+    // A stick's Refresh, `ovd screenshot --device <id>`: saved in the captures folder (no
+    // clipboard), then the captures list is pushed.
+    refresh(device: string): Promise<IpcResult<ScreenRefreshed>>
+    // The PNG of a capture in the captures folder.
+    image(path: string): Promise<IpcResult<Uint8Array>>
+    onFrame(listener: (frame: ScreenFramePush) => void): () => void
+    onState(listener: (state: ScreenState) => void): () => void
+  }
   watch: {
     // `ovd run --watch --device <id>` without the first run: watches the open project folder and
     // redeploys each new build on the target. Idempotent; NOT_A_PROJECT without a folder open.
@@ -379,5 +421,12 @@ export const channels = {
   screenshotCaptures: 'ovd:screenshot:captures',
   screenshotCapturesUpdate: 'ovd:screenshot:captures-update',
   screenshotReveal: 'ovd:screenshot:reveal',
-  screenshotOpenFolder: 'ovd:screenshot:open-folder'
+  screenshotOpenFolder: 'ovd:screenshot:open-folder',
+  screenStart: 'ovd:screen:start',
+  screenStop: 'ovd:screen:stop',
+  screenAck: 'ovd:screen:ack',
+  screenRefresh: 'ovd:screen:refresh',
+  screenImage: 'ovd:screen:image',
+  screenFrame: 'ovd:screen:frame',
+  screenState: 'ovd:screen:state'
 } as const

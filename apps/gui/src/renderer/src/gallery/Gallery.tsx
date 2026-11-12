@@ -12,6 +12,8 @@ import { ConfirmUninstall } from '../screens/apps/ConfirmUninstall'
 import { LaunchCallout } from '../screens/apps/LaunchCallout'
 import { LaunchStatus } from '../screens/apps/LaunchStatus'
 import { LogRow } from '../screens/logs/LogRow'
+import { ScreenPanel } from '../screens/remote/ScreenPanel'
+import type { ScreenView } from '../screens/remote/screenPanelView'
 import type { RunRow, RunState } from '../run/runView'
 import { paletteItems } from '../shell/paletteItems'
 import { Badge } from '../ui/Badge'
@@ -44,6 +46,40 @@ import { TextField } from '../ui/TextField'
 import { ToggleButton } from '../ui/ToggleButton'
 import { Wizard } from '../ui/Wizard'
 import { GallerySection } from './GallerySection'
+
+// The screen view's states on Remote & Screen (Stage 4.4). The live one shows an empty canvas
+// here: frames come only from main.
+const SAMPLE_SHOT = {
+  target: { id: 'G070000000000001', name: 'Living room stick' },
+  backend: 'gwsi-tool-screenshooter' as const,
+  path: '/home/developer/ovd/captures/living-room-stick-20261112-140312.png',
+  width: 1920,
+  height: 1080,
+  bytes: 9780,
+  takenAt: '2026-11-12T14:03:12.000Z'
+}
+const SCREEN_VIEWS: { label: string; view: ScreenView }[] = [
+  { label: 'Live', view: { kind: 'live' } },
+  { label: 'Connecting', view: { kind: 'connecting', name: 'Vega Virtual Device' } },
+  {
+    label: 'Error',
+    view: {
+      kind: 'error',
+      error: {
+        code: 'VVD_GRPC_FAILED',
+        message: 'Emulator gRPC rejected OVD’s token',
+        hint: 'Turn it on with ovd vvd start'
+      }
+    }
+  },
+  {
+    label: 'No signal',
+    view: { kind: 'no-signal', name: 'Bedroom stick', status: 'offline' }
+  },
+  { label: 'Stick, empty', view: { kind: 'stick', shot: null, stale: false } },
+  { label: 'Stick, latest', view: { kind: 'stick', shot: SAMPLE_SHOT, stale: false } },
+  { label: 'Stick, out of date', view: { kind: 'stick', shot: SAMPLE_SHOT, stale: true } }
+]
 
 // A run of the sample project on the Virtual Device, in the three states the dropdown shows.
 const RUN_ROWS: RunRow[] = [
@@ -523,6 +559,17 @@ export function Gallery() {
             Architecture mismatch: package is <b className="font-mono">aarch64</b>, Fire TV Stick 4K
             Select is <b className="font-mono">armv7</b>. Install is blocked.
           </BlockedNotice>
+        </div>
+      </GallerySection>
+
+      <GallerySection title="Screen view">
+        <div className="grid w-full grid-cols-2 gap-3">
+          {SCREEN_VIEWS.map(({ label, view }) => (
+            <div key={label} className="flex flex-col gap-1.5">
+              <div className="text-label text-muted">{label}</div>
+              <ScreenPanel view={view} onRefresh={() => undefined} onRetry={() => undefined} />
+            </div>
+          ))}
         </div>
       </GallerySection>
 

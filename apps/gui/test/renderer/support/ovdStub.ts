@@ -33,6 +33,9 @@ import type {
   LogsUpdate,
   OvdApi,
   RunProgress,
+  ScreenFramePush,
+  ScreenRefreshed,
+  ScreenState,
   SdkSummary,
   WatchEvent,
   WatchState
@@ -54,6 +57,9 @@ export interface OvdStub {
   pushInput: (state: InputState) => void
   // Pushes the captures list as main does after a take.
   pushCaptures: (list: CapturesList) => void
+  // Pushes a live view frame and state as main does.
+  pushFrame: (frame: ScreenFramePush) => void
+  pushScreen: (state: ScreenState) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -154,7 +160,12 @@ export function stubOvd(opts: {
   input?: Partial<Omit<OvdApi['input'], 'onState'>>
   // An empty captures folder, and a take that never answers, unless a test says otherwise.
   screenshot?: Partial<Omit<OvdApi['screenshot'], 'onCaptures'>>
+  // A live view that stays connecting, and a Refresh that never answers, unless a test says
+  // otherwise.
+  screen?: Partial<Omit<OvdApi['screen'], 'onFrame' | 'onState'>>
 }): OvdStub {
+  let frameListener: ((frame: ScreenFramePush) => void) | undefined
+  let screenListener: ((state: ScreenState) => void) | undefined
   let capturesListener: ((list: CapturesList) => void) | undefined
   let inputListener: ((state: InputState) => void) | undefined
   let listener: ((update: DevicesUpdate) => void) | undefined
@@ -380,6 +391,36 @@ export function stubOvd(opts: {
         }
       }
     },
+    screen: {
+      start: vi.fn(
+        opts.screen?.start ??
+          (async (device: string): Promise<ScreenState> => ({
+            status: 'connecting',
+            target: { id: device, name: device }
+          }))
+      ),
+      stop: vi.fn(opts.screen?.stop ?? (async () => undefined)),
+      ack: vi.fn(opts.screen?.ack ?? (async () => undefined)),
+      refresh: vi.fn(
+        opts.screen?.refresh ?? (() => new Promise<IpcResult<ScreenRefreshed>>(() => undefined))
+      ),
+      image: vi.fn(
+        opts.screen?.image ??
+          (async (): Promise<IpcResult<Uint8Array>> => ({ ok: true, data: new Uint8Array() }))
+      ),
+      onFrame: (l) => {
+        frameListener = l
+        return () => {
+          frameListener = undefined
+        }
+      },
+      onState: (l) => {
+        screenListener = l
+        return () => {
+          screenListener = undefined
+        }
+      }
+    },
     watch: {
       set: vi.fn(
         opts.watch?.set ??
@@ -406,6 +447,8 @@ export function stubOvd(opts: {
     pushRun: (p) => runListener?.(p),
     pushWatch: (e) => watchListener?.(e),
     pushInput: (s) => inputListener?.(s),
-    pushCaptures: (l) => capturesListener?.(l)
+    pushCaptures: (l) => capturesListener?.(l),
+    pushFrame: (f) => frameListener?.(f),
+    pushScreen: (s) => screenListener?.(s)
   }
 }
