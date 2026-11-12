@@ -122,7 +122,9 @@ export function RemoteScreen({ onSwitchTarget }: RemoteScreenProps) {
           <div className="px-6 pt-5">
             <ScreenView target={target} sentCount={input.sentCount} />
           </div>
-          {body}
+          {/* Its natural height: the outer column scrolls, so the pad isn't squeezed into a
+              scroller of its own under the screen. */}
+          <div className="flex shrink-0 flex-col">{body}</div>
         </div>
       ) : (
         body
