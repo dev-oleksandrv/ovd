@@ -165,12 +165,16 @@ function setup(opts: Setup = {}) {
     ...opts.state
   }))
   const progress: RebootProgress[] = []
+  const targets = new Set<string>()
   const run = async (more: { timeoutMs?: number; device?: string } = {}) => {
     await ready
     return reboot.reboot({
       ...more,
       signal: controller.signal,
-      onProgress: (p) => progress.push(p)
+      onProgress: (p, target) => {
+        progress.push(p)
+        targets.add(target.id)
+      }
     })
   }
   return {
@@ -179,6 +183,7 @@ function setup(opts: Setup = {}) {
     progress,
     reconnects,
     controller,
+    targets,
     elapsed: () => clock - (rebootedAt ?? 0)
   }
 }
@@ -208,7 +213,7 @@ const RECORDED: Step[] = [
 
 describe('reboot', () => {
   test('the Virtual Device: gone, offline, listed without info, then up for the settle', async () => {
-    const { run, calls, progress, elapsed } = setup({ timeline: RECORDED })
+    const { run, calls, progress, targets, elapsed } = setup({ timeline: RECORDED })
     await expect(run()).resolves.toEqual({
       target: { id: 'VirtualDevice', name: 'Vega Virtual Device' },
       seconds: 15,
@@ -217,7 +222,8 @@ describe('reboot', () => {
     // Up from 7 s, then 8 s of polls that all read info.
     expect(elapsed()).toBe(15_000)
     expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(1)
-    expect(progress).toEqual(['waiting', 'settling'])
+    expect(progress).toEqual(['rebooting', 'waiting', 'settling'])
+    expect([...targets]).toEqual(['VirtualDevice'])
     expect(await activity()).toEqual([
       { action: 'reboot', target: 'VirtualDevice', args: { timeout: '120' }, result: 'ok' }
     ])
@@ -230,7 +236,7 @@ describe('reboot', () => {
     })
     await expect(run()).resolves.toMatchObject({ seconds: 22 })
     expect(elapsed()).toBe(22_000)
-    expect(progress).toEqual(['waiting', 'settling', 'waiting', 'settling'])
+    expect(progress).toEqual(['rebooting', 'waiting', 'settling', 'waiting', 'settling'])
   })
 
   test('listed without info counts as away when the polls miss the gone window', async () => {
@@ -421,7 +427,7 @@ describe('reboot over Wi‑Fi', () => {
     // Unlisted from 1 s, so the connect goes at 11 s; back at 12 s, settled at 20 s.
     expect(reconnects).toEqual([11_000])
     expect(elapsed()).toBe(20_000)
-    expect(progress).toEqual(['waiting', 'reconnecting', 'waiting', 'settling'])
+    expect(progress).toEqual(['rebooting', 'waiting', 'reconnecting', 'waiting', 'settling'])
   })
 
   test('a failed reconnect is retried every 10 s', async () => {

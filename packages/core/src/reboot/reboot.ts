@@ -23,8 +23,9 @@ export interface RebootDeps {
   now?: () => number
 }
 
-// What the wait is doing: for the surfaces' progress lines.
-export type RebootProgress = 'waiting' | 'reconnecting' | 'settling'
+// What the reboot is doing, for the surfaces' progress lines: `rebooting` before `vda reboot`,
+// then the wait (`settling`: back online, info answering on every poll).
+export type RebootProgress = 'rebooting' | 'waiting' | 'reconnecting' | 'settling'
 
 export interface RebootOptions {
   device?: string
@@ -33,7 +34,7 @@ export interface RebootOptions {
   // Ctrl+C: rejects with an AbortError. Once `vda reboot` was sent the device still reboots,
   // so that attempt is logged (ok, `wait: cancelled`).
   signal?: AbortSignal
-  onProgress?: (progress: RebootProgress) => void
+  onProgress?: (progress: RebootProgress, target: { id: string; name: string }) => void
 }
 
 export interface RebootResult {
@@ -134,7 +135,7 @@ export function createReboot(deps: RebootDeps): Reboot {
     const report = (next: RebootProgress) => {
       if (progress === next) return
       progress = next
-      opts.onProgress?.(next)
+      opts.onProgress?.(next, { id: device.id, name: device.name })
     }
     let sawAway = false
     let upSince: number | null = null
@@ -213,6 +214,7 @@ export function createReboot(deps: RebootDeps): Reboot {
       })
       if (opts.signal?.aborted) throw abortError()
       return logged('reboot', device.id, args, async () => {
+        opts.onProgress?.('rebooting', { id: device.id, name: device.name })
         await send(device, opts.signal)
         const started = now()
         let reconnected: boolean
