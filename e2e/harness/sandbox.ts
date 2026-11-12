@@ -40,6 +40,8 @@ const BUNDLED_BIN = 'vega/sdk/0.24.12112/bin'
 const EXIT_BY_ITSELF_MS = 1_000
 const EXIT_AFTER_SIGTERM_MS = 2_000
 const FAKE_EXIT_MS = 3_000
+// And how long a fake started during that shutdown (or one a SIGKILLed surface left) gets after.
+const LATE_FAKE_EXIT_MS = 1_000
 
 export interface ClipboardCall {
   tool: string
@@ -269,15 +271,22 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     },
 
     async close() {
-      // Taken first, so nothing the cleanup below triggers changes this check.
-      const unhandled = [
-        ...readCalls()
-          .filter((c) => !c.handled)
-          .map((c) => c.command),
-        ...emulator.unhandled()
-      ]
+      let unhandled: string[] = []
+      // A calls.jsonl that can't be read (a fake killed while appending) must not skip the cleanup.
+      let unreadable: unknown
       const left: string[] = []
       try {
+        // Taken first, so nothing the cleanup below triggers changes this check.
+        try {
+          unhandled = [
+            ...readCalls()
+              .filter((c) => !c.handled)
+              .map((c) => c.command),
+            ...emulator.unhandled()
+          ]
+        } catch (error) {
+          unreadable = error
+        }
         releaseHolds()
         const [children, fakes] = await Promise.all([
           Promise.all(tracked.map(stopChild)),
@@ -286,12 +295,18 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
         left.push(...children.flat(), ...fakes)
         // A fake started while a surface was being stopped, or one a SIGKILLed surface left
         // (a fake SIGKILLed above may still show here: listed once).
-        for (const p of await waitForPids(fakePids, 0)) if (!left.includes(p)) left.push(p)
+        for (const p of await waitForPids(fakePids, LATE_FAKE_EXIT_MS)) {
+          if (!left.includes(p)) left.push(p)
+        }
       } finally {
         emulator.close()
         rmSync(root, { recursive: true, force: true })
       }
       const problems: string[] = []
+      if (unreadable !== undefined) {
+        const message = unreadable instanceof Error ? unreadable.message : String(unreadable)
+        problems.push(`Could not read the SDK commands the test ran: ${message}`)
+      }
       if (unhandled.length > 0) {
         problems.push(
           `The fake SDK has no recording for:\n${unhandled.map((c) => `  ${c}`).join('\n')}`
@@ -302,7 +317,9 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
           `Still running after the test, stopped now:\n${left.map((p) => `  ${p}`).join('\n')}`
         )
       }
-      if (problems.length > 0) throw new Error(problems.join('\n'))
+      if (problems.length > 0) {
+        throw new Error(problems.join('\n'), unreadable === undefined ? {} : { cause: unreadable })
+      }
     }
   }
 }
@@ -345,18 +362,25 @@ function commandOf(pid: number): string | null {
   return command === '' ? null : command
 }
 
+// The fake SDK processes among `pids` still running, with their command. The command check
+// guards against a reused pid; a zombie (`<defunct>`, its parent hasn't reaped it yet) no longer
+// runs main.ts and is left to its parent. `ps` runs only for the pids that still answer.
+function liveFakes(pids: number[]): { pid: number; command: string }[] {
+  return stillRunning(pids).flatMap((pid) => {
+    const command = commandOf(pid)
+    return command !== null && command.includes(FAKE_SDK_MAIN) ? [{ pid, command }] : []
+  })
+}
+
 // Gives the fake SDK processes up to `ms` to exit, then SIGKILLs the ones still running and
-// returns them ("pid command"). The command check guards against a reused pid; a zombie
-// (`<defunct>`, its parent hasn't reaped it yet) no longer runs main.ts and is left to its parent.
+// returns them ("pid command").
 async function waitForPids(pids: () => number[], ms: number): Promise<string[]> {
   const deadline = Date.now() + ms
-  while (stillRunning(pids()).length > 0 && Date.now() < deadline) {
+  while (liveFakes(pids()).length > 0 && Date.now() < deadline) {
     await new Promise((resolveWait) => setTimeout(resolveWait, 100))
   }
   const left: string[] = []
-  for (const pid of stillRunning(pids())) {
-    const command = commandOf(pid)
-    if (command === null || !command.includes(FAKE_SDK_MAIN)) continue
+  for (const { pid, command } of liveFakes(pids())) {
     try {
       process.kill(pid, 'SIGKILL')
     } catch {
