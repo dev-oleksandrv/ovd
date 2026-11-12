@@ -1,5 +1,31 @@
 # @ovd/cli
 
+## 0.3.0
+
+### Minor Changes
+
+- f52f841: - `ovd logs --export <file>` saves the log to a file instead of printing it, as plain text (the default) or as JSON lines with `--format jsonl`, one `ovd logs --json` line per entry. It won't replace an existing file unless you pass `--force`. When it stops it prints `Exported N lines to <file>`, or one result document with `--json`.
+  - Desktop Logs: Export now asks for the format, plain text or JSON lines, and the command palette has "Export logs as plain text…" and "Export logs as JSON lines…". The status bar shows the matching `ovd logs … --export` command.
+- a6bdc4b: - `ovd reboot` restarts the target and returns once it is back online, with `--timeout` (30–600 s, default 120) and `--json`. It exits 1 when the device doesn't come back in time, and 4 when there is no online target.
+  - Devices has a "Reboot & wait" button: the device shows "Rebooting…" until it is back online, then a toast says how long it took. The remote, the live view and the log stream pick up again on their own.
+  - On a Fire TV stick, rebooting and reconnecting over Wi‑Fi afterwards aren't checked on a stick yet.
+- ca5099d: - `ovd input press <key...>` presses remote keys on the target, in order: `up`, `down`, `left`, `right`, `ok`, `back`, `home`, `menu`, `play-pause`, `rewind`, `fast-forward`. `ovd input text "<text>"` types text into the focused field. Both accept `--device` and `--json`. On the Virtual Device they go through emulator gRPC, which OVD turns on if needed. Home can't be sent there, and the Virtual Device types only printable ASCII. Both are refused with exit 2. On a Fire TV stick they go through `inputd-cli`; this isn't checked on a real stick yet. An unknown key or invalid text exits 2, and an offline target exits 4.
+  - Desktop: a new Debug → Remote & Screen screen has a remote pad with D-pad, OK, Back, Home, Menu, rewind, play/pause and fast-forward. Pressed keys flash. The keyboard works as a remote, with a hint listing the shortcuts. "Type into TV" sends text, and keys don't fire while you type in it. An input session panel shows the backend and the commands sent. Home is disabled on the Virtual Device, and an offline target shows "Remote unavailable — <device> is offline". Each press shows its `ovd input …` command in the status bar.
+- 3292d16: - `ovd run` deploys in one step: it picks the build that matches the target (a Debug build on the Virtual Device, a Release build on a stick), installs it, starts the log, launches the app, checks that it really runs, then follows its log until Ctrl+C. With `--json` the first line is the run's result, then the `ovd logs --json` lines. It exits 7 when the app crashes on launch, with the crash's cause.
+  - Desktop: the title bar has a Run ▸ button for the open project or .vpkg. It shows each step as it goes, opens Logs once the app runs, and says why when it can't run (nothing open, no target, the target offline). The status bar shows the matching `ovd run --device <id>` command.
+- f943331: - `ovd screenshot` saves a PNG of the target's screen to `~/ovd/captures` (or `--out <file or folder>`, `--force` to replace a file) and copies it to the clipboard with `--clipboard`. The Virtual Device is captured over emulator gRPC; Fire TV sticks through `gwsi-tool-screenshooter`, which isn't checked on a stick yet.
+  - The desktop's Remote & Screen has a Screenshot button and a Captures list, and the ⌘K palette has "Take screenshot": one click saves the screen and puts it on the clipboard.
+- 51c6306: - `ovd vvd start` now turns on the Virtual Device's emulator gRPC endpoint every time, also on a Virtual Device that is already running, and prints `Emulator gRPC on · :8554`. If it can't, the start still succeeds and you get a warning with a fix hint. `--json` reports it as `vvd.grpc`. This is what OVD will use to send remote keys to the Virtual Device.
+  - `ovd doctor` has a new "Emulator gRPC" row: `On · :8554`, `Not running` when the Virtual Device is stopped, or `Couldn’t enable` with a hint to run `ovd vvd start`.
+  - Desktop: Doctor shows the same row, with a Turn on button when gRPC is off. Starting the Virtual Device warns if gRPC couldn't be turned on. The status bar shows the matching `ovd vvd start` command.
+- 5f6ccea: - `ovd run --watch` redeploys every new build: it watches the project's `build/` folder, runs once, then reinstalls and relaunches the build that fits the target each time `react-native build-vega` writes a new one, while the log keeps following. Each run prints its result (with `--json`, one `{"ok": …}` line per run), a failed redeploy doesn't stop it, and Ctrl+C ends it. A .vpkg or a package ID is refused: watching needs a project folder.
+  - Logs show "Build folder changed: build/aarch64-debug/player_aarch64.vpkg" as an OVD line when a watched build folder gets a new build.
+  - Desktop: the title bar has a Watch toggle next to Run ▸ when a project folder is open ("Watch off" / "Watching build/"). A new build reinstalls and relaunches the app with Run's steps and a toast. It says why it can't be turned on (no target, the target offline), and turns off when another project is opened. The status bar shows the matching `ovd run --watch --device <id>` command.
+
+### Patch Changes
+
+- 106c25a: The stick paths for remote input, screenshots, the screen view and reboot are built and tested but haven't yet been checked on a real Fire TV stick; everything was verified on the Vega Virtual Device. `ovd screenshot --clipboard` needs `wl-clipboard` or `xclip` on Ubuntu.
+
 ## 0.2.0
 
 ### Minor Changes
