@@ -32,6 +32,7 @@ const CODES: Partial<Record<ErrorCode, number>> = {
   INVALID_KEY: 2,
   KEY_UNSUPPORTED: 2,
   INVALID_TEXT: 2,
+  INVALID_PATH: 2,
   ARCH_MISMATCH: 6,
   LAUNCH_NOT_VERIFIED: 7
 }
