@@ -26,3 +26,4 @@ On Fire TV sticks, `inputd-cli` sends keys and text, and `gwsi-tool-screenshoote
 ## Amendments
 
 - 2026-11-12 (PR #112): the Virtual Device's live view uses gRPC `streamScreenshot` (RGBA8888, a frame per screen change, held back by HTTP/2 flow control); `getScreenshot` stays the backend for screenshots (ARCHITECTURE §8).
+- 2026-11-12 (Stage 4 sign-off, maintainer decision): "prefer vega-vvd-driver" is replaced by a small emulator console and gRPC client in core (`packages/core/src/vvd/`, PR #109), built on `node:net` and `node:http2`. The driver would have added `@grpc/grpc-js`, `@grpc/proto-loader` and the MCP SDK as dependencies for the handful of calls OVD makes (`sendKey`, `getScreenshot`, `streamScreenshot`, `getVmState`). It never calls `getStatus`, which stopped the Virtual Device during verification (ARCHITECTURE §8).
