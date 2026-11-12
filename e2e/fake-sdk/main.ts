@@ -38,8 +38,6 @@ interface Reply {
 }
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/0.24')
-// How long a stick is gone after Developer Mode is enabled (41 s in the recording).
-const REBOOT_MS = 3_000
 // How long the user takes to finish the browser sign-in (32 s in the recording).
 const BROWSER_SIGN_IN_MS = 300
 const UNHANDLED = 99
@@ -89,6 +87,14 @@ function rebooting(s: Stick): boolean {
   return Date.now() < s.rebootingUntil
 }
 
+function vvdRebooting(w: World): boolean {
+  return w.vvd.running && Date.now() < (w.vvd.rebootingUntil ?? 0)
+}
+
+function vvdUp(w: World): boolean {
+  return w.vvd.running && !vvdRebooting(w)
+}
+
 function stickOnUsb(w: World): boolean {
   const s = w.stick
   return (
@@ -114,7 +120,8 @@ function vdaDevices(w: World): string {
         : line('vda-devices/stick-wifi-offline.txt', 1)
     )
   }
-  if (w.vvd.running) lines.push(line('vda-devices/stick-usb-and-virtual-device.txt', 2))
+  if (vvdRebooting(w)) lines.push(line('vda-devices/virtual-device-offline.txt', 1))
+  else if (w.vvd.running) lines.push(line('vda-devices/stick-usb-and-virtual-device.txt', 2))
   return `${lines.join('\n')}\n\n`
 }
 
@@ -124,7 +131,7 @@ function deviceInfo(w: World, id: string): Reply {
   if (id === STICK_ADDRESS && stickOnWifi(w) && w.vdaConnected.includes(STICK_ADDRESS)) {
     return { stdout: fixture('vega-device-info/stick-wifi.json') }
   }
-  if (id === 'VirtualDevice' && w.vvd.running) {
+  if (id === 'VirtualDevice' && vvdUp(w)) {
     return {
       stdout: fixture(
         w.vvd.developerMode
@@ -171,10 +178,10 @@ async function logStream(w: World): Promise<Reply> {
   if (ends) return { stdout: fixture('loggingctl-log/stick-follow-reboot.txt') }
   if (w.logStream.reboot) {
     // The stick reboots: this stream prints the recording before a reboot and ends (exit 0),
-    // and the stick is away for REBOOT_MS. The world is written back before stdout, so the
+    // and the stick is away for `rebootMs`. The world is written back before stdout, so the
     // stick is already gone when ovd sees the end.
     w.logStream.reboot = false
-    if (w.stick) w.stick.rebootingUntil = Date.now() + REBOOT_MS
+    if (w.stick) w.stick.rebootingUntil = Date.now() + w.rebootMs
     return { stdout: fixture('loggingctl-log/stick-follow-reboot.txt') }
   }
   // Logged now: the stream is stopped, never answers.
@@ -204,8 +211,17 @@ async function logStream(w: World): Promise<Reply> {
     while (readWorld(dir as string).logStream.holdAfterLine !== null) await sleep(100)
     await writeInThirds(lines.slice(holdAfterLine).join(''))
   }
-  // Default SIGTERM handling ends it when its group is signalled.
-  return new Promise(() => setInterval(() => undefined, 60_000))
+  // The world was read before the stream started; never write that stale copy back.
+  wroteWorld = true
+  // Default SIGTERM handling ends it when its group is signalled; a `vda reboot` ends it.
+  return endsOnReboot((fresh) => fresh.stick !== null && rebooting(fresh.stick))
+}
+
+// A running `loggingctl log -f` ends by itself, exit 0 and nothing on stderr, once its device
+// reboots (verified on a stick and on the Virtual Device, fixtures/0.24/README.md).
+async function endsOnReboot(isRebooting: (w: World) => boolean): Promise<Reply> {
+  while (!isRebooting(readWorld(dir as string))) await sleep(100)
+  return {}
 }
 
 // `loggingctl log -f` on the Virtual Device (fixtures/0.24/loggingctl-log): the first stream
@@ -231,8 +247,8 @@ async function vvdLogStream(): Promise<Reply> {
     process.stdout.write(text.slice(cuts[i], cuts[i + 1]))
     await sleep(50)
   }
-  // Default SIGTERM handling ends it when its group is signalled.
-  return new Promise(() => setInterval(() => undefined, 60_000))
+  // Default SIGTERM handling ends it when its group is signalled; a `vda reboot` ends it.
+  return endsOnReboot(vvdRebooting)
 }
 
 // `inputd-cli start` on the stick (fixtures/0.24/inputd-cli-console, recorded on the Virtual
@@ -291,7 +307,7 @@ function enableDevice(w: World, rest: string[]): Reply | null {
   }
   // The stick reboots: it leaves the device list at once and comes back on USB.
   w.stick.developerMode = true
-  w.stick.rebootingUntil = Date.now() + REBOOT_MS
+  w.stick.rebootingUntil = Date.now() + w.rebootMs
   return { stdout: fixture('vega-devmode-enable-device/enabled.json') }
 }
 
@@ -332,8 +348,38 @@ function connect(w: World, address: string): Reply | null {
   return null
 }
 
+// `vda -s <serial> reboot` (fixtures/0.24/vda-reboot): exit 0, no output, and the device is
+// away for `rebootMs`. Recorded on the Virtual Device; the stick answers the same, unverified on
+// hardware (fixtures/0.24/README.md, Synthesized sequences).
+function reboot(w: World, serial: string): Reply {
+  const until = Date.now() + w.rebootMs
+  if (serial === VVD_VDA_SERIAL && vvdUp(w)) {
+    w.vvd.rebootingUntil = until
+    return { stdout: fixture('vda-reboot/virtual-device.txt') }
+  }
+  const stickUp =
+    (serial === STICK_SERIAL && stickOnUsb(w)) ||
+    (serial === STICK_ADDRESS && stickOnWifi(w) && w.vdaConnected.includes(STICK_ADDRESS))
+  if (stickUp && w.stick) {
+    w.stick.rebootingUntil = until
+    return { stdout: fixture('vda-reboot/virtual-device.txt') }
+  }
+  return {
+    stderr: fixture('vda-reboot/device-not-found.stderr.txt').replace(
+      'emulator-5556',
+      () => serial
+    ),
+    exitCode: 1
+  }
+}
+
 function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise<Reply> {
   const sub = rest.join(' ')
+  if (sub === 'reboot') return reboot(w, serial)
+  // Listed `offline` while it reboots: every shell command fails the same.
+  if (serial === VVD_VDA_SERIAL && vvdRebooting(w)) {
+    return notFound(sub, 'vda-shell/virtual-device-offline.stderr.txt')
+  }
   if (serial === VVD_VDA_SERIAL && w.vvd.running) {
     if (sub === 'shell vsm developer-mode') {
       return {
@@ -621,6 +667,7 @@ function virtualDevice(w: World, sub: string | undefined): Reply | null {
     }
     // No recording: core only reads the exit code of a successful stop.
     w.vvd.running = false
+    delete w.vvd.rebootingUntil
     rmSync(discoveryDir(dir as string), { recursive: true, force: true })
     return {}
   }
@@ -702,7 +749,7 @@ function onlineArch(w: World, id: string): string | null {
   if (id === STICK_ADDRESS && stickOnWifi(w) && w.vdaConnected.includes(STICK_ADDRESS)) {
     return 'armv7'
   }
-  if (id === 'VirtualDevice' && w.vvd.running) return 'aarch64'
+  if (id === 'VirtualDevice' && vvdUp(w)) return 'aarch64'
   return null
 }
 
