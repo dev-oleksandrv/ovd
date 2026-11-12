@@ -48,6 +48,10 @@ interface Setup {
   // From the reboot on; the device is up before it.
   timeline?: Step[]
   reboot?: Partial<RunResult>
+  // One per `vda reboot`, in order; past the end, `reboot`.
+  reboots?: Partial<RunResult>[]
+  // After a `vda reboot` that fails, until one succeeds; the device is up before it.
+  lost?: Step[]
   env?: Record<string, string>
   state?: Partial<HostState>
   // What `pairing.reconnect` answers; a true answer lists the stick again.
@@ -70,13 +74,16 @@ function setup(opts: Setup = {}) {
   const kind = opts.device ?? 'vvd'
   let clock = 0
   let rebootedAt: number | null = null
+  let lostAt: number | null = null
+  let sends = 0
   let relisted = false
   const timeline = opts.timeline ?? []
   const phase = (): Phase | 'vda-broken' => {
-    if (rebootedAt === null) return 'up'
+    const [since, steps] = rebootedAt !== null ? [rebootedAt, timeline] : [lostAt, opts.lost ?? []]
+    if (since === null) return 'up'
     if (relisted) return 'up'
     let current: Phase | 'vda-broken' = 'up'
-    for (const [at, next] of timeline) if (clock - rebootedAt >= at) current = next
+    for (const [at, next] of steps) if (clock - since >= at) current = next
     return current
   }
   const calls: string[] = []
@@ -86,9 +93,13 @@ function setup(opts: Setup = {}) {
       const now = phase()
       switch (spec.display) {
         case VVD_REBOOT:
-        case WIFI_REBOOT:
-          rebootedAt = clock
-          return done(spec, opts.reboot ?? { stdout: recorded('vda-reboot/virtual-device.txt') })
+        case WIFI_REBOOT: {
+          const result = opts.reboots?.[sends++] ??
+            opts.reboot ?? { stdout: recorded('vda-reboot/virtual-device.txt') }
+          if ((result.exitCode ?? 0) === 0) rebootedAt = clock
+          else lostAt = clock
+          return done(spec, result)
+        }
         case STATUS:
           return done(spec, { stdout: recorded('vega-virtual-device-status/running.json') })
         case VDA: {
@@ -200,6 +211,11 @@ async function activity(): Promise<Omit<ActivityEntry, 'time' | 'surface'>[]> {
       return entry as Omit<ActivityEntry, 'time' | 'surface'>
     })
     .filter((e) => e.action === 'reboot')
+}
+
+const NOT_FOUND: Partial<RunResult> = {
+  stderr: recorded('vda-reboot/device-not-found.stderr.txt'),
+  exitCode: 1
 }
 
 // The run recorded on the Virtual Device (ARCHITECTURE §8): gone at ~1 s, offline at ~2 s,
@@ -332,14 +348,60 @@ describe('reboot', () => {
     ])
   })
 
-  test('an unknown serial is TARGET_OFFLINE', async () => {
-    const { run } = setup({
-      reboot: { stderr: recorded('vda-reboot/device-not-found.stderr.txt'), exitCode: 1 }
+  test('not found twice is TARGET_OFFLINE, with no third try', async () => {
+    const { run, calls } = setup({ reboot: NOT_FOUND })
+    await expect(run()).rejects.toMatchObject({
+      code: 'TARGET_OFFLINE',
+      message: 'Vega Virtual Device is offline'
     })
+    // Listed online again at the first re-read, so one more send.
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(2)
+    expect(await activity()).toEqual([
+      {
+        action: 'reboot',
+        target: 'VirtualDevice',
+        args: { timeout: '120' },
+        result: 'error',
+        errorCode: 'TARGET_OFFLINE'
+      }
+    ])
+  })
+
+  test('not found, then listed again: sent once more, then the normal wait', async () => {
+    const { run, calls, progress, elapsed } = setup({
+      reboots: [NOT_FOUND],
+      // VDA's drop right after a start: gone, listed again 2 s later.
+      lost: [
+        [0, 'gone'],
+        [2_000, 'booting']
+      ],
+      timeline: RECORDED
+    })
+    await expect(run()).resolves.toMatchObject({ seconds: 15 })
+    expect(elapsed()).toBe(15_000)
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(2)
+    expect(progress).toEqual(['rebooting', 'waiting', 'settling'])
+    expect(await activity()).toEqual([
+      { action: 'reboot', target: 'VirtualDevice', args: { timeout: '120' }, result: 'ok' }
+    ])
+  })
+
+  test('not found, and not listed again within 5 polls, is TARGET_OFFLINE', async () => {
+    const { run, calls, elapsed } = setup({ reboots: [NOT_FOUND], lost: [[0, 'gone']] })
     await expect(run()).rejects.toMatchObject({ code: 'TARGET_OFFLINE' })
+    expect(elapsed()).toBe(5_000)
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(1)
+    expect(calls.filter((c) => c === VDA)).toHaveLength(6)
     expect(await activity()).toEqual([
       expect.objectContaining({ target: 'VirtualDevice', errorCode: 'TARGET_OFFLINE' })
     ])
+  })
+
+  test('an abort while re-reading a device VDA lost sends nothing more and writes nothing', async () => {
+    const { run, calls } = setup({ reboots: [NOT_FOUND], lost: [[0, 'gone']], abortAt: 2_000 })
+    await expect(run()).rejects.toMatchObject({ name: 'AbortError' })
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(1)
+    expect(await activity()).toEqual([])
   })
 
   test('any other failure of vda reboot is REBOOT_FAILED', async () => {
@@ -453,6 +515,18 @@ describe('reboot over Wi‑Fi', () => {
     })
     await expect(run({ device: WIFI })).resolves.toMatchObject({ reconnected: true })
     expect(reconnects).toEqual([11_000])
+  })
+
+  test('an unsaved stick OVD no longer knows after not found is not back', async () => {
+    const { run, calls, elapsed } = setup({
+      device: 'wifi',
+      state: { target: undefined },
+      reboots: [NOT_FOUND],
+      lost: [[0, 'gone']]
+    })
+    await expect(run({ device: WIFI })).rejects.toMatchObject({ code: 'TARGET_OFFLINE' })
+    expect(elapsed()).toBe(5_000)
+    expect(calls.filter((c) => c === WIFI_REBOOT)).toHaveLength(1)
   })
 
   test('a stick VDA still lists offline is left to VDA', async () => {

@@ -64,6 +64,8 @@ const SETTLE_MS = 8_000
 const RECONNECT_EVERY_MS = 10_000
 // Failed polls in a row (VDA busy, a command that timed out) before the wait gives up.
 const MAX_FAILED_POLLS = 10
+// Polls for a device VDA lost right before `vda reboot` to be listed again.
+const RELIST_POLLS = 5
 const TRANSIENT: readonly ErrorCode[] = ['VDA_UNAVAILABLE', 'COMMAND_FAILED', 'UNEXPECTED_OUTPUT']
 
 function abortError(): Error {
@@ -102,7 +104,8 @@ export function createReboot(deps: RebootDeps): Reboot {
     }
   }
 
-  async function send(device: Device, signal?: AbortSignal): Promise<void> {
+  // One `vda reboot`; false when VDA answered that it doesn't know the serial.
+  async function sendOnce(device: Device, signal?: AbortSignal): Promise<boolean> {
     const { vegaPath } = await deps.sdk.get()
     const run = await deps.runner.run(
       vdaCmd(vegaPath, ['reboot'], device.vdaSerial ?? device.id, {
@@ -110,9 +113,9 @@ export function createReboot(deps: RebootDeps): Reboot {
         ...(signal ? { signal } : {})
       })
     )
-    if (run.exitCode === 0) return
+    if (run.exitCode === 0) return true
     // fixtures/0.24/vda-reboot/device-not-found.stderr.txt: VDA lost it since the preflight.
-    if (/not found/.test(run.stderr)) throw offline({ ...device, status: 'offline' })
+    if (/not found/.test(run.stderr)) return false
     const line = `${run.stdout}\n${run.stderr}`.trim().split('\n').at(-1)?.trim() ?? ''
     throw new OvdError(
       'REBOOT_FAILED',
@@ -120,6 +123,34 @@ export function createReboot(deps: RebootDeps): Reboot {
       'Check the device with ovd devices, then retry',
       { exitCode: run.exitCode, stderr: run.stderr.slice(-500) }
     )
+  }
+
+  // The device listed online again, read fresh up to RELIST_POLLS times; null if it isn't.
+  async function relisted(id: string, signal?: AbortSignal): Promise<Device | null> {
+    for (let poll = 0; poll < RELIST_POLLS; poll++) {
+      if (signal?.aborted) throw abortError()
+      await sleep(POLL_MS, signal)
+      if (signal?.aborted) throw abortError()
+      deps.devices.invalidate(id)
+      try {
+        const device = await deps.devices.get(id)
+        if (device.status === 'online') return device
+      } catch (error) {
+        if (signal?.aborted) throw abortError()
+        if (!(error instanceof OvdError)) throw error
+        if (error.code !== 'DEVICE_NOT_FOUND' && !TRANSIENT.includes(error.code)) throw error
+      }
+    }
+    return null
+  }
+
+  async function send(device: Device, signal?: AbortSignal): Promise<void> {
+    if (await sendOnce(device, signal)) return
+    // VDA drops the Virtual Device for a few seconds right after a start (ARCHITECTURE §8):
+    // once it lists the device again (maybe under a new transport ID), one more try.
+    const back = await relisted(device.id, signal)
+    if (back && (await sendOnce(back, signal))) return
+    throw offline({ ...device, status: 'offline' })
   }
 
   async function wait(
