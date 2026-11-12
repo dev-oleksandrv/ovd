@@ -46,7 +46,7 @@ export const test = base.extend<Fixtures>({
   sandbox: async ({ world }, use) => {
     const sandbox = openSandbox(world)
     await use(sandbox)
-    sandbox.close()
+    await sandbox.close()
   },
 
   launch: async ({ sandbox }, use, testInfo) => {
@@ -64,6 +64,7 @@ export const test = base.extend<Fixtures>({
         args: [...QUIET, GUI_MAIN, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
         env: sandbox.env
       })
+      sandbox.track(app.process())
       await app.context().tracing.start({ screenshots: true, snapshots: true })
       // Links open in the user's browser through shell.openExternal; record them instead.
       await app.evaluate(({ shell }) => {
@@ -99,19 +100,37 @@ export const test = base.extend<Fixtures>({
     })
 
     const failed = testInfo.status !== testInfo.expectedStatus
-    for (const [i, desktop] of running.entries()) {
-      await stop(desktop.app, testInfo.outputPath(`trace-${i}.zip`), failed)
-    }
+    await stopAll(running, (i) => testInfo.outputPath(`trace-${i}.zip`), failed)
   }
 })
+
+// Stops every app, even when stopping one fails, then throws the first failure.
+async function stopAll(
+  running: Desktop[],
+  tracePath: (i: number) => string,
+  keepTrace: boolean
+): Promise<void> {
+  const failures: unknown[] = []
+  for (const [i, desktop] of running.entries()) {
+    try {
+      await stop(desktop.app, tracePath(i), keepTrace)
+    } catch (error) {
+      failures.push(error)
+    }
+  }
+  if (failures.length > 0) throw failures[0]
+}
 
 async function stop(
   app: ElectronApplication,
   tracePath: string,
   keepTrace: boolean
 ): Promise<void> {
-  await app.context().tracing.stop(keepTrace ? { path: tracePath } : {})
-  await app.close()
+  try {
+    await app.context().tracing.stop(keepTrace ? { path: tracePath } : {})
+  } finally {
+    await app.close()
+  }
 }
 
 export { expect }
