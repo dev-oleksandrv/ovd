@@ -1,7 +1,14 @@
 // The fake `vega`: answers each command core runs with a recorded output from fixtures/0.24
 // and its recorded exit code, and applies the command's effect to the world. A command with
 // no recording fails loudly and is logged as unhandled, which fails the test.
-import { appendFileSync, existsSync, readFileSync, rmSync } from 'node:fs'
+import {
+  appendFileSync,
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -359,7 +366,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
     if (!stickOnUsb(w)) return notFound(sub, 'vda-shell/stick-usb-not-found.stderr.txt')
     if (sub === 'shell loggingctl log -f -o short_concise') return logStream(w)
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return stickApps(w, serial, sub)
+    return stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
   }
   if (serial === STICK_ADDRESS && sub === 'usb' && w.stick && stickOnWifi(w)) {
     // VDA keeps the Wi‑Fi entry, now offline (vda-devices/stick-usb-and-wifi-offline.txt).
@@ -372,7 +379,45 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
   // Listed but offline (connected, stick unreachable): not recorded, so not answered.
   if (serial === STICK_ADDRESS && stickOnWifi(w)) {
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return stickApps(w, serial, sub)
+    return stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
+  }
+  return null
+}
+
+// A screenshot on the stick: `gwsi-tool-screenshooter <remote>.png` into a device temp file,
+// `vda pull` of it, then `rm -f`. NOT recorded on a stick (#44): the screenshooter's answer
+// (exit 0, no output) is synthesized, the PNG `pull` delivers is the synthetic
+// `vda-pull/synthetic-screenshot.png`, and the pull prints the Virtual Device's recordings with
+// the remote path put in (fixtures/0.24/README.md, Synthesized sequences).
+const REMOTE_SHOT = /^\/tmp\/ovd-screenshot-[0-9a-f]{8}\.png$/
+
+function stickScreenshot(w: World, rest: string[]): Reply | null {
+  const [verb, ...args] = rest
+  if (verb === 'shell' && args[0] === 'gwsi-tool-screenshooter' && args.length === 2) {
+    const remote = args[1] as string
+    if (!REMOTE_SHOT.test(remote)) return null
+    w.stickFiles = [...w.stickFiles.filter((f) => f !== remote), remote]
+    return {}
+  }
+  if (verb === 'pull' && args.length === 2) {
+    const [remote, local] = args as [string, string]
+    if (!w.stickFiles.includes(remote)) {
+      return {
+        stdout: fixture('vda-pull/missing.txt').replace('/tmp/ovd-nope.png', () => remote),
+        exitCode: 1
+      }
+    }
+    if (w.stickScreenshot === 'empty') writeFileSync(local, '')
+    else copyFileSync(join(FIXTURES, 'vda-pull/synthetic-screenshot.png'), local)
+    return {
+      stdout: fixture('vda-pull/pulled.txt').replace('/tmp/ovd-probe-synth.png', () => remote)
+    }
+  }
+  if (verb === 'shell' && args.length === 3 && args[0] === 'rm' && args[1] === '-f') {
+    const remote = args[2] as string
+    if (!REMOTE_SHOT.test(remote)) return null
+    w.stickFiles = w.stickFiles.filter((f) => f !== remote)
+    return {}
   }
   return null
 }

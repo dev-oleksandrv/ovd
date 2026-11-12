@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { FAKE_CONSOLE_TOKEN, startFakeEmulator, type GrpcCall } from '../fake-sdk/emulator.ts'
 import {
   callsFile,
+  clipboardCallsFile,
   defaultWorld,
   discoveryDir,
   inputConsoleFile,
@@ -26,9 +27,17 @@ import {
 } from '../fake-sdk/world.ts'
 
 const FAKE_SDK_MAIN = resolve(dirname(fileURLToPath(import.meta.url)), '../fake-sdk/main.ts')
+const FAKE_CLIPBOARD = resolve(dirname(fileURLToPath(import.meta.url)), '../fake-sdk/clipboard.ts')
+const CLIPBOARD_TOOLS = ['osascript', 'xclip', 'wl-copy']
 // Where the SDK Manager installs the Vega CLI, and where an SDK keeps its bundled `vega`.
 const MANAGER_VEGA = 'vega/bin/vega'
 const BUNDLED_BIN = 'vega/sdk/0.24.12112/bin'
+
+export interface ClipboardCall {
+  tool: string
+  args: string[]
+  stdinBytes: number
+}
 
 export interface ActivityLine {
   surface: string
@@ -44,6 +53,10 @@ export interface ActivityLine {
 export interface Sandbox {
   home: string
   ovdHome: string
+  // Where screenshots go (`OVD_CAPTURES`).
+  captures: string
+  // Where the desktop "copies" a screenshot (`OVD_CLIPBOARD_FILE`) instead of the clipboard.
+  clipboardFile: string
   // The environment a surface is started with.
   env: Record<string, string>
   installSdk(cli?: World['cli']): void
@@ -65,6 +78,8 @@ export interface Sandbox {
   inputConsole(): string[]
   // The pid of every `inputd-cli start` console the fake SDK started.
   inputConsolePids(): number[]
+  // Every clipboard tool the CLI ran from the sandbox's fake bin folder.
+  clipboardCalls(): ClipboardCall[]
   // Removes the sandbox; throws when a surface ran an SDK command the fake has no recording
   // for, since that flow ran something unverified.
   close(): void
@@ -85,8 +100,21 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     writeFileSync(join(home, '.emulator_console_auth_token'), `${FAKE_CONSOLE_TOKEN}\n`)
   }
   const emulator = startFakeEmulator(sdkDir)
+  const captures = join(root, 'captures')
+  const clipboardFile = join(root, 'clipboard.png')
+  // Fake clipboard tools first on PATH: the real `osascript` is in /usr/bin on macOS.
+  const fakeBin = join(root, 'bin')
+  mkdirSync(fakeBin)
+  for (const tool of CLIPBOARD_TOOLS) {
+    const file = join(fakeBin, tool)
+    writeFileSync(
+      file,
+      `#!/bin/sh\nexec '${process.execPath}' --no-warnings '${FAKE_CLIPBOARD}' '${clipboardCallsFile(sdkDir)}' ${tool} "$@"\n`
+    )
+    chmodSync(file, 0o755)
+  }
 
-  const path = [dirname(process.execPath), '/usr/bin', '/bin']
+  const path = [fakeBin, dirname(process.execPath), '/usr/bin', '/bin']
   const env: Record<string, string> = {
     HOME: home,
     OVD_HOME: ovdHome,
@@ -98,6 +126,9 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     OVD_EMULATOR_CONSOLE_PORT: String(emulator.consolePort),
     OVD_EMULATOR_GRPC_PORT: String(emulator.grpcPort),
     OVD_EMULATOR_DISCOVERY_DIR: discoveryDir(sdkDir),
+    // Never the user's ~/ovd/captures, nor their clipboard (the desktop's testing hook).
+    OVD_CAPTURES: captures,
+    OVD_CLIPBOARD_FILE: clipboardFile,
     LANG: 'en_US.UTF-8',
     // The display of a headless Ubuntu runner (xvfb-run), for the desktop app.
     ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
@@ -122,6 +153,8 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
   return {
     home,
     ovdHome,
+    captures,
+    clipboardFile,
     env,
 
     installSdk(cli = 'manager') {
@@ -180,6 +213,15 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     },
 
     inputConsolePids: () => pidsIn(inputConsolesFile(sdkDir)),
+
+    clipboardCalls() {
+      const file = clipboardCallsFile(sdkDir)
+      if (!existsSync(file)) return []
+      return readFileSync(file, 'utf8')
+        .split('\n')
+        .filter((l) => l !== '')
+        .map((l) => JSON.parse(l) as ClipboardCall)
+    },
 
     close() {
       const unhandled = [
