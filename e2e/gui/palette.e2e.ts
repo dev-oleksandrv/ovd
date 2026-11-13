@@ -11,7 +11,7 @@ async function runCommand(page: Page, query: string): Promise<void> {
 }
 
 // The screens of later stages (ADR 0018): listed in the palette, never in the sidebar.
-const LATER = ['Crashes', 'Shell', 'Deep links', 'Performance', 'Scenarios & MCP']
+const LATER = ['Shell', 'Deep links', 'Performance', 'Scenarios & MCP']
 
 test.use({ world: { stick: usbStick(), vvd: { running: true, developerMode: true } } })
 
@@ -98,13 +98,40 @@ test.describe('command palette', () => {
     await page.keyboard.press('Escape')
     await expect(palette).toHaveCount(0)
 
-    await runCommand(page, 'Crashes')
+    await runCommand(page, 'Deep links')
 
     await expect(
-      page.getByRole('status').filter({ hasText: 'Crashes is coming in a later version' })
+      page.getByRole('status').filter({ hasText: 'Deep links is coming in a later version' })
     ).toBeVisible()
     await expect(
+      page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Deep links' })
+    ).toHaveCount(0)
+  })
+
+  test('Go to Crashes opens Crashes, a shipped screen', async ({ sandbox, launch }) => {
+    sandbox.installSdk()
+    const { page } = await launch()
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
+    await page.keyboard.press(PALETTE_KEY)
+    const palette = page.getByRole('dialog', { name: 'Command palette' })
+    // Listed as a screen, never as a later one.
+    await expect(palette.getByRole('option', { name: /Go to Crashes/ })).toHaveCount(1)
+    await expect(
+      palette.getByRole('option').filter({ hasText: 'Crashes' }).filter({
+        hasText: 'Coming in a later version'
+      })
+    ).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(palette).toHaveCount(0)
+
+    await runCommand(page, 'Go to Crashes')
+
+    await expect(page.getByRole('heading', { name: 'Crashes', level: 1 })).toBeVisible()
+    await expect(
       page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Crashes' })
+    ).toBeVisible()
+    await expect(
+      page.getByRole('status').filter({ hasText: 'coming in a later version' })
     ).toHaveCount(0)
   })
 
