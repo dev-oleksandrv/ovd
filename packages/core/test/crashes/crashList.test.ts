@@ -254,6 +254,82 @@ describe('list', () => {
     expect(runner.count(acr(37))).toBe(0)
   })
 
+  test('a colliding package installed within 10 s of the last snapshot makes the new report ambiguous on the very next scan', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(0)
+      const before = out('loggingctl-vault-ls/virtual-device-tombstones-before.json')
+      let installed: InstalledPackage[] = INSTALLED
+      const runner = new FakeRunner({
+        [LS]: [before, AFTER],
+        [acr(37)]: CRASHED,
+        [acr(35)]: CRASHED
+      })
+      const sdk = createSdkLocator(async () => ({
+        vegaPath: '/sdk/vega',
+        cli: 'manager',
+        sdkVersion: '0.24.12112',
+        cliVersion: '1.4.5'
+      }))
+      const read = vi.fn(async () => installed)
+      const reader = createCrashReader({
+        runner,
+        sdk,
+        devices: devicesOf(),
+        installed: read,
+        ledger: createCrashLedger()
+      })
+      await reader.list()
+      expect(read).toHaveBeenCalledTimes(1)
+
+      installed = [...INSTALLED, { packageId: 'com.example_player', source: 'sideloaded' }]
+      vi.setSystemTime(2_000)
+      expect((await reader.list()).crashes).toEqual([])
+      expect(read).toHaveBeenCalledTimes(2)
+      expect(runner.count(acr(37))).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('a failed package refresh leaves the new report unlisted and unread, and the next poll retries', async () => {
+    const before = out('loggingctl-vault-ls/virtual-device-tombstones-before.json')
+    const runner = new FakeRunner({
+      [LS]: [before, AFTER, AFTER],
+      [acr(37)]: CRASHED,
+      [acr(35)]: CRASHED
+    })
+    const sdk = createSdkLocator(async () => ({
+      vegaPath: '/sdk/vega',
+      cli: 'manager',
+      sdkVersion: '0.24.12112',
+      cliVersion: '1.4.5'
+    }))
+    let fail = false
+    const read = vi.fn(async () => {
+      if (fail) throw new Error('vda busy')
+      return INSTALLED
+    })
+    const reader = createCrashReader({
+      runner,
+      sdk,
+      devices: devicesOf(),
+      installed: read,
+      ledger: createCrashLedger(),
+      now: () => 0
+    })
+    expect((await reader.list()).crashes.map((c) => c.id)).not.toContain(37)
+
+    fail = true
+    const second = (await reader.list().catch(() => ({ crashes: [] }))).crashes.map((c) => c.id)
+    expect(second).not.toContain(37)
+    expect(runner.count(acr(37))).toBe(0)
+
+    fail = false
+    expect((await reader.list()).crashes.map((c) => c.id)).toContain(37)
+    expect(runner.count(acr(37))).toBe(1)
+  })
+
   test('invalidate drops the installed snapshot, so an own install or uninstall is seen at once', async () => {
     const { reader, read } = setup({ [LS]: AFTER, [acr(37)]: CRASHED, [acr(35)]: CRASHED })
     await reader.list()

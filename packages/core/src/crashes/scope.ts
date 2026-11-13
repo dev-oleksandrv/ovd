@@ -30,14 +30,18 @@ export const SCOPE_MIN_REFRESH_MS = 10_000
 
 export interface Scope {
   // The in-scope package of each given name; names out of scope are left out.
-  // `revalidate`: the names include a report not seen before, so the snapshot is re-read first
-  // (not more often than SCOPE_MIN_REFRESH_MS), whatever the names are: a package installed
-  // since may collide with a name that was fine before.
+  // `after`: a mark from `mark()`. The snapshot used must have been read after that mark, so it
+  // is re-read when it is older, with no rate limit: a report that appeared since the mark may
+  // be named like a package installed since the last reading.
   resolve(
     device: Device,
     names: ReadonlySet<string>,
-    opts?: { revalidate?: boolean }
+    opts?: { after?: number }
   ): Promise<Map<string, AppId>>
+  // A point in time that orders readings: a snapshot read after it has `snapshotMark` above it.
+  mark(): number
+  // The mark at which the device's current snapshot began being read; undefined when none.
+  snapshotMark(deviceId: string): number | undefined
   // Drops the snapshot of a device: the next resolve reads the installed packages.
   invalidate(deviceId: string): void
 }
@@ -47,9 +51,14 @@ export function createScope(opts: {
   now?: () => number
 }): Scope {
   const now = opts.now ?? Date.now
-  const snapshots = new Map<string, { at: number; installed: InstalledPackage[] }>()
+  // Counts reading starts, so ordering doesn't depend on clock resolution.
+  let seq = 0
+  const snapshots = new Map<string, { at: number; seq: number; installed: InstalledPackage[] }>()
 
   return {
+    mark: () => seq,
+    snapshotMark: (deviceId) => snapshots.get(deviceId)?.seq,
+
     invalidate(deviceId) {
       snapshots.delete(deviceId)
     },
@@ -61,12 +70,16 @@ export function createScope(opts: {
       const age = snapshot === undefined ? Infinity : now() - snapshot.at
       const unknown = (s: { installed: InstalledPackage[] }) =>
         [...names].some((n) => !s.installed.some((p) => p.packageId.replaceAll('.', '_') === n))
+      const { after } = resolveOpts
       if (
         snapshot === undefined ||
         age >= SCOPE_TTL_MS ||
-        (age >= SCOPE_MIN_REFRESH_MS && (resolveOpts.revalidate === true || unknown(snapshot)))
+        (after !== undefined && snapshot.seq <= after) ||
+        (age >= SCOPE_MIN_REFRESH_MS && unknown(snapshot))
       ) {
-        snapshot = { at: now(), installed: await opts.read(device) }
+        const started = ++seq
+        const installed = await opts.read(device)
+        snapshot = { at: now(), seq: started, installed }
         snapshots.set(device.id, snapshot)
       }
       for (const name of names) {

@@ -109,8 +109,11 @@ interface DeviceState {
   // stopped and started again (the desktop polls only while its window is visible) neither
   // repeats a notification nor loses one.
   announced: Set<number>
-  // The `index:epoch:pid` of every report of the last listing, in scope or not.
-  listed: Set<string>
+  // The scope mark at which each report of the last listing (in scope or not) first appeared,
+  // by `index:epoch:pid`. It may be authorized only against packages read after that mark.
+  firstSeen: Map<string, number>
+  // The package of each report authorized so far, by the same key.
+  authorized: Map<string, AppId>
   // Header and stack by `index:epoch:pid`, only for entries still in the listing.
   details: Map<string, EntryDetail>
 }
@@ -174,7 +177,8 @@ export function createCrashReader(deps: CrashReaderDeps): CrashReader {
       state = {
         baseline: new Set(all.map((t) => Number(t.index))),
         announced: new Set(),
-        listed: new Set(),
+        firstSeen: new Map(),
+        authorized: new Map(),
         details: new Map()
       }
       states.set(device.id, state)
@@ -182,22 +186,46 @@ export function createCrashReader(deps: CrashReaderDeps): CrashReader {
     const live = new Set(all.map(detailKey))
     for (const key of state.details.keys()) if (!live.has(key)) state.details.delete(key)
 
-    // A report not seen in the last listing is authorized against fresh packages: one installed
-    // since may collide with its name.
-    const unseen = all.some((t) => !state.listed.has(detailKey(t)))
-    state.listed = live
-    const packages = await scope.resolve(device, new Set(all.map((t) => t.packageUnderscored)), {
-      revalidate: unseen
-    })
+    // A report is authorized only against packages read after it first appeared: one installed
+    // since may collide with its name. It isn't marked until that has passed; when the read
+    // fails it stays unlisted and unread, and the next poll retries.
+    const firstSeen = new Map<string, number>()
+    for (const t of all) {
+      const key = detailKey(t)
+      firstSeen.set(key, state.firstSeen.get(key) ?? scope.mark())
+    }
+    state.firstSeen = firstSeen
+    const snapshotMark = scope.snapshotMark(device.id)
+    const waiting = all
+      .map((t) => firstSeen.get(detailKey(t)) ?? 0)
+      .filter((mark) => snapshotMark === undefined || snapshotMark <= mark)
+    const after = waiting.length > 0 ? Math.max(...waiting) : undefined
+    let packages: Map<string, AppId> | undefined
+    try {
+      packages = await scope.resolve(device, new Set(all.map((t) => t.packageUnderscored)), {
+        ...(after !== undefined ? { after } : {})
+      })
+    } catch (error) {
+      // Nothing to authorize against: keep what was authorized before, list nothing else. With
+      // no such report the failure is the caller's to see.
+      if (state.authorized.size === 0 || after === undefined) throw error
+    }
+    const current = scope.snapshotMark(device.id)
+    const authorized = new Map<string, AppId>()
     const entries = all
       .flatMap((tombstone): CrashEntry[] => {
-        const packageId = packages.get(tombstone.packageUnderscored)
-        return packageId === undefined
-          ? []
-          : [{ tombstone, index: Number(tombstone.index), packageId }]
+        const key = detailKey(tombstone)
+        const known = state.authorized.get(key)
+        const packageId = packages ? packages.get(tombstone.packageUnderscored) : known
+        // Checked against a snapshot read after the report appeared, or authorized before.
+        const fresh = current !== undefined && current > (firstSeen.get(key) ?? 0)
+        if (packageId === undefined || (!fresh && known === undefined)) return []
+        authorized.set(key, packageId)
+        return [{ tombstone, index: Number(tombstone.index), packageId }]
       })
       .sort((a, b) => b.tombstone.epochS - a.tombstone.epochS || b.index - a.index)
 
+    state.authorized = authorized
     const { baseline, announced } = state
     return {
       device,
