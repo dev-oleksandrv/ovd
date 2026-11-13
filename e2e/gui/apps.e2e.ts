@@ -477,6 +477,21 @@ test.describe('Apps', () => {
       .find((script) => script?.startsWith('pkill -P 1156;'))
     expect(stop).toContain(String.raw`'\[7746\]'`)
     expect(sandbox.world().running).toEqual([])
+
+    // The callout's report: the launch's crash is index 105 in Crashes.
+    await detail.getByRole('alert').getByRole('button', { name: 'Open crash report' }).click()
+    await expect(page.getByRole('heading', { name: 'Crashes', level: 1 })).toBeVisible()
+    const report = page.getByRole('complementary', { name: 'Crash 105 details' })
+    await expect(report).toBeVisible()
+    await expect(report.getByRole('heading', { name: 'com.example.player' })).toBeVisible()
+    await expect(report).toContainText('7746')
+    await expect(echo(page)).toContainText('$ ovd crashes --device VirtualDevice')
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.surface === 'desktop')
+        .map((a) => [a.action, a.result])
+    ).toEqual([['app.launch', 'error']])
   })
 
   test('Launch on the player that isn’t running afterwards shows the not-running callout', async ({
