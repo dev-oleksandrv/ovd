@@ -45,6 +45,15 @@ export interface World {
   // recordings (`vlcm-crash-history/virtual-device-after.txt`,
   // `loggingctl-vault-ls/virtual-device-tombstones-after.json`, `log-capture/virtual-device-crashed.txt`).
   playerCrashed: boolean
+  // A crash that shows up with no launch (`injectPlayerCrash`, e2e/harness/crash.ts), answered from
+  // the other Virtual Device vault sequence: `loggingctl-vault-ls/virtual-device-two-before.json`
+  // before it and `virtual-device-two-after.json` after, `vlcm-crash-history/virtual-device-two-*`,
+  // and a bounded read recorded for every in-scope report each listing holds (indexes 79, 83 and,
+  // after, 84). Without `playerCrashesOnLaunch` or `playerCrashed`, the vault answers
+  // `virtual-device-two-before.json`. A launch that crashes keeps the older sequence (indexes
+  // 35 and 37, pid 3200) that the launch verification tests assert (fixtures/0.24/README.md,
+  // Synthesized sequences).
+  playerCrashInjected: boolean
   // The stick's player crashed (a crash recorded on the stick, `loggingctl-vault-ls/stick-tombstones.json`):
   // `loggingctl vault --ls` lists it and `--cat` answers it. A test sets it mid-run to inject a
   // crash with no launch. The stick has no `vlcm crash-history` recording, so that stays
@@ -152,6 +161,7 @@ export function defaultWorld(): World {
     playerCrashesOnLaunch: false,
     playerStopsOnLaunch: false,
     playerCrashed: false,
+    playerCrashInjected: false,
     stickPlayerCrashed: false,
     uninstalledCrashes: [],
     acrFiles: [],
