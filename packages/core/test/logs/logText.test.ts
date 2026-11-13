@@ -182,6 +182,12 @@ test.each<[string, OvdEvent, string]>([
     'Crash detected: com.example.player'
   ],
   [
+    'crash report',
+    { kind: 'crash', app: 'com.example.player', pid: 3200, signal: 'SIGABRT', index: 37 },
+    'Crash report: com.example.player (pid 3200, SIGABRT)'
+  ],
+  ['crash report with no fields', { kind: 'crash' }, 'Crash report: an app'],
+  [
     'launch not running',
     {
       kind: 'launch',

@@ -27,6 +27,7 @@ import {
   LAUNCH_TIMEOUT_MS,
   SETTLE_MS
 } from '../../src/deviceApps/launchVerification.js'
+import { launchReportedCrashes } from '../../src/crashes/crashList.js'
 import { createInstallSteps } from '../../src/install/installSteps.js'
 import { FakeRunner } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
@@ -207,6 +208,8 @@ describe('launch verification', () => {
     expect(crashOf(result)).toEqual({
       pid: 3200,
       time: '2026-11-08T01:51:44.657Z',
+      // The vault index `ovd crashes` and `ovd crash pull` take.
+      id: 37,
       signal: 'SIGABRT',
       language: 'JavaScript',
       message: 'Error: player: deliberate crash right after launch',
@@ -226,6 +229,15 @@ describe('launch verification', () => {
     expect(order.every((i) => i >= 0)).toBe(true)
     const stop = runner.calls.map((c) => decoded(c.display)).find((s) => s?.startsWith('pkill'))
     expect(stop).toContain(String.raw`'\[3200\]'`)
+  })
+
+  test('a crashed launch notes its vault index, so the crash watcher stays quiet about it', async () => {
+    const { apps } = setup(crashes)
+
+    await apps.launch(PLAYER, DEVICE)
+
+    expect(launchReportedCrashes.has('VirtualDevice', 37)).toBe(true)
+    expect(launchReportedCrashes.has(STICK, 37)).toBe(false)
   })
 
   test('crashed on the stick: IDLE, READY, then gone, and the new crash entry', async () => {
@@ -251,6 +263,7 @@ describe('launch verification', () => {
 
     expect(crashOf(result)).toMatchObject({
       pid: 20609,
+      id: 2085,
       time: '2026-11-07T22:36:50.802Z',
       signal: 'SIGABRT',
       language: 'JavaScript',

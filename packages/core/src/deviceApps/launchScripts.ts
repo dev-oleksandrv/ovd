@@ -44,6 +44,7 @@ export function captureStopScript(capture: LogCapture, packageId: AppId, crashPi
 // dump), so `sed` keeps only the lines up to the first blank one and the stack section.
 export function acrScript(index: number): string {
   integer(index, 'vault index')
+  if (index < 0) throw new Error(`launchScripts: vault index is negative: ${index}`)
   return `loggingctl vault --cat SYSTEM_TOMBSTONE ${index} | sed -n -e "1,/^\\$/p" -e "/<non_native_stack_trace>/,/<\\/non_native_stack_trace>/p"\n`
 }
 
