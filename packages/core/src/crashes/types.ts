@@ -52,6 +52,27 @@ export interface CrashWatchOptions {
   onError?(error: Error): void
 }
 
+export interface CrashPullOptions {
+  // `--device`; the selected target by default.
+  device?: string
+  // A crash id: the number `ovd crashes` shows.
+  id: string | number
+  // A `.acr` file or an existing folder; relative to the core's working directory.
+  out?: string
+  // Replace an existing `out` file.
+  force?: boolean
+  // Ctrl+C: rejects with an AbortError (not logged); nothing is saved.
+  signal?: AbortSignal
+}
+
+// `ovd crash pull --json`: `{ ok: true, ...CrashPullResult }`.
+export interface CrashPullResult {
+  crash: Crash
+  // Absolute, mode 0600.
+  path: string
+  bytes: number
+}
+
 // `ovd.crashes`: the crash reports of the developer's apps on the target (Stage 5.1).
 export interface Crashes {
   // In scope only, newest first. A listing that can't be read is an OvdError, never `[]`.
@@ -63,6 +84,11 @@ export interface Crashes {
     device?: string
   ): Promise<CrashDetail & { device: { id: string; name: string } }>
   watch(opts: CrashWatchOptions): CrashWatch
+  // The whole report of one in-scope crash, saved on the host (the crashes folder, or `out`).
+  // CRASH_ACCESS_DENIED, CRASH_NOT_FOUND, CRASH_PULL_FAILED, EXPORT_FILE_EXISTS, INVALID_PATH.
+  pull(opts: CrashPullOptions): Promise<CrashPullResult>
+  // The crashes folder (`OVD_CRASHES`, else `~/ovd/crashes`).
+  dir(): string
 }
 
 export interface CrashWatch {

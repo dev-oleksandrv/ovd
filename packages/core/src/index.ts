@@ -265,8 +265,15 @@ export type {
   ClipboardDeps,
   ClipboardTool
 } from './screenshot/clipboard.js'
-export { commitFile, resolveDestination } from './screenshot/saveFile.js'
-export type { Destination, SaveFs } from './screenshot/saveFile.js'
+export {
+  commitFile,
+  PNG_KIND,
+  readPart,
+  resolveDestination,
+  tempFor,
+  writePart
+} from './screenshot/saveFile.js'
+export type { Destination, SaveFs, SaveKind } from './screenshot/saveFile.js'
 export { createScreen, LIVE_FORMAT } from './screen/screen.js'
 export type { LiveOptions, LiveScreen, Screen, ScreenBackend, ScreenDeps } from './screen/screen.js'
 export type { FrameStream } from './vvd/emulatorGrpc.js'
@@ -287,6 +294,15 @@ export {
 } from './crashes/crashList.js'
 export type { CrashLedger, CrashReader, CrashReaderDeps } from './crashes/crashList.js'
 export { createCrashWatch, CRASH_POLL_MS } from './crashes/crashWatch.js'
+export {
+  ACR_KIND,
+  MAX_ACR_BYTES,
+  acrPullScript,
+  createCrashPull,
+  parsePullScript
+} from './crashes/crashPull.js'
+export type { CrashPull, CrashPullDeps } from './crashes/crashPull.js'
+export { crashesDir, ensureCrashesDir } from './crashes/crashesDir.js'
 export { packageInScope, createScope } from './crashes/scope.js'
 export type { InstalledPackage } from './crashes/scope.js'
 export { agentPrompt, PROMPT_UNTRUSTED_MAX_LINES } from './crashes/agentPrompt.js'
@@ -295,6 +311,8 @@ export type {
   Crash,
   CrashDetail,
   CrashKind,
+  CrashPullOptions,
+  CrashPullResult,
   Crashes,
   CrashesList,
   CrashWatch,

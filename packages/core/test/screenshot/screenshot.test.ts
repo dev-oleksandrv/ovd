@@ -1,4 +1,13 @@
-import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import {
+  copyFile,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  symlink,
+  writeFile
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
@@ -459,6 +468,35 @@ describe('Screenshot.take --out', () => {
         errorCode: 'EXPORT_FILE_EXISTS'
       }
     ])
+  })
+
+  test('files are saved 0600, on the Virtual Device and on a stick', async () => {
+    const grpc = await setup({ target: vvd }).screenshot.take()
+    const pulled = await setup().screenshot.take()
+    expect((await lstat(grpc.path)).mode & 0o777).toBe(0o600)
+    expect((await lstat(pulled.path)).mode & 0o777).toBe(0o600)
+  })
+
+  test('a symlinked captures folder is refused before any capture', async () => {
+    const real = join(root, 'real')
+    await mkdir(real)
+    await symlink(real, captures)
+    const { screenshot, runner, shotCalls } = setup()
+    await expect(screenshot.take()).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    expect(runner.displays()).toEqual([])
+    expect(shotCalls).toEqual([])
+    expect(await readdir(real)).toEqual([])
+  })
+
+  test('--out onto a symlink is refused, --force included, and its target is untouched', async () => {
+    await writeFile(join(root, 'victim.png'), 'precious')
+    await symlink(join(root, 'victim.png'), join(root, 'shot.png'))
+    const { screenshot, runner } = setup({ target: vvd })
+    await expect(screenshot.take({ out: 'shot.png', force: true })).rejects.toMatchObject({
+      code: 'INVALID_PATH'
+    })
+    expect(runner.calls).toEqual([])
+    expect(await readFile(join(root, 'victim.png'), 'utf8')).toBe('precious')
   })
 
   test('--force replaces it', async () => {

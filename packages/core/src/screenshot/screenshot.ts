@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
 import type { ActivityLog } from '../activity/activityLog.js'
 import { createLogged, createPreflight } from '../activity/logged.js'
 import { parseVdaPull } from '../adapters/parseVdaPull.js'
@@ -18,10 +17,11 @@ import { pngSize } from './png.js'
 import {
   commitFile,
   nodeSaveFs,
+  readPart,
   removeQuietly,
   resolveDestination,
-  saveError,
   tempFor,
+  writePart,
   type Destination,
   type SaveFs
 } from './saveFile.js'
@@ -206,13 +206,11 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
         bytes = await grpcShot(device, signal)
         if (signal?.aborted) throw abortError()
         if (!pngSize(bytes)) throw failed(`${device.name} sent a screenshot that isn’t a PNG`)
-        await writeFile(temp, bytes, { flag: 'wx' }).catch((error: unknown) => {
-          throw saveError(temp, error)
-        })
+        await writePart(temp, bytes)
       } else {
         await stickShot(device, temp, signal)
         if (signal?.aborted) throw abortError()
-        bytes = await readFile(temp).catch(() => new Uint8Array())
+        bytes = (await readPart(temp)) ?? new Uint8Array()
       }
       const size = pngSize(bytes)
       if (!size) throw failed(`${device.name} gave an empty or invalid screenshot`)
