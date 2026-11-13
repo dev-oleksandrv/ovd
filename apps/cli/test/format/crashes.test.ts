@@ -1,12 +1,6 @@
 import { escapeControls, type Crash } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
-import {
-  ageText,
-  crashesTable,
-  crashLine,
-  noteJson,
-  noteText
-} from '../../src/format/crashes.js'
+import { ageText, crashesTable, crashLine, noteJson, noteText } from '../../src/format/crashes.js'
 
 const crash: Crash = {
   id: 105,

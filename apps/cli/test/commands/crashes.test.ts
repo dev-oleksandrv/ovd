@@ -110,6 +110,10 @@ describe('ovd crashes', () => {
   })
 })
 
+// An escape, a bell or a bidi override that reached the terminal unescaped.
+const hasRaw = (text: string): boolean =>
+  [...text].some((c) => ['\u001b', '\u0007', '\u202e'].includes(c))
+
 describe('ovd crashes --watch', () => {
   // Runs the command until the test presses Ctrl+C; `during` drives the watcher's callbacks.
   async function watching(
@@ -206,7 +210,7 @@ describe('ovd crashes --watch', () => {
       interrupt()
       const { stderr } = await run
       expect(stderr).toContain(`Watching Stick ${SHOWN} for crashes`)
-      expect(stderr).not.toMatch(/[\u001b\u0007\u202e]/)
+      expect(hasRaw(stderr)).toBe(false)
     })
 
     test('watch errors and hints escape control characters', async () => {
@@ -216,7 +220,7 @@ describe('ovd crashes --watch', () => {
       })
       expect(stderr).toContain(`Error: bad ${SHOWN}\ntry ${SHOWN}\n`)
       expect(stderr).toContain(`Error: plain ${SHOWN}\n`)
-      expect(stderr).not.toMatch(/[\u001b\u0007\u202e]/)
+      expect(hasRaw(stderr)).toBe(false)
     })
   })
 
