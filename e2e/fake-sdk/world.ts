@@ -45,6 +45,22 @@ export interface World {
   // recordings (`vlcm-crash-history/virtual-device-after.txt`,
   // `loggingctl-vault-ls/virtual-device-tombstones-after.json`, `log-capture/virtual-device-crashed.txt`).
   playerCrashed: boolean
+  // The stick's player crashed (a crash recorded on the stick, `loggingctl-vault-ls/stick-tombstones.json`):
+  // `loggingctl vault --ls` lists it and `--cat` answers it. A test sets it mid-run to inject a
+  // crash with no launch. The stick has no `vlcm crash-history` recording, so that stays
+  // unanswered.
+  stickPlayerCrashed: boolean
+  // Vault indexes whose package was uninstalled since the crash: the full-ACR pull of them
+  // writes `loggingctl-vault-acr/insufficient-permissions.json` (status -7). A crash on the
+  // Virtual Device is index 37, on the stick 2085.
+  uninstalledCrashes: number[]
+  // Remote ACR files the pull script wrote, until `rm -rf` removes their folder: the device kind,
+  // the remote file and the recording the file holds.
+  acrFiles: {
+    device: 'vvd' | 'stick'
+    remote: string
+    content: 'ok' | 'unknown-index' | 'uninstalled'
+  }[]
   // The stick's `loggingctl log -f`. They are read when a stream starts, so a test sets them
   // before it opens Logs or runs `ovd logs`; afterwards only `holdAfterLine: null` is polled.
   // `ends`: every stream prints the recording before a reboot and ends by itself (exit 0).
@@ -136,6 +152,9 @@ export function defaultWorld(): World {
     playerCrashesOnLaunch: false,
     playerStopsOnLaunch: false,
     playerCrashed: false,
+    stickPlayerCrashed: false,
+    uninstalledCrashes: [],
+    acrFiles: [],
     logStream: { ends: false, holdAfterLine: null },
     vvdLogStreams: 0,
     loginHold: false,
