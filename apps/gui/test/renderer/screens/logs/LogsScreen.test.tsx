@@ -19,7 +19,12 @@ const running: LogsState = {
   startedAt: '2026-11-08T07:27:00.000Z',
   restartAfterInstall: true
 }
-const counts = (lines: number, errors = 0, shown = lines) => ({ lines, errors, shown })
+const counts = (lines: number, errors = 0, shown = lines, oldest?: string) => ({
+  lines,
+  errors,
+  shown,
+  ...(oldest === undefined ? {} : { oldest })
+})
 
 afterEach(() => {
   vi.useRealTimers()
@@ -536,7 +541,7 @@ describe('Logs at crash time', () => {
       kind: 'reset',
       session: 1,
       entries: timed(50),
-      counts: counts(50),
+      counts: counts(50, 0, 50, '2026-11-08T07:28:00.000Z'),
       apps: ['com.example.player']
     })
     await waitFor(() =>
@@ -547,7 +552,7 @@ describe('Logs at crash time', () => {
     expect(screen.queryByText(/journal rotates fast/)).toBeNull()
   })
 
-  test('says the journal rotates fast when the session started after the crash', async () => {
+  test('says the journal rotates fast when the retained history starts after the crash', async () => {
     const stub = await renderScreen({
       crashRequest: { ...request, time: '2026-11-08T07:00:00.000Z' }
     })
@@ -556,12 +561,42 @@ describe('Logs at crash time', () => {
       kind: 'reset',
       session: 1,
       entries: timed(5),
-      counts: counts(5),
+      counts: counts(5, 0, 5, '2026-11-08T07:28:00.000Z'),
       apps: ['com.example.player']
     })
     expect(await screen.findByText(/journal rotates fast/)).toBeTruthy()
     expect(screen.getByText(/start logs \(or use Run\) before launching the app/)).toBeTruthy()
     expect(stub.api.logs.setFilter).toHaveBeenCalledWith({ app: 'com.example.player' })
+  })
+
+  const pushAndResolve = async (c: ReturnType<typeof counts>, lines = timed(50)) => {
+    const stub = await renderScreen({ crashRequest: request })
+    push(stub, { kind: 'state', session: 1, state: running })
+    push(stub, {
+      kind: 'reset',
+      session: 1,
+      entries: lines,
+      counts: c,
+      apps: ['com.example.player']
+    })
+    return stub
+  }
+
+  test('a full buffer (over 100,000 lines received) still scrolls when the oldest retained line is before the crash', async () => {
+    await pushAndResolve(counts(150_000, 0, 50, '2026-11-08T07:28:00.000Z'))
+    const list = await screen.findByRole('list', { name: 'Log lines' })
+    await waitFor(() => expect(list.scrollTop).toBe(30 * ROW_HEIGHT))
+    expect(screen.queryByText(/journal rotates fast/)).toBeNull()
+  })
+
+  test('after Clear it does not claim coverage', async () => {
+    await pushAndResolve(counts(0), [])
+    expect(await screen.findByText(/journal rotates fast/)).toBeTruthy()
+  })
+
+  test('after the oldest lines were evicted past the crash it does not claim coverage', async () => {
+    await pushAndResolve(counts(90_000, 0, 20, '2026-11-08T07:28:40.000Z'), timed(50).slice(40))
+    expect(await screen.findByText(/journal rotates fast/)).toBeTruthy()
   })
 
   test('waits for the session, then runs once and tells its parent', async () => {

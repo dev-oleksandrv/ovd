@@ -1,15 +1,16 @@
 import type { Crash, CrashKind, Device } from '@ovd/core'
 import type { KeyValue } from '../../ui/KeyValueGrid'
 import { installedText } from '../apps/appsView'
+import { shellQuote } from '../logs/logsView'
 
 export const CRASHES_SUBTITLE = 'loggingctl vault · scoped to your apps · polling every 5 s'
 
 export function crashesCli(device: string): string {
-  return `ovd crashes --device ${device}`
+  return `ovd crashes --device ${shellQuote(device)}`
 }
 
 export function crashPullCli(id: number, device: string): string {
-  return `ovd crash pull ${id} --device ${device}`
+  return `ovd crash pull ${id} --device ${shellQuote(device)}`
 }
 
 // Why the list can't be read, or null when it can.

@@ -1,5 +1,6 @@
 import type { Crash, CrashPullResult, Device } from '@ovd/core'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { useEffect, useState } from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { CrashCopied, CrashDetailResult, IpcResult, OvdApi } from '../../../../src/preload/api'
 import { DevicesProvider } from '../../../../src/renderer/src/devices/DevicesProvider'
@@ -45,6 +46,24 @@ interface Options {
   onOpenLogs?: (crash: Crash) => void
 }
 
+// The Open request a toast sends later, as the app does: set after the screen is mounted.
+let sendOpen: (request: OpenCrashRequest) => void = () => undefined
+
+function Screen({ opts }: { opts: Options }) {
+  const [request, setRequest] = useState<OpenCrashRequest | null>(opts.openRequest ?? null)
+  useEffect(() => {
+    sendOpen = setRequest
+  }, [])
+  return (
+    <CrashesScreen
+      onSwitchTarget={() => undefined}
+      onOpenLogs={opts.onOpenLogs ?? (() => undefined)}
+      openRequest={request}
+      {...(opts.onOpenHandled ? { onOpenHandled: opts.onOpenHandled } : {})}
+    />
+  )
+}
+
 function renderScreen(opts: Options = {}): OvdStub {
   const devices = opts.devices ?? [stick]
   const stub = stubOvd({
@@ -62,12 +81,7 @@ function renderScreen(opts: Options = {}): OvdStub {
   render(
     <FeedbackProvider>
       <DevicesProvider>
-        <CrashesScreen
-          onSwitchTarget={() => undefined}
-          onOpenLogs={opts.onOpenLogs ?? (() => undefined)}
-          {...(opts.openRequest ? { openRequest: opts.openRequest } : {})}
-          {...(opts.onOpenHandled ? { onOpenHandled: opts.onOpenHandled } : {})}
-        />
+        <Screen opts={opts} />
       </DevicesProvider>
       <StatusBar />
       <ToastViewport />
@@ -119,6 +133,48 @@ describe('CrashesScreen states', () => {
     expect(screen.getAllByText(`$ ovd crashes --device ${stick.id}`).length).toBeGreaterThan(0)
   })
 
+  describe('a refresh that fails with a list already shown', () => {
+    const failing = {
+      ok: false,
+      error: { code: 'CRASH_ACCESS_DENIED', message: 'Access denied', hint: 'Reinstall the app' }
+    } as const
+
+    test('stale reports stay, with the error and a Retry that reads again', async () => {
+      const list = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, data: { device: stick.id, crashes: [jsCrash] } })
+        .mockResolvedValueOnce(failing)
+        .mockResolvedValue({
+          ok: true,
+          data: { device: stick.id, crashes: [jsCrash, nativeCrash] }
+        })
+      const stub = renderScreen({ crashes: { list } })
+      await rowOf('com.example.player')
+      act(() => void window.dispatchEvent(new Event('focus')))
+      const alert = await screen.findByRole('alert')
+      expect(within(alert).getByText('Access denied')).toBeTruthy()
+      expect(within(alert).getByText('Reinstall the app')).toBeTruthy()
+      expect(await rowOf('com.example.player')).toBeTruthy()
+      fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }))
+      expect(await rowOf('com.example.hellovega')).toBeTruthy()
+      await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+      expect(stub.api.crashes.list).toHaveBeenCalledTimes(3)
+    })
+
+    test('a stale "No crashes" does not hide the error', async () => {
+      const list = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, data: { device: stick.id, crashes: [] } })
+        .mockResolvedValue(failing)
+      renderScreen({ crashes: { list } })
+      await screen.findByText(`No crashes of your apps on ${stick.name}`)
+      act(() => void window.dispatchEvent(new Event('focus')))
+      const alert = await screen.findByRole('alert')
+      expect(within(alert).getByText('Access denied')).toBeTruthy()
+      expect(within(alert).getByRole('button', { name: 'Retry' })).toBeTruthy()
+    })
+  })
+
   test('offline target: Crashes unavailable, and nothing is read', async () => {
     const stub = renderScreen({ devices: [wifiOffline] })
     expect(
@@ -166,6 +222,33 @@ describe('the list', () => {
     await rowOf('com.example.hellovega')
     act(() => stub.pushCrash({ device: { id: stick.id, name: stick.name }, crash: jsCrash }))
     expect(await screen.findByText('com.example.player')).toBeTruthy()
+  })
+})
+
+describe('Open requests', () => {
+  test('an Open during a pending refresh waits for the refreshed list', async () => {
+    const fresh: Crash = { ...jsCrash, id: 2200 }
+    let release: (r: IpcResult<{ device: string; crashes: Crash[] }>) => void = () => undefined
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: { device: stick.id, crashes: [nativeCrash] } })
+      .mockImplementationOnce(() => new Promise((resolve) => (release = resolve)))
+    const stub = renderScreen({
+      crashes: {
+        list,
+        detail: async (ref) => ({ ok: true, data: detailOf(ref.id === 2200 ? fresh : nativeCrash) })
+      }
+    })
+    await rowOf('com.example.hellovega')
+    // A refresh is now pending (the push of the new crash); the cached list lacks 2200.
+    act(() => stub.pushCrash({ device: { id: stick.id, name: stick.name }, crash: fresh }))
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2))
+    act(() => sendOpen({ device: stick.id, id: 2200, n: 1 }))
+    expect(screen.queryByRole('complementary')).toBeNull()
+    await act(async () =>
+      release({ ok: true, data: { device: stick.id, crashes: [fresh, nativeCrash] } })
+    )
+    expect(await screen.findByRole('complementary', { name: 'Crash 2200 details' })).toBeTruthy()
   })
 })
 

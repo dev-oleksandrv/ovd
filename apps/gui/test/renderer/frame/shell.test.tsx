@@ -365,6 +365,28 @@ describe('crash alerts', () => {
     await waitFor(() => expect(within(crashesNav()).queryByText('1 new')).toBeNull())
   })
 
+  test('alerts survive navigation: the toast fires while Crashes is mounted and after it unmounts', async () => {
+    const stub = await renderWithCrashes()
+    fireEvent.click(crashesNav())
+    await screen.findByText('Error: player deliberate crash')
+    announce(stub)
+    expect(
+      await screen.findAllByText('com.example.player crashed · Error: player deliberate crash')
+    ).toHaveLength(1)
+    expect(within(crashesNav()).getByText('1 new')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Apps/ }))
+    await waitFor(() => expect(screen.queryByText('Error: player deliberate crash')).toBeNull())
+    act(() =>
+      stub.pushCrash({
+        device: { id: stick.id, name: stick.name },
+        crash: { ...jsCrash, id: 2101, summary: 'Error: second' }
+      })
+    )
+    expect(await screen.findByText('com.example.player crashed · Error: second')).toBeTruthy()
+    expect(within(crashesNav()).getByText('2 new')).toBeTruthy()
+  })
+
   test('only the target’s new crashes count', async () => {
     const stub = await renderWithCrashes()
     act(() =>

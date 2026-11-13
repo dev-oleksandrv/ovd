@@ -111,10 +111,12 @@ export function LogsScreen({
   const [resolved, setResolved] = useState<number | null>(null)
   if (resolving !== null && resolved !== resolving.n) {
     setResolved(resolving.n)
-    const startedAt = current && current.status !== 'starting' ? current.startedAt : null
     const outcome = crashLogsOutcome(
       resolving,
-      { startedAt, lines: store.counts.lines },
+      {
+        lines: store.counts.lines,
+        ...(store.counts.oldest === undefined ? {} : { oldest: store.counts.oldest })
+      },
       store.entries
     )
     if (outcome.kind === 'note') {

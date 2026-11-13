@@ -36,9 +36,23 @@ export function markSeen(device: string, id: number): void {
   }
 }
 
+// The most reports a listing holds (core's MAX_CRASHES; the renderer can't import core runtime).
+const LIST_CAP = 200
+
 // A list read: its NEW ones join, and the ones a launch already reported (`new` false) leave.
+// Pending ids the listing no longer holds leave too (an uninstall removes a device's reports),
+// unless a full listing may have cut them off: then only ids newer than its oldest entry go.
 export function syncList(device: string, crashes: readonly Crash[]): void {
   const next = new Set(pending)
+  const listed = new Set(crashes.map((c) => c.id))
+  const oldest = crashes.length === 0 ? 0 : Math.min(...listed)
+  const complete = crashes.length < LIST_CAP
+  const prefix = `${device}\n`
+  for (const key of pending) {
+    if (!key.startsWith(prefix)) continue
+    const id = Number(key.slice(prefix.length))
+    if (!listed.has(id) && (complete || id > oldest)) next.delete(key)
+  }
   for (const crash of crashes) {
     const key = crashKey(device, crash.id)
     if (crash.new && !seen.has(key)) next.add(key)

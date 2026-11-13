@@ -21,6 +21,13 @@ describe('crashesView', () => {
     expect(crashPullCli(2100, 'VirtualDevice')).toBe('ovd crash pull 2100 --device VirtualDevice')
   })
 
+  test('a device id with shell metacharacters is quoted in both echoes', () => {
+    const evil = 'x;printf${IFS}INJECTED'
+    expect(crashesCli(evil)).toBe("ovd crashes --device 'x;printf${IFS}INJECTED'")
+    expect(crashPullCli(7, evil)).toBe("ovd crash pull 7 --device 'x;printf${IFS}INJECTED'")
+    expect(crashesCli("a'b")).toBe("ovd crashes --device 'a'\\''b'")
+  })
+
   test('the blocker is no target, offline, or none', () => {
     expect(crashesBlocker(undefined)).toBe('no-target')
     expect(crashesBlocker(wifiOffline)).toBe('offline')

@@ -213,16 +213,13 @@ export interface CrashLogsRequest {
 export const ROTATION_HINT =
   'The device journal rotates fast, so lines from before this session are gone. To catch a crash, start logs (or use Run) before launching the app.'
 
-// The ring keeps this many lines; a session that has seen as many may have dropped the start.
-const RING_FULL = 100_000
-
-// Whether the session's buffer reaches back to `time`: it started before the crash and has not
-// yet dropped its oldest lines.
-export function coversTime(startedAt: string | null, lines: number, time: string): boolean {
-  if (startedAt === null || lines >= RING_FULL) return false
-  const start = Date.parse(startedAt)
+// Whether the retained history reaches back to `time`: its oldest line (core's `counts.oldest`,
+// after any Clear or eviction) is at or before it. An empty history covers nothing.
+export function coversTime(oldest: string | null | undefined, time: string): boolean {
+  if (oldest === null || oldest === undefined) return false
+  const first = Date.parse(oldest)
   const crash = Date.parse(time)
-  return Number.isFinite(start) && Number.isFinite(crash) && start <= crash
+  return Number.isFinite(first) && Number.isFinite(crash) && first <= crash
 }
 
 // The row to bring into view: the first line at or after `time`, else the last line before it;
@@ -238,13 +235,13 @@ export type CrashLogsOutcome =
   { kind: 'scroll'; index: number } | { kind: 'note'; title: string; body: string }
 
 // What "Logs at crash time" does once the buffer is filtered on the app: scroll to the crash's
-// time when the session started before it, else say the journal rotates fast.
+// time when the retained history reaches back to it, else say the journal rotates fast.
 export function crashLogsOutcome(
   request: CrashLogsRequest,
-  session: { startedAt: string | null; lines: number },
+  session: { lines: number; oldest?: string },
   entries: readonly LogEntry[]
 ): CrashLogsOutcome {
-  if (!coversTime(session.startedAt, session.lines, request.time)) {
+  if (!coversTime(session.oldest, request.time)) {
     return {
       kind: 'note',
       title: `No lines of ${request.app} from before this session`,

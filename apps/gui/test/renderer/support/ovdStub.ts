@@ -175,7 +175,8 @@ export function stubOvd(opts: {
   // No crashes unless a test says otherwise; the other calls throw.
   crashes?: Partial<Omit<OvdApi['crashes'], 'onNew'>>
 }): OvdStub {
-  let crashListener: ((event: CrashNewEvent) => void) | undefined
+  // Shell and the Crashes screen subscribe at once, each with its own unsubscribe.
+  const crashListeners = new Set<(event: CrashNewEvent) => void>()
   let frameListener: ((frame: ScreenFramePush) => void) | undefined
   let screenListener: ((state: ScreenState) => void) | undefined
   let capturesListener: ((list: CapturesList) => void) | undefined
@@ -454,9 +455,9 @@ export function stubOvd(opts: {
       ),
       reveal: vi.fn(opts.crashes?.reveal ?? (async () => unexpected<null>('crashes.reveal'))),
       onNew: (l) => {
-        crashListener = l
+        crashListeners.add(l)
         return () => {
-          crashListener = undefined
+          crashListeners.delete(l)
         }
       }
     },
@@ -489,6 +490,8 @@ export function stubOvd(opts: {
     pushCaptures: (l) => capturesListener?.(l),
     pushFrame: (f) => frameListener?.(f),
     pushScreen: (s) => screenListener?.(s),
-    pushCrash: (e) => crashListener?.(e)
+    pushCrash: (e) => {
+      for (const l of [...crashListeners]) l(e)
+    }
   }
 }

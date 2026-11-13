@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { targetDevice, useDevicesContext } from '../../devices/devicesContext'
 import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
+import { InlineError } from '../../ui/InlineError'
 import { EmptyState } from '../../ui/EmptyState'
 import { ErrorState } from '../../ui/ErrorState'
 import { LoadingState } from '../../ui/LoadingState'
@@ -41,7 +42,7 @@ export function CrashesScreen({
   const target = targetDevice(devices)
   const blocker = crashesBlocker(target)
   const device = blocker === null && target ? target.id : null
-  const { state } = useCrashes(device)
+  const { state, reload } = useCrashes(device)
   const newIds = useNewCrashIds()
   // The detail belongs to the device it was opened on.
   const [selected, setSelected] = useState<{ device: string; id: number } | null>(null)
@@ -60,12 +61,13 @@ export function CrashesScreen({
       ? crashes.find((c) => c.id === selected.id)
       : undefined
 
-  // An "Open" from the toast or from Apps: looked at once, as soon as the list for that device
-  // is read. Set during render (as in Shell) so the detail never flashes the wrong state.
+  // An "Open" from the toast or from Apps: looked at once, against a list that no refresh is
+  // about to replace (the crash it names may only be in the refreshed one). Set during render
+  // (as in Shell) so the detail never flashes the wrong state.
   if (openRequest !== null && device !== null && handled !== openRequest.n) {
     if (openRequest.device !== device) {
       setHandled(openRequest.n)
-    } else if (list) {
+    } else if (list && state.status !== 'loading') {
       setHandled(openRequest.n)
       const found = list.crashes.find((c) => c.id === openRequest.id)
       if (found) setSelected({ device, id: found.id })
@@ -111,39 +113,52 @@ export function CrashesScreen({
         />
       ) : !list ? (
         <LoadingState label={`Reading crashes on ${name}…`} />
-      ) : crashes.length === 0 ? (
-        <EmptyState
-          title={`No crashes of your apps on ${name}`}
-          body="A crash of an app you installed shows up here, with a toast, as it happens."
-        />
       ) : (
-        <div
-          className={
-            current
-              ? 'grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(320px,460px)]'
-              : 'grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)]'
-          }
-        >
-          <div className="overflow-auto">
-            <CrashTable
-              crashes={crashes}
-              deviceName={name}
-              now={new Date()}
-              isNew={(c) => device !== null && newIds.has(crashKey(device, c.id))}
-              selectedId={current?.id ?? null}
-              onSelect={select}
-            />
-          </div>
-          {current && device !== null && (
-            <CrashDetailPanel
-              key={`${device}\n${current.id}`}
-              crash={current}
-              device={device}
-              now={new Date()}
-              onOpenLogs={onOpenLogs}
-            />
+        <>
+          {state.status === 'error' && (
+            <div className="px-6 pt-4">
+              <InlineError title={state.error.message} body={state.error.hint}>
+                <div>
+                  <Button onClick={() => void reload()}>Retry</Button>
+                </div>
+              </InlineError>
+            </div>
           )}
-        </div>
+          {crashes.length === 0 ? (
+            <EmptyState
+              title={`No crashes of your apps on ${name}`}
+              body="A crash of an app you installed shows up here, with a toast, as it happens."
+            />
+          ) : (
+            <div
+              className={
+                current
+                  ? 'grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(320px,460px)]'
+                  : 'grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)]'
+              }
+            >
+              <div className="overflow-auto">
+                <CrashTable
+                  crashes={crashes}
+                  deviceName={name}
+                  now={new Date()}
+                  isNew={(c) => device !== null && newIds.has(crashKey(device, c.id))}
+                  selectedId={current?.id ?? null}
+                  onSelect={select}
+                />
+              </div>
+              {current && device !== null && (
+                <CrashDetailPanel
+                  key={`${device}\n${current.id}`}
+                  crash={current}
+                  device={device}
+                  now={new Date()}
+                  onOpenLogs={onOpenLogs}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
