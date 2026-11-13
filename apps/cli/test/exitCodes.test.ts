@@ -50,7 +50,11 @@ test.each<[ErrorCode, number]>([
   ['LIVE_UNSUPPORTED', 1],
   ['REBOOT_FAILED', 1],
   ['REBOOT_TIMEOUT', 1],
-  ['INVALID_TIMEOUT', 2]
+  ['INVALID_TIMEOUT', 2],
+  ['INVALID_CRASH_ID', 2],
+  ['CRASH_NOT_FOUND', 1],
+  ['CRASH_ACCESS_DENIED', 1],
+  ['CRASH_PULL_FAILED', 1]
 ])('%s → %i', (code, exit) => {
   expect(exitCodeFor(code)).toBe(exit)
 })
