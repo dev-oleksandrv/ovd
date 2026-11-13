@@ -31,7 +31,8 @@ export const ACTIVITY_ACTIONS = [
   'input.text',
   'screenshot',
   'screen.live',
-  'reboot'
+  'reboot',
+  'crash.detected'
 ] as const
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]

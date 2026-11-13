@@ -5,6 +5,7 @@ import { parseVlcmCrashHistory, type CrashEntry } from '../adapters/parseVlcmCra
 import { parseVlcmList, type VlcmEntry } from '../adapters/parseVlcmList.js'
 import type { VpmPackage } from '../adapters/parseVpmInfo.js'
 import { stripControl } from '../adapters/stripControl.js'
+import { launchReportedCrashes, type CrashLedger } from '../crashes/crashList.js'
 import type { Device } from '../devices/types.js'
 import type { AppActionsContext } from './appActions.js'
 import { assertAppId, type AppId } from './appId.js'
@@ -22,6 +23,8 @@ export interface LaunchCrash {
   pid: number
   // ISO time of the crash, from the crash history's `LCM_KILLTIME`.
   time: string
+  // The crash report's vault index (`ovd crashes`, `ovd crash pull`), when it was enrolled.
+  index?: number
   // `SIGABRT`…, from the crash report, else from its file name.
   signal?: string
   // `JavaScript`…, from the crash report.
@@ -72,7 +75,9 @@ export type VerifiedLaunch = (
 
 export function createLaunchVerifier(
   ctx: AppActionsContext,
-  sleep: (ms: number) => Promise<void>
+  sleep: (ms: number) => Promise<void>,
+  // Where a crash this launch reported is noted, so the crash watcher doesn't announce it again.
+  ledger: CrashLedger = launchReportedCrashes
 ): VerifiedLaunch {
   async function crashHistory(device: Device): Promise<CrashEntry[]> {
     return parseVlcmCrashHistory(
@@ -139,14 +144,18 @@ export function createLaunchVerifier(
     device: Device,
     pkg: VpmPackage,
     entry: CrashEntry
-  ): Promise<Pick<LaunchCrash, 'signal' | 'language' | 'message' | 'stack'>> {
+  ): Promise<Pick<LaunchCrash, 'index' | 'signal' | 'language' | 'message' | 'stack'>> {
     try {
       const tombstone = await tombstoneOf(device, pkg, entry)
       if (!tombstone) return { stack: [] }
-      const run = await ctx.deviceShell(device, [deviceScript(acrScript(Number(tombstone.index)))])
+      const index = Number(tombstone.index)
+      // Noted before the read: the launch reports this crash even if its cause can't be read.
+      ledger.add(device.id, index)
+      const run = await ctx.deviceShell(device, [deviceScript(acrScript(index))])
       const acr = parseAcr(run.stdout)
       const signal = acr?.signal ?? signalName(tombstone.signal)
       return {
+        index,
         ...(signal ? { signal } : {}),
         ...(acr?.language ? { language: acr.language } : {}),
         ...(acr?.message ? { message: acr.message } : {}),
@@ -168,7 +177,9 @@ export function createLaunchVerifier(
 
     let crash: CrashEntry | undefined
     let running: VlcmEntry | undefined
-    let cause: Pick<LaunchCrash, 'signal' | 'language' | 'message' | 'stack'> = { stack: [] }
+    let cause: Pick<LaunchCrash, 'index' | 'signal' | 'language' | 'message' | 'stack'> = {
+      stack: []
+    }
     let logs: string[] = []
     try {
       await launch()

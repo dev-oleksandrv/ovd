@@ -7,11 +7,20 @@ export interface AcrSummary {
   language?: string
   // `CrashReason` (`SIGABRT`).
   signal?: string
+  // `AppVersion` and `AppBuildNumber`, as printed.
+  version?: string
+  build?: string
   // The first `…Error: …` line of the JS stack.
   message?: string
   // The `at …` frames, trimmed.
   stack: string[]
 }
+
+// The host keeps at most this much of what the device printed (the bounded `sed` output is a
+// few hundred bytes normally), so a hostile report can't make OVD parse or hold megabytes.
+export const ACR_CAPTURE_MAX_BYTES = 64 * 1024
+// Header values are short; a longer one is cut.
+const VALUE_MAX = 200
 
 const START = '<non_native_stack_trace>'
 const END = '</non_native_stack_trace>'
@@ -20,7 +29,9 @@ const END = '</non_native_stack_trace>'
 // `<non_native_stack_trace>` section. Enrichment only: anything else (a refused read, an
 // unknown index) gives `undefined`, never an error.
 export function parseAcr(stdout: string): AcrSummary | undefined {
-  const lines = stdout.replace(/\r\n/g, '\n').split('\n')
+  const capped =
+    stdout.length > ACR_CAPTURE_MAX_BYTES ? stdout.slice(0, ACR_CAPTURE_MAX_BYTES) : stdout
+  const lines = capped.replace(/\r\n/g, '\n').split('\n')
   const header = new Map<string, string>()
   for (const line of lines) {
     if (line.trim() === '') break
@@ -31,6 +42,12 @@ export function parseAcr(stdout: string): AcrSummary | undefined {
   const language = stripControl(header.get('CrashLang') ?? '').trim() || undefined
   const signal = stripControl(header.get('CrashReason') ?? '').trim() || undefined
   if (!language && !signal) return undefined
+  const value = (key: string) =>
+    stripControl(header.get(key) ?? '')
+      .trim()
+      .slice(0, VALUE_MAX) || undefined
+  const version = value('AppVersion')
+  const build = value('AppBuildNumber')
 
   const start = lines.indexOf(START)
   const end = lines.indexOf(END, start + 1)
@@ -41,6 +58,8 @@ export function parseAcr(stdout: string): AcrSummary | undefined {
   return {
     ...(language ? { language } : {}),
     ...(signal ? { signal } : {}),
+    ...(version ? { version } : {}),
+    ...(build ? { build } : {}),
     ...(message ? { message } : {}),
     stack
   }
