@@ -7,8 +7,8 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 0     | Setup                       | Work on a ready repo with agent instructions                             | Empty app frame, design tokens                                      | Fixed    | Done (v0.0.1) |
 | 1     | Connect my devices          | See every stick and the Virtual Device, set up a new stick               | App shell, Doctor (first run), Devices, setup and pairing wizards   | Fixed    | Done (v0.1.0) |
 | 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | Done (v0.2.0) |
-| 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Done          |
-| 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Done          |
+| 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Done (v0.3.0) |
+| 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Done (v0.3.0) |
 | 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Planned       |
 | 6     | Faster dev loop             | Deep links, Metro, device shell, memory, SDK versions                    | Deep links, Shell, Performance → Memory, Environment → SDK versions | Flexible | Planned       |
 | 7     | Agents and CI               | Let AI agents and GitHub Actions use OVD                                 | Scenarios & MCP                                                     | Flexible | Planned       |
@@ -16,7 +16,7 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
 | 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
 
-**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. v0.2.0 closed Stage 2 and carried 3.1–3.2. Stages 3 and 4 are done on `main` and ship together in the next tagged release; Stage 3’s success metrics are still to be measured (#116).
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. v0.2.0 closed Stage 2 and carried 3.1–3.2. v0.3.0 closed Stages 3 and 4 together; Stage 3’s success metrics are still to be measured (#116).
 
 The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
@@ -218,13 +218,13 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** reinstall 10 times with logs open; logs keep arriving and each reinstall shows as an OVD line.
 
-### 3.3 Export — done
+### 3.3 Export — done (PR #100)
 
 - Plain text or JSON lines, from the toolbar, the palette and `ovd logs --export`.
 
 **Expected:** an exported JSON-lines file can be read back line by line.
 
-### 3.4 Run button (one-click deploy) — done
+### 3.4 Run button (one-click deploy) — done (PR #102)
 
 - CLI `ovd run` = install + launch + verify + follow logs; Ctrl+C stops cleanly.
 - Title bar "Run ▸ <project>" (or the dropped .vpkg) with a live steps dropdown: found build → installing → restarting log session → launching → verifying → following logs; ends with the CLI equivalent and opens Logs.
@@ -232,7 +232,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Expected:** .vpkg to running app with live logs in under 30 s, at least 2× faster than raw commands.
 
-### 3.5 Watch and redeploy — done
+### 3.5 Watch and redeploy — done (PR #103)
 
 - Title bar toggle "Watching build/" / "Watch off" (project open only). A new build reinstalls and relaunches, with a toast and an OVD log line. CLI `ovd run --watch`.
 - OVD line "Build folder changed" in Logs when the watched build folder changes (moved from 3.2).
@@ -280,7 +280,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Sidebar adds:** Debug → Crashes (badge for new crashes).
 
-- **5.1 Crash radar:** `ovd crashes [--watch]`, `ovd crash pull <id>`. Crashes screen ("loggingctl vault · scoped to your apps · polling every 5 s"): list (signal chip native/JS, app, NEW, age, summary, pid · build · device); detail with Download ACR, Copy crash report path, Copy prompt for your agent, Logs at crash time; raw stack (symbolication later). New-crash toast and OVD log line. Apps' "Crashed on launch" gets "Open crash report". Never request elevated access. _Expected:_ a crash toasts within 5 s; report on disk in one click.
+- **5.1 Crash radar — next:** `ovd crashes [--watch]`, `ovd crash pull <id>`. Crashes screen ("loggingctl vault · scoped to your apps · polling every 5 s"): list (signal chip native/JS, app, NEW, age, summary, pid · build · device); detail with Download ACR, Copy crash report path, Copy prompt for your agent, Logs at crash time; raw stack (symbolication later). New-crash toast and OVD log line. Apps' "Crashed on launch" gets "Open crash report". Never request elevated access. _Expected:_ a crash toasts within 5 s; report on disk in one click.
 - **5.2 Log power tools:** presets (All, Player errors only, Network, Lifecycle) and "Save filter"; advanced filters (PID, TID, tag, identity, facility, boot); per-process level, rate limit, mute; "Bundle" for bug reports. `ovd logs --preset <name>`, `ovd logs bundle`.
 - **5.3 Packages → Manifest, Files, Validate:** manifest from `vpt dump` with line numbers and notes; `vpt show-contents` tree; `vpt validate` table (severity, message, file) with error badge and clickable lines where possible. `ovd pkg manifest | files | validate`. _Expected:_ a broken manifest shows exact errors; clicking opens the line.
 - **5.4 Homebrew tap:** `brew install ovd` from a tap whose formula installs the published `@ovd/cli` release (ADR 0015, moved from 3.6 and then 4.6). A packaging change, so it needs the maintainer's approval first, and an external tap repository. _Expected:_ `brew install ovd` on macOS and Ubuntu gives a working `ovd`.
