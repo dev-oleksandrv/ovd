@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
 import type { ActivityLog } from '../activity/activityLog.js'
 import { createLogged, createPreflight } from '../activity/logged.js'
 import { parseVdaPull } from '../adapters/parseVdaPull.js'
@@ -18,10 +17,12 @@ import { pngSize } from './png.js'
 import {
   commitFile,
   nodeSaveFs,
+  readPart,
   removeQuietly,
   resolveDestination,
-  saveError,
+  stageFor,
   tempFor,
+  writePart,
   type Destination,
   type SaveFs
 } from './saveFile.js'
@@ -199,20 +200,21 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
     const backend = screenshotBackend(device)
     const takenAt = now()
     const base = captureBase(device.name, takenAt)
-    const temp = await tempFor(dest, base, randomHex())
+    // The Virtual Device's bytes are written by OVD (exclusive 0600 temp file); the stick's are
+    // written by `vda pull`, into a private staging folder it can't be fed a planted link in.
+    const staging = backend === 'grpc' ? undefined : await stageFor(dest)
+    const temp = staging ? staging.file : await tempFor(dest, base, randomHex())
     try {
       let bytes: Uint8Array
       if (backend === 'grpc') {
         bytes = await grpcShot(device, signal)
         if (signal?.aborted) throw abortError()
         if (!pngSize(bytes)) throw failed(`${device.name} sent a screenshot that isn’t a PNG`)
-        await writeFile(temp, bytes, { flag: 'wx' }).catch((error: unknown) => {
-          throw saveError(temp, error)
-        })
+        await writePart(temp, bytes)
       } else {
         await stickShot(device, temp, signal)
         if (signal?.aborted) throw abortError()
-        bytes = await readFile(temp).catch(() => new Uint8Array())
+        bytes = (await readPart(temp)) ?? new Uint8Array()
       }
       const size = pngSize(bytes)
       if (!size) throw failed(`${device.name} gave an empty or invalid screenshot`)
@@ -227,6 +229,7 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
       }
     } finally {
       await removeQuietly(temp)
+      await staging?.remove()
     }
   }
 

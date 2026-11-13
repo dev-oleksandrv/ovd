@@ -109,12 +109,12 @@ describe('ovd screenshot on a stick (gwsi-tool-screenshooter)', () => {
       `vega exec vda -s ${STICK_SERIAL} shell gwsi-tool-screenshooter ${remote}`,
       expect.stringMatching(
         new RegExp(
-          `^vega exec vda -s ${STICK_SERIAL} pull ${remote} ${sandbox.captures}/\\.fire-tv-stick-\\d{8}-\\d{6}\\.png\\.[0-9a-f]{8}\\.part$`
+          `^vega exec vda -s ${STICK_SERIAL} pull ${remote} ${sandbox.captures}/\\.ovd-pull-[A-Za-z0-9]{6}/pull\\.png\\.part$`
         )
       ),
       `vega exec vda -s ${STICK_SERIAL} shell rm -f ${remote}`
     ])
-    // Nothing left on the device, and no temp file on the host.
+    // Nothing left on the device, and no staging folder or temp file on the host.
     expect(sandbox.world().stickFiles).toEqual([])
     expect(pngs(sandbox.captures)).toEqual([shot.path.split('/').at(-1)])
     expect(sandbox.activity()).toEqual([

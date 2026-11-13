@@ -2,6 +2,7 @@ import { homedir as osHomedir } from 'node:os'
 import { createActivityFeed } from './activity/activityFeed.js'
 import { createActivityLog, type ActivityLog, type Surface } from './activity/activityLog.js'
 import { createCrashReader } from './crashes/crashList.js'
+import { createCrashPull } from './crashes/crashPull.js'
 import { createCrashWatch } from './crashes/crashWatch.js'
 import type { Crashes } from './crashes/types.js'
 import { createDevices, type Devices } from './devices/devices.js'
@@ -188,13 +189,25 @@ export function createOvd(opts: OvdOptions): Ovd {
     installed: (device) => apps.installedPackages(device)
   })
   installedChanged = (deviceId) => reader.invalidate(deviceId)
+  const crashPull = createCrashPull({
+    reader,
+    runner,
+    sdk,
+    devices,
+    activity,
+    env,
+    homedir,
+    cwd
+  })
   const crashes: Crashes = {
     list: (device) => reader.list(device),
     detail: async (id, device) => {
       const found = await reader.find(id, device)
       return { ...found, device: { id: found.device.id, name: found.device.name } }
     },
-    watch: (watchOpts) => createCrashWatch({ reader, devices, activity }, watchOpts)
+    watch: (watchOpts) => createCrashWatch({ reader, devices, activity }, watchOpts),
+    pull: (pullOpts) => crashPull.pull(pullOpts),
+    dir: () => crashPull.dir()
   }
   return {
     sdk,

@@ -208,3 +208,29 @@ describe('parseTombstonesStrict', () => {
     )
   })
 })
+
+describe('the stick listings with an lrk entry', () => {
+  const LRK = '2094'
+
+  test.each([
+    ['stick-before', []],
+    ['stick-after', ['2100']]
+  ])('%s: both parsers skip the lrk entry', (file, indexes) => {
+    expect(ls(file)).toContain(`${LRK}#crash_`)
+    expect(ls(file)).toContain('_lrk_')
+    expect(parseTombstones(ls(file)).map((t) => t.index)).toEqual(indexes)
+    expect(parseTombstonesStrict(ls(file)).map((t) => t.index)).toEqual(indexes)
+  })
+
+  test('stick-after lists exactly the player report 2100', () => {
+    expect(parseTombstonesStrict(ls('stick-after'))).toEqual([
+      {
+        index: '2100',
+        epochS: 1794603616,
+        pid: 5410,
+        signal: 6,
+        packageUnderscored: 'com_example_player'
+      }
+    ])
+  })
+})
