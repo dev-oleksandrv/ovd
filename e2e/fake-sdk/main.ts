@@ -485,12 +485,14 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
 // listing, `--cat | sed`, pull script and `rm -rf` answers are all recordings
 // (`loggingctl-vault-ls/virtual-device-js-*.json`, `loggingctl-vault-acr/*`,
 // `vda-shell/rm-rf-acr-dir.txt`).
-// Stick: the listing (`stick-tombstones.json`) and the bounded read of index 2085
-// (`stick-crashed.txt`) are recordings. SYNTHESIZED: the stick's full pull. No pull was recorded
-// on a stick, so it answers like the Virtual Device's recordings, with the same synthetic ACR
-// (fixtures/0.24/README.md, Synthesized sequences). Anything else stays unanswered.
-const STICK_CRASH_INDEX = 2085
-const STICK_INDEXES = [2084, 2085, 2086]
+// Stick (USB and Wi-Fi): one recorded sequence too (`stick-*`): the vault listing holds one report
+// of a third-party app in the undocumented `lrk` form (never read: core skips it) until
+// `injectPlayerCrash(sandbox, 'stick')`, then also the player's index 2100 with its recorded
+// bounded read; after the player is marked uninstalled the listing, the pull script and the pulled
+// file are the recorded -7 answers. The listing, bounded read, pull script, `vda pull` print and
+// `rm -rf` are recordings; only the .acr file `pull` copies is synthetic. Any other index stays
+// unanswered. Every in-scope report of every listing has a recorded bounded read (fixtures/0.24/README.md).
+const STICK_CRASH_INDEX = 2100
 // The player's reports in `virtual-device-js-before.json`, in the system package's, 50, 55 and 67.
 const VVD_PLAYER_INDEXES = [
   97, 103, 99, 100, 88, 83, 101, 91, 102, 86, 84, 79, 90, 87, 96, 89, 93, 85, 94
@@ -502,50 +504,74 @@ const VVD_CRASH_INDEXES = [105, 106]
 const CRASH_PID = 7746
 const ACR_FOLDER = /^\/tmp\/ovd-acr\.[A-Za-z0-9]{6}$/
 const PULL_CONTENT = {
-  ok: 'loggingctl-vault-acr/pull-script-ok.txt',
-  'unknown-index': 'loggingctl-vault-acr/pull-script-unknown-index.txt',
-  uninstalled: 'loggingctl-vault-acr/pull-script-uninstalled.txt'
+  vvd: {
+    ok: 'loggingctl-vault-acr/pull-script-ok.txt',
+    'unknown-index': 'loggingctl-vault-acr/pull-script-unknown-index.txt',
+    uninstalled: 'loggingctl-vault-acr/pull-script-uninstalled.txt'
+  },
+  stick: {
+    ok: 'loggingctl-vault-acr/stick-pull-script-ok.txt',
+    uninstalled: 'loggingctl-vault-acr/stick-pull-script-uninstalled.txt'
+  }
+} as const
+const PULL_PRINT = { vvd: 'vda-pull/acr.txt', stick: 'vda-pull/stick-acr.txt' } as const
+const PULL_PRINT_REMOTE = {
+  vvd: '/tmp/ovd-acr.aB3dE9/report.acr',
+  stick: '/tmp/ovd-acr.kL8mQ2/report.acr'
+} as const
+const RM_RF = {
+  vvd: 'vda-shell/rm-rf-acr-dir.txt',
+  stick: 'vda-shell/stick-rm-rf-acr-dir.txt'
 } as const
 const PULLED_FILE = {
   ok: 'vda-pull/synthetic-crash.acr',
   'unknown-index': 'loggingctl-vault-acr/unknown-index.json',
   uninstalled: 'loggingctl-vault-acr/insufficient-permissions.json'
 } as const
-const RECORDED_ACR_SIZE = '301471'
+const RECORDED_ACR_SIZE = { vvd: '301471', stick: '326986' } as const
 
 function acrCommands(w: World, device: 'vvd' | 'stick', rest: string[]): Reply | null {
   const sub = rest.join(' ')
-  const crashed = device === 'stick' && w.stickPlayerCrashed
-  const indexes =
-    device === 'vvd'
-      ? [...vvdPlayerIndexes(w), ...VVD_SYSTEM_INDEXES]
-      : crashed
-        ? STICK_INDEXES
-        : []
-  if (crashed && sub === 'shell loggingctl vault --ls SYSTEM_TOMBSTONE/acr') {
-    return { stdout: fixture('loggingctl-vault-ls/stick-tombstones.json') }
+  const stickCrashed = device === 'stick' && w.stickPlayerCrashed
+  if (sub === 'shell loggingctl vault --ls SYSTEM_TOMBSTONE/acr' && device === 'stick') {
+    const name = !stickCrashed
+      ? 'before'
+      : w.uninstalledCrashes.includes(STICK_CRASH_INDEX)
+        ? 'after-uninstall'
+        : 'after'
+    return { stdout: fixture(`loggingctl-vault-ls/stick-${name}.json`) }
   }
   const script = decodeScript(sub)
   if (script !== null) {
-    if (crashed) {
+    if (device === 'stick') {
       const acr = ACR.exec(script)
       if (acr) {
-        return Number(acr[1]) === STICK_CRASH_INDEX
-          ? { stdout: fixture('loggingctl-vault-acr/stick-crashed.txt') }
+        return stickCrashed && Number(acr[1]) === STICK_CRASH_INDEX
+          ? { stdout: fixture('loggingctl-vault-acr/stick-js-2100.txt') }
           : null
       }
     }
     const index = acrPullIndex(script)
     if (index === null) return null
-    const content = w.uninstalledCrashes.includes(index)
-      ? 'uninstalled'
-      : indexes.includes(index)
-        ? 'ok'
-        : 'unknown-index'
-    const stdout = fixture(PULL_CONTENT[content])
+    const uninstalled = w.uninstalledCrashes.includes(index)
+    let content: AcrContent
+    if (device === 'stick') {
+      if (index !== STICK_CRASH_INDEX || !(stickCrashed || uninstalled)) return null
+      content = uninstalled ? 'uninstalled' : 'ok'
+    } else {
+      content = uninstalled
+        ? 'uninstalled'
+        : [...vvdPlayerIndexes(w), ...VVD_SYSTEM_INDEXES].includes(index)
+          ? 'ok'
+          : 'unknown-index'
+    }
+    const recorded = (PULL_CONTENT[device] as Record<string, string>)[content] as string
+    const stdout = fixture(recorded)
     const remote = (stdout.split('\n')[0] as string).trim()
     w.acrFiles = [...w.acrFiles.filter((f) => f.remote !== remote), { device, remote, content }]
-    return { stdout: stdout.replaceAll(RECORDED_ACR_SIZE, () => String(acrSize(content))) }
+    return {
+      stdout: stdout.replaceAll(RECORDED_ACR_SIZE[device], () => String(acrSize(content)))
+    }
   }
   const [verb, ...args] = rest
   if (verb === 'pull' && args.length === 2) {
@@ -554,23 +580,25 @@ function acrCommands(w: World, device: 'vvd' | 'stick', rest: string[]): Reply |
     if (!file) return null
     copyFileSync(join(FIXTURES, PULLED_FILE[file.content]), local)
     return {
-      stdout: fixture('vda-pull/acr.txt')
-        .replace('/tmp/ovd-acr.aB3dE9/report.acr', () => remote)
-        .replaceAll(RECORDED_ACR_SIZE, () => String(acrSize(file.content)))
+      stdout: fixture(PULL_PRINT[device])
+        .replace(PULL_PRINT_REMOTE[device], () => remote)
+        .replaceAll(RECORDED_ACR_SIZE[device], () => String(acrSize(file.content)))
     }
   }
   if (verb === 'shell' && args.length === 3 && args[0] === 'rm' && args[1] === '-rf') {
     const folder = args[2] as string
     if (!ACR_FOLDER.test(folder)) return null
     w.acrFiles = w.acrFiles.filter((f) => !f.remote.startsWith(`${folder}/`))
-    return { stdout: fixture('vda-shell/rm-rf-acr-dir.txt') }
+    return { stdout: fixture(RM_RF[device]) }
   }
   return null
 }
 
-// The size of what a pull delivers: the synthetic ACR is 1254 bytes, not the recorded 301471, so
-// the printed size follows the file that is copied.
-function acrSize(content: keyof typeof PULLED_FILE): number {
+type AcrContent = keyof typeof PULLED_FILE
+
+// The size of what a pull delivers: the synthetic ACR is 1254 bytes, not the recorded 301471 or
+// 326986, so the printed size follows the file that is copied.
+function acrSize(content: AcrContent): number {
   return statSync(join(FIXTURES, PULLED_FILE[content])).size
 }
 

@@ -6,7 +6,7 @@ import type { Sandbox } from './sandbox.ts'
 // 7746, a JavaScript crash (`loggingctl-vault-ls/virtual-device-js-after.json`, whose listing
 // before the crash, `virtual-device-js-before.json`, holds 19 older reports of the player, each
 // with a recorded bounded read); injected after a launch that crashed, it is index 106
-// (`virtual-device-js-after-second.json`). `stick` is index 2085 (its recorded vault listing).
+// (`virtual-device-js-after-second.json`). `stick` is index 2100 (`stick-after.json`, next to an `lrk` entry core skips).
 export function injectPlayerCrash(
   sandbox: Pick<Sandbox, 'update'>,
   device: 'vvd' | 'stick' = 'vvd'

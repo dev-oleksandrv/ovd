@@ -53,14 +53,14 @@ export interface World {
   // in-scope report of every listing has a recorded bounded read (fixtures/0.24/README.md,
   // Synthesized sequences).
   playerCrashInjected: boolean
-  // The stick's player crashed (a crash recorded on the stick, `loggingctl-vault-ls/stick-tombstones.json`):
-  // `loggingctl vault --ls` lists it and `--cat` answers it. A test sets it mid-run to inject a
-  // crash with no launch. The stick has no `vlcm crash-history` recording, so that stays
-  // unanswered.
+  // The stick's player crashed (the recorded sequence `loggingctl-vault-ls/stick-before.json` →
+  // `stick-after.json`, index 2100): `loggingctl vault --ls` lists it, the bounded read, pull and
+  // `rm -rf` answer. A test sets it mid-run to inject a crash with no launch. The stick's
+  // `vlcm crash-history` recording (`stick-js-after.txt`) is not answered by the fake.
   stickPlayerCrashed: boolean
   // Vault indexes whose package was uninstalled since the crash: the full-ACR pull of them
   // writes `loggingctl-vault-acr/insufficient-permissions.json` (status -7). The first crash
-  // on the Virtual Device is index 105, on the stick 2085.
+  // on the Virtual Device is index 105, on the stick 2100.
   uninstalledCrashes: number[]
   // Remote ACR files the pull script wrote, until `rm -rf` removes their folder: the device kind,
   // the remote file and the recording the file holds.
