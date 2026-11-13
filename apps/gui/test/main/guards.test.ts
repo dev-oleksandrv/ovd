@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
   capturePath,
+  crashRef,
+  crashReportPath,
   logsExportRequest,
   logsFilter,
   optionalFlag,
@@ -173,5 +175,69 @@ describe('capturePath', () => {
 
   test.each([[''], [42], [null]])('refuses a payload that isn’t a path: %j', async (value) => {
     await expect(capturePath(value, '/tmp', realpath)).rejects.toThrow(TypeError)
+  })
+})
+
+describe('crashRef', () => {
+  test('accepts exactly a device and a vault index', () => {
+    expect(crashRef({ device: 'VirtualDevice', id: 2100 })).toEqual({
+      device: 'VirtualDevice',
+      id: 2100
+    })
+    expect(crashRef({ device: 'VirtualDevice', id: 0 }).id).toBe(0)
+  })
+
+  test.each([
+    ['not an object', 'VirtualDevice'],
+    ['null', null],
+    ['an array', []],
+    ['no device', { id: 1 }],
+    ['an empty device', { device: '', id: 1 }],
+    ['a string id', { device: 'a', id: '1' }],
+    ['a negative id', { device: 'a', id: -1 }],
+    ['a fractional id', { device: 'a', id: 1.5 }],
+    ['an unsafe id', { device: 'a', id: 2 ** 60 }],
+    ['a path', { device: 'a', id: 1, path: '/etc/passwd' }],
+    ['an out folder', { device: 'a', id: 1, out: '/tmp' }]
+  ])('rejects %s', (_label, value) => {
+    expect(() => crashRef(value)).toThrow(TypeError)
+  })
+})
+
+describe('crashReportPath', () => {
+  const setup = async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ovd-crash-'))
+    const dir = join(root, 'crashes')
+    await mkdir(dir)
+    await mkdir(join(root, 'crashes-evil'))
+    await writeFile(join(dir, 'com.example.player-1-2.acr'), 'x')
+    await writeFile(join(dir, 'notes.txt'), 'x')
+    await writeFile(join(root, 'crashes-evil', 'a.acr'), 'x')
+    await writeFile(join(root, 'secret.acr'), 'x')
+    await symlink(join(root, 'secret.acr'), join(dir, 'link.acr'))
+    return { root, dir }
+  }
+
+  test('an .acr inside the crashes folder resolves to its real path', async () => {
+    const { dir } = await setup()
+    const file = join(dir, 'com.example.player-1-2.acr')
+    expect(await crashReportPath(file, dir, realpath)).toBe(await realpath(file))
+  })
+
+  test.each([
+    ['a path out with ..', (root: string) => join(root, 'crashes', '..', 'secret.acr')],
+    ['a sibling sharing the prefix', (root: string) => join(root, 'crashes-evil', 'a.acr')],
+    ['a symlink out of the folder', (root: string) => join(root, 'crashes', 'link.acr')],
+    ['a file that isn’t an .acr', (root: string) => join(root, 'crashes', 'notes.txt')],
+    ['the folder itself', (root: string) => join(root, 'crashes')]
+  ])('refuses %s', async (_label, path) => {
+    const { root, dir } = await setup()
+    await expect(crashReportPath(path(root), dir, realpath)).rejects.toThrow(
+      new TypeError('path is not a crash report')
+    )
+  })
+
+  test.each([[''], [42], [null]])('refuses a payload that isn’t a path: %j', async (value) => {
+    await expect(crashReportPath(value, '/tmp', realpath)).rejects.toThrow(TypeError)
   })
 })

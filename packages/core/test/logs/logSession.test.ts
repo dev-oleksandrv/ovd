@@ -429,7 +429,12 @@ describe('a running session', () => {
     expect(s.session.entries()).toHaveLength(243)
     s.session.setFilter({ app: PLAYER, level: 'e' })
     expect(s.session.entries().map((e) => e.level)).toEqual(['E', 'E'])
-    expect(s.session.counts()).toEqual({ lines: 243, errors: expect.any(Number), shown: 2 })
+    expect(s.session.counts()).toEqual({
+      lines: 243,
+      errors: expect.any(Number),
+      shown: 2,
+      oldest: '2026-11-08T07:26:59.934Z'
+    })
     expect(() => s.session.setFilter({ level: 'loud' })).toThrow(
       expect.objectContaining({ code: 'INVALID_LOG_FILTER' })
     )
@@ -485,7 +490,12 @@ describe('a running session', () => {
     await vi.advanceTimersByTimeAsync(250)
     expect(s.delivered()).toHaveLength(50_000)
     expect(s.delivered().at(-1)?.message).toContain('player flood 49999')
-    expect(s.session.counts()).toEqual({ lines: 50_000, errors: 0, shown: 50_000 })
+    expect(s.session.counts()).toEqual({
+      lines: 50_000,
+      errors: 0,
+      shown: 50_000,
+      oldest: '2026-11-08T07:27:01.314Z'
+    })
     await s.session.stop()
   })
 })
@@ -684,7 +694,12 @@ describe('restart after install', () => {
       'Installed player_armv7.vpkg from the desktop',
       'Log session restarted'
     ])
-    expect(s.session.counts()).toEqual({ lines: 243, errors: expect.any(Number), shown: 4 })
+    expect(s.session.counts()).toEqual({
+      lines: 243,
+      errors: expect.any(Number),
+      shown: 4,
+      oldest: '2026-11-08T07:26:59.934Z'
+    })
     const seqs = s.session.entries().map((e) => e.seq)
     expect(seqs).toEqual([...seqs].sort((a, b) => a - b))
     expect(new Set(seqs).size).toBe(seqs.length)

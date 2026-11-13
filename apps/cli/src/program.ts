@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import { hello, type Ovd } from '@ovd/core'
 import pkg from '../package.json' with { type: 'json' }
 import { registerApps } from './commands/apps.js'
+import { registerCrashes } from './commands/crashes.js'
 import { registerDevice } from './commands/device.js'
 import { registerDevices } from './commands/devices.js'
 import { registerDoctor } from './commands/doctor.js'
@@ -84,5 +85,6 @@ export function createProgram(deps: CliDeps, setExitCode: (code: number) => void
   registerInput(program, deps, setExitCode)
   registerScreenshot(program, deps, setExitCode)
   registerReboot(program, deps, setExitCode)
+  registerCrashes(program, deps, setExitCode)
   return program
 }

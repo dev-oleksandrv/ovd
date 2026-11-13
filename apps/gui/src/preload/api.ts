@@ -3,6 +3,10 @@ import type {
   AppList,
   CapturesList,
   ArchCheck,
+  Crash,
+  CrashDetail,
+  CrashPullResult,
+  CrashesList,
   Device,
   DevicesUpdate,
   DoctorReport,
@@ -36,6 +40,28 @@ import type {
   VvdStartResult,
   VvdState
 } from '@ovd/core'
+
+// A crash the renderer names: the device it shows and the report's vault index. Never a path:
+// main resolves files from its own records.
+export interface CrashRef {
+  device: string
+  id: number
+}
+
+export type CrashDetailResult = CrashDetail & { device: { id: string; name: string } }
+
+// What Copy path and Copy prompt did: the host path of the report, and whether this call
+// downloaded it (it wasn't there yet).
+export interface CrashCopied {
+  path: string
+  downloaded: boolean
+}
+
+// A report that appeared on the target while the window was open.
+export interface CrashNewEvent {
+  device: { id: string; name: string }
+  crash: Crash
+}
 
 export interface AppInfo {
   version: string
@@ -356,6 +382,22 @@ export interface OvdApi {
     onFrame(listener: (frame: ScreenFramePush) => void): () => void
     onState(listener: (state: ScreenState) => void): () => void
   }
+  crashes: {
+    // `ovd crashes --device <id>`: the crash reports of the developer's apps, newest first.
+    list(device: string): Promise<IpcResult<CrashesList>>
+    // One report with its stack (view-only).
+    detail(ref: CrashRef): Promise<IpcResult<CrashDetailResult>>
+    // `ovd crash pull <id> --device <id>`: always a real pull into the crashes folder.
+    pull(ref: CrashRef): Promise<IpcResult<CrashPullResult>>
+    // Copies the host path of the report to the clipboard, pulling it first when needed.
+    copyPath(ref: CrashRef): Promise<IpcResult<CrashCopied>>
+    // Copies the agent prompt (`agentPrompt`), pulling the report first when needed.
+    copyPrompt(ref: CrashRef): Promise<IpcResult<CrashCopied>>
+    // Shows the downloaded report in the file manager (view-only).
+    reveal(ref: CrashRef): Promise<IpcResult<null>>
+    // Main's watcher pushes each new report while the window is visible.
+    onNew(listener: (event: CrashNewEvent) => void): () => void
+  }
   watch: {
     // `ovd run --watch --device <id>` without the first run: watches the open project folder and
     // redeploys each new build on the target. Idempotent; NOT_A_PROJECT without a folder open.
@@ -432,5 +474,12 @@ export const channels = {
   screenRefresh: 'ovd:screen:refresh',
   screenImage: 'ovd:screen:image',
   screenFrame: 'ovd:screen:frame',
-  screenState: 'ovd:screen:state'
+  screenState: 'ovd:screen:state',
+  crashesList: 'ovd:crashes:list',
+  crashesDetail: 'ovd:crashes:detail',
+  crashesPull: 'ovd:crashes:pull',
+  crashesCopyPath: 'ovd:crashes:copy-path',
+  crashesCopyPrompt: 'ovd:crashes:copy-prompt',
+  crashesReveal: 'ovd:crashes:reveal',
+  crashesNew: 'ovd:crashes:new'
 } as const

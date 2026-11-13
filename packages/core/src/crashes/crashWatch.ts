@@ -83,11 +83,14 @@ export function createCrashWatch(deps: CrashWatchDeps, opts: CrashWatchOptions):
         // The baseline and the announced set belong to the reader (per device, per process), so
         // a watcher started later neither repeats an announcement nor loses one.
         if (scanned.isAnnounced(entry) || !scanned.isNew(entry)) continue
+        // A launch of this package is being verified: it may report this crash itself, so wait
+        // for it to end. The next poll announces what it didn't claim.
+        if (scanned.isHeld(entry)) continue
         // Marked only once announced: a read that fails is retried at the next poll.
         const crash = await deps.reader.crashOf(scanned, entry)
         if (!running) return
         // A launch may have reported it while the header was read.
-        if (scanned.isAnnounced(entry) || !scanned.isNew(entry)) continue
+        if (scanned.isAnnounced(entry) || !scanned.isNew(entry) || scanned.isHeld(entry)) continue
         scanned.markAnnounced(entry)
         await record(who.id, crash)
         if (!running) return
