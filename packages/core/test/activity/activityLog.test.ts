@@ -45,6 +45,21 @@ describe('createActivityLog', () => {
     })
   })
 
+  test('crash.pull holds numbers and the package: no path, stack or report text', async () => {
+    const args = { package: 'com.example.player', index: 37, pid: 3200, signal: 6, bytes: 1254 }
+    await createActivityLog({ home, surface: 'cli', now }).append({
+      action: 'crash.pull',
+      target: 'VirtualDevice',
+      args,
+      result: 'ok'
+    })
+    expect(JSON.parse((await lines('activity.jsonl'))[0] ?? '')).toMatchObject({
+      action: 'crash.pull',
+      args,
+      result: 'ok'
+    })
+  })
+
   test('records errorCode only when given', async () => {
     const log = createActivityLog({ home, surface: 'desktop', now })
     await log.append({ ...entry, result: 'error', errorCode: 'TARGET_OFFLINE' })
