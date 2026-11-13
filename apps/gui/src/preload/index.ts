@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'ele
 import type { CapturesList, DevicesUpdate, LoginPrompt } from '@ovd/core'
 import {
   channels,
+  type CrashNewEvent,
   type InputState,
   type LogsUpdate,
   type OvdApi,
@@ -140,6 +141,19 @@ const api: OvdApi = {
       const handler = (_event: IpcRendererEvent, state: ScreenState): void => listener(state)
       ipcRenderer.on(channels.screenState, handler)
       return () => ipcRenderer.removeListener(channels.screenState, handler)
+    }
+  },
+  crashes: {
+    list: (device) => ipcRenderer.invoke(channels.crashesList, device),
+    detail: (ref) => ipcRenderer.invoke(channels.crashesDetail, ref),
+    pull: (ref) => ipcRenderer.invoke(channels.crashesPull, ref),
+    copyPath: (ref) => ipcRenderer.invoke(channels.crashesCopyPath, ref),
+    copyPrompt: (ref) => ipcRenderer.invoke(channels.crashesCopyPrompt, ref),
+    reveal: (ref) => ipcRenderer.invoke(channels.crashesReveal, ref),
+    onNew: (listener) => {
+      const handler = (_event: IpcRendererEvent, event: CrashNewEvent): void => listener(event)
+      ipcRenderer.on(channels.crashesNew, handler)
+      return () => ipcRenderer.removeListener(channels.crashesNew, handler)
     }
   },
   watch: {

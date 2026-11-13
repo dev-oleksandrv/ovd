@@ -1,6 +1,6 @@
 import { sep } from 'node:path'
 import { isRemoteKey, LOG_EXPORT_FORMATS, type LogExportFormat, type RemoteKey } from '@ovd/core'
-import type { LogsExportRequest, LogsFilter } from '../preload/api'
+import type { CrashRef, LogsExportRequest, LogsFilter } from '../preload/api'
 
 // IPC payloads come from the renderer; check them before they reach core.
 export function requireText(value: unknown, field: string): string {
@@ -109,6 +109,39 @@ export async function capturePath(
   const [real, dir] = await Promise.all([realpath(value), realpath(capturesDir)])
   if (!real.startsWith(dir.endsWith(sep) ? dir : dir + sep) || !/\.png$/i.test(real)) {
     throw new TypeError('path is not a capture')
+  }
+  return real
+}
+
+// The one thing the renderer says about a crash: the device it shows and the report's vault
+// index. Anything else (above all a path) is refused, so no handler can be handed a file.
+export function crashRef(value: unknown): CrashRef {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError('crash must be an object')
+  }
+  const { device, id, ...rest } = value as Record<string, unknown>
+  const extra = Object.keys(rest)[0]
+  if (extra !== undefined) throw new TypeError(`${extra} is not a crash field`)
+  if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 0) {
+    throw new TypeError('id must be a non-negative integer')
+  }
+  return { device: requireText(device, 'device'), id }
+}
+
+// A crash report main is about to copy or show: an `.acr` whose real path (symlinks resolved)
+// is inside the crashes folder's real path. The path comes from main's own record of a pull,
+// never from the renderer; this is the second check.
+export async function crashReportPath(
+  value: unknown,
+  crashesDir: string,
+  realpath: (path: string) => Promise<string>
+): Promise<string> {
+  if (typeof value !== 'string' || value === '' || value.length > 4_096) {
+    throw new TypeError('path must be a non-empty string')
+  }
+  const [real, dir] = await Promise.all([realpath(value), realpath(crashesDir)])
+  if (!real.startsWith(dir.endsWith(sep) ? dir : dir + sep) || !/\.acr$/i.test(real)) {
+    throw new TypeError('path is not a crash report')
   }
   return real
 }

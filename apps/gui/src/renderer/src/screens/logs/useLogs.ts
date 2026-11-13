@@ -29,6 +29,8 @@ export interface LogsValue {
   setLevel(level: string): void
   // The package picker's value: all, system or an app ID.
   setPackage(value: string): void
+  // Filters on one app (a crash's), answering once main has re-filtered the buffer.
+  showApp(app: string): Promise<void>
   setSearch(text: string): void
   setRegex(on: boolean): void
   clearFilters(): void
@@ -143,6 +145,7 @@ export function useLogs(target: Device | undefined): LogsValue {
     setPackage(value) {
       void apply(withPackage(filterRef.current, value))
     },
+    showApp: (app) => apply(withPackage(filterRef.current, app)),
     setSearch: setSearchText,
     setRegex: setRegexState,
     clearFilters() {

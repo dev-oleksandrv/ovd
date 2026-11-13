@@ -9,6 +9,7 @@ import { StatusBar } from '../../../../src/renderer/src/frame/StatusBar'
 import { LogsScreen } from '../../../../src/renderer/src/screens/logs/LogsScreen'
 import { ready, stubOvd, type OvdStub } from '../../support/ovdStub'
 import { stick } from '../devices/sample'
+import { ROW_HEIGHT } from '../../../../src/renderer/src/screens/logs/LogRow'
 import { entries, logEntry } from './sample'
 
 const running: LogsState = {
@@ -30,6 +31,8 @@ async function renderScreen(
     logs?: Parameters<typeof stubOvd>[0]['logs']
     exportRequest?: { format: 'text' | 'jsonl'; n: number }
     onExportHandled?: () => void
+    crashRequest?: { n: number; app: string; time: string }
+    onCrashRequestHandled?: () => void
   } = {}
 ): Promise<OvdStub> {
   const devices = opts.devices ?? [stick]
@@ -46,6 +49,10 @@ async function renderScreen(
           projectAppId={null}
           {...(opts.exportRequest ? { exportRequest: opts.exportRequest } : {})}
           {...(opts.onExportHandled ? { onExportHandled: opts.onExportHandled } : {})}
+          {...(opts.crashRequest ? { crashRequest: opts.crashRequest } : {})}
+          {...(opts.onCrashRequestHandled
+            ? { onCrashRequestHandled: opts.onCrashRequestHandled }
+            : {})}
         />
       </DevicesProvider>
       <StatusBar />
@@ -512,5 +519,58 @@ describe('LogsScreen', () => {
       }
     })
     expect(await screen.findByText('No target device')).toBeTruthy()
+  })
+})
+
+describe('Logs at crash time', () => {
+  const timed = (n: number) =>
+    entries(n).map((e) =>
+      logEntry(e.seq, { time: `2026-11-08T07:28:${String(e.seq).padStart(2, '0')}.000Z` })
+    )
+  const request = { n: 1, app: 'com.example.player', time: '2026-11-08T07:28:30.000Z' }
+
+  test('filters on the crash’s app and scrolls to the crash time when the session covers it', async () => {
+    const stub = await renderScreen({ crashRequest: request })
+    push(stub, { kind: 'state', session: 1, state: running })
+    push(stub, {
+      kind: 'reset',
+      session: 1,
+      entries: timed(50),
+      counts: counts(50),
+      apps: ['com.example.player']
+    })
+    await waitFor(() =>
+      expect(stub.api.logs.setFilter).toHaveBeenCalledWith({ app: 'com.example.player' })
+    )
+    const list = await screen.findByRole('list', { name: 'Log lines' })
+    await waitFor(() => expect(list.scrollTop).toBe(30 * ROW_HEIGHT))
+    expect(screen.queryByText(/journal rotates fast/)).toBeNull()
+  })
+
+  test('says the journal rotates fast when the session started after the crash', async () => {
+    const stub = await renderScreen({
+      crashRequest: { ...request, time: '2026-11-08T07:00:00.000Z' }
+    })
+    push(stub, { kind: 'state', session: 1, state: running })
+    push(stub, {
+      kind: 'reset',
+      session: 1,
+      entries: timed(5),
+      counts: counts(5),
+      apps: ['com.example.player']
+    })
+    expect(await screen.findByText(/journal rotates fast/)).toBeTruthy()
+    expect(screen.getByText(/start logs \(or use Run\) before launching the app/)).toBeTruthy()
+    expect(stub.api.logs.setFilter).toHaveBeenCalledWith({ app: 'com.example.player' })
+  })
+
+  test('waits for the session, then runs once and tells its parent', async () => {
+    const onCrashRequestHandled = vi.fn()
+    const stub = await renderScreen({ crashRequest: request, onCrashRequestHandled })
+    await screen.findByText(/Starting the log session/)
+    expect(onCrashRequestHandled).not.toHaveBeenCalled()
+    start(stub)
+    await waitFor(() => expect(onCrashRequestHandled).toHaveBeenCalledTimes(1))
+    expect(stub.api.logs.setFilter).toHaveBeenCalledTimes(1)
   })
 })

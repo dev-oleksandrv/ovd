@@ -1,7 +1,10 @@
 import type { Device } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
+import { entries, logEntry } from './sample'
 import {
+  coversTime,
   highlightSegments,
+  indexAtTime,
   logsBlocker,
   logsCli,
   logsExportCli,
@@ -241,5 +244,30 @@ describe('labels', () => {
     expect(logsBlocker(undefined)).toBe('no-target')
     expect(logsBlocker({ ...device, status: 'offline' })).toBe('offline')
     expect(logsBlocker(device)).toBeNull()
+  })
+})
+
+describe('logs at crash time', () => {
+  const start = '2026-11-13T10:00:00.000Z'
+
+  test('a session covers a crash that came after it started', () => {
+    expect(coversTime(start, 10, '2026-11-13T10:00:05.000Z')).toBe(true)
+    expect(coversTime(start, 10, start)).toBe(true)
+  })
+
+  test('it doesn’t cover a crash before it started, a session without a start, or a full ring', () => {
+    expect(coversTime(start, 10, '2026-11-13T09:59:59.000Z')).toBe(false)
+    expect(coversTime(null, 10, start)).toBe(false)
+    expect(coversTime(start, 100_000, '2026-11-13T10:05:00.000Z')).toBe(false)
+    expect(coversTime('nope', 10, start)).toBe(false)
+  })
+
+  test('the row is the first line at or after the time, else the last before it', () => {
+    const lines = entries(5).map((e, i) => logEntry(e.seq, { time: `2026-11-13T10:00:0${i}.000Z` }))
+    expect(indexAtTime(lines, '2026-11-13T10:00:02.000Z')).toBe(2)
+    expect(indexAtTime(lines, '2026-11-13T10:00:01.500Z')).toBe(2)
+    expect(indexAtTime(lines, '2026-11-13T10:01:00.000Z')).toBe(4)
+    expect(indexAtTime(lines, '2026-11-13T09:00:00.000Z')).toBe(0)
+    expect(indexAtTime([], start)).toBe(-1)
   })
 })

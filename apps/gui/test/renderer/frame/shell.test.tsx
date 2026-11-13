@@ -1,10 +1,12 @@
 import type { DevicesUpdate } from '@ovd/core'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, test, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { IpcResult, OvdApi, SdkSummary } from '../../../src/preload/api'
 import { App } from '../../../src/renderer/src/App'
 import { FeedbackProvider } from '../../../src/renderer/src/feedback/FeedbackProvider'
 import { stick, vvd, wifiOffline } from '../screens/devices/sample'
+import { resetCrashNew } from '../../../src/renderer/src/screens/crashes/crashNew'
+import { jsCrash, nativeCrash } from '../screens/crashes/sample'
 import { ready, sdkMissing, stubOvd } from '../support/ovdStub'
 
 const devices = [stick, vvd, wifiOffline]
@@ -130,14 +132,15 @@ describe('command palette', () => {
   const options = (): string[] =>
     screen.getAllByRole('option').map((o) => o.querySelector('div')?.textContent ?? '')
 
-  test('⌘K opens it with Devices, Apps, Packages, Logs, Remote & Screen, Doctor, the other devices and later screens', async () => {
+  test('⌘K opens it with Devices, Apps, Packages, Logs, Crashes, Remote & Screen, Doctor, the other devices and later screens', async () => {
     await renderShell()
     open()
-    expect(options().slice(0, 15)).toEqual([
+    expect(options().slice(0, 16)).toEqual([
       'Go to Devices',
       'Go to Apps',
       'Go to Packages',
       'Go to Logs',
+      'Go to Crashes',
       'Go to Remote & Screen',
       'Go to Doctor',
       'Set up a new stick (Developer Mode)',
@@ -150,7 +153,7 @@ describe('command palette', () => {
       'Switch target to Vega Virtual Device',
       'Switch target to Bedroom stick'
     ])
-    expect(screen.getAllByText('Coming in a later version')).toHaveLength(5)
+    expect(screen.getAllByText('Coming in a later version')).toHaveLength(4)
   })
 
   test('on macOS Ctrl+K stays a text shortcut and does not open it', async () => {
@@ -184,20 +187,31 @@ describe('command palette', () => {
   test('typing filters; Enter on a later screen says it is coming', async () => {
     await renderShell()
     open()
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'crash' } })
-    expect(options()).toEqual(['Crashes'])
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'deep' } })
+    expect(options()).toEqual(['Deep links'])
     fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(await screen.findByText('Crashes is coming in a later version')).toBeTruthy()
+    expect(await screen.findByText('Deep links is coming in a later version')).toBeTruthy()
+  })
+
+  test('Crashes is a screen: Enter on it opens Crashes', async () => {
+    await renderShell()
+    open()
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'crash' } })
+    expect(options()).toEqual(['Go to Crashes'])
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'Crashes' })).toBeTruthy()
+    expect(screen.queryByText('Crashes is coming in a later version')).toBeNull()
   })
 
   test('arrow keys move the selection and Enter switches the target', async () => {
     const { api } = await renderShell()
     open()
     const input = screen.getByRole('combobox')
-    for (let i = 0; i < 14; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
+    for (let i = 0; i < 15; i++) fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'ArrowUp' })
-    expect(screen.getAllByRole('option')[13]?.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getAllByRole('option')[14]?.getAttribute('aria-selected')).toBe('true')
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(api.devices.setTarget).toHaveBeenCalledWith('VirtualDevice')
   })
@@ -286,5 +300,76 @@ describe('command palette', () => {
     )
     await vi.waitFor(() => expect(stub.api.logs.export).toHaveBeenCalledWith({ format: 'jsonl' }))
     expect(stub.api.logs.export).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('crash alerts', () => {
+  afterEach(resetCrashNew)
+
+  async function renderWithCrashes() {
+    const stub = stubOvd({
+      list: async () => ready(devices, stick.id),
+      devices,
+      crashes: {
+        list: async () => ({
+          ok: true,
+          data: { device: stick.id, crashes: [jsCrash, nativeCrash] }
+        }),
+        detail: async () => ({
+          ok: true,
+          data: { crash: jsCrash, reason: 'abort', stack: ['Error: boom'], device: stick }
+        })
+      }
+    })
+    render(
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
+    )
+    await screen.findByRole('list', { name: 'Devices' }).catch(() => undefined)
+    return stub
+  }
+  const crashesNav = () => screen.getByRole('button', { name: /^Crashes/ })
+  const announce = (stub: Awaited<ReturnType<typeof renderWithCrashes>>) =>
+    act(() => stub.pushCrash({ device: { id: stick.id, name: stick.name }, crash: jsCrash }))
+
+  test('Debug lists Crashes with no badge while nothing is new', async () => {
+    await renderWithCrashes()
+    expect(crashesNav().textContent).toBe('bug_reportCrashes')
+  })
+
+  test('a new crash on another screen toasts "<app> crashed · <summary>" and raises the badge', async () => {
+    const stub = await renderWithCrashes()
+    announce(stub)
+    expect(
+      await screen.findByText('com.example.player crashed · Error: player deliberate crash')
+    ).toBeTruthy()
+    expect(within(crashesNav()).getByText('1 new')).toBeTruthy()
+  })
+
+  test('the toast’s Open shows the crash’s detail and clears its NEW', async () => {
+    const stub = await renderWithCrashes()
+    announce(stub)
+    fireEvent.click(await screen.findByRole('button', { name: 'Open' }))
+    expect(await screen.findByRole('complementary', { name: 'Crash 2100 details' })).toBeTruthy()
+    await waitFor(() => expect(within(crashesNav()).queryByText('1 new')).toBeNull())
+  })
+
+  test('opening a crash from the list clears the badge', async () => {
+    const stub = await renderWithCrashes()
+    announce(stub)
+    fireEvent.click(crashesNav())
+    const row = (await screen.findByText('Error: player deliberate crash')).closest('[role="row"]')
+    expect(within(crashesNav()).getByText('1 new')).toBeTruthy()
+    fireEvent.click(row as HTMLElement)
+    await waitFor(() => expect(within(crashesNav()).queryByText('1 new')).toBeNull())
+  })
+
+  test('only the target’s new crashes count', async () => {
+    const stub = await renderWithCrashes()
+    act(() =>
+      stub.pushCrash({ device: { id: vvd.id, name: vvd.name }, crash: { ...jsCrash, id: 5 } })
+    )
+    expect(within(crashesNav()).queryByText(/new/)).toBeNull()
   })
 })
