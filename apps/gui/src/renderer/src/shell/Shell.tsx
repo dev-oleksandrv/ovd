@@ -1,4 +1,4 @@
-import type { CheckId, LogExportFormat } from '@ovd/core'
+import type { CheckId, Crash, LogExportFormat } from '@ovd/core'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { targetDevice, useDevicesContext } from '../devices/devicesContext'
 import { useDoctor } from '../doctor/useDoctor'
@@ -16,7 +16,11 @@ import { TargetStatus } from '../frame/TargetStatus'
 import { WatchToggle } from '../frame/WatchToggle'
 import { DevicesScreen } from '../screens/devices/DevicesScreen'
 import { AppsScreen } from '../screens/apps/AppsScreen'
+import { useNewCount } from '../screens/crashes/crashNew'
+import { CrashesScreen, type OpenCrashRequest } from '../screens/crashes/CrashesScreen'
+import { useCrashAlerts } from '../screens/crashes/useCrashAlerts'
 import { LogsScreen } from '../screens/logs/LogsScreen'
+import type { CrashLogsRequest } from '../screens/logs/logsView'
 import { PackagesScreen } from '../screens/packages/PackagesScreen'
 import { RemoteScreen } from '../screens/remote/RemoteScreen'
 import { PairWizard } from '../pairing/PairWizard'
@@ -55,6 +59,12 @@ export function Shell() {
     null
   )
   const clearExportRequest = useCallback(() => setExportRequest(null), [])
+  // A crash to open in Crashes (toast, Apps), and "Logs at crash time" waiting for Logs.
+  const [openCrash, setOpenCrash] = useState<OpenCrashRequest | null>(null)
+  const clearOpenCrash = useCallback(() => setOpenCrash(null), [])
+  const [crashLogs, setCrashLogs] = useState<CrashLogsRequest | null>(null)
+  const clearCrashLogs = useCallback(() => setCrashLogs(null), [])
+  const requestCount = useRef(0)
   // Counts the requests, so a second one for the same format is a new request.
   const exportCount = useRef(0)
   const doctor = useDoctor()
@@ -107,6 +117,7 @@ export function Shell() {
   const go = (next: Screen): boolean => {
     setGallery(false)
     setExportRequest(null)
+    setCrashLogs(null)
     if (next !== 'doctor' && firstRun && report && !gateOpen(report.checks)) {
       setScreen('doctor')
       setHighlight(gateFailure(report.checks))
@@ -125,6 +136,18 @@ export function Shell() {
     const result = await doctor.run()
     if (result.ok) notify({ tone: 'info', text: 'ovd doctor finished', cli: 'ovd doctor --json' })
     else notify({ tone: 'error', text: result.error.message, cli: 'ovd doctor --json' })
+  }
+
+  // Shows a crash in Crashes; the Crashes screen selects it once its list is read.
+  const showCrash = (device: string, id: number): void => {
+    if (go('crashes')) setOpenCrash({ device, id, n: ++requestCount.current })
+  }
+  useCrashAlerts(showCrash)
+  const newCrashes = useNewCount(target?.id ?? null)
+  // Logs, filtered to the crash's app, at the crash's time.
+  const showCrashLogs = (crash: Crash): void => {
+    if (go('logs'))
+      setCrashLogs({ n: ++requestCount.current, app: crash.package, time: crash.time })
   }
 
   const platform = window.ovd.platform
@@ -261,6 +284,15 @@ export function Shell() {
               onClick={() => go('logs')}
             />
             <NavItem
+              label="Crashes"
+              icon="bug_report"
+              {...(newCrashes > 0
+                ? { badge: `${newCrashes} new`, badgeTone: 'accent' as const }
+                : {})}
+              active={!gallery && screen === 'crashes'}
+              onClick={() => go('crashes')}
+            />
+            <NavItem
               label="Remote & Screen"
               icon="settings_remote"
               active={!gallery && screen === 'remote'}
@@ -295,6 +327,7 @@ export function Shell() {
         />
       ) : screen === 'apps' ? (
         <AppsScreen
+          onOpenCrash={showCrash}
           onSwitchTarget={() => setMenu(true)}
           onGoPackages={() => go('packages')}
           projectPath={projectMode?.path ?? null}
@@ -305,6 +338,15 @@ export function Shell() {
           projectAppId={projectMode?.kind === 'folder' ? (projectMode.packageId ?? null) : null}
           exportRequest={exportRequest}
           onExportHandled={clearExportRequest}
+          crashRequest={crashLogs}
+          onCrashRequestHandled={clearCrashLogs}
+        />
+      ) : screen === 'crashes' ? (
+        <CrashesScreen
+          onSwitchTarget={() => setMenu(true)}
+          openRequest={openCrash}
+          onOpenHandled={clearOpenCrash}
+          onOpenLogs={showCrashLogs}
         />
       ) : screen === 'remote' ? (
         <RemoteScreen onSwitchTarget={() => setMenu(true)} />

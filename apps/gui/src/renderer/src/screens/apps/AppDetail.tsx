@@ -17,10 +17,20 @@ interface AppDetailProps {
   outcome: LaunchOutcome | undefined
   onAction: (action: AppAction, app: InstalledApp) => void
   reinstall: ReinstallPackage
+  // "Open crash report" on a launch that crashed, by the report's vault index.
+  onOpenCrash?: (id: number) => void
 }
 
 // The right-hand panel: what the device reports about one app, and the actions on it.
-export function AppDetail({ app, now, busy, outcome, onAction, reinstall }: AppDetailProps) {
+export function AppDetail({
+  app,
+  now,
+  busy,
+  outcome,
+  onAction,
+  reinstall,
+  onOpenCrash
+}: AppDetailProps) {
   const status = statusView(app, outcome)
   return (
     <aside
@@ -39,7 +49,7 @@ export function AppDetail({ app, now, busy, outcome, onAction, reinstall }: AppD
           </div>
         </div>
       </div>
-      <LaunchStatus outcome={outcome} now={now} />
+      <LaunchStatus outcome={outcome} now={now} {...(onOpenCrash ? { onOpenCrash } : {})} />
       <AppActions app={app} busy={busy} onAction={onAction} reinstall={reinstall} />
       <KeyValueGrid items={infoRows(app, now)} />
       <section aria-label="Components" className="flex flex-col gap-2">

@@ -1,5 +1,5 @@
 import type { LogExportFormat } from '@ovd/core'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { targetDevice, useDevicesContext } from '../../devices/devicesContext'
 import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
@@ -13,7 +13,15 @@ import { LogFooter } from './LogFooter'
 import { LogList } from './LogList'
 import { LogToolbar } from './LogToolbar'
 import { newLines, visibleCount } from './logStore'
-import { heldDevice, logsBlocker, logsCli, packageChoices, sessionLabel } from './logsView'
+import {
+  crashLogsOutcome,
+  heldDevice,
+  logsBlocker,
+  logsCli,
+  packageChoices,
+  sessionLabel,
+  type CrashLogsRequest
+} from './logsView'
 import { NO_LINES_TO_EXPORT, useLogs } from './useLogs'
 
 interface LogsScreenProps {
@@ -25,6 +33,10 @@ interface LogsScreenProps {
   // waits while the session starts, then runs once; `onExportHandled` clears it.
   exportRequest?: { format: LogExportFormat; n: number } | null
   onExportHandled?: () => void
+  // "Logs at crash time": filter on the crash's app and show its time, or say why the buffer
+  // can't. `onCrashRequestHandled` clears it.
+  crashRequest?: CrashLogsRequest | null
+  onCrashRequestHandled?: () => void
 }
 
 // Debug → Logs (Stage 3.1): the target's live log, filtered in core, with its `ovd logs` echo.
@@ -32,7 +44,9 @@ export function LogsScreen({
   onSwitchTarget,
   projectAppId,
   exportRequest = null,
-  onExportHandled = () => undefined
+  onExportHandled = () => undefined,
+  crashRequest = null,
+  onCrashRequestHandled = () => undefined
 }: LogsScreenProps) {
   const { state: devices } = useDevicesContext()
   const { notify } = useFeedback()
@@ -76,6 +90,41 @@ export function LogsScreen({
     else exportShown(exportRequest.format)
   }, [exportRequest, exportStatus, exportShown, onExportHandled, notify])
 
+  // A crash request waits for the session like an export does, filters the buffer on the app,
+  // then reads the re-filtered list: it scrolls to the crash's time when the session started
+  // before it, else it says the journal rotates fast. An open session is kept as it is.
+  const crashRef = useRef<number | null>(null)
+  const [resolving, setResolving] = useState<CrashLogsRequest | null>(null)
+  const [crashNote, setCrashNote] = useState<{ title: string; body: string } | null>(null)
+  const [scrollTo, setScrollTo] = useState<{ n: number; index: number } | null>(null)
+  const { showApp, setFollow } = logs
+  useEffect(() => {
+    if (crashRequest === null || exportStatus === null || exportStatus === 'starting') return
+    if (crashRef.current === crashRequest.n) return
+    crashRef.current = crashRequest.n
+    onCrashRequestHandled()
+    setCrashNote(null)
+    if (exportStatus === 'none') return
+    void showApp(crashRequest.app).then(() => setResolving(crashRequest))
+  }, [crashRequest, exportStatus, showApp, onCrashRequestHandled])
+  // Set during render (as in Shell): once per request, when its re-filtered buffer arrived.
+  const [resolved, setResolved] = useState<number | null>(null)
+  if (resolving !== null && resolved !== resolving.n) {
+    setResolved(resolving.n)
+    const startedAt = current && current.status !== 'starting' ? current.startedAt : null
+    const outcome = crashLogsOutcome(
+      resolving,
+      { startedAt, lines: store.counts.lines },
+      store.entries
+    )
+    if (outcome.kind === 'note') {
+      setCrashNote(outcome)
+    } else {
+      setFollow(false)
+      setScrollTo({ n: resolving.n, index: outcome.index })
+    }
+  }
+
   const restartButton = (
     <Button icon="restart_alt" onClick={logs.restart}>
       Restart
@@ -91,6 +140,7 @@ export function LogsScreen({
       follow={following && !paused}
       onFollowChange={logs.setFollow}
       onSeenBottom={logs.seenBottom}
+      scrollTo={scrollTo}
     />
   )
 
@@ -148,7 +198,10 @@ export function LogsScreen({
         <LogToolbar
           label={current ? sessionLabel(current) : name}
           filter={filter}
-          packages={packageChoices(store.apps, projectAppId)}
+          packages={packageChoices(
+            filter.app ? [...store.apps, filter.app] : store.apps,
+            projectAppId
+          )}
           search={logs.search}
           regex={logs.regex}
           regexError={logs.regexError}
@@ -169,6 +222,11 @@ export function LogsScreen({
             title={`Reconnecting to ${current.name}…`}
             body="The device dropped. Lines continue here once it’s back."
           />
+        </div>
+      )}
+      {crashNote && (
+        <div className="px-6 pt-3">
+          <InlineNote title={crashNote.title} body={crashNote.body} />
         </div>
       )}
       {current?.status === 'ended' && store.entries.length > 0 && (

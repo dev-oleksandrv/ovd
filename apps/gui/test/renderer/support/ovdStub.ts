@@ -2,6 +2,7 @@ import type {
   AppDetails,
   CapturesList,
   AppList,
+  CrashesList,
   ArchCheck,
   Check,
   Device,
@@ -21,11 +22,15 @@ import type {
   RunOutcome,
   TerminateResult,
   UninstallResult,
+  CrashPullResult,
   VvdStartResult,
   VvdState
 } from '@ovd/core'
 import { vi } from 'vitest'
 import type {
+  CrashCopied,
+  CrashDetailResult,
+  CrashNewEvent,
   InputOutcome,
   InputState,
   IpcResult,
@@ -61,6 +66,8 @@ export interface OvdStub {
   // Pushes a live view frame and state as main does.
   pushFrame: (frame: ScreenFramePush) => void
   pushScreen: (state: ScreenState) => void
+  // Pushes a new crash as main's watcher does.
+  pushCrash: (event: CrashNewEvent) => void
 }
 
 const notFound: IpcResult<Device> = {
@@ -165,7 +172,10 @@ export function stubOvd(opts: {
   // A live view that stays connecting, and a Refresh that never answers, unless a test says
   // otherwise.
   screen?: Partial<Omit<OvdApi['screen'], 'onFrame' | 'onState'>>
+  // No crashes unless a test says otherwise; the other calls throw.
+  crashes?: Partial<Omit<OvdApi['crashes'], 'onNew'>>
 }): OvdStub {
+  let crashListener: ((event: CrashNewEvent) => void) | undefined
   let frameListener: ((frame: ScreenFramePush) => void) | undefined
   let screenListener: ((state: ScreenState) => void) | undefined
   let capturesListener: ((list: CapturesList) => void) | undefined
@@ -424,6 +434,32 @@ export function stubOvd(opts: {
         }
       }
     },
+    crashes: {
+      list: vi.fn(
+        opts.crashes?.list ??
+          (async (device: string): Promise<IpcResult<CrashesList>> => ({
+            ok: true,
+            data: { device, crashes: [] }
+          }))
+      ),
+      detail: vi.fn(
+        opts.crashes?.detail ?? (async () => unexpected<CrashDetailResult>('crashes.detail'))
+      ),
+      pull: vi.fn(opts.crashes?.pull ?? (async () => unexpected<CrashPullResult>('crashes.pull'))),
+      copyPath: vi.fn(
+        opts.crashes?.copyPath ?? (async () => unexpected<CrashCopied>('crashes.copyPath'))
+      ),
+      copyPrompt: vi.fn(
+        opts.crashes?.copyPrompt ?? (async () => unexpected<CrashCopied>('crashes.copyPrompt'))
+      ),
+      reveal: vi.fn(opts.crashes?.reveal ?? (async () => unexpected<null>('crashes.reveal'))),
+      onNew: (l) => {
+        crashListener = l
+        return () => {
+          crashListener = undefined
+        }
+      }
+    },
     watch: {
       set: vi.fn(
         opts.watch?.set ??
@@ -452,6 +488,7 @@ export function stubOvd(opts: {
     pushInput: (s) => inputListener?.(s),
     pushCaptures: (l) => capturesListener?.(l),
     pushFrame: (f) => frameListener?.(f),
-    pushScreen: (s) => screenListener?.(s)
+    pushScreen: (s) => screenListener?.(s),
+    pushCrash: (e) => crashListener?.(e)
   }
 }

@@ -15,6 +15,9 @@ interface LogListProps {
   onFollowChange: (follow: boolean) => void
   // The user reached the bottom with Follow off.
   onSeenBottom: () => void
+  // Brings the row at `index` to the middle of the view (a crash's time); `n` tells two
+  // requests for the same row apart.
+  scrollTo?: { n: number; index: number } | null
 }
 
 // A virtualized list: a spacer as tall as every row, and only the rows in view drawn.
@@ -25,7 +28,8 @@ export function LogList({
   regex,
   follow,
   onFollowChange,
-  onSeenBottom
+  onSeenBottom,
+  scrollTo = null
 }: LogListProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -50,6 +54,14 @@ export function LogList({
     el.scrollTop = bottom
     setScrollTop(bottom)
   }, [follow, total, height])
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || scrollTo === null) return
+    const top = Math.max(0, scrollTo.index * ROW_HEIGHT - el.clientHeight / 2)
+    el.scrollTop = top
+    setScrollTop(top)
+  }, [scrollTo])
 
   const atBottom = (el: HTMLDivElement) => el.scrollTop + el.clientHeight >= total - ROW_HEIGHT
 

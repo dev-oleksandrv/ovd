@@ -4,6 +4,7 @@ import { optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createOvd, processGroups } from '@ovd/core'
 import { registerAppsIpc } from './appsIpc'
+import { registerCrashesIpc } from './crashesIpc'
 import { registerDevicesIpc } from './devicesIpc'
 import { registerInstallIpc } from './installIpc'
 import { registerInputIpc } from './inputIpc'
@@ -41,6 +42,9 @@ const devices = registerDevicesIpc(
     input?.targetChanged(update.target)
   }
 )
+// The crash watcher runs while the window is visible, from any screen (Stage 5.1).
+const crashes = registerCrashesIpc(ovd, () => mainWindow)
+app.on('before-quit', () => crashes.stop())
 // Quitting stops the probes and the log stream in flight and waits for the log session and the
 // stick's input console (`exit`), then SIGTERMs any SDK process group still running. `input` is
 // set later, once the IPC handlers are registered.
@@ -84,6 +88,7 @@ function createWindow(): void {
 
   mainWindow = win
   devices.watch(win)
+  crashes.watch(win)
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = undefined
   })
