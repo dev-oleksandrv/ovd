@@ -1,0 +1,134 @@
+AppCrashInfoBuffer:
+  Capacity: 10
+  Size: 10
+  [0] pid: 7746
+      packageId: com.example.player
+      timestamp: 894.131607966s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: true
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:22:48.687 UTC (epoch ms: 1794604968687)
+        LCM_APP_IN_FOREGROUND: true
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.player.main instId: 81
+        LCM_PROCESS_ACTIVITY_STATE: active
+  [1] pid: 6617
+      packageId: com.example.player
+      timestamp: 719.523178508s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:19:54.079 UTC (epoch ms: 1794604794079)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.hellovega.main instId: 33
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [2] pid: 6258
+      packageId: com.example.player
+      timestamp: 644.583467806s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:18:39.139 UTC (epoch ms: 1794604719139)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.hellovega.main instId: 33
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [3] pid: 5553
+      packageId: com.example.player
+      timestamp: 468.302287013s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:15:42.858 UTC (epoch ms: 1794604542858)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.hellovega.main instId: 33
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [4] pid: 5257
+      packageId: com.example.player
+      timestamp: 408.957816318s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:14:43.514 UTC (epoch ms: 1794604483514)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.hellovega.main instId: 33
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [5] pid: 4779
+      packageId: com.example.player
+      timestamp: 309.653648396s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:13:04.209 UTC (epoch ms: 1794604384209)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.hellovega.main instId: 33
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [6] pid: 4190
+      packageId: com.example.player.debug
+      timestamp: 197.346231467s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:11:11.902 UTC (epoch ms: 1794604271902)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.hellovega.main instId: 33
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [7] pid: 3988
+      packageId: com.example.player
+      timestamp: 180.061982959s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:10:54.618 UTC (epoch ms: 1794604254618)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.example.hellovega.main instId: 33
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [8] pid: 3159
+      packageId: com.example.player
+      timestamp: 78.928477911s
+      version: 0.1.0
+      buildNumber: 1
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:09:13.484 UTC (epoch ms: 1794604153484)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.amazon.keplerlauncherapp.main instId: 1
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+  [9] pid: 2276
+      packageId: com.amazon.diode
+      timestamp: 13.466776171s
+      version: 1.0.57008.0
+      buildNumber: 57008
+      hadCompInFg: false
+      metadata:
+        LCM_KILLREASON: 
+        LCM_KILLTIME: 2026-11-13 21:08:08.023 UTC (epoch ms: 1794604088023)
+        LCM_APP_IN_FOREGROUND: false
+        LCM_APPS_IN_FOREGROUND_WHEN_CRASHED:
+        displayId: 0 appId: com.amazon.keplerlauncherapp.main instId: 1
+        LCM_PROCESS_ACTIVITY_STATE: inactive
+
