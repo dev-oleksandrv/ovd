@@ -7,6 +7,7 @@ import {
   existsSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync
 } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -30,7 +31,7 @@ import {
   type Stick,
   type World
 } from './world.ts'
-import { ACR, CAPTURE_START, captureStop, decodeScript } from './scripts.ts'
+import { ACR, CAPTURE_START, acrPullIndex, captureStop, decodeScript } from './scripts.ts'
 
 interface Reply {
   stdout?: string
@@ -400,7 +401,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
       return { stdout: fixture('vsm-developer-mode-set/enabled.txt') }
     }
     if (sub === 'shell loggingctl log -f -o short_concise') return vvdLogStream()
-    return vvdApps(w, sub)
+    return acrCommands(w, 'vvd', rest) ?? vvdApps(w, sub)
   }
   if (serial === VVD_VDA_SERIAL) {
     return notFound(sub, 'vda-shell/virtual-device-not-found.stderr.txt')
@@ -419,7 +420,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
     if (!stickOnUsb(w)) return notFound(sub, 'vda-shell/stick-usb-not-found.stderr.txt')
     if (sub === 'shell loggingctl log -f -o short_concise') return logStream(w)
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
+    return acrCommands(w, 'stick', rest) ?? stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
   }
   if (serial === STICK_ADDRESS && sub === 'usb' && w.stick && stickOnWifi(w)) {
     // VDA keeps the Wi‑Fi entry, now offline (vda-devices/stick-usb-and-wifi-offline.txt).
@@ -432,7 +433,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
   // Listed but offline (connected, stick unreachable): not recorded, so not answered.
   if (serial === STICK_ADDRESS && stickOnWifi(w)) {
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
+    return acrCommands(w, 'stick', rest) ?? stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
   }
   return null
 }
@@ -473,6 +474,92 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
     return {}
   }
   return null
+}
+
+// Crash reports on a device: the vault listing, the bounded read of a stick crash, the full-ACR
+// pull script, `vda pull` of its file and the removal of its folder (core's crash radar).
+// Virtual Device: the crash is index 37 once `playerCrashed`, as in `launchVerification`; the
+// listing, `--cat | sed` and pull script answers are all recordings
+// (`loggingctl-vault-ls/virtual-device-tombstones-*.json`, `loggingctl-vault-acr/*`).
+// Stick: the listing (`stick-tombstones.json`) and the bounded read of index 2085
+// (`stick-crashed.txt`) are recordings. SYNTHESIZED: the stick's full pull. No pull was recorded
+// on a stick, so it answers like the Virtual Device's recordings, with the same synthetic ACR
+// (fixtures/0.24/README.md, Synthesized sequences). Anything else stays unanswered.
+const STICK_CRASH_INDEX = 2085
+const STICK_INDEXES = [2084, 2085, 2086]
+const VVD_INDEXES = [35, 34]
+const ACR_FOLDER = /^\/tmp\/ovd-acr\.[A-Za-z0-9]{6}$/
+const PULL_CONTENT = {
+  ok: 'loggingctl-vault-acr/pull-script-ok.txt',
+  'unknown-index': 'loggingctl-vault-acr/pull-script-unknown-index.txt',
+  uninstalled: 'loggingctl-vault-acr/pull-script-uninstalled.txt'
+} as const
+const PULLED_FILE = {
+  ok: 'vda-pull/synthetic-crash.acr',
+  'unknown-index': 'loggingctl-vault-acr/unknown-index.json',
+  uninstalled: 'loggingctl-vault-acr/insufficient-permissions.json'
+} as const
+const RECORDED_ACR_SIZE = '301471'
+
+function acrCommands(w: World, device: 'vvd' | 'stick', rest: string[]): Reply | null {
+  const sub = rest.join(' ')
+  const crashed = device === 'vvd' ? w.playerCrashed : w.stickPlayerCrashed
+  const indexes =
+    device === 'vvd'
+      ? [...VVD_INDEXES, ...(crashed ? [CRASH_INDEX] : [])]
+      : crashed
+        ? STICK_INDEXES
+        : []
+  if (device === 'stick' && crashed && sub === 'shell loggingctl vault --ls SYSTEM_TOMBSTONE/acr') {
+    return { stdout: fixture('loggingctl-vault-ls/stick-tombstones.json') }
+  }
+  const script = decodeScript(sub)
+  if (script !== null) {
+    if (device === 'stick' && crashed) {
+      const acr = ACR.exec(script)
+      if (acr) {
+        return Number(acr[1]) === STICK_CRASH_INDEX
+          ? { stdout: fixture('loggingctl-vault-acr/stick-crashed.txt') }
+          : null
+      }
+    }
+    const index = acrPullIndex(script)
+    if (index === null) return null
+    const content = w.uninstalledCrashes.includes(index)
+      ? 'uninstalled'
+      : indexes.includes(index)
+        ? 'ok'
+        : 'unknown-index'
+    const stdout = fixture(PULL_CONTENT[content])
+    const remote = (stdout.split('\n')[0] as string).trim()
+    w.acrFiles = [...w.acrFiles.filter((f) => f.remote !== remote), { device, remote, content }]
+    return { stdout: stdout.replaceAll(RECORDED_ACR_SIZE, () => String(acrSize(content))) }
+  }
+  const [verb, ...args] = rest
+  if (verb === 'pull' && args.length === 2) {
+    const [remote, local] = args as [string, string]
+    const file = w.acrFiles.find((f) => f.device === device && f.remote === remote)
+    if (!file) return null
+    copyFileSync(join(FIXTURES, PULLED_FILE[file.content]), local)
+    return {
+      stdout: fixture('vda-pull/acr.txt')
+        .replace('/tmp/ovd-acr.aB3dE9/report.acr', () => remote)
+        .replaceAll(RECORDED_ACR_SIZE, () => String(acrSize(file.content)))
+    }
+  }
+  if (verb === 'shell' && args.length === 3 && args[0] === 'rm' && args[1] === '-rf') {
+    const folder = args[2] as string
+    if (!ACR_FOLDER.test(folder)) return null
+    w.acrFiles = w.acrFiles.filter((f) => !f.remote.startsWith(`${folder}/`))
+    return {}
+  }
+  return null
+}
+
+// The size of what a pull delivers: the synthetic ACR is 1254 bytes, not the recorded 301471, so
+// the printed size follows the file that is copied.
+function acrSize(content: keyof typeof PULLED_FILE): number {
+  return statSync(join(FIXTURES, PULLED_FILE[content])).size
 }
 
 // A `shell` command for a device VDA doesn't list: the same error whatever the command.
