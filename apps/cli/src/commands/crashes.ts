@@ -1,4 +1,11 @@
-import { OvdError, isOvdError, toErrorJson, type Crash, type CrashWatchOptions } from '@ovd/core'
+import {
+  OvdError,
+  escapeControls,
+  isOvdError,
+  toErrorJson,
+  type Crash,
+  type CrashWatchOptions
+} from '@ovd/core'
 import type { Command } from 'commander'
 import {
   crashLine,
@@ -86,11 +93,16 @@ export function registerCrashes(
             const body = isOvdError(error)
               ? toErrorJson(error)
               : { message: error.message, hint: undefined }
-            deps.output.stderr(`Error: ${body.message}${body.hint ? `\n${body.hint}` : ''}\n`)
+            // Error text can carry device output: shown as visible escapes, also in JSON mode.
+            deps.output.stderr(
+              escapeControls(`Error: ${body.message}${body.hint ? `\n${body.hint}` : ''}\n`)
+            )
           }
         }
         const watch = deps.ovd().crashes.watch(watchOpts)
-        deps.output.stderr(`Watching ${list.device} for crashes (Ctrl+C to stop)…\n`)
+        deps.output.stderr(
+          `Watching ${escapeControls(list.device)} for crashes (Ctrl+C to stop)…\n`
+        )
         await new Promise<void>((resolve) => {
           if (controller.signal.aborted) resolve()
           controller.signal.addEventListener('abort', () => resolve(), { once: true })

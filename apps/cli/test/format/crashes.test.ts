@@ -1,10 +1,9 @@
-import type { Crash } from '@ovd/core'
+import { escapeControls, type Crash } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import {
   ageText,
   crashesTable,
   crashLine,
-  escapeControls,
   noteJson,
   noteText
 } from '../../src/format/crashes.js'

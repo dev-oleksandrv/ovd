@@ -182,6 +182,44 @@ describe('ovd crashes --watch', () => {
     expect(exitCode).toBe(0)
   })
 
+  describe.each([
+    ['human', []],
+    ['json', ['--json']]
+  ])('stderr escapes device text (%s)', (_m, flags) => {
+    const ESC = '\u001b]0;pwned\u0007\u001b[2J\u202e'
+    const SHOWN = '\\x1b]0;pwned\\x07\\x1b[2J\\u{202e}'
+
+    test('the watching banner escapes the device name', async () => {
+      let interrupt = (): void => undefined
+      let started = false
+      const run = cli(['crashes', '--watch', ...flags], {
+        ovd: stubCrashes({
+          list: async () => ({ ...list, device: `Stick ${ESC}` }),
+          watch: (): CrashWatch => {
+            started = true
+            return { stop: () => undefined }
+          }
+        }),
+        onInterrupt: (abort) => (interrupt = abort)
+      })
+      await vi.waitFor(() => expect(started).toBe(true))
+      interrupt()
+      const { stderr } = await run
+      expect(stderr).toContain(`Watching Stick ${SHOWN} for crashes`)
+      expect(stderr).not.toMatch(/[\u001b\u0007\u202e]/)
+    })
+
+    test('watch errors and hints escape control characters', async () => {
+      const { stderr } = await watching([...flags], (o) => {
+        o.onError?.(new OvdError('COMMAND_FAILED', `bad ${ESC}`, `try ${ESC}`))
+        o.onError?.(new Error(`plain ${ESC}`))
+      })
+      expect(stderr).toContain(`Error: bad ${SHOWN}\ntry ${SHOWN}\n`)
+      expect(stderr).toContain(`Error: plain ${SHOWN}\n`)
+      expect(stderr).not.toMatch(/[\u001b\u0007\u202e]/)
+    })
+  })
+
   test('a failing first list exits with its code and starts no watch', async () => {
     const watch = vi.fn()
     const { stdout, exitCode } = await cli(['crashes', '--watch', '--json'], {

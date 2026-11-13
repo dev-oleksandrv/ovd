@@ -1,4 +1,5 @@
 import {
+  escapeControls,
   logText,
   type Crash,
   type CrashesList,
@@ -8,21 +9,8 @@ import {
 } from '@ovd/core'
 
 // Device text (a report's summary, version, build, a device name) must not reach the terminal as
-// escape sequences: shown as visible escapes exactly as `ovd logs` does (core's `logText`, whose
-// helper isn't exported): C0 (but tab and newline), DEL and C1 as `\xHH`, bidi as `\u{HHHH}`.
-// `--json` keeps the text exact.
-const CONTROLS =
-  // eslint-disable-next-line no-control-regex -- matching control characters is the point
-  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/g
-
-export function escapeControls(text: string): string {
-  return text.replace(CONTROLS, (char) => {
-    const code = char.charCodeAt(0)
-    return code <= 0xff
-      ? `\\x${code.toString(16).padStart(2, '0')}`
-      : `\\u{${code.toString(16).padStart(4, '0')}}`
-  })
-}
+// escape sequences: shown as visible escapes exactly as `ovd logs` does (core's `escapeControls`):
+// C0 (but tab and newline), DEL and C1 as `\xHH`, bidi as `\u{HHHH}`. `--json` keeps the text exact.
 
 // One line of text: the escapes above, and no line breaks.
 function oneLine(text: string): string {
