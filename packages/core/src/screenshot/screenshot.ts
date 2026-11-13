@@ -20,6 +20,7 @@ import {
   readPart,
   removeQuietly,
   resolveDestination,
+  stageFor,
   tempFor,
   writePart,
   type Destination,
@@ -199,7 +200,10 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
     const backend = screenshotBackend(device)
     const takenAt = now()
     const base = captureBase(device.name, takenAt)
-    const temp = await tempFor(dest, base, randomHex())
+    // The Virtual Device's bytes are written by OVD (exclusive 0600 temp file); the stick's are
+    // written by `vda pull`, into a private staging folder it can't be fed a planted link in.
+    const staging = backend === 'grpc' ? undefined : await stageFor(dest)
+    const temp = staging ? staging.file : await tempFor(dest, base, randomHex())
     try {
       let bytes: Uint8Array
       if (backend === 'grpc') {
@@ -225,6 +229,7 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
       }
     } finally {
       await removeQuietly(temp)
+      await staging?.remove()
     }
   }
 

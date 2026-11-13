@@ -6,18 +6,20 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  realpath,
   rename,
   symlink,
   unlink,
   writeFile
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
 import {
   commitFile,
   readPart,
   resolveDestination,
+  stageFor,
   tempFor,
   writePart,
   type SaveFs,
@@ -277,19 +279,78 @@ describe('link hardening', () => {
     expect(await readdir(dir)).not.toContain('shot.png')
   })
 
-  test('a symlinked destination folder is refused: --out, temp name and commit', async () => {
+  test('a symlinked OVD default folder is refused at temp name and at commit', async () => {
     const real = join(dir, 'real')
     await mkdir(real)
     const linked = join(dir, 'linked')
     await symlink(real, linked)
-    await expect(resolveOut('linked')).rejects.toMatchObject({ code: 'INVALID_PATH' })
-    await expect(resolveOut('linked/shot.png')).rejects.toMatchObject({ code: 'INVALID_PATH' })
     const dest = { kind: 'auto' as const, dir: linked, create: false }
     await expect(tempFor(dest, 'shot', 'abcd1234')).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    await expect(stageFor(dest)).rejects.toMatchObject({ code: 'INVALID_PATH' })
     const part = join(dir, '.t.part')
     await writeFile(part, 'x')
     await expect(commitFile(part, dest, 'shot')).rejects.toMatchObject({ code: 'INVALID_PATH' })
     expect(await readdir(real)).toEqual([])
+  })
+
+  test('a symlinked default folder given as the captures folder is refused when saving', async () => {
+    const real = join(dir, 'real')
+    await mkdir(real)
+    await symlink(real, join(dir, 'captures'))
+    const dest = await resolveOut(undefined)
+    await expect(stageFor(dest)).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    await expect(tempFor(dest, 'shot', 'abcd1234')).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    expect(await readdir(real)).toEqual([])
+  })
+
+  test('--out into a symlinked folder is resolved to the real folder and accepted', async () => {
+    const real = join(dir, 'real')
+    await mkdir(real)
+    await symlink(real, join(dir, 'linked'))
+    const realDir = await realpath(real)
+    expect(await resolveOut('linked')).toEqual({ kind: 'auto', dir: realDir, create: false })
+    expect(await resolveOut('linked/')).toEqual({ kind: 'auto', dir: realDir, create: false })
+    expect(await resolveOut('linked/shot.png')).toEqual({
+      kind: 'file',
+      path: join(realDir, 'shot.png'),
+      force: false
+    })
+    await writeFile(join(real, 'old.png'), 'x')
+    expect(await resolveOut('linked/old.png', true)).toEqual({
+      kind: 'file',
+      path: join(realDir, 'old.png'),
+      force: true
+    })
+    const staging = await stageFor(await resolveOut('linked'))
+    await staging.remove()
+    expect(await readdir(real)).toEqual(['old.png'])
+  })
+
+  test('--out onto a symlink to a file is refused, in a symlinked folder too', async () => {
+    const real = join(dir, 'real')
+    await mkdir(real)
+    await writeFile(join(real, 'victim.png'), 'precious')
+    await symlink(join(real, 'victim.png'), join(real, 'out.png'))
+    await symlink(real, join(dir, 'linked'))
+    await expect(resolveOut('linked/out.png', true)).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    await expect(resolveOut('real/out.png', true)).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    expect(await readFile(join(real, 'victim.png'), 'utf8')).toBe('precious')
+  })
+
+  test('stageFor makes a private 0700 folder inside the destination, removed by remove()', async () => {
+    const staging = await stageFor({ kind: 'auto', dir, create: false }, ACR)
+    expect(dirname(dirname(staging.file))).toBe(dir)
+    expect((await lstat(dirname(staging.file))).mode & 0o777).toBe(0o700)
+    await writeFile(staging.file, 'x')
+    await staging.remove()
+    expect(await readdir(dir)).toEqual([])
+    await staging.remove()
+  })
+
+  test('stageFor for a file destination stages next to it', async () => {
+    const staging = await stageFor({ kind: 'file', path: join(dir, 'a.acr'), force: false }, ACR)
+    expect(dirname(dirname(staging.file))).toBe(dir)
+    await staging.remove()
   })
 
   test('the captures folder swapped for a symlink after the temp name was chosen is refused', async () => {

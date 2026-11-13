@@ -270,10 +270,11 @@ export {
   PNG_KIND,
   readPart,
   resolveDestination,
+  stageFor,
   tempFor,
   writePart
 } from './screenshot/saveFile.js'
-export type { Destination, SaveFs, SaveKind } from './screenshot/saveFile.js'
+export type { Destination, SaveFs, SaveKind, Staging } from './screenshot/saveFile.js'
 export { createScreen, LIVE_FORMAT } from './screen/screen.js'
 export type { LiveOptions, LiveScreen, Screen, ScreenBackend, ScreenDeps } from './screen/screen.js'
 export type { FrameStream } from './vvd/emulatorGrpc.js'

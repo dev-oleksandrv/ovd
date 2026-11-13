@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto'
 import type { ActivityLog } from '../activity/activityLog.js'
 import { createPreflight } from '../activity/logged.js'
 import { parseVdaPull } from '../adapters/parseVdaPull.js'
@@ -14,9 +13,9 @@ import {
   commitFile,
   nodeSaveFs,
   readPart,
-  removeQuietly,
   resolveDestination,
-  tempFor,
+  stageFor,
+  type Staging,
   type Destination,
   type SaveFs,
   type SaveKind
@@ -36,8 +35,6 @@ export interface CrashPullDeps {
   homedir: string
   // Where a relative `--out` resolves; the process's working directory.
   cwd: string
-  // 8 hex characters for temp names on the host.
-  randomHex?: () => string
   fs?: SaveFs
 }
 
@@ -135,46 +132,55 @@ export interface CrashPull {
 
 export function createCrashPull(deps: CrashPullDeps): CrashPull {
   const preflight = createPreflight(deps.activity)
-  const randomHex = deps.randomHex ?? (() => randomBytes(4).toString('hex'))
   const fs = deps.fs ?? nodeSaveFs
   const dir = crashesDir(deps.env, deps.homedir)
 
-  // The report is written into a private device folder, pulled into `temp`, and the folder is
-  // always removed afterwards, without the signal so Ctrl+C still cleans up.
+  // The report is written into a private device folder and pulled into a private staging folder
+  // on the host. The device folder is always removed afterwards, without the signal so Ctrl+C
+  // still cleans up. The script itself also runs without the signal: it takes about a second, and
+  // only its output names the folder to remove, so an abort mid-script would leave the dump behind.
+  // Residual: when the runner fails or times out there is no output, so a folder the script made
+  // stays in the device's /tmp until reboot (no wildcard `rm`: it could remove someone else's).
   async function fetch(
     device: Device,
     crash: Crash,
     dest: Destination,
-    base: string,
     signal?: AbortSignal
-  ): Promise<{ temp: string; bytes: Buffer }> {
+  ): Promise<{ staging: Staging; bytes: Buffer }> {
     const { vegaPath } = await deps.sdk.get()
     const serial = device.vdaSerial ?? device.id
     const withSignal = signal ? { signal } : {}
     let folder: string | undefined
     try {
-      const script = await deps.runner.run(
-        vdaCmd(vegaPath, ['shell', deviceScript(acrPullScript(crash.id))], serial, {
-          ...withSignal,
-          timeoutMs: SCRIPT_TIMEOUT_MS
-        })
-      )
+      let script
+      try {
+        script = await deps.runner.run(
+          vdaCmd(vegaPath, ['shell', deviceScript(acrPullScript(crash.id))], serial, {
+            timeoutMs: SCRIPT_TIMEOUT_MS
+          })
+        )
+      } catch (error) {
+        if (error instanceof OvdError && error.details?.timedOut === true) {
+          throw failed(`Reading crash ${crash.id} on ${device.name} didn’t finish in time`)
+        }
+        throw error
+      }
       folder = folderIn(script.stdout)
+      if (signal?.aborted) throw abortError()
       if (script.exitCode !== 0) throw failed(`Couldn’t read crash ${crash.id} on ${device.name}`)
       const remote = parsePullScript(script.stdout)
       if (remote.bytes > MAX_ACR_BYTES) {
         throw failed(`Crash ${crash.id} on ${device.name} is larger than ${MAX_ACR_BYTES} bytes`)
       }
-      if (signal?.aborted) throw abortError()
 
       // The folder is created only now, so a refused or unknown report leaves nothing behind.
       if (dest.kind === 'auto' && dest.create) await ensureCrashesDir(dest.dir)
       const ready = dest.kind === 'auto' ? { ...dest, create: false } : dest
-      const temp = await tempFor(ready, base, randomHex(), ACR_KIND)
+      const staging = await stageFor(ready, ACR_KIND)
       try {
         const pull = parseVdaPull(
           await deps.runner.run(
-            vdaCmd(vegaPath, ['pull', remote.file, temp], serial, {
+            vdaCmd(vegaPath, ['pull', remote.file, staging.file], serial, {
               ...withSignal,
               timeoutMs: PULL_TIMEOUT_MS
             })
@@ -184,16 +190,16 @@ export function createCrashPull(deps: CrashPullDeps): CrashPull {
           throw failed(`Couldn’t pull crash ${crash.id} from ${device.name}: ${pull.message}`)
         }
         if (signal?.aborted) throw abortError()
-        const bytes = await readPart(temp, ACR_KIND, MAX_ACR_BYTES)
+        const bytes = await readPart(staging.file, ACR_KIND, MAX_ACR_BYTES)
         if (bytes === null) throw failed(`Crash ${crash.id} didn’t arrive from ${device.name}`)
         judge(bytes, device, crash)
         // The header's `Size:` is a different number; `wc -c` is the file's.
         if (bytes.length !== remote.bytes) {
           throw failed(`Crash ${crash.id} arrived with ${bytes.length} of ${remote.bytes} bytes`)
         }
-        return { temp, bytes }
+        return { staging, bytes }
       } catch (error) {
-        await removeQuietly(temp)
+        await staging.remove()
         throw error
       }
     } finally {
@@ -234,11 +240,13 @@ export function createCrashPull(deps: CrashPullDeps): CrashPull {
       const base = `${crash.package}-${epoch}-${crash.pid}`
       // Validated fields only: no report text reaches the log.
       const args = { package: crash.package, index: crash.id, pid: crash.pid, signal: crash.signal }
-      let temp: string | undefined
+      let staging: Staging | undefined
       try {
-        const got = await fetch(device, crash, dest, base, opts.signal)
-        temp = got.temp
-        const path = await commitFile(temp, dest, base, fs, ACR_KIND)
+        const got = await fetch(device, crash, dest, opts.signal)
+        staging = got.staging
+        // Cancelled during the remote cleanup: nothing is published or logged.
+        if (opts.signal?.aborted) throw abortError()
+        const path = await commitFile(staging.file, dest, base, fs, ACR_KIND)
         await deps.activity.append({
           action: 'crash.pull',
           target: device.id,
@@ -259,7 +267,7 @@ export function createCrashPull(deps: CrashPullDeps): CrashPull {
         }
         throw error
       } finally {
-        if (temp !== undefined) await removeQuietly(temp)
+        await staging?.remove()
       }
     }
   }

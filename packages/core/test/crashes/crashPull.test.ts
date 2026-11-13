@@ -1,6 +1,18 @@
-import { mkdtemp, readdir, readFile, stat, writeFile, copyFile } from 'node:fs/promises'
+import {
+  copyFile,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  stat,
+  symlink,
+  unlink,
+  writeFile
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
 import type { ActivityEntry, ActivityLog } from '../../src/activity/activityLog.js'
 import { acrPullScript, createCrashPull, MAX_ACR_BYTES } from '../../src/crashes/crashPull.js'
@@ -14,7 +26,6 @@ import { fixture } from '../support/fixtures.js'
 const SYNTHETIC = new URL('../../../../fixtures/0.24/vda-pull/synthetic-crash.acr', import.meta.url)
 const SYNTHETIC_BYTES = 1254
 const RECORDED_SIZE = '301471'
-const HEX = '0123abcd'
 const SHELL = 'vega exec vda -s emulator-5554 shell'
 const REMOTE_DIR = '/tmp/ovd-acr.aB3dE9'
 const RM = `${SHELL} rm -rf ${REMOTE_DIR}`
@@ -126,8 +137,7 @@ function setup(opts: Setup = {}) {
     activity,
     env: { OVD_CRASHES: crashes },
     homedir: root,
-    cwd: root,
-    randomHex: () => HEX
+    cwd: root
   })
   return { pull, calls, appended, found, displays: () => calls.map((c) => c.display) }
 }
@@ -159,7 +169,7 @@ describe('crashes.pull', () => {
     expect(script).toMatch(new RegExp(`^${SHELL} echo [A-Za-z0-9+/=]+ \\| base64 -d \\| sh$`))
     expect(pulled).toMatch(
       new RegExp(
-        `^vega exec vda -s emulator-5554 pull ${REMOTE_DIR}/report.acr ${crashes}/\\.${NAME}\\.${HEX}\\.part$`
+        `^vega exec vda -s emulator-5554 pull ${REMOTE_DIR}/report.acr ${crashes}/\\.ovd-pull-[A-Za-z0-9]{6}/pull\\.acr\\.part$`
       )
     )
     expect(rm).toBe(RM)
@@ -369,6 +379,124 @@ describe('crashes.pull', () => {
     const rm = calls.at(-1)
     expect(rm?.display).toBe(RM)
     expect(rm?.signal).toBeUndefined()
+  })
+
+  test('Ctrl+C during the device script: the folder is still removed, AbortError, nothing saved or logged', async () => {
+    const controller = new AbortController()
+    const { pull, calls, appended } = setup({
+      script: async () => {
+        controller.abort()
+        return { stdout: scriptOut() }
+      }
+    })
+    await expect(pull.pull({ id: 37, signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError'
+    })
+    // The script never carries the signal, so its output (the folder) is always obtained.
+    expect(calls[0]?.signal).toBeUndefined()
+    expect(calls[0]?.timeoutMs).toBeGreaterThan(0)
+    expect(calls.at(-1)?.display).toBe(RM)
+    expect(calls.some((c) => c.display.includes(' pull '))).toBe(false)
+    expect(await files()).toEqual([])
+    expect(appended).toEqual([])
+  })
+
+  test('a timeout during the device script is CRASH_PULL_FAILED, nothing is pulled or left on the host', async () => {
+    const { pull, calls } = setup({
+      script: new OvdError('COMMAND_FAILED', 'did not finish in time', 'Check', { timedOut: true })
+    })
+    await expect(pull.pull({ id: 37 })).rejects.toMatchObject({ code: 'CRASH_PULL_FAILED' })
+    expect(calls).toHaveLength(1)
+    expect(await files()).toEqual([])
+    await expect(stat(crashes)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  test('Ctrl+C during the remote cleanup: nothing is published or logged, staging removed', async () => {
+    const controller = new AbortController()
+    const { pull, appended } = setup({
+      rm: async () => {
+        controller.abort()
+        return {}
+      }
+    })
+    await expect(pull.pull({ id: 37, signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError'
+    })
+    expect(await files()).toEqual([])
+    expect(appended).toEqual([])
+  })
+
+  test('the pull goes into a private 0700 staging folder, removed afterwards', async () => {
+    let folderMode = 0
+    let parent = ''
+    const { pull } = setup({
+      pull: async (spec) => {
+        const local = spec.args.at(-1) ?? ''
+        parent = dirname(dirname(local))
+        folderMode = (await lstat(dirname(local))).mode & 0o777
+        return { stdout: fixture('0.24/vda-pull/acr.txt') }
+      }
+    })
+    await pull.pull({ id: 37 })
+    expect(folderMode).toBe(0o700)
+    expect(parent).toBe(crashes)
+    expect(await files()).toEqual([NAME])
+  })
+
+  test('a link planted where the SDK writes is refused, its target untouched, staging removed', async () => {
+    await mkdir(crashes)
+    await writeFile(join(root, 'victim'), 'precious')
+    const { pull, displays } = setup({
+      pull: async (spec) => {
+        // Replaces what the fake pull just wrote with a link, as a racing process could.
+        await unlink(spec.args.at(-1) ?? '')
+        await symlink(join(root, 'victim'), spec.args.at(-1) ?? '')
+        return { stdout: fixture('0.24/vda-pull/acr.txt') }
+      }
+    })
+    await expect(pull.pull({ id: 37 })).rejects.toMatchObject({ code: 'CRASH_PULL_FAILED' })
+    expect(await readFile(join(root, 'victim'), 'utf8')).toBe('precious')
+    expect(await files()).toEqual([])
+    expect(displays().at(-1)).toBe(RM)
+  })
+
+  test('a link planted at the old guessable temp name is never written through', async () => {
+    await mkdir(crashes)
+    await writeFile(join(root, 'victim'), 'precious')
+    await symlink(join(root, 'victim'), join(crashes, `.${NAME}.0123abcd.part`))
+    const { pull } = setup()
+    await pull.pull({ id: 37 })
+    expect(await readFile(join(root, 'victim'), 'utf8')).toBe('precious')
+  })
+
+  test('--out into a symlinked folder is accepted and written to the real folder', async () => {
+    const real = join(root, 'real')
+    await mkdir(real)
+    await symlink(real, join(root, 'linked'))
+    const { pull } = setup()
+    const result = await pull.pull({ id: 37, out: join(root, 'linked') })
+    expect(result.path).toBe(join(await realpath(real), NAME))
+    expect(await files(real)).toEqual([NAME])
+  })
+
+  test('--out onto a symlinked file is refused before any SDK call', async () => {
+    await writeFile(join(root, 'victim.acr'), 'precious')
+    await symlink(join(root, 'victim.acr'), join(root, 'r.acr'))
+    const { pull, calls } = setup()
+    await expect(pull.pull({ id: 37, out: 'r.acr', force: true })).rejects.toMatchObject({
+      code: 'INVALID_PATH'
+    })
+    expect(calls).toEqual([])
+    expect(await readFile(join(root, 'victim.acr'), 'utf8')).toBe('precious')
+  })
+
+  test('a symlinked default crashes folder is refused and nothing is written through it', async () => {
+    const real = join(root, 'real')
+    await mkdir(real)
+    await symlink(real, crashes)
+    const { pull } = setup()
+    await expect(pull.pull({ id: 37 })).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    expect(await files(real)).toEqual([])
   })
 
   test('the activity log never holds report text', async () => {

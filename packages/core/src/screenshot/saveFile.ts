@@ -1,5 +1,17 @@
 import { constants } from 'node:fs'
-import { copyFile, link, lstat, mkdir, open, rename, stat, unlink } from 'node:fs/promises'
+import {
+  copyFile,
+  link,
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  realpath,
+  rename,
+  rm,
+  stat,
+  unlink
+} from 'node:fs/promises'
 import { basename, dirname, join, resolve, sep } from 'node:path'
 import { OvdError, type ErrorCode } from '../errors/ovdError.js'
 import { isErrno } from './captures.js'
@@ -41,7 +53,9 @@ const MAX_SUFFIX = 1_000
 
 // `--out`, resolved against `cwd`: an existing folder gets a default name inside it; anything
 // else must be a file with the kind's extension in an existing folder. An existing file needs
-// `force`. A symbolic link is never a destination or a destination folder, `force` included.
+// `force`. A symbolic link is never a destination file, `force` included. A folder the user
+// named that is a link (macOS `/tmp`, a linked `~/Desktop`) is resolved with realpath and used:
+// they chose it. OVD's own default folders are never links (`assertRealFolder` at save time).
 export async function resolveDestination(opts: {
   out: string | undefined
   force: boolean
@@ -53,7 +67,11 @@ export async function resolveDestination(opts: {
   if (opts.out === undefined) return { kind: 'auto', dir: opts.capturesDir, create: true }
   const path = resolve(opts.cwd, opts.out)
   const linked = await lstatOrNull(path)
-  if (linked?.isSymbolicLink()) throw symlinkRefused(path)
+  if (linked?.isSymbolicLink()) {
+    // A link to a folder is that folder; a link to a file, or a dangling one, is refused.
+    if (!(await statOrNull(path))?.isDirectory()) throw symlinkRefused(path)
+    return { kind: 'auto', dir: await realpath(path), create: false }
+  }
   const existing = await statOrNull(path)
   if (existing?.isDirectory()) return { kind: 'auto', dir: path, create: false }
   if (!existing && (opts.out.endsWith('/') || opts.out.endsWith(sep))) throw notFound(path)
@@ -64,14 +82,47 @@ export async function resolveDestination(opts: {
       `Give a path ending in .${kind.ext}, or an existing folder`
     )
   }
-  if (existing) {
-    if (!opts.force) throw fileExists(path)
-    return { kind: 'file', path, force: true }
-  }
   const parent = await statOrNull(dirname(path))
   if (!parent?.isDirectory()) throw notFound(dirname(path))
-  if ((await lstatOrNull(dirname(path)))?.isSymbolicLink()) throw symlinkRefused(dirname(path))
-  return { kind: 'file', path, force: opts.force }
+  const folder = (await lstatOrNull(dirname(path)))?.isSymbolicLink()
+    ? await realpath(dirname(path))
+    : dirname(path)
+  const target = join(folder, basename(path))
+  if (existing) {
+    if (!opts.force) throw fileExists(target)
+    return { kind: 'file', path: target, force: true }
+  }
+  return { kind: 'file', path: target, force: opts.force }
+}
+
+// A private staging folder (mkdtemp: 0700, exclusive) inside the destination folder, so the
+// final link or rename stays on one file system. A program that writes into it (`vda pull`)
+// can't be fed a planted link, and nobody else can read the file while it arrives. The caller
+// calls `remove` in a `finally`.
+export interface Staging {
+  // Where the other program writes; inside the staging folder.
+  file: string
+  remove: () => Promise<void>
+}
+
+export async function stageFor(dest: Destination, kind: SaveKind = PNG_KIND): Promise<Staging> {
+  const folder = dest.kind === 'file' ? dirname(dest.path) : dest.dir
+  if (dest.kind === 'auto' && dest.create) {
+    await mkdir(folder, { recursive: true }).catch((error: unknown) => {
+      throw saveError(folder, error, kind)
+    })
+  }
+  await assertRealFolder(folder, kind)
+  let staging: string
+  try {
+    staging = await mkdtemp(join(folder, '.ovd-pull-'))
+  } catch (error) {
+    throw saveError(folder, error, kind)
+  }
+  return {
+    file: join(staging, `pull.${kind.ext}.part`),
+    remove: () => rm(staging, { recursive: true, force: true }).catch(() => undefined)
+  }
 }
 
 // The hidden temp file the image is written to first, next to where it ends up, so a reader
