@@ -289,8 +289,10 @@ test.describe('Crashes on the stick', () => {
     await watching(sandbox)
     injectPlayerCrash(sandbox, 'stick')
     const before = vaultLists(sandbox)
-    // A listing after the injection: the stick's player crash (2100) is in it, out of scope.
-    await expect.poll(() => vaultLists(sandbox)).toBeGreaterThan(before)
+    // The listing after `before` started after the injection, so it holds the stick's player crash
+    // (2100, out of scope). Core polls one at a time, so a second call after `before` proves that
+    // poll finished and the watcher has handled it.
+    await expect.poll(() => vaultLists(sandbox)).toBeGreaterThanOrEqual(before + 2)
 
     await expect(page.getByText(`No crashes of your apps on Fire TV stick`)).toBeVisible()
     await expect(toast(page, 'crashed ·')).toHaveCount(0)
