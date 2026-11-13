@@ -24,7 +24,7 @@ export interface LaunchCrash {
   // ISO time of the crash, from the crash history's `LCM_KILLTIME`.
   time: string
   // The crash report's vault index (`ovd crashes`, `ovd crash pull`), when it was enrolled.
-  index?: number
+  id?: number
   // `SIGABRT`…, from the crash report, else from its file name.
   signal?: string
   // `JavaScript`…, from the crash report.
@@ -144,7 +144,7 @@ export function createLaunchVerifier(
     device: Device,
     pkg: VpmPackage,
     entry: CrashEntry
-  ): Promise<Pick<LaunchCrash, 'index' | 'signal' | 'language' | 'message' | 'stack'>> {
+  ): Promise<Pick<LaunchCrash, 'id' | 'signal' | 'language' | 'message' | 'stack'>> {
     try {
       const tombstone = await tombstoneOf(device, pkg, entry)
       if (!tombstone) return { stack: [] }
@@ -155,7 +155,7 @@ export function createLaunchVerifier(
       const acr = parseAcr(run.stdout)
       const signal = acr?.signal ?? signalName(tombstone.signal)
       return {
-        index,
+        id: index,
         ...(signal ? { signal } : {}),
         ...(acr?.language ? { language: acr.language } : {}),
         ...(acr?.message ? { message: acr.message } : {}),
@@ -177,7 +177,7 @@ export function createLaunchVerifier(
 
     let crash: CrashEntry | undefined
     let running: VlcmEntry | undefined
-    let cause: Pick<LaunchCrash, 'index' | 'signal' | 'language' | 'message' | 'stack'> = {
+    let cause: Pick<LaunchCrash, 'id' | 'signal' | 'language' | 'message' | 'stack'> = {
       stack: []
     }
     let logs: string[] = []

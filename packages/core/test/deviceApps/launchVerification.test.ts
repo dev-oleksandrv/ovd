@@ -209,7 +209,7 @@ describe('launch verification', () => {
       pid: 3200,
       time: '2026-11-08T01:51:44.657Z',
       // The vault index `ovd crashes` and `ovd crash pull` take.
-      index: 37,
+      id: 37,
       signal: 'SIGABRT',
       language: 'JavaScript',
       message: 'Error: player: deliberate crash right after launch',
@@ -263,7 +263,7 @@ describe('launch verification', () => {
 
     expect(crashOf(result)).toMatchObject({
       pid: 20609,
-      index: 2085,
+      id: 2085,
       time: '2026-11-07T22:36:50.802Z',
       signal: 'SIGABRT',
       language: 'JavaScript',

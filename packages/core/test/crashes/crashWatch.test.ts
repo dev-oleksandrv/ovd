@@ -88,7 +88,7 @@ function setup(
         }
       }
     )
-  return { runner, state, ledger, appended, events, crashes, errors, watch }
+  return { runner, reader, state, ledger, appended, events, crashes, errors, watch }
 }
 
 const poll = (ms = CRASH_POLL_MS) => vi.advanceTimersByTimeAsync(ms)
@@ -152,6 +152,51 @@ describe('crash watch', () => {
     ])
     // No stack, Source, BootId or log text.
     expect(JSON.stringify(appended)).not.toMatch(/anonymous|Source|BootId|bundle/)
+    w.stop()
+  })
+
+  test('list, then a new crash, then watch: the watcher announces it', async () => {
+    const { events, reader, watch } = setup({ [LS]: [BEFORE, AFTER] })
+    await reader.list()
+    const w = watch()
+    await poll(0)
+    expect(events).toEqual(['new 37'])
+    w.stop()
+  })
+
+  test('a restarted watcher announces what appeared while it was stopped, and nothing twice', async () => {
+    const { events, watch } = setup({ [LS]: [BEFORE, AFTER] })
+    const first = watch()
+    await poll(0)
+    first.stop()
+    const second = watch()
+    await poll(0)
+    expect(events).toEqual(['new 37'])
+    second.stop()
+    const third = watch()
+    await poll(0)
+    expect(events).toEqual(['new 37'])
+    third.stop()
+  })
+
+  test('a launch that records the report while its header is read suppresses the announcement', async () => {
+    const { events, appended, runner, ledger, watch } = setup({ [LS]: [BEFORE, AFTER] })
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const original = runner.run.bind(runner)
+    runner.run = async (spec) => {
+      if (spec.display === acr(37)) await gate
+      return original(spec)
+    }
+    const w = watch()
+    await poll(0)
+    await poll()
+    // The poll waits on the header of 37; the launch notes the report meanwhile.
+    ledger.add('VirtualDevice', 37)
+    release()
+    await poll(0)
+    expect(events).toEqual([])
+    expect(appended).toEqual([])
     w.stop()
   })
 

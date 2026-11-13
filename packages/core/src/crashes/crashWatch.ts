@@ -16,15 +16,14 @@ export interface CrashWatchDeps {
 // reports each report that appeared after the first read of that device. The next poll is
 // scheduled after the previous one finished, so slow SDK calls never pile up.
 //
-// The first read of a device is a silent baseline. While the target is away the watcher keeps
+// The first read of a device by this process (a listing or a watch) is a silent baseline, kept in
+// the reader with the set of announced reports. While the target is away the watcher keeps
 // polling silently; `onAway` and `onBack` mark the gap, and reports that appeared meanwhile are
 // announced once the target is back. The dedupe key is device + vault index (F9).
 export function createCrashWatch(deps: CrashWatchDeps, opts: CrashWatchOptions): CrashWatch {
   const intervalMs = opts.intervalMs ?? CRASH_POLL_MS
   let running = true
   let timer: ReturnType<typeof setTimeout> | undefined
-  // What this watch already announced, per device; set to everything listed at its first poll.
-  const announced = new Map<string, Set<number>>()
   let away: { announced: boolean } | undefined
   let present = false
   let lastError: string | undefined
@@ -72,9 +71,6 @@ export function createCrashWatch(deps: CrashWatchDeps, opts: CrashWatchOptions):
     try {
       const scanned = await deps.reader.scan(device)
       if (!running) return
-      const first = !announced.has(device.id)
-      const seen = announced.get(device.id) ?? new Set<number>()
-      announced.set(device.id, seen)
       if (away !== undefined) {
         const emit = away.announced
         away = undefined
@@ -84,15 +80,15 @@ export function createCrashWatch(deps: CrashWatchDeps, opts: CrashWatchOptions):
       lastError = undefined
       // Oldest first, so a burst reads in the order it happened.
       for (const entry of [...scanned.entries].reverse()) {
-        if (seen.has(entry.index)) continue
-        if (first || !scanned.isNew(entry)) {
-          seen.add(entry.index)
-          continue
-        }
+        // The baseline and the announced set belong to the reader (per device, per process), so
+        // a watcher started later neither repeats an announcement nor loses one.
+        if (scanned.isAnnounced(entry) || !scanned.isNew(entry)) continue
         // Marked only once announced: a read that fails is retried at the next poll.
         const crash = await deps.reader.crashOf(scanned, entry)
         if (!running) return
-        seen.add(entry.index)
+        // A launch may have reported it while the header was read.
+        if (scanned.isAnnounced(entry) || !scanned.isNew(entry)) continue
+        scanned.markAnnounced(entry)
         await record(who.id, crash)
         if (!running) return
         opts.onNew(crash, who)

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parseAcr } from '../../src/index.js'
-import { ACR_CAPTURE_MAX_BYTES } from '../../src/adapters/parseAcr.js'
+import { ACR_CAPTURE_MAX_BYTES, truncateUtf8 } from '../../src/adapters/parseAcr.js'
 import { fixture } from '../support/fixtures.js'
 
 describe('parseAcr', () => {
@@ -62,6 +62,27 @@ describe('parseAcr', () => {
     expect(acr).toMatchObject({ language: 'JavaScript', signal: 'SIGABRT' })
     expect(acr?.message).toBeUndefined()
     expect(acr?.stack).toEqual([])
+  })
+
+  test('the cap counts UTF-8 bytes, not UTF-16 units', () => {
+    const recorded = fixture('0.24/loggingctl-vault-acr/virtual-device-crashed.txt')
+    // 30 000 units but 90 000 bytes: past the cap, so the stack is not read.
+    const padded = recorded.replace(
+      '<non_native_stack_trace>',
+      `Padding: ${'€'.repeat(30_000)}\n\n<non_native_stack_trace>`
+    )
+    const acr = parseAcr(padded)
+    expect(acr).toMatchObject({ language: 'JavaScript', signal: 'SIGABRT' })
+    expect(acr?.stack).toEqual([])
+  })
+
+  test('truncateUtf8 cuts on a character boundary', () => {
+    expect(truncateUtf8('abc', 10)).toBe('abc')
+    expect(truncateUtf8('a€b', 2)).toBe('a')
+    expect(truncateUtf8('a€b', 3)).toBe('a')
+    expect(truncateUtf8('a€b', 4)).toBe('a€')
+    expect(truncateUtf8('a😀b', 4)).toBe('a')
+    expect(truncateUtf8('a😀b', 5)).toBe('a😀')
   })
 
   test('a header value from the app is cut to a bounded length', () => {

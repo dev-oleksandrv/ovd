@@ -110,6 +110,32 @@ async function failure(promise: Promise<unknown>): Promise<OvdError> {
   )
 }
 
+describe('apps.installedPackages', () => {
+  test('every package with its source, libraries without components included (the crash scope)', async () => {
+    const { apps } = await setup(running)
+    const device = {
+      id: 'VirtualDevice',
+      vdaSerial: 'emulator-5554',
+      name: 'Vega Virtual Device',
+      kind: 'vvd',
+      connection: 'local',
+      status: 'online',
+      isTarget: true,
+      saved: false
+    } as const
+    const listed = new Set((await apps.list({ ...VVD, all: true })).apps.map((a) => a.packageId))
+
+    const installed = await apps.installedPackages(device)
+
+    expect(installed.length).toBeGreaterThan(listed.size)
+    expect(installed.filter((p) => !listed.has(p.packageId))).not.toEqual([])
+    expect(installed.find((p) => p.packageId === 'com.example.player')).toEqual({
+      packageId: 'com.example.player',
+      source: 'sideloaded'
+    })
+  })
+})
+
 describe('apps.list', () => {
   test('side-loaded apps with their running state, in two device calls', async () => {
     const { apps, runner } = await setup(running)

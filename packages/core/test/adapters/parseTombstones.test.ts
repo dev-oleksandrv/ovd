@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parseTombstones, parseTombstonesStrict, signalName } from '../../src/index.js'
-import { MAX_LISTING_NAMES } from '../../src/adapters/parseTombstones.js'
+import { MAX_LISTING_BYTES, MAX_LISTING_NAMES } from '../../src/adapters/parseTombstones.js'
 import { fixture } from '../support/fixtures.js'
 
 const ls = (name: string) => fixture(`0.24/loggingctl-vault-ls/${name}.json`)
@@ -142,10 +142,42 @@ describe('the name pattern', () => {
   })
 })
 
+describe('a long listing', () => {
+  // Oldest first, so the newest names come last in the unsorted listing.
+  const many = (count: number) =>
+    Array.from(
+      { length: count },
+      (_, i) => `${i}#crash_${1794000000 + i}_30041_5000_${i + 1}_6_com_example_player.acr`
+    )
+
+  test('strict: every name is validated, sorted newest first, and only then cut to 5000', () => {
+    const found = parseTombstonesStrict(listing(...many(MAX_LISTING_NAMES + 10)))
+    expect(found).toHaveLength(MAX_LISTING_NAMES)
+    expect(found[0]?.index).toBe(String(MAX_LISTING_NAMES + 9))
+    expect(found.at(-1)?.index).toBe('10')
+  })
+
+  test('launch enrichment sees the names past 5000 too, in the printed order', () => {
+    const found = parseTombstones(listing(...many(MAX_LISTING_NAMES + 10)))
+    expect(found).toHaveLength(MAX_LISTING_NAMES + 10)
+    expect(found[0]?.index).toBe('0')
+    expect(found.at(-1)?.index).toBe(String(MAX_LISTING_NAMES + 9))
+  })
+
+  test('the input is bounded by bytes: a listing past the cap is unreadable', () => {
+    const huge = JSON.stringify({ artifacts: ['x'.repeat(MAX_LISTING_BYTES)], status: 0 })
+    expect(parseTombstones(huge)).toEqual([])
+    expect(() => parseTombstonesStrict(huge)).toThrow(
+      expect.objectContaining({ code: 'UNEXPECTED_OUTPUT' })
+    )
+  })
+})
+
 describe('parseTombstonesStrict', () => {
-  test('reads the recorded listings as parseTombstones does', () => {
+  test('reads the recorded listings as parseTombstones does, newest first', () => {
     for (const file of ['stick-tombstones', 'virtual-device-tombstones-after']) {
-      expect(parseTombstonesStrict(ls(file))).toEqual(parseTombstones(ls(file)))
+      const newestFirst = [...parseTombstones(ls(file))].sort((a, b) => b.epochS - a.epochS)
+      expect(parseTombstonesStrict(ls(file))).toEqual(newestFirst)
     }
   })
 

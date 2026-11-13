@@ -30,7 +30,16 @@ export const SCOPE_MIN_REFRESH_MS = 10_000
 
 export interface Scope {
   // The in-scope package of each given name; names out of scope are left out.
-  resolve(device: Device, names: ReadonlySet<string>): Promise<Map<string, AppId>>
+  // `revalidate`: the names include a report not seen before, so the snapshot is re-read first
+  // (not more often than SCOPE_MIN_REFRESH_MS), whatever the names are: a package installed
+  // since may collide with a name that was fine before.
+  resolve(
+    device: Device,
+    names: ReadonlySet<string>,
+    opts?: { revalidate?: boolean }
+  ): Promise<Map<string, AppId>>
+  // Drops the snapshot of a device: the next resolve reads the installed packages.
+  invalidate(deviceId: string): void
 }
 
 export function createScope(opts: {
@@ -41,7 +50,11 @@ export function createScope(opts: {
   const snapshots = new Map<string, { at: number; installed: InstalledPackage[] }>()
 
   return {
-    async resolve(device, names) {
+    invalidate(deviceId) {
+      snapshots.delete(deviceId)
+    },
+
+    async resolve(device, names, resolveOpts = {}) {
       const found = new Map<string, AppId>()
       if (names.size === 0) return found
       let snapshot = snapshots.get(device.id)
@@ -51,7 +64,7 @@ export function createScope(opts: {
       if (
         snapshot === undefined ||
         age >= SCOPE_TTL_MS ||
-        (age >= SCOPE_MIN_REFRESH_MS && unknown(snapshot))
+        (age >= SCOPE_MIN_REFRESH_MS && (resolveOpts.revalidate === true || unknown(snapshot)))
       ) {
         snapshot = { at: now(), installed: await opts.read(device) }
         snapshots.set(device.id, snapshot)

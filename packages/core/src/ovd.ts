@@ -1,6 +1,6 @@
 import { homedir as osHomedir } from 'node:os'
 import { createActivityFeed } from './activity/activityFeed.js'
-import { createActivityLog, type Surface } from './activity/activityLog.js'
+import { createActivityLog, type ActivityLog, type Surface } from './activity/activityLog.js'
 import { createCrashReader } from './crashes/crashList.js'
 import { createCrashWatch } from './crashes/crashWatch.js'
 import type { Crashes } from './crashes/types.js'
@@ -64,6 +64,12 @@ export interface Ovd {
   crashes: Crashes
 }
 
+const INSTALL_ACTIONS: ReadonlySet<string> = new Set([
+  'app.install',
+  'app.reinstall',
+  'app.uninstall'
+])
+
 // One core per surface process; every surface shares the host state directory (ADR 0022).
 export function createOvd(opts: OvdOptions): Ovd {
   const env = opts.env ?? process.env
@@ -73,11 +79,25 @@ export function createOvd(opts: OvdOptions): Ovd {
   const sdk = createSdkLocator(
     opts.discover ?? (() => discoverSdk({ ...defaultDiscoverOptions(runner), env, homedir }))
   )
-  const activity = createActivityLog({
+  const activityLog = createActivityLog({
     home,
     surface: opts.surface,
     ...(opts.now ? { now: opts.now } : {})
   })
+  // OVD's own installs and uninstalls change what the crash scope matches names against, so the
+  // crash reader drops its installed snapshot of that device (set below, once it exists).
+  let installedChanged: (deviceId: string) => void = () => undefined
+  const activity: ActivityLog = {
+    async append(entry) {
+      try {
+        await activityLog.append(entry)
+      } finally {
+        if (INSTALL_ACTIONS.has(entry.action) && entry.target !== null) {
+          installedChanged(entry.target)
+        }
+      }
+    }
+  }
   const state = createStateStore(home)
   const devices = createDevices({ runner, sdk, state, activity, env })
   const emulator = createEmulator({
@@ -163,13 +183,11 @@ export function createOvd(opts: OvdOptions): Ovd {
     runner,
     sdk,
     devices,
-    // All packages, not only the side-loaded: the scope match must see what a name collides with.
-    installed: async (device) =>
-      (await apps.list({ device: device.id, all: true })).apps.map((a) => ({
-        packageId: a.packageId,
-        source: a.source
-      }))
+    // Every package, libraries without components too: the scope match must see what a name
+    // collides with.
+    installed: (device) => apps.installedPackages(device)
   })
+  installedChanged = (deviceId) => reader.invalidate(deviceId)
   const crashes: Crashes = {
     list: (device) => reader.list(device),
     detail: async (id, device) => {

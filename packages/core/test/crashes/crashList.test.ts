@@ -48,7 +48,8 @@ function devicesOf(device: Device = VVD): Devices {
 
 function setup(
   script: ConstructorParameters<typeof FakeRunner>[0],
-  installed: InstalledPackage[] = INSTALLED
+  installed: InstalledPackage[] = INSTALLED,
+  clock?: () => number
 ) {
   const runner = new FakeRunner(script)
   const sdk = createSdkLocator(async () => ({
@@ -64,7 +65,8 @@ function setup(
     sdk,
     devices: devicesOf(),
     installed: read,
-    ledger
+    ledger,
+    ...(clock ? { now: clock } : {})
   })
   return { reader, runner, ledger, read, calls: () => runner.calls.map((c) => c.display) }
 }
@@ -204,6 +206,63 @@ describe('list', () => {
     expect(crashes[0]?.id).toBe(MAX_CRASHES + 49)
     expect(crashes.at(-1)?.id).toBe(50)
     expect(runner.calls.filter((c) => c.display.includes('base64 -d'))).toHaveLength(MAX_CRASHES)
+  })
+
+  test('find resolves an id beyond the newest 200 against the full listing', async () => {
+    const indexes = Array.from({ length: MAX_CRASHES + 1 }, (_, i) => i)
+    const script: ConstructorParameters<typeof FakeRunner>[0] = {
+      [LS]: { stdout: names(...indexes) }
+    }
+    for (const i of indexes) script[acr(i)] = CRASHED
+    const { reader } = setup(script)
+
+    // 0 is the oldest of 201: the list leaves it out, an explicit id still finds it.
+    expect((await reader.list()).crashes.map((c) => c.id)).not.toContain(0)
+    const found = await reader.find(0)
+    expect(found.crash.id).toBe(0)
+    expect(found.crash.package).toBe('com.example.player')
+  })
+
+  test('a collision installed after the first snapshot makes the next new report ambiguous', async () => {
+    const before = out('loggingctl-vault-ls/virtual-device-tombstones-before.json')
+    let installed: InstalledPackage[] = INSTALLED
+    let at = 0
+    const runner = new FakeRunner({ [LS]: [before, AFTER], [acr(37)]: CRASHED, [acr(35)]: CRASHED })
+    const sdk = createSdkLocator(async () => ({
+      vegaPath: '/sdk/vega',
+      cli: 'manager',
+      sdkVersion: '0.24.12112',
+      cliVersion: '1.4.5'
+    }))
+    const read = vi.fn(async () => installed)
+    const reader = createCrashReader({
+      runner,
+      sdk,
+      devices: devicesOf(),
+      installed: read,
+      ledger: createCrashLedger(),
+      now: () => at
+    })
+    await reader.list()
+    expect(read).toHaveBeenCalledTimes(1)
+
+    installed = [...INSTALLED, { packageId: 'com.example_player', source: 'sideloaded' }]
+    at = 10_000
+    // Report 37 wasn't seen before: the scope is revalidated before it is authorized.
+    expect((await reader.list()).crashes).toEqual([])
+    expect(read).toHaveBeenCalledTimes(2)
+    expect(runner.count(acr(37))).toBe(0)
+  })
+
+  test('invalidate drops the installed snapshot, so an own install or uninstall is seen at once', async () => {
+    const { reader, read } = setup({ [LS]: AFTER, [acr(37)]: CRASHED, [acr(35)]: CRASHED })
+    await reader.list()
+    await reader.list()
+    expect(read).toHaveBeenCalledTimes(1)
+
+    reader.invalidate('VirtualDevice')
+    await reader.list()
+    expect(read).toHaveBeenCalledTimes(2)
   })
 
   test.each([

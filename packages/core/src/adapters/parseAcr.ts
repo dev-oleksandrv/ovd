@@ -28,9 +28,11 @@ const END = '</non_native_stack_trace>'
 // The bounded `sed` output: `Key: Value` lines up to the first blank line, then the
 // `<non_native_stack_trace>` section. Enrichment only: anything else (a refused read, an
 // unknown index) gives `undefined`, never an error.
+//
+// The cap is applied here, to what the runner already captured: bounding the capture itself
+// (before it is held in memory) belongs to the runner and is out of scope for this parser.
 export function parseAcr(stdout: string): AcrSummary | undefined {
-  const capped =
-    stdout.length > ACR_CAPTURE_MAX_BYTES ? stdout.slice(0, ACR_CAPTURE_MAX_BYTES) : stdout
+  const capped = truncateUtf8(stdout, ACR_CAPTURE_MAX_BYTES)
   const lines = capped.replace(/\r\n/g, '\n').split('\n')
   const header = new Map<string, string>()
   for (const line of lines) {
@@ -63,4 +65,14 @@ export function parseAcr(stdout: string): AcrSummary | undefined {
     ...(message ? { message } : {}),
     stack
   }
+}
+
+// At most `maxBytes` of the text as UTF-8, cut on a character boundary.
+export function truncateUtf8(text: string, maxBytes: number): string {
+  const bytes = Buffer.from(text, 'utf8')
+  if (bytes.length <= maxBytes) return text
+  let end = maxBytes
+  // The first byte left out is a continuation byte: its character straddles the cut, drop it.
+  while (end > 0 && ((bytes[end] ?? 0) & 0xc0) === 0x80) end--
+  return bytes.subarray(0, end).toString('utf8')
 }

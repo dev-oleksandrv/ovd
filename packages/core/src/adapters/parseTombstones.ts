@@ -21,11 +21,18 @@ const schema = z.object({ artifacts: z.array(z.string()), status: z.number() })
 const NAME =
   /^(0|[1-9]\d{0,8})#crash_(\d{1,12})_(\d{1,10})_(\d{1,10})_(\d{1,10})_(\d{1,3})_([A-Za-z0-9_-]{1,200})\.acr$/
 const MAX_NAME_LENGTH = 300
-// A vault listing is read for at most this many names: it bounds the work a device can cause.
+// The input is bounded by its size, not by a count of names, so no name is dropped before the
+// listing is sorted: a listing over this many bytes is unreadable.
+export const MAX_LISTING_BYTES = 4 * 1024 * 1024
+// The Crashes screen keeps this many names, the newest, after validating and sorting all.
 export const MAX_LISTING_NAMES = 5_000
 
+function parseListing(stdout: string): unknown {
+  return Buffer.byteLength(stdout) > MAX_LISTING_BYTES ? undefined : parseJson(stdout)
+}
+
 function tombstones(names: string[]): Tombstone[] {
-  return names.slice(0, MAX_LISTING_NAMES).flatMap((name) => {
+  return names.flatMap((name) => {
     if (name.length > MAX_NAME_LENGTH) return []
     const m = NAME.exec(name)
     if (!m) return []
@@ -45,7 +52,7 @@ function tombstones(names: string[]): Tombstone[] {
 // `loggingctl vault --ls SYSTEM_TOMBSTONE/acr`: JSON, not sorted. Enrichment only: anything
 // unreadable gives no tombstones, never an error, so a launch is still reported.
 export function parseTombstones(stdout: string): Tombstone[] {
-  const parsed = schema.safeParse(parseJson(stdout))
+  const parsed = schema.safeParse(parseListing(stdout))
   if (!parsed.success || parsed.data.status !== 0) return []
   return tombstones(parsed.data.artifacts)
 }
@@ -54,7 +61,7 @@ export function parseTombstones(stdout: string): Tombstone[] {
 // `-7` (`Insufficient permissions`) is CRASH_ACCESS_DENIED, anything else that isn't a listing
 // is UNEXPECTED_OUTPUT. Names that don't match the strict pattern are skipped.
 export function parseTombstonesStrict(stdout: string): Tombstone[] {
-  const json = parseJson(stdout)
+  const json = parseListing(stdout)
   const parsed = schema.safeParse(json)
   if (!parsed.success) {
     const status = z.object({ status: z.number() }).safeParse(json)
@@ -64,6 +71,8 @@ export function parseTombstonesStrict(stdout: string): Tombstone[] {
   if (parsed.data.status === -7) throw accessDenied()
   if (parsed.data.status !== 0) throw unexpectedOutput('the crash reports', stdout)
   return tombstones(parsed.data.artifacts)
+    .sort((a, b) => b.epochS - a.epochS || Number(b.index) - Number(a.index))
+    .slice(0, MAX_LISTING_NAMES)
 }
 
 function accessDenied(): OvdError {

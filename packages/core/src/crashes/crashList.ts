@@ -13,7 +13,8 @@ import type { SdkLocator } from '../sdk/sdkLocator.js'
 import { createScope, type InstalledPackage } from './scope.js'
 import type { Crash, CrashDetail, CrashesList } from './types.js'
 
-// The listing keeps the newest reports only: a device can hold far more than a screen shows.
+// The listing shows the newest reports only: a device can hold far more than a screen shows.
+// An explicit id is looked up in all of them.
 export const MAX_CRASHES = 200
 const SUMMARY_MAX = 200
 const READ_TIMEOUT_MS = 30_000
@@ -69,9 +70,12 @@ export interface CrashEntry {
 
 export interface CrashScan {
   device: Device
-  // In scope, newest first, at most MAX_CRASHES.
+  // Every report in scope, newest first.
   entries: CrashEntry[]
   isNew(entry: CrashEntry): boolean
+  // Whether a watcher already announced it, for this process and device (see `markAnnounced`).
+  isAnnounced(entry: CrashEntry): boolean
+  markAnnounced(entry: CrashEntry): void
 }
 
 export interface CrashReader {
@@ -83,6 +87,9 @@ export interface CrashReader {
   // An in-scope report by id: INVALID_CRASH_ID, or CRASH_NOT_FOUND when the id isn't listed
   // or isn't one of the developer's apps.
   find(id: string | number, device?: string): Promise<CrashDetail & { device: Device }>
+  // Drops what is known of the device's installed packages, e.g. after OVD installed or removed
+  // an app: the next listing re-reads them.
+  invalidate(deviceId: string): void
 }
 
 export interface CrashReaderDeps {
@@ -98,6 +105,12 @@ export interface CrashReaderDeps {
 interface DeviceState {
   // The vault indexes of the first read: reports that were there before OVD looked.
   baseline: Set<number>
+  // The vault indexes a watcher announced. Kept here, with the baseline, so a watcher that is
+  // stopped and started again (the desktop polls only while its window is visible) neither
+  // repeats a notification nor loses one.
+  announced: Set<number>
+  // The `index:epoch:pid` of every report of the last listing, in scope or not.
+  listed: Set<string>
   // Header and stack by `index:epoch:pid`, only for entries still in the listing.
   details: Map<string, EntryDetail>
 }
@@ -158,13 +171,24 @@ export function createCrashReader(deps: CrashReaderDeps): CrashReader {
     let state = states.get(device.id)
     if (state === undefined) {
       // The first read is the silent baseline: nothing in it is NEW.
-      state = { baseline: new Set(all.map((t) => Number(t.index))), details: new Map() }
+      state = {
+        baseline: new Set(all.map((t) => Number(t.index))),
+        announced: new Set(),
+        listed: new Set(),
+        details: new Map()
+      }
       states.set(device.id, state)
     }
     const live = new Set(all.map(detailKey))
     for (const key of state.details.keys()) if (!live.has(key)) state.details.delete(key)
 
-    const packages = await scope.resolve(device, new Set(all.map((t) => t.packageUnderscored)))
+    // A report not seen in the last listing is authorized against fresh packages: one installed
+    // since may collide with its name.
+    const unseen = all.some((t) => !state.listed.has(detailKey(t)))
+    state.listed = live
+    const packages = await scope.resolve(device, new Set(all.map((t) => t.packageUnderscored)), {
+      revalidate: unseen
+    })
     const entries = all
       .flatMap((tombstone): CrashEntry[] => {
         const packageId = packages.get(tombstone.packageUnderscored)
@@ -173,13 +197,14 @@ export function createCrashReader(deps: CrashReaderDeps): CrashReader {
           : [{ tombstone, index: Number(tombstone.index), packageId }]
       })
       .sort((a, b) => b.tombstone.epochS - a.tombstone.epochS || b.index - a.index)
-      .slice(0, MAX_CRASHES)
 
-    const { baseline } = state
+    const { baseline, announced } = state
     return {
       device,
       entries,
-      isNew: (e) => !baseline.has(e.index) && !ledger.has(device.id, e.index)
+      isNew: (e) => !baseline.has(e.index) && !ledger.has(device.id, e.index),
+      isAnnounced: (e) => announced.has(e.index),
+      markAnnounced: (e) => void announced.add(e.index)
     }
   }
 
@@ -232,12 +257,14 @@ export function createCrashReader(deps: CrashReaderDeps): CrashReader {
   return {
     scan,
     crashOf,
+    invalidate: (deviceId) => scope.invalidate(deviceId),
 
     async list(override) {
       const device = await onlineTarget(deps.devices, override)
       const scanned = await scan(device)
       const crashes: Crash[] = []
-      for (const entry of scanned.entries) crashes.push(await crashOf(scanned, entry))
+      for (const entry of scanned.entries.slice(0, MAX_CRASHES))
+        crashes.push(await crashOf(scanned, entry))
       return { device: device.id, crashes }
     },
 
