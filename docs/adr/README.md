@@ -54,3 +54,4 @@ An ADR records one significant decision: the context, what was decided, and what
 - [0022 Host state directory](0022-host-state-directory.md)
 - [0023 End-to-end tests against a fake SDK](0023-e2e-tests-with-a-fake-sdk.md)
 - [0024 Optional host tools](0024-optional-host-tools.md)
+- [0025 Licensing, distribution and no telemetry, without Homebrew](0025-licensing-distribution-without-homebrew.md)
