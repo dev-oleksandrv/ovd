@@ -478,9 +478,11 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
 
 // Crash reports on a device: the vault listing, the bounded read of a stick crash, the full-ACR
 // pull script, `vda pull` of its file and the removal of its folder (core's crash radar).
-// Virtual Device: the crash is index 37 once `playerCrashed`, as in `launchVerification`; the
-// listing, `--cat | sed` and pull script answers are all recordings
-// (`loggingctl-vault-ls/virtual-device-tombstones-*.json`, `loggingctl-vault-acr/*`).
+// Virtual Device: a launch that crashes is index 37 once `playerCrashed`, as in
+// `launchVerification`; an injected crash (`playerCrashInjected`) is index 84, after the player's
+// reports 79 and 83. The listing, `--cat | sed`, pull script and `rm -rf` answers are all
+// recordings (`loggingctl-vault-ls/virtual-device-*.json`, `loggingctl-vault-acr/*`,
+// `vda-shell/rm-rf-acr-dir.txt`).
 // Stick: the listing (`stick-tombstones.json`) and the bounded read of index 2085
 // (`stick-crashed.txt`) are recordings. SYNTHESIZED: the stick's full pull. No pull was recorded
 // on a stick, so it answers like the Virtual Device's recordings, with the same synthetic ACR
@@ -488,6 +490,10 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
 const STICK_CRASH_INDEX = 2085
 const STICK_INDEXES = [2084, 2085, 2086]
 const VVD_INDEXES = [35, 34]
+// The other Virtual Device vault sequence (`virtual-device-two-before.json`): the player's
+// reports 79 and 83 and the system package's, 34, 50, 55 and 67. Report 84 joins after the crash.
+const VVD_TWO_INDEXES = [79, 83, 34, 50, 55, 67]
+const TWO_CRASH_INDEX = 84
 const ACR_FOLDER = /^\/tmp\/ovd-acr\.[A-Za-z0-9]{6}$/
 const PULL_CONTENT = {
   ok: 'loggingctl-vault-acr/pull-script-ok.txt',
@@ -506,7 +512,9 @@ function acrCommands(w: World, device: 'vvd' | 'stick', rest: string[]): Reply |
   const crashed = device === 'vvd' ? w.playerCrashed : w.stickPlayerCrashed
   const indexes =
     device === 'vvd'
-      ? [...VVD_INDEXES, ...(crashed ? [CRASH_INDEX] : [])]
+      ? vvdLaunchSequence(w)
+        ? [...VVD_INDEXES, ...(crashed ? [CRASH_INDEX] : [])]
+        : [...VVD_TWO_INDEXES, ...(w.playerCrashInjected ? [TWO_CRASH_INDEX] : [])]
       : crashed
         ? STICK_INDEXES
         : []
@@ -551,7 +559,7 @@ function acrCommands(w: World, device: 'vvd' | 'stick', rest: string[]): Reply |
     const folder = args[2] as string
     if (!ACR_FOLDER.test(folder)) return null
     w.acrFiles = w.acrFiles.filter((f) => !f.remote.startsWith(`${folder}/`))
-    return {}
+    return { stdout: fixture('vda-shell/rm-rf-acr-dir.txt') }
   }
   return null
 }
@@ -645,13 +653,14 @@ const CRASH_INDEX = 37
 // running component, the vault, the crash report and the bounded log capture.
 function launchVerification(w: World, sub: string, installed: boolean): Reply | null {
   if (sub === 'shell vlcm crash-history') {
-    return {
-      stdout: fixture(
-        w.playerCrashed
-          ? 'vlcm-crash-history/virtual-device-after.txt'
-          : 'vlcm-crash-history/virtual-device-before.txt'
-      )
-    }
+    const name = vvdLaunchSequence(w)
+      ? w.playerCrashed
+        ? 'virtual-device-after'
+        : 'virtual-device-before'
+      : w.playerCrashInjected
+        ? 'virtual-device-two-after'
+        : 'virtual-device-two-before'
+    return { stdout: fixture(`vlcm-crash-history/${name}.txt`) }
   }
   if (sub === `shell vlcm list --app-id ${PLAYER}.main`) {
     return {
@@ -661,21 +670,30 @@ function launchVerification(w: World, sub: string, installed: boolean): Reply | 
     }
   }
   if (sub === 'shell loggingctl vault --ls SYSTEM_TOMBSTONE/acr') {
-    return {
-      stdout: fixture(
-        w.playerCrashed
-          ? 'loggingctl-vault-ls/virtual-device-tombstones-after.json'
-          : 'loggingctl-vault-ls/virtual-device-tombstones-before.json'
-      )
-    }
+    const name = vvdLaunchSequence(w)
+      ? w.playerCrashed
+        ? 'virtual-device-tombstones-after'
+        : 'virtual-device-tombstones-before'
+      : w.playerCrashInjected
+        ? 'virtual-device-two-after'
+        : 'virtual-device-two-before'
+    return { stdout: fixture(`loggingctl-vault-ls/${name}.json`) }
   }
   const script = decodeScript(sub)
   if (script === null) return null
   if (CAPTURE_START.test(script)) return { stdout: fixture('log-capture/started.txt') }
   const acr = ACR.exec(script)
   if (acr) {
-    return w.playerCrashed && Number(acr[1]) === CRASH_INDEX
-      ? { stdout: fixture('loggingctl-vault-acr/virtual-device-crashed.txt') }
+    const index = Number(acr[1])
+    if (vvdLaunchSequence(w)) {
+      return w.playerCrashed && index === CRASH_INDEX
+        ? { stdout: fixture('loggingctl-vault-acr/virtual-device-crashed.txt') }
+        : null
+    }
+    // The player's reports in virtual-device-two-*.json each have a recorded bounded read.
+    const listed = [79, 83, ...(w.playerCrashInjected ? [TWO_CRASH_INDEX] : [])]
+    return listed.includes(index)
+      ? { stdout: fixture(`loggingctl-vault-acr/virtual-device-two-${index}.txt`) }
       : null
   }
   const stop = captureStop(CAPTURE_FILE, CAPTURE_PID).exec(script)
@@ -691,6 +709,13 @@ function launchVerification(w: World, sub: string, installed: boolean): Reply | 
     if (crashPid === 0) return { stdout: fixture('log-capture/virtual-device-verified.txt') }
   }
   return null
+}
+
+// Whether the Virtual Device answers the vault and the crash history with the sequence of a
+// launch that crashes (indexes 35 and 37, pid 3200), which the launch verification e2e tests
+// assert, or with the other one (`playerCrashInjected`, indexes 79, 83 and 84).
+function vvdLaunchSequence(w: World): boolean {
+  return w.playerCrashesOnLaunch || w.playerCrashed
 }
 
 function playerRunning(w: World): boolean {
