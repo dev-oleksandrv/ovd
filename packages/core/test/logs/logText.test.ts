@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { logText, logTextAll, ovdEventText } from '../../src/logs/logText.js'
+import { escapeControls, logText, logTextAll, ovdEventText } from '../../src/logs/logText.js'
 import type { LogEntry, OvdEvent } from '../../src/logs/types.js'
 
 const TIME = '2026-11-08T07:27:00.257Z'
@@ -269,4 +269,8 @@ test('keeps newlines as continuation lines, escaping within each line', () => {
   expect(logText({ ...entry, message: 'first\nsecond\u0007' })).toBe(
     `${CLOCK} E com.amazon.keplerscript   27178 first\n${indent}second\\x07\n`
   )
+})
+
+test('escapeControls: C0, DEL, C1 as \\xHH and bidi as \\u{HHHH}, tab and newline kept', () => {
+  expect(escapeControls('a\tb\nc\u0007\u009f\u007f\u2067')).toBe('a\tb\nc\\x07\\x9f\\x7f\\u{2067}')
 })

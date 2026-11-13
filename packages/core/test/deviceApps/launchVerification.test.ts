@@ -240,6 +240,29 @@ describe('launch verification', () => {
     expect(launchReportedCrashes.has(STICK, 37)).toBe(false)
   })
 
+  test('the package is held for the crash watcher while the launch is verified, then released', async () => {
+    const { apps, sleep } = setup(crashes)
+    const heldAt: boolean[] = []
+    sleep.mockImplementation(async () => {
+      heldAt.push(launchReportedCrashes.isHeld('VirtualDevice', PLAYER))
+    })
+    expect(launchReportedCrashes.isHeld('VirtualDevice', PLAYER)).toBe(false)
+
+    await apps.launch(PLAYER, DEVICE)
+
+    expect(heldAt.length).toBeGreaterThan(0)
+    expect(heldAt.every(Boolean)).toBe(true)
+    expect(launchReportedCrashes.isHeld('VirtualDevice', PLAYER)).toBe(false)
+  })
+
+  test('the hold is released when the launch fails', async () => {
+    const { apps } = setup({ ...survives, [VVD.LAUNCH]: { stderr: 'boom\n', exitCode: 1 } })
+
+    await expect(apps.launch(PLAYER, DEVICE)).rejects.toMatchObject({ code: 'LAUNCH_FAILED' })
+
+    expect(launchReportedCrashes.isHeld('VirtualDevice', PLAYER)).toBe(false)
+  })
+
   test('crashed on the stick: IDLE, READY, then gone, and the new crash entry', async () => {
     const { apps } = setup({
       ...online,

@@ -27,13 +27,33 @@ const LEDGER_MAX = 1_000
 export interface CrashLedger {
   add(deviceId: string, index: number): void
   has(deviceId: string, index: number): boolean
+  // A launch of the package is being verified on the device: the watcher announces nothing of
+  // that package there until the returned release is called (then only what the launch didn't
+  // claim). Holds nest.
+  hold(deviceId: string, packageId: string): () => void
+  isHeld(deviceId: string, packageId: string): boolean
 }
 
 export function createCrashLedger(max = LEDGER_MAX): CrashLedger {
   // Insertion order: the oldest note goes first once the ledger is full.
   const keys = new Set<string>()
   const key = (deviceId: string, index: number) => `${deviceId}|${index}`
+  const holds = new Map<string, number>()
+  const holdKey = (deviceId: string, packageId: string) => `${deviceId}|${packageId}`
   return {
+    hold(deviceId, packageId) {
+      const k = holdKey(deviceId, packageId)
+      holds.set(k, (holds.get(k) ?? 0) + 1)
+      let released = false
+      return () => {
+        if (released) return
+        released = true
+        const left = (holds.get(k) ?? 1) - 1
+        if (left > 0) holds.set(k, left)
+        else holds.delete(k)
+      }
+    },
+    isHeld: (deviceId, packageId) => holds.has(holdKey(deviceId, packageId)),
     add(deviceId, index) {
       keys.add(key(deviceId, index))
       if (keys.size > max) {
@@ -75,6 +95,8 @@ export interface CrashScan {
   isNew(entry: CrashEntry): boolean
   // Whether a watcher already announced it, for this process and device (see `markAnnounced`).
   isAnnounced(entry: CrashEntry): boolean
+  // A launch of the entry's package is being verified on this device.
+  isHeld(entry: CrashEntry): boolean
   markAnnounced(entry: CrashEntry): void
 }
 
@@ -231,6 +253,7 @@ export function createCrashReader(deps: CrashReaderDeps): CrashReader {
       device,
       entries,
       isNew: (e) => !baseline.has(e.index) && !ledger.has(device.id, e.index),
+      isHeld: (e) => ledger.isHeld(device.id, e.packageId),
       isAnnounced: (e) => announced.has(e.index),
       markAnnounced: (e) => void announced.add(e.index)
     }

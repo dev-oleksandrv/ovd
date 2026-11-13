@@ -179,6 +179,62 @@ describe('crash watch', () => {
     third.stop()
   })
 
+  describe('while a launch of the package is being verified', () => {
+    test('a poll that lands mid-verification announces nothing', async () => {
+      const { events, appended, ledger, watch } = setup({ [LS]: [BEFORE, AFTER] })
+      const w = watch()
+      await poll(0)
+      const end = ledger.hold('VirtualDevice', 'com.example.player')
+      await poll()
+      await poll()
+      expect(events).toEqual([])
+      expect(appended).toEqual([])
+      end()
+      w.stop()
+    })
+
+    test('a verification that ends without claiming the report lets the next poll announce it once', async () => {
+      const { events, appended, ledger, watch } = setup({ [LS]: [BEFORE, AFTER] })
+      const w = watch()
+      await poll(0)
+      const end = ledger.hold('VirtualDevice', 'com.example.player')
+      await poll()
+      expect(events).toEqual([])
+      end()
+      await poll()
+      await poll()
+      expect(events).toEqual(['new 37'])
+      expect(appended).toHaveLength(1)
+      w.stop()
+    })
+
+    test('a verification that claims the report means it is never announced', async () => {
+      const { events, appended, ledger, watch } = setup({ [LS]: [BEFORE, AFTER] })
+      const w = watch()
+      await poll(0)
+      const end = ledger.hold('VirtualDevice', 'com.example.player')
+      await poll()
+      ledger.add('VirtualDevice', 37)
+      end()
+      await poll()
+      await poll()
+      expect(events).toEqual([])
+      expect(appended).toEqual([])
+      w.stop()
+    })
+
+    test('a hold on another package or device does not defer the announcement', async () => {
+      const { events, ledger, watch } = setup({ [LS]: [BEFORE, AFTER] })
+      ledger.hold('VirtualDevice', 'com.example.other')
+      ledger.hold('OtherDevice', 'com.example.player')
+      const w = watch()
+      await poll(0)
+      await poll()
+      expect(events).toEqual(['new 37'])
+      w.stop()
+    })
+  })
+
   test('a launch that records the report while its header is read suppresses the announcement', async () => {
     const { events, appended, runner, ledger, watch } = setup({ [LS]: [BEFORE, AFTER] })
     let release: () => void = () => undefined

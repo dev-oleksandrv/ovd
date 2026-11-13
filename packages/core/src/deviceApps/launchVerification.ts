@@ -166,7 +166,13 @@ export function createLaunchVerifier(
     }
   }
 
-  return async (device, pkg, component, launch, onVerifying) => {
+  async function verify(
+    device: Device,
+    pkg: VpmPackage,
+    component: AppId,
+    launch: () => Promise<void>,
+    onVerifying?: () => void
+  ): Promise<LaunchVerification> {
     // Checked as `fromDevice` does: the package ID goes into the stop script.
     const packageId = assertAppId(pkg.id, { from: 'device', device: device.name })
     const keyOf = (e: CrashEntry) => `${e.pid}|${e.timestamp}`
@@ -223,5 +229,16 @@ export function createLaunchVerifier(
     }
     if (running) return { verified: true, pid: running.pid }
     return { verified: false, reason: 'not-running' }
+  }
+
+  return async (device, pkg, component, launch, onVerifying) => {
+    // Held from before the launch to after the crash is noted, so the crash watcher (which polls
+    // every 5 s) doesn't announce a report this launch is about to report itself (F9).
+    const release = ledger.hold(device.id, pkg.id)
+    try {
+      return await verify(device, pkg, component, launch, onVerifying)
+    } finally {
+      release()
+    }
   }
 }

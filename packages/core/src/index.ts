@@ -192,7 +192,7 @@ export type {
 export type { LaunchCrash, LaunchVerification } from './deviceApps/launchVerification.js'
 export { LOG_BUFFER_SIZE } from './logs/types.js'
 export type { LogCounts, LogEntry, LogLevel, OvdEvent } from './logs/types.js'
-export { logText, logTextAll, ovdEventText } from './logs/logText.js'
+export { escapeControls, logText, logTextAll, ovdEventText } from './logs/logText.js'
 export {
   LOG_EXPORT_FORMATS,
   logExport,
