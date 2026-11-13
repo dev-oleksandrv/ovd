@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { parseTombstones, signalName } from '../../src/index.js'
+import { parseTombstones, parseTombstonesStrict, signalName } from '../../src/index.js'
+import { MAX_LISTING_NAMES } from '../../src/adapters/parseTombstones.js'
 import { fixture } from '../support/fixtures.js'
 
 const ls = (name: string) => fixture(`0.24/loggingctl-vault-ls/${name}.json`)
@@ -67,5 +68,111 @@ describe('signalName', () => {
     [99, undefined]
   ])('%i', (n, name) => {
     expect(signalName(n)).toBe(name)
+  })
+})
+
+const listing = (...artifacts: string[]) => JSON.stringify({ artifacts, status: 0 })
+const GOOD = '35#crash_1794102692_30041_5000_2925_6_com_example_player.acr'
+
+describe('the name pattern', () => {
+  test.each([
+    ['a recorded name', GOOD, true],
+    ['index 0', '0#crash_1794102692_30041_5000_2925_6_com_example_player.acr', true],
+    [
+      'a hyphen in the package',
+      '35#crash_1794102692_30041_5000_2925_6_com_example_my-app.acr',
+      true
+    ],
+    [
+      'a leading zero in the index',
+      '035#crash_1794102692_30041_5000_2925_6_com_example_player.acr',
+      false
+    ],
+    ['a negative index', '-1#crash_1794102692_30041_5000_2925_6_com_example_player.acr', false],
+    [
+      'an oversized index',
+      '1234567890#crash_1794102692_30041_5000_2925_6_com_example_player.acr',
+      false
+    ],
+    ['a non-numeric index', 'x#crash_1794102692_30041_5000_2925_6_com_example_player.acr', false],
+    [
+      'a traversal-like package',
+      '35#crash_1794102692_30041_5000_2925_6_../../etc/passwd.acr',
+      false
+    ],
+    ['a slash in the package', '35#crash_1794102692_30041_5000_2925_6_com/example.acr', false],
+    [
+      'a traversal prefix',
+      '../35#crash_1794102692_30041_5000_2925_6_com_example_player.acr',
+      false
+    ],
+    [
+      'a shell metacharacter',
+      '35#crash_1794102692_30041_5000_2925_6_com_example;reboot.acr',
+      false
+    ],
+    ['a command substitution', '35#crash_1794102692_30041_5000_2925_6_$(reboot).acr', false],
+    ['a newline', `${GOOD}\n`, false],
+    ['a space', '35#crash_1794102692_30041_5000_2925_6_com example.acr', false],
+    ['another extension', '35#crash_1794102692_30041_5000_2925_6_com_example_player.txt', false],
+    ['a missing signal', '35#crash_1794102692_30041_5000_2925_com_example_player.acr', false],
+    [
+      'an oversized epoch',
+      '35#crash_17941026921794_30041_5000_2925_6_com_example_player.acr',
+      false
+    ],
+    [
+      'an oversized signal',
+      '35#crash_1794102692_30041_5000_2925_1234_com_example_player.acr',
+      false
+    ],
+    ['an oversized package', `35#crash_1794102692_30041_5000_2925_6_${'a'.repeat(201)}.acr`, false],
+    ['an oversized name', `35#crash_1794102692_30041_5000_2925_6_${'a'.repeat(5000)}.acr`, false]
+  ])('%s', (_name, name, ok) => {
+    expect(parseTombstones(listing(name))).toHaveLength(ok ? 1 : 0)
+    expect(parseTombstonesStrict(listing(name))).toHaveLength(ok ? 1 : 0)
+  })
+
+  test('a listing is read for at most 5000 names', () => {
+    const names = Array.from(
+      { length: MAX_LISTING_NAMES + 10 },
+      (_, i) => `${i}#crash_1794102692_30041_5000_2925_6_com_example_player.acr`
+    )
+    expect(parseTombstonesStrict(listing(...names))).toHaveLength(MAX_LISTING_NAMES)
+  })
+})
+
+describe('parseTombstonesStrict', () => {
+  test('reads the recorded listings as parseTombstones does', () => {
+    for (const file of ['stick-tombstones', 'virtual-device-tombstones-after']) {
+      expect(parseTombstonesStrict(ls(file))).toEqual(parseTombstones(ls(file)))
+    }
+  })
+
+  test('an empty vault is an empty list', () => {
+    expect(parseTombstonesStrict(listing())).toEqual([])
+  })
+
+  test('a refused listing (-7) is CRASH_ACCESS_DENIED, not an empty list', () => {
+    const refused = fixture('0.24/loggingctl-vault-acr/insufficient-permissions.json')
+    expect(parseTombstones(refused)).toEqual([])
+    expect(() => parseTombstonesStrict(refused)).toThrow(
+      expect.objectContaining({ code: 'CRASH_ACCESS_DENIED' })
+    )
+    expect(() => parseTombstonesStrict('{"status":-7,"error":"x"}')).toThrow(
+      expect.objectContaining({ code: 'CRASH_ACCESS_DENIED' })
+    )
+  })
+
+  test.each([
+    ['not JSON', 'No entry found for tag SYSTEM_TOMBSTONE\n'],
+    ['empty output', ''],
+    ['another status', '{"artifacts": [], "status": -8}'],
+    ['the wrong shape', '{"artifacts": "x", "status": 0}']
+  ])('%s is UNEXPECTED_OUTPUT, not an empty list', (_name, out) => {
+    expect(parseTombstones(out)).toEqual([])
+    expect(() => parseTombstonesStrict(out)).toThrow(
+      expect.objectContaining({ code: 'UNEXPECTED_OUTPUT' })
+    )
   })
 })

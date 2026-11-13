@@ -53,7 +53,11 @@ export const ERROR_CODES = [
   'LIVE_UNSUPPORTED',
   'REBOOT_FAILED',
   'REBOOT_TIMEOUT',
-  'INVALID_TIMEOUT'
+  'INVALID_TIMEOUT',
+  'INVALID_CRASH_ID',
+  'CRASH_NOT_FOUND',
+  'CRASH_ACCESS_DENIED',
+  'CRASH_PULL_FAILED'
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

@@ -77,6 +77,13 @@ export function ovdEventText(event: OvdEvent): string {
       return 'Log session reconnected'
     case 'build':
       return `Build folder changed: ${event.folder ?? ''}${event.file}`
+    case 'crash': {
+      const details = [
+        ...(event.pid === undefined ? [] : [`pid ${event.pid}`]),
+        ...(event.signal === undefined ? [] : [event.signal])
+      ]
+      return `Crash report: ${event.app ?? 'an app'}${details.length > 0 ? ` (${details.join(', ')})` : ''}`
+    }
     case 'launch': {
       const what = event.action === 'app.restart' ? 'Restart' : 'Launch'
       const app = event.app ?? 'the app'

@@ -1,6 +1,9 @@
 import { homedir as osHomedir } from 'node:os'
 import { createActivityFeed } from './activity/activityFeed.js'
 import { createActivityLog, type Surface } from './activity/activityLog.js'
+import { createCrashReader } from './crashes/crashList.js'
+import { createCrashWatch } from './crashes/crashWatch.js'
+import type { Crashes } from './crashes/types.js'
 import { createDevices, type Devices } from './devices/devices.js'
 import { createDevmode, type Devmode } from './devmode/devmode.js'
 import { createDoctor, type Doctor } from './doctor/doctor.js'
@@ -58,6 +61,7 @@ export interface Ovd {
   screenshot: Screenshot
   screen: Screen
   reboot: Reboot
+  crashes: Crashes
 }
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
@@ -155,6 +159,25 @@ export function createOvd(opts: OvdOptions): Ovd {
   })
   const screen = createScreen({ devices, activity, emulator, vvd })
   const reboot = createReboot({ runner, sdk, devices, pairing, activity, env })
+  const reader = createCrashReader({
+    runner,
+    sdk,
+    devices,
+    // All packages, not only the side-loaded: the scope match must see what a name collides with.
+    installed: async (device) =>
+      (await apps.list({ device: device.id, all: true })).apps.map((a) => ({
+        packageId: a.packageId,
+        source: a.source
+      }))
+  })
+  const crashes: Crashes = {
+    list: (device) => reader.list(device),
+    detail: async (id, device) => {
+      const found = await reader.find(id, device)
+      return { ...found, device: { id: found.device.id, name: found.device.name } }
+    },
+    watch: (watchOpts) => createCrashWatch({ reader, devices, activity }, watchOpts)
+  }
   return {
     sdk,
     devices,
@@ -172,6 +195,7 @@ export function createOvd(opts: OvdOptions): Ovd {
     input,
     screenshot,
     screen,
-    reboot
+    reboot,
+    crashes
   }
 }

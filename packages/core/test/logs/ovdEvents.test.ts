@@ -141,6 +141,24 @@ test.each<[string, ActivityEntry, OvdEvent | undefined]>([
     { kind: 'build', folder: 'build/armv7-release/', file: 'player_armv7.vpkg' }
   ],
   [
+    'crash.detected: validated fields only',
+    at({
+      action: 'crash.detected',
+      args: { package: PLAYER, index: 37, pid: 3200, signal: 6, epoch: 1794102704 }
+    }),
+    { kind: 'crash', app: PLAYER, pid: 3200, signal: 'SIGABRT', index: 37 }
+  ],
+  [
+    'crash.detected with a signal OVD has no name for',
+    at({ action: 'crash.detected', args: { package: PLAYER, index: 1, pid: 2, signal: 31 } }),
+    { kind: 'crash', app: PLAYER, pid: 2, signal: 'signal 31', index: 1 }
+  ],
+  [
+    'crash.detected: controls and bidi marks are removed from the package',
+    at({ action: 'crash.detected', args: { package: `${PLAYER}\u001b[2J\u202e`, index: 1 } }),
+    { kind: 'crash', app: `${PLAYER}[2J`, index: 1 }
+  ],
+  [
     'build.changed without a file',
     at({ action: 'build.changed', args: { folder: 'build/', file: '', redeploy: false } }),
     undefined

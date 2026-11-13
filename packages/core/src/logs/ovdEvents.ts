@@ -1,3 +1,4 @@
+import { signalName } from '../adapters/parseTombstones.js'
 import type { ActivityEntry } from '../activity/activityLog.js'
 import { ovdEventText } from './logText.js'
 import type { LogEntry, OvdEvent } from './types.js'
@@ -56,6 +57,18 @@ export function ovdEventOf(entry: ActivityEntry): OvdEvent | undefined {
       const folder = text(entry.args.folder)
       return { kind: 'build', ...(folder === undefined ? {} : { folder }), file }
     }
+    case 'crash.detected': {
+      const pid = pidOf(entry.args.pid)
+      const signal = signalOf(entry.args.signal)
+      const index = pidOf(entry.args.index)
+      return {
+        kind: 'crash',
+        ...(pkg === undefined ? {} : { app: pkg }),
+        ...(pid === undefined ? {} : { pid }),
+        ...(signal === undefined ? {} : { signal }),
+        ...(index === undefined ? {} : { index })
+      }
+    }
     default:
       return undefined
   }
@@ -104,4 +117,10 @@ function pidOf(value: string | number | boolean | undefined): number | undefined
   if (typeof value === 'number' && Number.isSafeInteger(value)) return value
   if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value)
   return undefined
+}
+
+// The signal as the crash watcher writes it (a number): its name when OVD knows it.
+function signalOf(value: string | number | boolean | undefined): string | undefined {
+  const n = pidOf(value)
+  return n === undefined ? undefined : (signalName(n) ?? `signal ${n}`)
 }
