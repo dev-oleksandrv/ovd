@@ -26,6 +26,10 @@ export interface LogEntry {
   message: string
   // false for a line that has no header and follows no entry: kept as is.
   parsed: boolean
+  // The device's boot ID the entry's stream started in: 32 lower-case hex characters, no
+  // dashes. Absent when the session didn't read it, or the read failed (`short_concise` prints
+  // none, so it comes from the stream, not the line).
+  boot?: string
   // Set on an OVD line: one of OVD's own events, shown inline with `tag: 'OVD'` and no device
   // fields (`deviceTime`, `process`, `pid`, `tid` are null).
   ovd?: OvdEvent
@@ -62,6 +66,19 @@ export type OvdEvent =
   // A new crash report of the developer's app (`crash.detected`, the crash watcher): validated
   // fields only.
   | { kind: 'crash'; app?: string; pid?: number; signal?: string; index?: number }
+  // A process's lines hidden by its rate limit in one second of device time (a per-process rule,
+  // `--process-rate`). The filter derives these lines, they aren't stored: `process` is the
+  // identity, `second` the device-time second as `YYYY-MM-DDTHH:MM:SSZ`.
+  | { kind: 'rate-limited'; process: string; hidden: number; second: string }
+  // A boot filter is active but the stream's boot ID is unknown (the read failed), so the
+  // filter shows no device line.
+  | { kind: 'boot-unknown' }
+  // A boot filter was set on a running stream and its boot ID was read then: lines buffered
+  // before have no boot ID and stay hidden.
+  | { kind: 'boot-late' }
+  // The side-loaded apps couldn't be listed for a stream, so `appsOnly` (the `app-errors`
+  // preset) shows nothing until a later stream reads them.
+  | { kind: 'app-list-unavailable' }
 
 export interface LogCounts {
   // Lines (entries) and E entries received since the start or the last Clear.

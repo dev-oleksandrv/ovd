@@ -74,6 +74,15 @@ describe('logJson', () => {
     )
   })
 
+  test('boot is added when the session knew it, and the text export stays the same', () => {
+    const boot = '0b6a5f2e3c414d7a9e581f2a3b4c5d6e'
+    const tagged = { ...tick(1), boot }
+    expect(logJson(tagged)).toEqual({ ...logJson(tick(1)), boot })
+    expect(JSON.stringify(logJson(tick(1)))).not.toContain('boot')
+    expect(logExport([tagged], 'text')).toBe(logExport([tick(1)], 'text'))
+    expect(JSON.parse(logExport([tagged], 'jsonl')) as unknown).toMatchObject({ boot })
+  })
+
   test('an OVD line: {time, ovd, message}', () => {
     expect(logJson(installed)).toEqual({
       time: installed.time,

@@ -1,0 +1,4 @@
+{
+ "message": "com.example.player:msev -> mute",
+ "status": "success"
+}

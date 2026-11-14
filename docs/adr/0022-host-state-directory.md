@@ -26,3 +26,4 @@ Stage 1 needs state that outlives one command: the selected target device ("the 
 
 - 2026-10-31 (`53c4611`, Stage 2.1): `state.json` gained an optional `project` field (`kind: folder | vpkg`, `path`); `version` stays `1`. Edited in place before this rule existed.
 - 2026-11-12 (Stage 4.3): screenshots are the user's own files, not host state: they go to `~/ovd/captures` (or `OVD_CAPTURES`), outside this directory, and OVD only lists the PNGs it finds there. Nothing about them is kept in `state.json`.
+- 2026-11-14 (Stage 5.2): saved log filters live in a second file here, `log-filters.json`, and log bundles go to `~/ovd/bundles` (or `OVD_BUNDLES`), outside this directory like captures. Both are described in ADR 0026. `state.json` is unchanged.

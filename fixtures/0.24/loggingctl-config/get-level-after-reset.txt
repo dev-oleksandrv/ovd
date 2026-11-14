@@ -1,0 +1,8 @@
+{
+ "message": "com.example.player:msev not set, DEFAULT value will be used",
+ "note": [
+  "Journal MaxLevelStore value: info",
+  "DEFAULT:msev -> info"
+ ],
+ "status": "success"
+}

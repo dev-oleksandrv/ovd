@@ -1,0 +1,6 @@
+{
+ "message": [
+  "com.example.player:msev -> [reset to default]"
+ ],
+ "status": "success"
+}
