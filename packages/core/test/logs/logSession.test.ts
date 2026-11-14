@@ -1228,6 +1228,25 @@ describe('app-errors and the side-loaded apps', () => {
     await s.session.stop()
   })
 
+  test('setFilter turning appsOnly on calls onRefilter once the list is read and the buffer judged with it', async () => {
+    const { installed, release } = gatedListing()
+    const onRefilter = vi.fn()
+    const s = await startWith({ onRefilter }, errorLine(PLAYER, 1) + errorLine(SYSTEM, 2), {
+      installed
+    })
+    await vi.advanceTimersByTimeAsync(250)
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    // The read is out: `entries()` still show nothing of the apps, and no one was told.
+    expect(onRefilter).not.toHaveBeenCalled()
+    release()
+    await waitFor(() => onRefilter.mock.calls.length > 0)
+    // The callback fires after the re-evaluation, so a re-read sees the app's line.
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER])
+    expect(onRefilter).toHaveBeenCalledTimes(1)
+    await s.session.stop()
+  })
+
   test('the hold is bounded: after 5 s the lines are judged fail-closed, and the buffer is re-evaluated when the list comes', async () => {
     const { installed, release } = gatedListing()
     const s = await startWith({}, errorLine(PLAYER, 1) + errorLine(SYSTEM, 2), { installed })

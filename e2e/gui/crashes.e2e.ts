@@ -172,6 +172,30 @@ test.describe('Crashes on the Virtual Device', () => {
     expect(activity(sandbox, 'crash.pull')).toHaveLength(1)
   })
 
+  test('Logs at crash time opens Logs filtered on the crashed app and its PID', async ({
+    sandbox,
+    launch
+  }) => {
+    await setUp(sandbox)
+    const { page } = await launch()
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
+    await watching(sandbox)
+    injectPlayerCrash(sandbox)
+    await crashToast(page).getByRole('button', { name: 'Open' }).click()
+    await expect(detail(page)).toBeVisible()
+
+    await detail(page).getByRole('button', { name: 'Logs at crash time' }).click()
+
+    await expect(page.getByRole('heading', { name: 'Logs', level: 1 })).toBeVisible()
+    // The crashed process only: the app and its PID (the crash's pid is 7746).
+    await expect(page.getByRole('combobox', { name: 'Package' })).toHaveValue(PLAYER)
+    await expect(
+      page.getByRole('group', { name: 'Active filters' }).getByText('PID 7746')
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Filters (1)' })).toBeVisible()
+    await expect(echo(page)).toContainText(`ovd logs --app ${PLAYER} --pid 7746`)
+  })
+
   test('the NEW crash is marked in the list until its detail is opened; Copy prompt puts the fixed text and the fenced untrusted block on the clipboard', async ({
     sandbox,
     launch

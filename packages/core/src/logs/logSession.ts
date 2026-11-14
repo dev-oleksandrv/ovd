@@ -61,6 +61,10 @@ export interface LogStartOptions {
   // Called when a restarted stream has started, after an install OVD made on the target or a
   // reconnect (beside the OVD line), so a surface can wait for the restart an install causes.
   onRestart?: (reason: 'install' | 'reconnect') => void
+  // Called when a `setFilter` that turned `appsOnly` on has read the side-loaded list and
+  // re-evaluated the buffer: `entries()` now differ from what `setFilter` returned with, so a
+  // surface that mirrors them re-reads.
+  onRefilter?: () => void
 }
 
 export type LogSessionEnd =
@@ -414,6 +418,7 @@ export function createLogs(deps: LogsDeps): LogsApi {
             if (finished) return
             if (ok) buffer.setFilter(filter)
             releaseHeld()
+            if (ok) opts.onRefilter?.()
             if (!ok && sideloaded === undefined) addOvd({ kind: 'app-list-unavailable' })
           } finally {
             sideloadPending = false
