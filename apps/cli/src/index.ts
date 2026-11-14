@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createInterface } from 'node:readline/promises'
 import { createOvd, processGroups, type Ovd } from '@ovd/core'
+import pkg from '../package.json' with { type: 'json' }
 import { installExitHooks } from './exitHooks.js'
 import { runCli } from './runCli.js'
 
@@ -14,7 +15,7 @@ process.exitCode = await runCli(process.argv.slice(2), {
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text)
   },
-  ovd: () => (ovd ??= createOvd({ surface: 'cli' })),
+  ovd: () => (ovd ??= createOvd({ surface: 'cli', ovdVersion: pkg.version })),
   env: process.env,
   onInterrupt: hooks.onInterrupt,
   stdoutTty: process.stdout.isTTY === true,

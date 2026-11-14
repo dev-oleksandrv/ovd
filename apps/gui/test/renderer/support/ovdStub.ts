@@ -34,8 +34,11 @@ import type {
   InputOutcome,
   InputState,
   IpcResult,
+  LogsBundleResult,
   LogsExportResult,
+  LogsPreset,
   LogsState,
+  SavedLogsFilter,
   LogsUpdate,
   OvdApi,
   RunProgress,
@@ -335,6 +338,41 @@ export function stubOvd(opts: {
       ),
       clear: vi.fn(opts.logs?.clear ?? (async () => undefined)),
       export: vi.fn(opts.logs?.export ?? (async () => unexpected<LogsExportResult>('logs.export'))),
+      // The built-ins as core lists them (F15), no saved filters, and calls that throw until a
+      // test says what they answer.
+      presets: vi.fn(
+        opts.logs?.presets ??
+          (async (): Promise<IpcResult<LogsPreset[]>> => ({
+            ok: true,
+            data: [
+              { key: 'all', label: 'All', filter: {} },
+              {
+                key: 'app-errors',
+                label: 'App errors only',
+                filter: { level: 'error', appsOnly: true }
+              },
+              {
+                key: 'network',
+                label: 'Network',
+                filter: { search: '\\b(?:http|https|dns)\\b', regex: true }
+              },
+              { key: 'lifecycle', label: 'Lifecycle', filter: { lifecycle: true } }
+            ]
+          }))
+      ),
+      savedList: vi.fn(
+        opts.logs?.savedList ??
+          (async (): Promise<IpcResult<SavedLogsFilter[]>> => ({ ok: true, data: [] }))
+      ),
+      savedSave: vi.fn(opts.logs?.savedSave ?? (async () => unexpected<null>('logs.savedSave'))),
+      savedRemove: vi.fn(
+        opts.logs?.savedRemove ?? (async () => unexpected<null>('logs.savedRemove'))
+      ),
+      bundle: vi.fn(opts.logs?.bundle ?? (async () => unexpected<LogsBundleResult>('logs.bundle'))),
+      revealBundle: vi.fn(
+        opts.logs?.revealBundle ??
+          (async (): Promise<IpcResult<null>> => ({ ok: true, data: null }))
+      ),
       onUpdate: (l) => {
         logsListener = l
         return () => {

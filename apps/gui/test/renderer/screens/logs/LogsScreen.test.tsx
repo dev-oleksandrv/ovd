@@ -1,5 +1,5 @@
 import type { Device } from '@ovd/core'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { LogsState, LogsUpdate } from '../../../../src/preload/api'
 import { DevicesProvider } from '../../../../src/renderer/src/devices/DevicesProvider'
@@ -36,7 +36,7 @@ async function renderScreen(
     logs?: Parameters<typeof stubOvd>[0]['logs']
     exportRequest?: { format: 'text' | 'jsonl'; n: number }
     onExportHandled?: () => void
-    crashRequest?: { n: number; app: string; time: string }
+    crashRequest?: { n: number; app: string; pid: number; time: string }
     onCrashRequestHandled?: () => void
   } = {}
 ): Promise<OvdStub> {
@@ -200,15 +200,15 @@ describe('LogsScreen', () => {
     expect(screen.getByText('[KeplerScript-JavaScript] player flood 0')).toBeTruthy()
   })
 
-  test('lines that all miss the filter: "No lines match", and Clear filters resets them', async () => {
+  test('lines that all miss the filter: "No lines match", and Reset to All resets them', async () => {
     const stub = await renderScreen()
     await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
     push(stub, { kind: 'state', session: 1, state: running })
     push(stub, { kind: 'reset', session: 1, entries: [], counts: counts(0), apps: [] })
     push(stub, { kind: 'append', session: 1, entries: [], counts: counts(12, 2, 0), apps: [] })
-    expect(screen.getByText('No lines match the filters')).toBeTruthy()
+    expect(screen.getByText('No lines match the filter')).toBeTruthy()
     expect(screen.getByText('12 lines · 2 errors')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reset to All' }))
     await waitFor(() => expect(stub.api.logs.setFilter).toHaveBeenLastCalledWith({}))
   })
 
@@ -532,7 +532,7 @@ describe('Logs at crash time', () => {
     entries(n).map((e) =>
       logEntry(e.seq, { time: `2026-11-08T07:28:${String(e.seq).padStart(2, '0')}.000Z` })
     )
-  const request = { n: 1, app: 'com.example.player', time: '2026-11-08T07:28:30.000Z' }
+  const request = { n: 1, app: 'com.example.player', pid: 27178, time: '2026-11-08T07:28:30.000Z' }
 
   test('filters on the crash’s app and scrolls to the crash time when the session covers it', async () => {
     const stub = await renderScreen({ crashRequest: request })
@@ -545,7 +545,10 @@ describe('Logs at crash time', () => {
       apps: ['com.example.player']
     })
     await waitFor(() =>
-      expect(stub.api.logs.setFilter).toHaveBeenCalledWith({ app: 'com.example.player' })
+      expect(stub.api.logs.setFilter).toHaveBeenCalledWith({
+        app: 'com.example.player',
+        pid: [27178]
+      })
     )
     const list = await screen.findByRole('list', { name: 'Log lines' })
     await waitFor(() => expect(list.scrollTop).toBe(30 * ROW_HEIGHT))
@@ -566,7 +569,10 @@ describe('Logs at crash time', () => {
     })
     expect(await screen.findByText(/journal rotates fast/)).toBeTruthy()
     expect(screen.getByText(/start logs \(or use Run\) before launching the app/)).toBeTruthy()
-    expect(stub.api.logs.setFilter).toHaveBeenCalledWith({ app: 'com.example.player' })
+    expect(stub.api.logs.setFilter).toHaveBeenCalledWith({
+      app: 'com.example.player',
+      pid: [27178]
+    })
   })
 
   const pushAndResolve = async (c: ReturnType<typeof counts>, lines = timed(50)) => {
@@ -607,5 +613,461 @@ describe('Logs at crash time', () => {
     start(stub)
     await waitFor(() => expect(onCrashRequestHandled).toHaveBeenCalledTimes(1))
     expect(stub.api.logs.setFilter).toHaveBeenCalledTimes(1)
+  })
+})
+
+const PLAYER = 'com.example.player'
+
+// The first of a list a test knows is not empty.
+function first<T>(items: T[]): T {
+  const [head] = items
+  if (head === undefined) throw new Error('expected at least one element')
+  return head
+}
+const savedErrors = { name: 'errors', filter: { level: 'e' }, valid: true as const }
+
+describe('LogsScreen, the power tools', () => {
+  async function runningScreen(opts: Parameters<typeof renderScreen>[0] = {}) {
+    const stub = await renderScreen(opts)
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    await screen.findByRole('button', { name: 'Network' })
+    return stub
+  }
+  const lastFilter = (stub: OvdStub) => vi.mocked(stub.api.logs.setFilter).mock.lastCall?.[0]
+
+  test('the Presets row: the built-ins, the saved filters, then Save filter; All is on', async () => {
+    await runningScreen({ logs: { savedList: async () => ({ ok: true, data: [savedErrors] }) } })
+    const row = within(screen.getByRole('group', { name: 'Presets' }))
+    const names = row
+      .getAllByRole('button')
+      .map((button) => button.getAttribute('aria-label') ?? button.textContent ?? '')
+    expect(names.map((n) => n.replace(/^bookmark_add/, ''))).toEqual([
+      'All',
+      'App errors only',
+      'Network',
+      'Lifecycle',
+      'errors',
+      'Delete saved filter errors',
+      'Save filter'
+    ])
+    expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByText('Custom')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Save filter' }).hasAttribute('disabled')).toBe(true)
+  })
+
+  test('a preset applies its filter and echoes --preset; an edit afterwards shows Custom', async () => {
+    const stub = await runningScreen()
+    fireEvent.click(screen.getByRole('button', { name: 'App errors only' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ level: 'e', appsOnly: true }))
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --preset app-errors --device ${stick.id}`)
+    )
+    expect(
+      screen.getByRole('button', { name: 'App errors only' }).getAttribute('aria-pressed')
+    ).toBe('true')
+    expect(screen.queryByText('Custom')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Warn' }))
+    await waitFor(() => expect(screen.getByText('Custom')).toBeTruthy())
+    expect(
+      screen.getByRole('button', { name: 'App errors only' }).getAttribute('aria-pressed')
+    ).toBe('false')
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --level warn --preset app-errors --device ${stick.id}`)
+    )
+  })
+
+  test('the Network preset puts its pattern in the search box, as a regex', async () => {
+    const stub = await runningScreen()
+    fireEvent.click(screen.getByRole('button', { name: 'Network' }))
+    await waitFor(() => expect(lastFilter(stub)).toMatchObject({ regex: true }))
+    expect(
+      (screen.getByRole('textbox', { name: 'Search logs' }) as HTMLInputElement).value
+    ).toMatch(/http/)
+    expect(screen.getByRole('button', { name: 'Network' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    )
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --preset network --device ${stick.id}`)
+    )
+  })
+
+  test('a saved filter applies by name', async () => {
+    const stub = await runningScreen({
+      logs: { savedList: async () => ({ ok: true, data: [savedErrors] }) }
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'errors' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ level: 'e' }))
+    await waitFor(() => expect(echoed()).toContain(`ovd logs --preset errors --device ${stick.id}`))
+  })
+
+  test('an invalid saved filter can’t be applied, only deleted', async () => {
+    const stub = await runningScreen({
+      logs: {
+        savedList: async () => ({
+          ok: true,
+          data: [
+            {
+              name: 'broken',
+              filter: {},
+              valid: false,
+              error: { code: 'INVALID_LOG_FILTER', message: 'Not valid', hint: 'Delete it' }
+            }
+          ]
+        }),
+        savedRemove: async () => ({ ok: true, data: null })
+      }
+    })
+    const chip = await screen.findByRole('button', { name: 'broken' })
+    expect(chip.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete saved filter broken' }))
+    await waitFor(() => expect(stub.api.logs.savedRemove).toHaveBeenCalledWith('broken'))
+  })
+
+  test('deleting a saved filter echoes ovd logs filter rm and refreshes the list', async () => {
+    let list = [savedErrors]
+    const stub = await runningScreen({
+      logs: {
+        savedList: async () => ({ ok: true, data: list }),
+        savedRemove: async () => {
+          list = []
+          return { ok: true, data: null }
+        }
+      }
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete saved filter errors' }))
+    expect(await screen.findByText('Deleted the saved filter errors')).toBeTruthy()
+    expect(stub.api.logs.savedRemove).toHaveBeenCalledWith('errors')
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'errors' })).toBeNull())
+    expect(echoed()).toContain('ovd logs filter rm errors')
+  })
+
+  test('the Filters popover adds a PID, shows its chip and echoes --pid; the chip removes it', async () => {
+    const stub = await runningScreen()
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'PID' }), { target: { value: '27178' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add PID' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ pid: [27178] }))
+    expect(screen.getByRole('group', { name: 'Active filters' }).textContent).toContain('PID 27178')
+    await waitFor(() => expect(echoed()).toContain(`ovd logs --pid 27178 --device ${stick.id}`))
+    expect(screen.getByText('Custom')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove PID 27178' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({}))
+    expect(screen.queryByRole('group', { name: 'Active filters' })).toBeNull()
+  })
+
+  test('a bad PID is refused in the popover, before main', async () => {
+    const stub = await runningScreen()
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'PID' }), { target: { value: '-3' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add PID' }))
+    expect(screen.getByRole('alert').textContent).toMatch(/non-negative whole number/)
+    expect(stub.api.logs.setFilter).not.toHaveBeenCalled()
+  })
+
+  test('tag, identity, facility and boot: This boot is --boot current', async () => {
+    const stub = await runningScreen()
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Tag' }), { target: { value: 'my tag' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add Tag' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Identity' }), {
+      target: { value: 'lcm_service' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add Identity' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Facility' }), {
+      target: { value: 'user' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'This boot' }))
+    await waitFor(() =>
+      expect(lastFilter(stub)).toEqual({
+        tag: ['my tag'],
+        identity: ['lcm_service'],
+        facility: ['user'],
+        boot: ['current']
+      })
+    )
+    const chips = screen.getByRole('group', { name: 'Active filters' }).textContent ?? ''
+    expect(chips).toContain('Tag my tag')
+    expect(chips).toContain('Identity lcm_service')
+    expect(chips).toContain('Facility user')
+    expect(chips).toContain('This boot')
+    await waitFor(() =>
+      expect(echoed()).toContain(
+        `ovd logs --tag 'my tag' --identity lcm_service --facility user --boot current --device ${stick.id}`
+      )
+    )
+  })
+
+  test('the process menu: Mute adds a rule and a chip, and the chip removes it', async () => {
+    const stub = await runningScreen()
+    fireEvent.click(first(screen.getAllByRole('button', { name: `Process menu for ${PLAYER}` })))
+    fireEvent.click(screen.getByRole('menuitem', { name: `Mute ${PLAYER}` }))
+    await waitFor(() =>
+      expect(lastFilter(stub)).toEqual({ processRules: [{ identity: PLAYER, mute: true }] })
+    )
+    expect(screen.getByRole('group', { name: 'Process rules' }).textContent).toContain(
+      `Muted ${PLAYER}`
+    )
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --mute ${PLAYER} --device ${stick.id}`)
+    )
+    fireEvent.click(screen.getByRole('button', { name: `Remove Muted ${PLAYER}` }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({}))
+  })
+
+  test('the process menu: Level for… and Limit…', async () => {
+    const stub = await runningScreen()
+    const open = () =>
+      fireEvent.click(first(screen.getAllByRole('button', { name: `Process menu for ${PLAYER}` })))
+    open()
+    fireEvent.click(screen.getByRole('menuitem', { name: `Level for ${PLAYER}…` }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Warn and above' }))
+    await waitFor(() =>
+      expect(lastFilter(stub)).toEqual({ processRules: [{ identity: PLAYER, level: 'W' }] })
+    )
+    open()
+    fireEvent.click(screen.getByRole('menuitem', { name: `Limit ${PLAYER}…` }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Lines per second' }), {
+      target: { value: '10' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Limit' }))
+    await waitFor(() =>
+      expect(lastFilter(stub)).toEqual({
+        processRules: [{ identity: PLAYER, level: 'W', rate: 10 }]
+      })
+    )
+    await waitFor(() =>
+      expect(echoed()).toContain(
+        `ovd logs --process-level ${PLAYER}=W --process-rate ${PLAYER}=10 --device ${stick.id}`
+      )
+    )
+  })
+
+  test('a limit outside 1 to 10000 is refused in the menu', async () => {
+    const stub = await runningScreen()
+    fireEvent.click(first(screen.getAllByRole('button', { name: `Process menu for ${PLAYER}` })))
+    fireEvent.click(screen.getByRole('menuitem', { name: `Limit ${PLAYER}…` }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Lines per second' }), {
+      target: { value: '10001' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Limit' }))
+    expect(screen.getByRole('alert').textContent).toMatch(/1 to 10000/)
+    expect(stub.api.logs.setFilter).not.toHaveBeenCalled()
+  })
+
+  test('a right click on a row opens the process menu too; Esc closes it', async () => {
+    await runningScreen()
+    fireEvent.contextMenu(first(screen.getAllByRole('listitem')))
+    expect(screen.getByRole('menu', { name: `Process ${PLAYER}` })).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  test('OVD lines have no process menu', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    push(stub, { kind: 'state', session: 1, state: running })
+    push(stub, {
+      kind: 'reset',
+      session: 1,
+      entries: [
+        logEntry(0, {
+          tag: 'OVD',
+          process: null,
+          pid: null,
+          tid: null,
+          deviceTime: null,
+          message: 'x: 3 lines hidden by rate limit',
+          ovd: { kind: 'rate-limited', process: 'x', hidden: 3, second: '2026-11-08T07:27:00Z' }
+        })
+      ],
+      counts: counts(1),
+      apps: []
+    })
+    expect(screen.queryByRole('button', { name: /Process menu/ })).toBeNull()
+  })
+
+  test('rate-limited lines that share a seq with an entry all show', async () => {
+    const stub = await renderScreen()
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    push(stub, { kind: 'state', session: 1, state: running })
+    const rate = (process: string) =>
+      logEntry(5, {
+        tag: 'OVD',
+        process: null,
+        pid: null,
+        message: `${process}: 3 lines hidden by rate limit`,
+        ovd: { kind: 'rate-limited', process, hidden: 3, second: '2026-11-08T07:27:00Z' }
+      })
+    push(stub, {
+      kind: 'reset',
+      session: 1,
+      entries: [logEntry(5), rate('a'), rate('b')],
+      counts: counts(3),
+      apps: []
+    })
+    expect(screen.getByText('a: 3 lines hidden by rate limit')).toBeTruthy()
+    expect(screen.getByText('b: 3 lines hidden by rate limit')).toBeTruthy()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  test('Save filter asks a name, checks it, saves it and echoes ovd logs filter save', async () => {
+    const stub = await runningScreen({
+      logs: { savedSave: async () => ({ ok: true, data: null }) }
+    })
+    fireEvent.click(screen.getByRole('radio', { name: 'Error' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ level: 'e' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save filter' }))
+    const dialog = screen.getByRole('dialog', { name: 'Save filter' })
+    expect(dialog.textContent).toContain('ovd logs filter save <name> --level error')
+    const name = screen.getByRole('textbox', { name: 'Filter name' })
+    fireEvent.change(name, { target: { value: 'Bad Name' } })
+    expect(screen.getByRole('alert').textContent).toMatch(/lower-case/)
+    expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true)
+    fireEvent.change(name, { target: { value: 'network' } })
+    expect(screen.getByRole('alert').textContent).toMatch(/built-in preset/)
+    fireEvent.change(name, { target: { value: 'player-errors' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(stub.api.logs.savedSave).toHaveBeenCalledWith({
+        name: 'player-errors',
+        filter: { level: 'e' }
+      })
+    )
+    expect(await screen.findByText('Saved the filter player-errors')).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(echoed()).toContain('ovd logs filter save player-errors --level error')
+  })
+
+  test('a name in use is replaced only with force; main’s error stays in the dialog', async () => {
+    const savedSave = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        error: { code: 'LOG_FILTER_EXISTS', message: 'Too many filters', hint: 'Delete one' }
+      })
+      .mockResolvedValue({ ok: true, data: null })
+    const stub = await runningScreen({
+      logs: { savedList: async () => ({ ok: true, data: [savedErrors] }), savedSave }
+    })
+    fireEvent.click(screen.getByRole('radio', { name: 'Warn' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ level: 'w' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save filter' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter name' }), {
+      target: { value: 'errors' }
+    })
+    expect(screen.getByText(/Replace overwrites it/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }))
+    expect(await screen.findByText('Too many filters', { exact: false })).toBeTruthy()
+    expect(savedSave).toHaveBeenLastCalledWith({
+      name: 'errors',
+      filter: { level: 'w' },
+      force: true
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  test('a boot ID is never saved', async () => {
+    const stub = await runningScreen({
+      logs: { savedSave: async () => ({ ok: true, data: null }) }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'PID' }), { target: { value: '7' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add PID' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This boot' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ pid: [7], boot: ['current'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save filter' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter name' }), {
+      target: { value: 'p' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(stub.api.logs.savedSave).toHaveBeenCalledWith({ name: 'p', filter: { pid: [7] } })
+    )
+  })
+
+  test('Bundle saves through the dialog, toasts with Reveal and the CLI note, and echoes', async () => {
+    const stub = await runningScreen({
+      logs: {
+        bundle: async () => ({
+          ok: true,
+          data: {
+            status: 'saved',
+            path: '/home/dev/ovd/bundles/ovd-logs-fire-tv-stick.zip',
+            bytes: 2048,
+            lines: 3,
+            files: ['README.txt'],
+            warning: 'Review the logs before you share the bundle.'
+          }
+        })
+      }
+    })
+    fireEvent.click(screen.getByRole('radio', { name: 'Error' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ level: 'e' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bundle' }))
+    expect(
+      await screen.findByText(
+        /Bundled 3 lines to \/home\/dev\/ovd\/bundles\/ovd-logs-fire-tv-stick\.zip/
+      )
+    ).toBeTruthy()
+    expect(stub.api.logs.bundle).toHaveBeenCalledWith({})
+    expect(screen.getByText(/journal backlog/)).toBeTruthy()
+    expect(screen.getByText('Review the logs before you share the bundle.')).toBeTruthy()
+    expect(echoed()).toContain(`ovd logs bundle --device ${stick.id} --level error`)
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal' }))
+    await waitFor(() => expect(stub.api.logs.revealBundle).toHaveBeenCalled())
+  })
+
+  test('Bundle while paused asks for the lines up to the pause', async () => {
+    const stub = await runningScreen({
+      logs: { bundle: async () => ({ ok: true, data: { status: 'canceled' } }) }
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Pause/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bundle' }))
+    await waitFor(() =>
+      expect(stub.api.logs.bundle).toHaveBeenCalledWith({ throughSeq: 2, preset: 'all' })
+    )
+    expect(screen.queryByRole('button', { name: 'Reveal' })).toBeNull()
+  })
+
+  test('Bundle with nothing shown says so; an error toast names the code', async () => {
+    const bundle = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: { status: 'empty' } })
+      .mockResolvedValueOnce({
+        ok: false,
+        error: {
+          code: 'LOG_BUNDLE_FAILED',
+          message: 'Couldn’t write the bundle',
+          hint: 'Free space'
+        }
+      })
+    await runningScreen({ logs: { bundle } })
+    fireEvent.click(screen.getByRole('button', { name: 'Bundle' }))
+    expect(await screen.findByText('No log lines to bundle')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Bundle' }))
+    expect(await screen.findByText('LOG_BUNDLE_FAILED: Couldn’t write the bundle')).toBeTruthy()
+  })
+
+  test('filters that hide every line: "No lines match the filter" and Reset to All', async () => {
+    const stub = await runningScreen()
+    push(stub, { kind: 'reset', session: 1, entries: [], counts: counts(12, 0, 0), apps: [] })
+    expect(screen.getByText('No lines match the filter')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset to All' }))
+    await waitFor(() => expect(lastFilter(stub)).toEqual({}))
+  })
+
+  test('Logs at crash time filters on the app and the crashed process', async () => {
+    const stub = await renderScreen({
+      crashRequest: { n: 1, app: PLAYER, pid: 27178, time: '2026-11-08T07:28:30.000Z' }
+    })
+    await waitFor(() => expect(stub.api.logs.open).toHaveBeenCalled())
+    start(stub)
+    await waitFor(() => expect(lastFilter(stub)).toEqual({ app: PLAYER, pid: [27178] }))
+    expect(await screen.findByText('PID 27178')).toBeTruthy()
+    await waitFor(() =>
+      expect(echoed()).toContain(`ovd logs --app ${PLAYER} --pid 27178 --device ${stick.id}`)
+    )
   })
 })

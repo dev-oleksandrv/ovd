@@ -1169,6 +1169,88 @@ describe('app-errors and the side-loaded apps', () => {
     await s.session.stop()
   })
 
+  // A listing that answers once `release` is called, for the order of the read and the stream.
+  function gatedListing() {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const installed = vi.fn(async () => {
+      await gate
+      return [
+        { packageId: PLAYER, source: 'sideloaded' as const },
+        { packageId: SYSTEM, source: 'system' as const }
+      ]
+    })
+    return { installed, release }
+  }
+
+  test('with appsOnly at the start, the list is read before the stream starts, so the backlog is judged with it', async () => {
+    const { installed, release } = gatedListing()
+    const stream = new FakeStream()
+    const { logs } = setup({ ...online, [LOG]: [stream] }, undefined, undefined, installed)
+    const shown: LogEntry[] = []
+    const starting = logs.start({
+      filter: { appsOnly: true },
+      onEntries: (entries) => shown.push(...entries)
+    })
+    await waitFor(() => installed.mock.calls.length > 0)
+    await settle()
+    expect(stream.spec).toBeUndefined()
+    release()
+    await waitFor(() => stream.spec !== undefined)
+    stream.emit(lines)
+    const session = await starting
+    await vi.advanceTimersByTimeAsync(250)
+    // Delivered as they arrived, not only after a later re-evaluation.
+    expect(shown.filter((e) => e.ovd === undefined).map((e) => e.process)).toEqual([PLAYER])
+    expect(installed).toHaveBeenCalledTimes(1)
+    await session.stop()
+  })
+
+  test('setFilter turning appsOnly on holds the arriving lines, in order, until the list is read', async () => {
+    const { installed, release } = gatedListing()
+    const s = await startWith({}, errorLine(PLAYER, 1) + errorLine(SYSTEM, 2), { installed })
+    await vi.advanceTimersByTimeAsync(250)
+    const before = s.delivered().length
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    s.stream.emit(errorLine(PLAYER, 3) + errorLine(SYSTEM, 4) + errorLine(PLAYER, 5))
+    await vi.advanceTimersByTimeAsync(250)
+    // Nothing of them is delivered, or hidden for good, while the read is out.
+    expect(s.delivered()).toHaveLength(before)
+    release()
+    await waitFor(() => s.delivered().length > before)
+    const after = s.delivered().slice(before)
+    expect(after.map((e) => e.message)).toEqual([
+      expect.stringContaining('boom 3'),
+      expect.stringContaining('boom 5')
+    ])
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER, PLAYER, PLAYER])
+    await s.session.stop()
+  })
+
+  test('the hold is bounded: after 5 s the lines are judged fail-closed, and the buffer is re-evaluated when the list comes', async () => {
+    const { installed, release } = gatedListing()
+    const s = await startWith({}, errorLine(PLAYER, 1) + errorLine(SYSTEM, 2), { installed })
+    await vi.advanceTimersByTimeAsync(250)
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    s.stream.emit(errorLine(PLAYER, 3) + errorLine(SYSTEM, 4))
+    await vi.advanceTimersByTimeAsync(250)
+    const before = s.delivered().length
+    await vi.advanceTimersByTimeAsync(5_000)
+    // Released, and the set is still unknown: no device line shows.
+    expect(
+      s
+        .delivered()
+        .slice(before)
+        .filter((e) => e.ovd === undefined)
+    ).toEqual([])
+    release()
+    await waitFor(() => s.session.entries().some((e) => e.process === PLAYER))
+    expect(s.session.entries().every((e) => e.process === PLAYER)).toBe(true)
+    await s.session.stop()
+  })
+
   test('a failed read fails closed: no line shows, one OVD line says why, the next stream retries', async () => {
     const installed = vi
       .fn<NonNullable<LogsDeps['installed']>>()

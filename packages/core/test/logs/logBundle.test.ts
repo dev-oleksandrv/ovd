@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest'
 import {
   BUNDLE_FILES,
+  bundleFileName,
   createLogBundle,
   OvdError,
   type ActivityEntry,
@@ -154,6 +155,17 @@ beforeEach(async () => {
 })
 
 const read = async (path: string) => unzip(await readFile(path))
+
+describe('bundleFileName', () => {
+  test('is ovd-logs-<name slug>-<UTC stamp>.zip, with no serial, ID or address', () => {
+    expect(bundleFileName(device, NOW)).toBe('ovd-logs-living-room-stick-20261114-101530.zip')
+    const leaky = { ...device, name: `Stick ${SERIAL} at ${IP}` }
+    const name = bundleFileName(leaky, NOW)
+    expect(name).toBe('ovd-logs-fire-tv-stick-20261114-101530.zip')
+    expect(name).not.toContain(SERIAL.toLowerCase())
+    expect(name).not.toContain('203')
+  })
+})
 
 describe('bundleEntries', () => {
   test('writes exactly the six files, with the manifest fields', async () => {

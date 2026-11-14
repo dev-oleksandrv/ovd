@@ -1,5 +1,5 @@
 import type { LogExportFormat } from '@ovd/core'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { targetDevice, useDevicesContext } from '../../devices/devicesContext'
 import { useFeedback } from '../../feedback/feedbackContext'
 import { Button } from '../../ui/Button'
@@ -12,6 +12,8 @@ import { OfflineState } from '../../ui/OfflineState'
 import { LogFooter } from './LogFooter'
 import { LogList } from './LogList'
 import { LogToolbar } from './LogToolbar'
+import { ProcessMenu } from './ProcessMenu'
+import { SaveFilterDialog } from './SaveFilterDialog'
 import { newLines, visibleCount } from './logStore'
 import {
   crashLogsOutcome,
@@ -19,7 +21,9 @@ import {
   logsBlocker,
   logsCli,
   packageChoices,
+  presetMatch,
   sessionLabel,
+  withRule,
   type CrashLogsRequest
 } from './logsView'
 import { NO_LINES_TO_EXPORT, useLogs } from './useLogs'
@@ -97,7 +101,7 @@ export function LogsScreen({
   const [resolving, setResolving] = useState<CrashLogsRequest | null>(null)
   const [crashNote, setCrashNote] = useState<{ title: string; body: string } | null>(null)
   const [scrollTo, setScrollTo] = useState<{ n: number; index: number } | null>(null)
-  const { showApp, setFollow } = logs
+  const { showCrash, setFollow } = logs
   useEffect(() => {
     if (crashRequest === null || exportStatus === null || exportStatus === 'starting') return
     if (crashRef.current === crashRequest.n) return
@@ -105,8 +109,8 @@ export function LogsScreen({
     onCrashRequestHandled()
     setCrashNote(null)
     if (exportStatus === 'none') return
-    void showApp(crashRequest.app).then(() => setResolving(crashRequest))
-  }, [crashRequest, exportStatus, showApp, onCrashRequestHandled])
+    void showCrash(crashRequest.app, crashRequest.pid).then(() => setResolving(crashRequest))
+  }, [crashRequest, exportStatus, showCrash, onCrashRequestHandled])
   // Set during render (as in Shell): once per request, when its re-filtered buffer arrived.
   const [resolved, setResolved] = useState<number | null>(null)
   if (resolving !== null && resolved !== resolving.n) {
@@ -127,6 +131,13 @@ export function LogsScreen({
     }
   }
 
+  const [saving, setSaving] = useState(false)
+  const [processMenu, setProcessMenu] = useState<{ identity: string; x: number; y: number } | null>(
+    null
+  )
+  const closeProcessMenu = useCallback(() => setProcessMenu(null), [])
+  const { edit } = logs
+
   const restartButton = (
     <Button icon="restart_alt" onClick={logs.restart}>
       Restart
@@ -143,6 +154,7 @@ export function LogsScreen({
       onFollowChange={logs.setFollow}
       onSeenBottom={logs.seenBottom}
       scrollTo={scrollTo}
+      onProcess={(identity, x, y) => setProcessMenu({ identity, x, y })}
     />
   )
 
@@ -180,9 +192,9 @@ export function LogsScreen({
       />
     ) : store.counts.lines > 0 && store.entries.length === 0 ? (
       <EmptyState
-        title="No lines match the filters"
-        body={`${store.counts.lines} lines arrived; none of them match the level, package or search.`}
-        actions={<Button onClick={logs.clearFilters}>Clear filters</Button>}
+        title="No lines match the filter"
+        body={`${store.counts.lines} lines arrived; none of them match the filters, the rules or the search.`}
+        actions={<Button onClick={logs.clearFilters}>Reset to All</Button>}
       />
     ) : (
       list
@@ -216,6 +228,14 @@ export function LogsScreen({
           onResume={logs.resume}
           onClear={logs.clear}
           onExport={logs.exportShown}
+          onBundle={logs.bundle}
+          presets={logs.presets}
+          saved={logs.saved}
+          activePreset={logs.activePreset}
+          onPreset={logs.applyPreset}
+          onSavePreset={() => setSaving(true)}
+          onDeletePreset={logs.removeSaved}
+          onEdit={edit}
         />
       )}
       {current?.status === 'reconnecting' && (
@@ -239,6 +259,30 @@ export function LogsScreen({
         </div>
       )}
       {body}
+      {saving && (
+        <SaveFilterDialog
+          filter={filter}
+          reserved={logs.presets.map((preset) => preset.key)}
+          taken={logs.saved.map((item) => item.name)}
+          base={presetMatch(filter, logs.presets, logs.saved)}
+          onSave={async (name, force) => {
+            const result = await logs.saveFilter(name, force)
+            return result.ok ? null : `${result.error.message}\n${result.error.hint}`
+          }}
+          onClose={() => setSaving(false)}
+        />
+      )}
+      {processMenu && (
+        <ProcessMenu
+          identity={processMenu.identity}
+          x={processMenu.x}
+          y={processMenu.y}
+          onMute={() => edit((f) => withRule(f, processMenu.identity, { mute: true }))}
+          onLevel={(level) => edit((f) => withRule(f, processMenu.identity, { level }))}
+          onLimit={(rate) => edit((f) => withRule(f, processMenu.identity, { rate }))}
+          onClose={closeProcessMenu}
+        />
+      )}
       {current && current.status !== 'starting' && (
         <LogFooter
           counts={store.counts}

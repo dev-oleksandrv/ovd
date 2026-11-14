@@ -6,12 +6,19 @@ import {
   openLogExport,
   type LogEntry,
   type LogExportFormat,
-  type LogExportWriter,
-  type LogFilterInput
+  type LogExportWriter
 } from '@ovd/core'
 import type { CliDeps } from '../program.js'
 import { reportError } from '../report.js'
 import { reportContext } from './context.js'
+import { registerLogsBundle } from './logsBundle.js'
+import {
+  addFilterOptions,
+  addPresetOption,
+  registerLogsFilter,
+  resolveFilter,
+  type FilterFlags
+} from './logsFilter.js'
 
 // `ovd logs` follows the target's log until Ctrl+C, `--until`, or reconnecting gives up. It
 // restarts the stream after every install OVD makes on the target (`--no-restart-after-install`
@@ -29,14 +36,7 @@ import { reportContext } from './context.js'
 // `jsonl`, the `--json` line shape), refusing an existing file without `--force`. On stop:
 // `Exported N lines to <file>`, or with `--json` one `{"ok":true,"path","format","lines"}`.
 
-interface LogsOptions {
-  app?: string
-  system?: boolean
-  level?: string
-  since?: string
-  until?: string
-  grep?: string
-  regex?: boolean
+interface LogsOptions extends FilterFlags {
   // commander's `--no-restart-after-install`: false when given, true otherwise.
   restartAfterInstall?: boolean
   export?: string
@@ -58,21 +58,9 @@ export function registerLogs(
   deps: CliDeps,
   setExitCode: (code: number) => void
 ): void {
-  program
-    .command('logs')
-    .description('Follow the target’s log (Ctrl+C to stop)')
-    .addOption(
-      new Option('--app <id>', 'only the lines of this app (package ID)').conflicts('system')
-    )
-    .option('--system', 'only the lines of system processes')
-    .option(
-      '--level <level>',
-      'minimum level: verbose, debug, info, warn, error (or v, d, i, w, e)'
-    )
-    .option('--since <time>', 'only lines from this time: ISO date-time, HH:MM[:SS] or 30s, 5m, 2h')
-    .option('--until <time>', 'stop at this time: ISO date-time, HH:MM[:SS] or 30s, 5m, 2h')
-    .option('--grep <text>', 'only lines whose message or tag contains this text')
-    .option('--regex', 'treat --grep as a regular expression')
+  const logs = program.command('logs').description('Follow the target’s log (Ctrl+C to stop)')
+  addPresetOption(addFilterOptions(logs))
+  logs
     .option('--no-restart-after-install', 'keep the stream running when OVD installs on the target')
     .option('--export <file>', 'write the lines to this file instead of printing them')
     .addOption(
@@ -119,9 +107,10 @@ export function registerLogs(
         }
         let session
         try {
+          const filter = await resolveFilter(deps.ovd(), opts)
           session = await deps.ovd().logs.start({
             ...(ctx.device === undefined ? {} : { device: ctx.device }),
-            filter: filterOf(opts),
+            filter,
             restartAfterInstall: opts.restartAfterInstall !== false,
             signal: controller.signal,
             // The CLI prints and forgets: core keeps no buffer for it.
@@ -156,16 +145,6 @@ export function registerLogs(
         dispose()
       }
     })
-}
-
-function filterOf(opts: LogsOptions): LogFilterInput {
-  return {
-    ...(opts.app === undefined ? {} : { app: opts.app }),
-    ...(opts.system ? { system: true } : {}),
-    ...(opts.level === undefined ? {} : { level: opts.level }),
-    ...(opts.since === undefined ? {} : { since: opts.since }),
-    ...(opts.until === undefined ? {} : { until: opts.until }),
-    ...(opts.grep === undefined ? {} : { search: opts.grep }),
-    ...(opts.regex ? { regex: true } : {})
-  }
+  registerLogsFilter(logs, deps, setExitCode)
+  registerLogsBundle(logs, deps, setExitCode)
 }
