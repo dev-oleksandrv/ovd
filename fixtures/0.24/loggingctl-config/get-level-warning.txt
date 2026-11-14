@@ -1,0 +1,8 @@
+{
+ "message": "com.example.player:msev -> warning",
+ "note": [
+  "Journal MaxLevelStore value: info",
+  "DEFAULT:msev -> info"
+ ],
+ "status": "success"
+}

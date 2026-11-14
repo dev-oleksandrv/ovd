@@ -1,0 +1,8 @@
+{
+ "message": "com.example.player:rate -> 2",
+ "note": [
+  "Journal RateLimitBurst value: 300",
+  "DEFAULT:rate -> 300"
+ ],
+ "status": "success"
+}
