@@ -1,6 +1,6 @@
 # 0015. Licensing, distribution and no telemetry
 
-- Status: Accepted
+- Status: Superseded by 0025
 - Date: 2026-10-14
 
 ## Context
