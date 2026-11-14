@@ -85,7 +85,22 @@ export interface World {
     holdAfterLine: number | null
     ignoreFirstSigterm?: boolean
     reboot?: boolean
+    // `recording: 'presets'` (absent is the default recording): every stream prints
+    // `loggingctl-log/virtual-device-presets.txt` (network and lifecycle lines, the log
+    // presets' input) instead of `stick-follow.txt` (stick) or the restart recordings (Virtual
+    // Device).
+    recording?: 'presets'
+    // `burst` (absent is false): after the recording, every stream prints BURST_LINES lines of
+    // `com.example.player` inside one device second, then one line of another process in the
+    // next second, for the rate-limit rule. Synthesized (fixtures/0.24/README.md).
+    burst?: boolean
   }
+  // The device's boot ID (`vda shell cat /proc/sys/kernel/random/boot_id`, from
+  // `vda-shell/boot-id.txt`). `reboots` counts the reboots the fake saw (`vda reboot`,
+  // `enable-device`, `logStream.reboot`): the first reboot changes the ID to the second fake
+  // UUID (`…0002`), the next to `…0003` (`bootIdAfter`). `readFails`: the read exits 1, as on a
+  // device whose `/proc` file can't be read. Synthesized (fixtures/0.24/README.md).
+  boot: { reboots: number; readFails: boolean }
   // How many `loggingctl log -f` streams the Virtual Device has started. The first prints
   // `loggingctl-log/virtual-device-restart-before.txt`, every later one
   // `virtual-device-restart-after.txt` (as recorded: a stream started right after another was
@@ -132,6 +147,13 @@ export const STICK_IP = '192.0.2.42'
 export const STICK_PORT = 5555
 export const STICK_ADDRESS = `${STICK_IP}:${STICK_PORT}`
 export const VVD_VDA_SERIAL = 'emulator-5554'
+// How many lines `logStream.burst` prints in one device second.
+export const BURST_LINES = 50
+// The boot ID the fake reports after `reboots` reboots: the recorded fake UUID
+// (`vda-shell/boot-id.txt`) with its last group counting up (`…0001`, `…0002`, …).
+export function bootIdAfter(reboots: number): string {
+  return `00000000-0000-4000-8000-${String(reboots + 1).padStart(12, '0')}`
+}
 
 // The script core sends to list every package (fixtures/0.24/vpm-info-package-all): the
 // recordings were made with exactly this text, base64-encoded.
@@ -165,6 +187,7 @@ export function defaultWorld(): World {
     uninstalledCrashes: [],
     acrFiles: [],
     logStream: { ends: false, holdAfterLine: null },
+    boot: { reboots: 0, readFails: false },
     vvdLogStreams: 0,
     loginHold: false,
     hold: [],
