@@ -146,7 +146,7 @@ describe('ovd logs filter flags', () => {
     expect(bundle).not.toHaveBeenCalled()
   })
 
-  test('a bundle passes --preset by name, not resolved', async () => {
+  test('a bundle resolves --preset and passes the filter with the name', async () => {
     const bundle = vi.fn(async () => ({
       device: { id: 'X', name: 'n' },
       path: '/p.zip',
@@ -155,10 +155,13 @@ describe('ovd logs filter flags', () => {
       files: []
     }))
     await cli(['logs', 'bundle', '--preset', 'network', '--out', 'x.zip', '--json'], {
-      ovd: { logBundle: { bundle } } as unknown as Partial<Ovd>
+      ovd: {
+        logBundle: { bundle },
+        logFilters: { resolve: vi.fn(async () => ({ search: 'http' })) }
+      } as unknown as Partial<Ovd>
     })
     expect(bundle).toHaveBeenCalledWith(
-      expect.objectContaining({ preset: 'network', out: 'x.zip' })
+      expect.objectContaining({ preset: 'network', out: 'x.zip', filter: { search: 'http' } })
     )
   })
 })

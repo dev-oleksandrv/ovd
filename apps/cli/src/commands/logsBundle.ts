@@ -7,8 +7,8 @@ import { reportContext } from './context.js'
 import {
   addFilterOptions,
   addPresetOption,
-  filterOf,
   flagsOf,
+  resolveFilter,
   type FilterFlags
 } from './logsFilter.js'
 
@@ -55,7 +55,8 @@ export function registerLogsBundle(
           ctx,
           async () => {
             const durationS = durationOf(flags.duration)
-            const filter = filterOf(flags)
+            // Core only records the preset's name: the filter it stands for is resolved here.
+            const filter = await resolveFilter(deps.ovd(), flags)
             return deps.ovd().logBundle.bundle({
               ...(ctx.device === undefined ? {} : { device: ctx.device }),
               ...(Object.keys(filter).length === 0 ? {} : { filter }),
