@@ -253,7 +253,7 @@ describe('ovd logs', () => {
     })
     let interrupt = (): void => undefined
     const running = cli(['logs', '--json'], {
-      ovd: { logs: { start: start as unknown as Ovd['logs']['start'] } },
+      ovd: { logs: { start: start as unknown as Ovd['logs']['start'], presets: () => [] } },
       onInterrupt: (abort) => (interrupt = abort)
     })
     await vi.waitFor(() => expect(start).toHaveBeenCalled())
@@ -556,7 +556,7 @@ describe('ovd logs --export', () => {
     })
     let interrupt = (): void => undefined
     const running = cli(['logs', '--export', file], {
-      ovd: { logs: { start: start as unknown as Ovd['logs']['start'] } },
+      ovd: { logs: { start: start as unknown as Ovd['logs']['start'], presets: () => [] } },
       onInterrupt: (abort) => (interrupt = abort)
     })
     await vi.waitFor(() => expect(start).toHaveBeenCalled())

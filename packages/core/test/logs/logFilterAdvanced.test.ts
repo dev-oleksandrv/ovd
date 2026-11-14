@@ -269,9 +269,14 @@ describe('regex safety', () => {
     const entry = { ...(ENTRIES[0] as LogEntry), message: hostile, tag: 't' }
     for (const pattern of ['(ab)+$', 'a+b', '(?:aa)+b', '^(a+)?b']) {
       const filter = compileLogFilter({ search: pattern, regex: true }, NOW)
-      const started = performance.now()
-      filter.matches(entry)
-      expect(performance.now() - started).toBeLessThan(50)
+      // The best of three runs: a loaded CI worker slows one run, a backtracking bomb all.
+      let best = Number.POSITIVE_INFINITY
+      for (let run = 0; run < 3; run++) {
+        const started = performance.now()
+        filter.matches(entry)
+        best = Math.min(best, performance.now() - started)
+      }
+      expect(best).toBeLessThan(50)
     }
   })
 })

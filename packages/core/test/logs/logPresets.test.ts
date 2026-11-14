@@ -99,8 +99,10 @@ describe('the built-in presets', () => {
     expect(lines.some((l) => l.includes('classloader'))).toBe(false)
   })
 
-  test('lifecycle matches the lcm tags, lifecycle words and terminate', () => {
+  test('lifecycle matches the lcm_service identity and the lifecycle words (F15)', () => {
     expect(kept(preset('lifecycle'))).toEqual([
+      // Identity lcm_service, whatever the tag or message.
+      '[AppResourceRegistry.cpp:604] Removing 983:26107',
       "[LcmAppLaunchServiceImpl.cpp:347] Received request: 'launch ",
       '[Lcm.cpp:4371] Received launch request for orpheus://com.ama',
       '[AppStateChangeNotifier.cpp:197] no app state change monitor',
@@ -177,10 +179,66 @@ describe('whole-word matching on Virtual Device lines', () => {
   test('lifecycle matches terminate, background and foreground lines, and the lcm tags', () => {
     expect(ofPreset('lifecycle')).toEqual([
       'Received request: apps in foreground',
+      // lcm_service lines, by identity.
+      'remove pid 26107 registry',
+      'poll interval timeout=0 ms',
       'Terminating package with id com.example.player without force',
       'appInst[62](com.example.player.main)<F>: Trigger event BACKGROUND in state VISIBLE. Completed: true',
       'Finished foreground transition, reason: 2'
     ])
+  })
+})
+
+describe('the lifecycle predicate', () => {
+  const base = (parseLines(FIXTURE_LINES)[0] ?? ENTRIES[0]) as LogEntry
+  const entry = (process: string, tag: string, message: string): LogEntry => ({
+    ...base,
+    process,
+    tag,
+    message
+  })
+  const lifecycle = compileLogFilter(preset('lifecycle'), NOW)
+
+  test('an lcm_service entry tagged resmgr-monitor-procs matches by identity', () => {
+    expect(
+      lifecycle.matches(entry('lcm_service', 'resmgr-monitor-procs', 'Get memory policy 0'))
+    ).toBe(true)
+  })
+
+  test('another process with an lcm- tag and no lifecycle word does not match', () => {
+    expect(lifecycle.matches(entry('stemd', 'lcm-client', 'Get memory policy 0'))).toBe(false)
+    expect(lifecycle.matches(entry('com.example.player', 'lcm_helper', 'tick'))).toBe(false)
+  })
+
+  test('the lifecycle words match whole, in any process', () => {
+    expect(lifecycle.matches(entry('stemd', 't', 'app launch requested'))).toBe(true)
+    expect(lifecycle.matches(entry('stemd', 't', 'Terminated app'))).toBe(true)
+    expect(lifecycle.matches(entry('stemd', 't', 'moved to the Foreground'))).toBe(true)
+    expect(lifecycle.matches(entry('stemd', 't', 'backgrounded'))).toBe(false)
+  })
+})
+
+describe('app-errors against the side-loaded apps', () => {
+  const entry = (process: string): LogEntry => ({
+    ...(ENTRIES[0] as LogEntry),
+    process,
+    level: 'E'
+  })
+  const input = preset('app-errors')
+
+  test('a known set keeps the side-loaded apps and drops installed system apps', () => {
+    const filter = compileLogFilter(input, NOW, {
+      sideloaded: () => new Set(['com.example.player'])
+    })
+    expect(filter.matches(entry('com.example.player'))).toBe(true)
+    expect(filter.matches(entry('com.amazon.keplerlauncherapp'))).toBe(false)
+    expect(filter.matches(entry('lcm_service'))).toBe(false)
+  })
+
+  test('an unknown set falls back to the package-ID syntax', () => {
+    const filter = compileLogFilter(input, NOW, { sideloaded: () => undefined })
+    expect(filter.matches(entry('com.amazon.keplerlauncherapp'))).toBe(true)
+    expect(filter.matches(entry('lcm_service'))).toBe(false)
   })
 })
 
@@ -249,10 +307,39 @@ describe('resolvePreset', () => {
     expect(() => compileLogFilter(system, NOW)).not.toThrow()
   })
 
-  test('a new search replaces the preset’s search and its regex flag together', () => {
-    expect(resolvePreset('network', [], { search: 'dns' })).toEqual({ search: 'dns' })
-    expect(resolvePreset('network', [], { search: 'dns', regex: true })).toEqual({
+  test('search and regex replace only the field they set (F18)', () => {
+    const network = preset('network')
+    // A new search keeps the preset's regex flag unless the caller sets it.
+    expect(resolvePreset('network', [], { search: 'dns' })).toEqual({ search: 'dns', regex: true })
+    expect(resolvePreset('network', [], { search: 'dns', regex: false })).toEqual({
       search: 'dns',
+      regex: false
+    })
+    // `regex` alone keeps the preset's own word-list pattern: a no-op for network.
+    expect(resolvePreset('network', [], { regex: true })).toEqual(network)
+    expect(resolvePreset('network', [], { regex: false })).toEqual({
+      search: network.search,
+      regex: false
+    })
+  })
+
+  test('the same holds for a saved filter', () => {
+    const regexSaved: SavedLogFilter[] = [
+      { name: 'wild', filter: { search: 'fetch.*failed', regex: true, level: 'error' } },
+      { name: 'plain', filter: { search: 'fetch' } }
+    ]
+    expect(resolvePreset('wild', regexSaved, { regex: true })).toEqual({
+      search: 'fetch.*failed',
+      regex: true,
+      level: 'error'
+    })
+    expect(resolvePreset('wild', regexSaved, { search: 'x' })).toEqual({
+      search: 'x',
+      regex: true,
+      level: 'error'
+    })
+    expect(resolvePreset('plain', regexSaved, { regex: true })).toEqual({
+      search: 'fetch',
       regex: true
     })
   })

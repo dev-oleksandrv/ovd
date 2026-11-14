@@ -139,6 +139,11 @@ test.each<[string, OvdEvent, string]>([
     'Boot ID unknown: the boot filter shows no device lines'
   ],
   [
+    'boot late',
+    { kind: 'boot-late' },
+    'Boot filter on: lines received before have no boot ID and stay hidden'
+  ],
+  [
     'launch verified',
     {
       kind: 'launch',

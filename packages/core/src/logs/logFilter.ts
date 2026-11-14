@@ -25,6 +25,10 @@ export interface LogFilterInput {
   // Only entries of an app identity (a package-ID-shaped one): what the `app-errors` preset
   // needs. `app` implies it; it can't combine with `system`.
   appsOnly?: boolean
+  // Only the app lifecycle lines (the `lifecycle` preset, F15): entries of the identity
+  // `lcm_service`, or whose message holds a lifecycle word. One predicate rather than a search
+  // pattern, because fields combine with AND and the identity is an OR branch.
+  lifecycle?: boolean
   // The advanced fields, each repeatable: values of one field combine with OR, different fields
   // (and the fields above) with AND. All are matched on the host, never sent to the device.
   // Process and thread IDs: non-negative integers, as numbers or digit strings.
@@ -64,6 +68,11 @@ export interface LogFilterContext {
   // The boot ID of the stream now running (what `--boot current` means), undefined while
   // unknown.
   currentBoot?: () => string | undefined
+  // The package IDs of the side-loaded apps on the target (F15: the `app-errors` preset is the
+  // developer's own apps, not the installed system ones), undefined while not read. Unknown
+  // falls back to the package-ID syntax check, which also lets `com.amazon.*` system apps
+  // through: better a few extra lines than none, until the session has read the listing.
+  sideloaded?: () => ReadonlySet<string> | undefined
 }
 
 // The verdict for one entry, from an evaluator.
@@ -92,6 +101,8 @@ export interface LogFilter {
   usesBoot: boolean
   // ... and one of the values is `current`.
   usesCurrentBoot: boolean
+  // `appsOnly` is set, so the entries are judged against the side-loaded apps.
+  usesAppsOnly: boolean
   // Epoch ms. `until` isn't part of `matches`: the session ends there.
   since?: number
   until?: number
@@ -105,6 +116,15 @@ const APP_IDENTITY = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)+$/
 
 export function isAppIdentity(identity: string | null): boolean {
   return identity !== null && APP_IDENTITY.test(identity)
+}
+
+// The lifecycle words of F15, whole words, in the message. `terminat` is a stem (terminate,
+// terminated, termination).
+const LIFECYCLE_WORDS =
+  /\b(?:lifecycle state changed|app launch|terminat\w*|foreground|background)\b/i
+
+function isLifecycle(entry: LogEntry): boolean {
+  return entry.process === 'lcm_service' || LIFECYCLE_WORDS.test(entry.message)
 }
 
 // A user regex can backtrack badly on a long line and block the log view, so it only sees the
@@ -136,6 +156,7 @@ export function compileLogFilter(
   if (app !== undefined) args.app = app
   if (input.system) args.system = 'true'
   if (input.appsOnly) args['apps-only'] = 'true'
+  if (input.lifecycle) args.lifecycle = 'true'
   let level: LogLevel = 'V'
   if (input.level !== undefined) {
     level = parseLevelName(input.level)
@@ -200,6 +221,12 @@ export function compileLogFilter(
   const sinceMs = since?.getTime()
   const wantsCurrent = boots?.has('current') ?? false
   const currentBoot = ctx.currentBoot ?? (() => undefined)
+  const isAppEntry = (identity: string | null): boolean => {
+    const set = ctx.sideloaded?.()
+    // Unknown set: the syntax check (see LogFilterContext.sideloaded).
+    if (set === undefined) return isAppIdentity(identity)
+    return identity !== null && set.has(identity)
+  }
   const matchesBoot = (boot: string | undefined): boolean => {
     if (boots === undefined) return true
     if (boot === undefined) return false
@@ -214,7 +241,8 @@ export function compileLogFilter(
     if (rule?.mute) return false
     if (app !== undefined && entry.process !== app) return false
     if (input.system && isAppIdentity(entry.process)) return false
-    if (input.appsOnly && !isAppIdentity(entry.process)) return false
+    if (input.appsOnly && !isAppEntry(entry.process)) return false
+    if (input.lifecycle && !isLifecycle(entry)) return false
     if (!atLeast(entry.level, rule?.level ?? level)) return false
     if (sinceMs !== undefined && Date.parse(entry.time) < sinceMs) return false
     if (pids && (entry.pid === null || !pids.has(entry.pid))) return false
@@ -251,6 +279,7 @@ export function compileLogFilter(
     evaluator,
     usesBoot: boots !== undefined,
     usesCurrentBoot: wantsCurrent,
+    usesAppsOnly: input.appsOnly === true,
     ...(sinceMs === undefined ? {} : { since: sinceMs }),
     ...(until ? { until: until.getTime() } : {}),
     args

@@ -15,7 +15,12 @@ import {
   type LogSessionEnd,
   type LogStartOptions
 } from '../../src/index.js'
-import { createLogs, RECONNECT_POLL_MS, RECONNECT_TIMEOUT_MS } from '../../src/logs/logSession.js'
+import {
+  createLogs,
+  type LogsDeps,
+  RECONNECT_POLL_MS,
+  RECONNECT_TIMEOUT_MS
+} from '../../src/logs/logSession.js'
 import { createFakeFeed, type FakeFeed } from '../support/fakeFeed.js'
 import { FakeRunner, FakeStream } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
@@ -54,7 +59,8 @@ afterEach(async () => {
 function setup(
   script: ConstructorParameters<typeof FakeRunner>[0],
   discover?: () => Promise<never>,
-  logsDiscover?: () => Promise<never>
+  logsDiscover?: () => Promise<never>,
+  installed?: LogsDeps['installed']
 ) {
   const runner = new FakeRunner(script)
   const sdk = createSdkLocator(
@@ -78,6 +84,7 @@ function setup(
     devices,
     activity,
     feed,
+    ...(installed ? { installed } : {}),
     now: () => new Date()
   })
   return { logs, runner, feed }
@@ -153,14 +160,21 @@ async function startWith(
   first = `${FOLLOW.split('\n')[0] ?? ''}\n`,
   {
     streams = [new FakeStream()],
-    script = {}
+    script = {},
+    installed
   }: {
     streams?: FakeStream[]
     script?: ConstructorParameters<typeof FakeRunner>[0]
+    installed?: LogsDeps['installed']
   } = {}
 ): Promise<Started> {
   const [stream = new FakeStream()] = streams
-  const { logs, runner, feed } = setup({ ...online, ...script, [LOG]: streams })
+  const { logs, runner, feed } = setup(
+    { ...online, ...script, [LOG]: streams },
+    undefined,
+    undefined,
+    installed
+  )
   const batches: Started['batches'] = []
   const starting = logs.start({
     ...opts,
@@ -995,8 +1009,54 @@ describe('boot tagging', () => {
     await s.session.stop()
   })
 
-  test('setFilter with a boot filter on an untagged session says the boot is unknown', async () => {
-    const s = await startWith({}, FOLLOW)
+  test('setFilter with a boot filter on an untagged session reads the boot ID once, then tags', async () => {
+    const s = await startWith({}, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
+    expect(s.runner.count(BOOT)).toBe(0)
+    s.session.setFilter({ boot: ['current'] })
+    await waitFor(() => s.ovd().length > 0)
+    expect(s.runner.count(BOOT)).toBe(1)
+    // One line says the buffered entries stay unmatched.
+    expect(s.ovd()).toEqual([
+      'Boot filter on: lines received before have no boot ID and stay hidden'
+    ])
+    expect(s.session.entries().filter((e) => e.ovd === undefined)).toEqual([])
+    // Later entries of the stream carry the boot and match `current`.
+    s.stream.emit(`${FOLLOW.split('\n')[0] ?? ''}\n`)
+    await vi.advanceTimersByTimeAsync(250)
+    const shown = s.session.entries().filter((e) => e.ovd === undefined)
+    expect(shown.length).toBeGreaterThan(0)
+    expect(shown.every((e) => e.boot === bare(ID_A))).toBe(true)
+    // Setting a boot filter again doesn't read again.
+    s.session.setFilter({ boot: [ID_A] })
+    await settle()
+    expect(s.runner.count(BOOT)).toBe(1)
+    await s.session.stop()
+  })
+
+  test('a boot filter set later whose read fails says the boot ID is unknown, once', async () => {
+    const s = await startWith({}, FOLLOW, { script: { [BOOT]: { exitCode: 1 } } })
+    s.session.setFilter({ boot: ['current'] })
+    await waitFor(() => s.ovd().length > 0)
+    expect(s.ovd()).toEqual(['Boot ID unknown: the boot filter shows no device lines'])
+    await s.session.stop()
+  })
+
+  test('a boot filter set later keeps the next streams tagged', async () => {
+    const s = await startWith({}, FOLLOW, {
+      streams: streamsOf(2),
+      script: { [BOOT]: [bootOut(ID_A), bootOut(ID_B)] }
+    })
+    s.session.setFilter({ boot: ['current'] })
+    await waitFor(() => s.runner.count(BOOT) === 1)
+    s.feed.emit(installOn(STICK))
+    const s2 = s.streams[1] as FakeStream
+    await waitFor(() => s2.spec !== undefined)
+    expect(s.runner.count(BOOT)).toBe(2)
+    await s.session.stop()
+  })
+
+  test('setFilter with a boot filter after a failed tagged read says the boot is unknown', async () => {
+    const s = await startWith({ tagBoot: true }, FOLLOW, { script: { [BOOT]: { exitCode: 1 } } })
     s.session.setFilter({ boot: ['current'] })
     expect(s.ovd()).toEqual(['Boot ID unknown: the boot filter shows no device lines'])
     expect(s.session.entries().filter((e) => e.ovd === undefined)).toEqual([])
@@ -1060,5 +1120,58 @@ describe('advanced filters and rules in a session', () => {
   test('presets() lists the built-in presets', async () => {
     const { logs } = setup({ ...online })
     expect(logs.presets().map((p) => p.key)).toEqual(['all', 'app-errors', 'network', 'lifecycle'])
+  })
+})
+
+describe('app-errors and the side-loaded apps', () => {
+  const SYSTEM = 'com.amazon.keplerlauncherapp'
+  const errorLine = (identity: string, i: number) =>
+    `Nov 08 07:27:0${i}.100000 firestick-0000000000000001 local0.err ${identity}[500]: 600 ERROR com.amazon.keplerscript: [KeplerScript-JavaScript] boom ${i}\n`
+  const lines = errorLine(PLAYER, 1) + errorLine(SYSTEM, 2)
+
+  test('an installed system app’s errors are excluded once the listing is read', async () => {
+    const installed = vi.fn(async () => [
+      { packageId: PLAYER, source: 'sideloaded' as const },
+      { packageId: SYSTEM, source: 'system' as const }
+    ])
+    const s = await startWith({ filter: { level: 'error', appsOnly: true } }, lines, { installed })
+    await waitFor(() => installed.mock.calls.length > 0)
+    await waitFor(() => s.session.entries().every((e) => e.process !== SYSTEM))
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER])
+    // One read per stream.
+    s.stream.emit(errorLine(SYSTEM, 3))
+    await vi.advanceTimersByTimeAsync(250)
+    expect(installed).toHaveBeenCalledTimes(1)
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER])
+    await s.session.stop()
+  })
+
+  test('without an appsOnly filter the listing is never read', async () => {
+    const installed = vi.fn(async () => [])
+    const s = await startWith({}, lines, { installed })
+    await settle()
+    expect(installed).not.toHaveBeenCalled()
+    await s.session.stop()
+  })
+
+  test('setFilter with appsOnly reads it then', async () => {
+    const installed = vi.fn(async () => [{ packageId: PLAYER, source: 'sideloaded' as const }])
+    const s = await startWith({}, lines, { installed })
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    await waitFor(() => s.session.entries().every((e) => e.process !== SYSTEM))
+    await s.session.stop()
+  })
+
+  test('a failed read keeps the package-ID syntax check', async () => {
+    const installed = vi.fn(async () => {
+      throw new OvdError('COMMAND_FAILED', 'could not read', 'Try again')
+    })
+    const s = await startWith({ filter: { appsOnly: true } }, lines, { installed })
+    await waitFor(() => installed.mock.calls.length > 0)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(new Set(s.session.entries().map((e) => e.process))).toEqual(new Set([PLAYER, SYSTEM]))
+    expect(s.end()).toBeUndefined()
+    await s.session.stop()
   })
 })

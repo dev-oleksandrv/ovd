@@ -50,6 +50,7 @@ packages/
       screen/              # live screen view: gRPC streamScreenshot (Virtual Device only)
       reboot/              # reboot and wait: vda reboot, then poll until the device is away and back
       crashes/             # crash reports from loggingctl vault, scoped to the developer's side-loaded apps: list, pull, 5 s watcher, agent prompt
+      archive/             # zip writer for log bundles
       activity/            # activity log and the feed that tails it
       errors/              # typed errors: stable code, message, hint
       state/               # host state directory (ADR 0022)

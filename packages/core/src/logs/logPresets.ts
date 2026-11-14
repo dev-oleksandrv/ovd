@@ -34,20 +34,6 @@ const NETWORK_WORDS = [
   // `timeout=0` is a setting in a native line, not a network timeout.
   'timeout(?!=)'
 ]
-// `identity lcm_service` can't be a field of its own here: fields combine with AND. Its lines
-// carry the tags `lcm-server`, `lcm-app-launch-service` and `resmgr-app-state-mon`, so the
-// lifecycle ones are found by those tags and by the lifecycle words. `terminat` is a stem
-// (terminate, terminated, termination).
-const LIFECYCLE_PATTERN = [
-  '\\blcm[-_]',
-  '\\bresmgr-app-state',
-  '\\blifecycle state changed\\b',
-  '\\bapp launch\\b',
-  '\\bterminat\\w*',
-  '\\bforeground\\b',
-  '\\bbackground\\b'
-].join('|')
-
 // One definition for both surfaces (F15). Frozen: a surface copies what it edits.
 const PRESETS: readonly LogPreset[] = Object.freeze([
   { key: 'all', label: 'All', filter: {} },
@@ -64,7 +50,7 @@ const PRESETS: readonly LogPreset[] = Object.freeze([
   {
     key: 'lifecycle',
     label: 'Lifecycle',
-    filter: { search: `(?:${LIFECYCLE_PATTERN})`, regex: true }
+    filter: { lifecycle: true }
   }
 ])
 
@@ -78,12 +64,9 @@ export function logPresetKeys(): string[] {
 }
 
 // The filter groups an explicit field replaces together: `--app` and `--system` and apps-only
-// are one choice about who logs, and the search text and its `--regex` flag are one choice
-// about how to read it.
-const GROUPS: readonly (readonly (keyof LogFilterInput)[])[] = [
-  ['app', 'system', 'appsOnly'],
-  ['search', 'regex']
-]
+// are one choice about who logs. The search text and `--regex` are not a group: each replaces
+// only itself (F18), so `--regex` alone keeps the preset's pattern and reads it as one.
+const GROUPS: readonly (readonly (keyof LogFilterInput)[])[] = [['app', 'system', 'appsOnly']]
 
 // A preset (or saved filter) as the base, and the explicit fields over it (D5, F18): a field
 // the caller gave replaces the base's, and an array replaces the base's array whole.

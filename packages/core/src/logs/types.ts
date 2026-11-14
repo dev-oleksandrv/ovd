@@ -73,6 +73,9 @@ export type OvdEvent =
   // A boot filter is active but the stream's boot ID is unknown (the read failed), so the
   // filter shows no device line.
   | { kind: 'boot-unknown' }
+  // A boot filter was set on a running stream and its boot ID was read then: lines buffered
+  // before have no boot ID and stay hidden.
+  | { kind: 'boot-late' }
 
 export interface LogCounts {
   // Lines (entries) and E entries received since the start or the last Clear.

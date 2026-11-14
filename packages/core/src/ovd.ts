@@ -20,7 +20,7 @@ import { createScreenshot, type Screenshot } from './screenshot/screenshot.js'
 import { createScreen, type Screen } from './screen/screen.js'
 import { createReboot, type Reboot } from './reboot/reboot.js'
 import { createApps, type Apps } from './deviceApps/deviceApps.js'
-import { createLogs, type Logs } from './logs/logSession.js'
+import { createLogs, type LogsApi } from './logs/logSession.js'
 import { createPairing, type Pairing } from './pairing/pairing.js'
 import { createRun, type Run } from './run/run.js'
 import { createProject, type Project } from './project/project.js'
@@ -55,7 +55,7 @@ export interface Ovd {
   packages: Packages
   install: Install
   apps: Apps
-  logs: Logs
+  logs: LogsApi
   run: Run
   watch: Watch
   input: Input
@@ -160,6 +160,8 @@ export function createOvd(opts: OvdOptions): Ovd {
     devices,
     activity,
     feed,
+    // The side-loaded listing the crash scope uses, for the `app-errors` preset.
+    installed: (device) => apps.installedPackages(device),
     now: opts.now ?? (() => new Date())
   })
   const run = createRun({ install, apps, steps, activity })

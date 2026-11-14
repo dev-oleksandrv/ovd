@@ -79,6 +79,8 @@ export function ovdEventText(event: OvdEvent): string {
       return `${event.process}: ${event.hidden} lines hidden by rate limit`
     case 'boot-unknown':
       return 'Boot ID unknown: the boot filter shows no device lines'
+    case 'boot-late':
+      return 'Boot filter on: lines received before have no boot ID and stay hidden'
     case 'build':
       return `Build folder changed: ${event.folder ?? ''}${event.file}`
     case 'crash': {
