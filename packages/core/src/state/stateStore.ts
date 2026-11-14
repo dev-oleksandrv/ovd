@@ -1,7 +1,7 @@
-import { randomBytes } from 'node:crypto'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { readFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
+import { writeJsonAtomic } from './atomicJson.js'
 
 const savedDeviceSchema = z.object({
   id: z.string(),
@@ -60,11 +60,7 @@ export function createStateStore(home: string): StateStore {
 
   async function update(fn: (state: HostState) => HostState): Promise<HostState> {
     const next = hostStateSchema.parse(fn((await read()).state))
-    await mkdir(home, { recursive: true, mode: 0o700 })
-    // Write then rename, so a crash or a concurrent reader never sees a half-written file.
-    const tmp = `${file}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`
-    await writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 })
-    await rename(tmp, file)
+    await writeJsonAtomic(file, next)
     return next
   }
 

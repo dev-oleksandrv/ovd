@@ -14,6 +14,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   ALL_PACKAGES,
+  BURST_LINES,
+  bootIdAfter,
   callsFile,
   discoveryDir,
   inputConsoleFile,
@@ -173,6 +175,41 @@ async function devmodeLogin(w: World): Promise<Reply> {
   return { stdout: success ?? '' }
 }
 
+const PRESETS_RECORDING = 'loggingctl-log/virtual-device-presets.txt'
+
+// The text a log stream prints: its recording, or the presets recording, plus the synthesized
+// burst when the world asks for it (fixtures/0.24/README.md, Synthesized sequences). The burst
+// continues the recording's last line: same date and host, in the following device second.
+function streamText(w: World, recording: string): string {
+  const used = w.logStream.recording === 'presets' ? PRESETS_RECORDING : recording
+  const text = fixture(used)
+  if (!w.logStream.burst) return text
+  const last = text.trimEnd().split('\n').at(-1) ?? ''
+  const m = /^(\w{3} \d\d) (\d\d):(\d\d):(\d\d)\.\d+ (\S+) /.exec(last)
+  if (!m) throw new Error(`fake-sdk: cannot continue ${used}`)
+  const [, day, hh, mm, ss, host] = m as unknown as [string, string, string, string, string, string]
+  const at = (offset: number): string => {
+    const total = Number(hh) * 3600 + Number(mm) * 60 + Number(ss) + offset
+    // The stamp has a day but no month rollover rule: a wrap past midnight would put the burst
+    // before the recording, so stop instead.
+    if (total >= 86_400) throw new Error(`fake-sdk: cannot continue ${used} past midnight`)
+    const two = (n: number) => String(n).padStart(2, '0')
+    return [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60]
+      .map(two)
+      .join(':')
+  }
+  const stamp = (offset: number, micros: number) =>
+    `${day} ${at(offset)}.${String(micros).padStart(6, '0')} ${host}`
+  const burst = Array.from(
+    { length: BURST_LINES },
+    (_, i) =>
+      `${stamp(1, 100 + i * 1000)} local0.info com.example.player[31000]: 2842092448 INFO com.amazon.keplerscript: [KeplerScript-JavaScript] player burst ${i + 1}\n`
+  )
+  // A line of another process in the next second closes the burst's second.
+  const closer = `${stamp(2, 100)} local0.info servicergrd[740]: 3020268160 INFO com.amazon.appfwk.servicergrd: worker: idle\n`
+  return `${text.endsWith('\n') ? text : `${text}\n`}${burst.join('')}${closer}`
+}
+
 // `loggingctl log -f` on the stick (fixtures/0.24/loggingctl-log): the recorded window in
 // three chunks cut mid-line, then it follows until its process group is signalled.
 async function logStream(w: World): Promise<Reply> {
@@ -185,6 +222,7 @@ async function logStream(w: World): Promise<Reply> {
     // and the stick is away for `rebootMs`. The world is written back before stdout, so the
     // stick is already gone when ovd sees the end.
     w.logStream.reboot = false
+    w.boot.reboots += 1
     if (w.stick) w.stick.rebootingUntil = Date.now() + w.rebootMs
     return { stdout: fixture('loggingctl-log/stick-follow-reboot.txt') }
   }
@@ -200,7 +238,7 @@ async function logStream(w: World): Promise<Reply> {
       writeWorld(dir as string, fresh)
     })
   }
-  const lines = fixture('loggingctl-log/stick-follow.txt').split(/(?<=\n)/)
+  const lines = streamText(w, 'loggingctl-log/stick-follow.txt').split(/(?<=\n)/)
   const writeInThirds = async (text: string) => {
     const cuts = [0, Math.floor(text.length / 3), Math.floor((text.length * 2) / 3), text.length]
     for (let i = 0; i < 3; i++) {
@@ -231,7 +269,7 @@ async function endsOnReboot(isRebooting: (w: World) => boolean): Promise<Reply> 
 // `loggingctl log -f` on the Virtual Device (fixtures/0.24/loggingctl-log): the first stream
 // prints the session recorded before a stop, every later one the stream recorded right after
 // it, in three chunks cut mid-line, then follows until its process group is signalled.
-async function vvdLogStream(): Promise<Reply> {
+async function vvdLogStream(w: World): Promise<Reply> {
   appendFileSync(logStreamsFile(dir as string), `${JSON.stringify({ pid: process.pid })}\n`)
   // Logged now: the stream is stopped, never answers.
   log(true)
@@ -241,7 +279,8 @@ async function vvdLogStream(): Promise<Reply> {
   fresh.vvdLogStreams = fresh.vvdLogStreams + 1
   writeWorld(dir as string, fresh)
   wroteWorld = true
-  const text = fixture(
+  const text = streamText(
+    w,
     first
       ? 'loggingctl-log/virtual-device-restart-before.txt'
       : 'loggingctl-log/virtual-device-restart-after.txt'
@@ -311,6 +350,7 @@ function enableDevice(w: World, rest: string[]): Reply | null {
   }
   // The stick reboots: it leaves the device list at once and comes back on USB.
   w.stick.developerMode = true
+  w.boot.reboots += 1
   w.stick.rebootingUntil = Date.now() + w.rebootMs
   return { stdout: fixture('vega-devmode-enable-device/enabled.json') }
 }
@@ -352,6 +392,25 @@ function connect(w: World, address: string): Reply | null {
   return null
 }
 
+// `vda shell cat /proc/sys/kernel/random/boot_id` (core's BOOT_ID_ARGS): the recorded fake
+// UUID, changed by every reboot the fake saw, or a failed read (fixtures/0.24/README.md,
+// Synthesized sequences).
+const BOOT_ID_SUB = 'shell cat /proc/sys/kernel/random/boot_id'
+
+function bootId(w: World, sub: string): Reply | null {
+  if (sub !== BOOT_ID_SUB) return null
+  if (w.boot.readFails) {
+    return {
+      stderr: 'cat: /proc/sys/kernel/random/boot_id: No such file or directory\n',
+      exitCode: 1
+    }
+  }
+  return {
+    stdout:
+      w.boot.reboots === 0 ? fixture('vda-shell/boot-id.txt') : `${bootIdAfter(w.boot.reboots)}\n`
+  }
+}
+
 // `vda -s <serial> reboot` (fixtures/0.24/vda-reboot): exit 0, no output, and the device is
 // away for `rebootMs`. Recorded on the Virtual Device; the stick answers the same, unverified on
 // hardware (fixtures/0.24/README.md, Synthesized sequences).
@@ -359,6 +418,7 @@ function reboot(w: World, serial: string): Reply {
   const until = Date.now() + w.rebootMs
   if (serial === VVD_VDA_SERIAL && vvdUp(w)) {
     w.vvd.rebootingUntil = until
+    w.boot.reboots += 1
     return { stdout: fixture('vda-reboot/virtual-device.txt') }
   }
   const stickUp =
@@ -366,6 +426,7 @@ function reboot(w: World, serial: string): Reply {
     (serial === STICK_ADDRESS && stickOnWifi(w) && w.vdaConnected.includes(STICK_ADDRESS))
   if (stickUp && w.stick) {
     w.stick.rebootingUntil = until
+    w.boot.reboots += 1
     return { stdout: fixture('vda-reboot/virtual-device.txt') }
   }
   // The Virtual Device's own serial not found: recorded right after a start.
@@ -400,8 +461,8 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
       w.vvd.developerMode = true
       return { stdout: fixture('vsm-developer-mode-set/enabled.txt') }
     }
-    if (sub === 'shell loggingctl log -f -o short_concise') return vvdLogStream()
-    return acrCommands(w, 'vvd', rest) ?? vvdApps(w, sub)
+    if (sub === 'shell loggingctl log -f -o short_concise') return vvdLogStream(w)
+    return bootId(w, sub) ?? acrCommands(w, 'vvd', rest) ?? vvdApps(w, sub)
   }
   if (serial === VVD_VDA_SERIAL) {
     return notFound(sub, 'vda-shell/virtual-device-not-found.stderr.txt')
@@ -420,7 +481,12 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
     if (!stickOnUsb(w)) return notFound(sub, 'vda-shell/stick-usb-not-found.stderr.txt')
     if (sub === 'shell loggingctl log -f -o short_concise') return logStream(w)
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return acrCommands(w, 'stick', rest) ?? stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
+    return (
+      bootId(w, sub) ??
+      acrCommands(w, 'stick', rest) ??
+      stickScreenshot(w, rest) ??
+      stickApps(w, serial, sub)
+    )
   }
   if (serial === STICK_ADDRESS && sub === 'usb' && w.stick && stickOnWifi(w)) {
     // VDA keeps the Wi‑Fi entry, now offline (vda-devices/stick-usb-and-wifi-offline.txt).
@@ -433,7 +499,12 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
   // Listed but offline (connected, stick unreachable): not recorded, so not answered.
   if (serial === STICK_ADDRESS && stickOnWifi(w)) {
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return acrCommands(w, 'stick', rest) ?? stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
+    return (
+      bootId(w, sub) ??
+      acrCommands(w, 'stick', rest) ??
+      stickScreenshot(w, rest) ??
+      stickApps(w, serial, sub)
+    )
   }
   return null
 }

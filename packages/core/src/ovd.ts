@@ -20,6 +20,8 @@ import { createScreenshot, type Screenshot } from './screenshot/screenshot.js'
 import { createScreen, type Screen } from './screen/screen.js'
 import { createReboot, type Reboot } from './reboot/reboot.js'
 import { createApps, type Apps } from './deviceApps/deviceApps.js'
+import { createLogBundle, type LogBundle } from './logs/logBundle.js'
+import { createSavedFilters, type SavedFilters } from './logs/savedFilters.js'
 import { createLogs, type LogsApi } from './logs/logSession.js'
 import { createPairing, type Pairing } from './pairing/pairing.js'
 import { createRun, type Run } from './run/run.js'
@@ -42,6 +44,8 @@ export interface OvdOptions {
   runner?: Runner
   discover?: () => Promise<SdkInfo>
   now?: () => Date
+  // Recorded in a log bundle's manifest ("unknown" when not given).
+  ovdVersion?: string
 }
 
 export interface Ovd {
@@ -56,6 +60,12 @@ export interface Ovd {
   install: Install
   apps: Apps
   logs: LogsApi
+  // Saved log filters (ADR 0026). Beside `logs`, not on it: `Ovd['logs']` stays the session API
+  // that the surfaces' stand-ins implement.
+  logFilters: SavedFilters
+  // Log bundles (ADR 0026): `bundle` captures a bounded session, `bundleEntries` takes the
+  // desktop's buffer.
+  logBundle: LogBundle
   run: Run
   watch: Watch
   input: Input
@@ -211,6 +221,27 @@ export function createOvd(opts: OvdOptions): Ovd {
     pull: (pullOpts) => crashPull.pull(pullOpts),
     dir: () => crashPull.dir()
   }
+  const savedFilters = createSavedFilters({
+    home,
+    ...(opts.now ? { now: opts.now } : {})
+  })
+  const logBundle = createLogBundle({
+    logs,
+    devices,
+    sdk,
+    activity,
+    // With versions: the side-loaded apps only, as the bundle lists the developer's own.
+    apps: async (device) =>
+      (await apps.list({ device: device.id })).apps
+        .filter((app) => app.source === 'sideloaded')
+        .map((app) => ({ packageId: app.packageId, version: app.version })),
+    crashes: { list: (device) => reader.list(device) },
+    env,
+    homedir,
+    cwd: opts.cwd ?? process.cwd(),
+    now: opts.now ?? (() => new Date()),
+    ...(opts.ovdVersion ? { ovdVersion: opts.ovdVersion } : {})
+  })
   return {
     sdk,
     devices,
@@ -223,6 +254,8 @@ export function createOvd(opts: OvdOptions): Ovd {
     install,
     apps,
     logs,
+    logFilters: savedFilters,
+    logBundle,
     run,
     watch,
     input,
