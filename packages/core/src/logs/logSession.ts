@@ -7,9 +7,16 @@ import { OvdError } from '../errors/ovdError.js'
 import { vdaCmd } from '../sdk/commands.js'
 import { STREAM_START_MS, type Runner } from '../sdk/runner.js'
 import type { SdkLocator } from '../sdk/sdkLocator.js'
+import { readBootId } from './bootId.js'
 import { createLogBuffer } from './logBuffer.js'
-import { compileLogFilter, type LogFilter, type LogFilterInput } from './logFilter.js'
+import {
+  compileLogFilter,
+  type LogFilter,
+  type LogFilterContext,
+  type LogFilterInput
+} from './logFilter.js'
 import { createOverlapWindow, type OverlapSnapshot } from './logOverlap.js'
+import { logPresets, type LogPreset } from './logPresets.js'
 import { startLogStream, type LogStreamRun, type StreamEnd } from './logStreamRun.js'
 import { ovdEntry, ovdEventOf } from './ovdEvents.js'
 import { LOG_BUFFER_SIZE, type LogCounts, type LogEntry, type OvdEvent } from './types.js'
@@ -32,6 +39,11 @@ export interface LogStartOptions {
   filter?: LogFilterInput
   // Entries the session keeps for `entries()` (default LOG_BUFFER_SIZE; 0 keeps none).
   capacity?: number
+  // Read the device's boot ID at every stream start and tag the stream's entries with it
+  // (`LogEntry.boot`, the `--json` field `boot`). Off by default: it adds one fixed device
+  // command (`cat /proc/sys/kernel/random/boot_id`) per stream. A filter with `boot` values
+  // turns it on by itself. A failed read leaves the entries untagged and is no error.
+  tagBoot?: boolean
   signal?: AbortSignal
   // Called for every parsed batch, with the entries that match (possibly none), the counts
   // and the app identities seen so far, so a surface always has fresh counts.
@@ -59,6 +71,7 @@ export interface LogSession {
   // Compiles the filter (INVALID_LOG_FILTER, INVALID_APP_ID) and re-filters the buffer
   // without restarting the stream. `until` stays the one the session started with.
   setFilter(input: LogFilterInput): void
+  // The entries that match, in order, with the rate-limited lines the filter derives.
   entries(throughSeq?: number): LogEntry[]
   counts(): LogCounts
   apps(): string[]
@@ -70,6 +83,13 @@ export interface LogSession {
 
 export interface Logs {
   start(opts?: LogStartOptions): Promise<LogSession>
+}
+
+// What `createLogs` returns: the session API, and the built-in presets (F15), one list for every
+// surface. Kept apart from `Logs` so a stand-in that only starts sessions still fits `Logs`
+// (the CLI's and the desktop's tests build one).
+export interface LogsApi extends Logs {
+  presets(): LogPreset[]
 }
 
 // A held last entry waits this long for continuation lines before it is delivered.
@@ -91,13 +111,18 @@ const LOG_ARGS = ['shell', 'loggingctl', 'log', '-f', '-o', 'short_concise']
 // stream that ends by itself is reconnected once the target is back; the session gives up
 // (LOG_STREAM_ENDED) after RECONNECT_TIMEOUT_MS away or three streams in a row that end at once.
 // OVD's own events show inline as OVD lines.
-export function createLogs(deps: LogsDeps): Logs {
+export function createLogs(deps: LogsDeps): LogsApi {
   const logged = createLogged(deps.activity)
 
   return {
+    presets: logPresets,
     async start(opts = {}) {
+      // The boot ID of the stream now running, which `--boot current` means.
+      let currentBoot: string | undefined
+      const filterContext: LogFilterContext = { currentBoot: () => currentBoot }
       // Usage errors and the target come first: they write no activity entry.
-      const startFilter = compileLogFilter(opts.filter ?? {}, deps.now())
+      const startFilter = compileLogFilter(opts.filter ?? {}, deps.now(), filterContext)
+      const tagBoot = (opts.tagBoot ?? false) || startFilter.usesBoot
       const device = await onlineTarget(deps.devices, opts.device)
       const vdaSerial = device.vdaSerial
       if (vdaSerial === undefined) throw offline(device)
@@ -109,7 +134,7 @@ export function createLogs(deps: LogsDeps): Logs {
 
         const until = startFilter.until
         let filter: LogFilter = startFilter
-        const buffer = createLogBuffer(opts.capacity ?? LOG_BUFFER_SIZE, filter.matches)
+        const buffer = createLogBuffer(opts.capacity ?? LOG_BUFFER_SIZE, filter)
         const overlap = createOverlapWindow()
         let seq = 0
         let restartAfterInstall = opts.restartAfterInstall ?? true
@@ -161,6 +186,9 @@ export function createLogs(deps: LogsDeps): Logs {
         // is gone and the pending activity writes are done.
         const finish = (end: LogSessionEnd): Promise<void> => {
           finishing ??= (async () => {
+            // The rate-limited lines of the seconds still open: nothing later closes them.
+            const tail = buffer.flush()
+            if (tail.length > 0) opts.onEntries?.(tail, buffer.counts(), buffer.apps())
             finished = true
             endedWith = end
             clearTimer(idleTimer)
@@ -181,8 +209,8 @@ export function createLogs(deps: LogsDeps): Logs {
         const endAtUntil = () => void finish({ reason: 'until' })
 
         const emit = (entries: LogEntry[]) => {
-          buffer.add(entries)
-          opts.onEntries?.(entries.filter(filter.matches), buffer.counts(), buffer.apps())
+          const shown = buffer.add(entries)
+          opts.onEntries?.(shown, buffer.counts(), buffer.apps())
         }
 
         const addOvd = (event: OvdEvent, time = deps.now().toISOString()) => {
@@ -207,7 +235,12 @@ export function createLogs(deps: LogsDeps): Logs {
             }
           }
           if (kept.length > 0) {
-            const numbered = kept.map((entry) => ({ ...entry, seq: seq++ }))
+            const boot = boots.get(stream)
+            const numbered = kept.map((entry) => ({
+              ...entry,
+              seq: seq++,
+              ...(boot === undefined ? {} : { boot })
+            }))
             for (const entry of numbered) overlap.record(entry)
             emit(numbered)
           }
@@ -238,12 +271,38 @@ export function createLogs(deps: LogsDeps): Logs {
         }
 
         const snapshots = new WeakMap<LogStreamRun, OverlapSnapshot>()
+        // The boot ID each stream started in, when it was read.
+        const boots = new WeakMap<LogStreamRun, string>()
         let command = ''
+
+        // The boot ID at a stream start, or undefined: not asked for, or the read failed. Never
+        // an error: the stream runs untagged (F13).
+        const readBoot = (serial: string): Promise<string | undefined> =>
+          tagBoot
+            ? readBootId({
+                runner: deps.runner,
+                vegaPath,
+                vdaSerial: serial,
+                ...(opts.signal === undefined ? {} : { signal: opts.signal })
+              })
+            : Promise.resolve(undefined)
+
+        // A stream with `boot` has started: it is the boot `current` means from now on. When the
+        // boot is unknown and a boot filter is active, that filter shows no device line, so an
+        // OVD line says why.
+        const bootStarted = (boot: string | undefined) => {
+          if (!tagBoot) return
+          const changed = boot !== currentBoot
+          currentBoot = boot
+          if (changed && filter.usesCurrentBoot) buffer.setFilter(filter)
+          if (boot === undefined && filter.usesBoot) addOvd({ kind: 'boot-unknown' })
+        }
 
         // Spawns a stream on `serial`; `onStart` runs when it counts as started.
         const launch = (
           serial: string,
           snapshot: OverlapSnapshot | undefined,
+          boot: string | undefined,
           onStart: () => void
         ): LogStreamRun => {
           const spec = vdaCmd(vegaPath, LOG_ARGS, serial)
@@ -258,6 +317,7 @@ export function createLogs(deps: LogsDeps): Logs {
             onEntries: (entries) => deliver(stream, snapshot, entries)
           })
           if (snapshot) snapshots.set(stream, snapshot)
+          if (boot !== undefined) boots.set(stream, boot)
           current = stream
           return stream
         }
@@ -295,9 +355,13 @@ export function createLogs(deps: LogsDeps): Logs {
             armPoll()
             return
           }
-          const stream = launch(serial, overlap.snapshot(), () => {
+          // The device may have rebooted: its boot ID is read again.
+          const boot = await readBoot(serial)
+          if (finished) return
+          const stream = launch(serial, overlap.snapshot(), boot, () => {
             if (finished) return
             addOvd({ kind: 'reconnected' })
+            bootStarted(boot)
             write({
               action: 'logs.restart',
               target: device.id,
@@ -376,10 +440,13 @@ export function createLogs(deps: LogsDeps): Logs {
             reconnect()
             return
           }
-          const stream = launch(serial, overlap.snapshot(), () => {
+          const boot = await readBoot(serial)
+          if (finished) return
+          const stream = launch(serial, overlap.snapshot(), boot, () => {
             if (finished) return
             restarting = false
             addOvd({ kind: 'restarted', reason: 'install' })
+            bootStarted(boot)
             write({
               action: 'logs.restart',
               target: device.id,
@@ -414,7 +481,15 @@ export function createLogs(deps: LogsDeps): Logs {
 
         let markStarted = (): void => undefined
         const firstChunk = new Promise<void>((resolve) => (markStarted = resolve))
-        const first = launch(vdaSerial, undefined, () => markStarted())
+        const firstBoot = await readBoot(vdaSerial)
+        if (opts.signal?.aborted) {
+          await finish({ reason: 'stopped' })
+          throw abortError(opts.signal)
+        }
+        const first = launch(vdaSerial, undefined, firstBoot, () => {
+          bootStarted(firstBoot)
+          markStarted()
+        })
         const startedAt = deps.now().toISOString()
         // An `until` already past arms no timer: the backlog is printed up to it, and the first
         // later entry ends the session.
@@ -447,9 +522,11 @@ export function createLogs(deps: LogsDeps): Logs {
           startedAt,
           done,
           setFilter(input) {
-            const next = compileLogFilter(input, deps.now())
+            const next = compileLogFilter(input, deps.now(), filterContext)
             filter = next
-            buffer.setMatches(next.matches)
+            buffer.setFilter(next)
+            // Nothing to match a boot filter against: the stream isn't tagged.
+            if (next.usesBoot && currentBoot === undefined) addOvd({ kind: 'boot-unknown' })
           },
           entries: (throughSeq) => buffer.filtered(throughSeq),
           counts: () => buffer.counts(),

@@ -26,6 +26,8 @@ export type LogJson =
       tag: string
       message: string
       parsed: boolean
+      // Present when the session knew the boot ID (additive, ADR 0006).
+      boot?: string
     }
 
 export function logJson(entry: LogEntry): LogJson {
@@ -40,7 +42,8 @@ export function logJson(entry: LogEntry): LogJson {
     tid: entry.tid,
     tag: entry.tag,
     message: entry.message,
-    parsed: entry.parsed
+    parsed: entry.parsed,
+    ...(entry.boot === undefined ? {} : { boot: entry.boot })
   }
 }
 

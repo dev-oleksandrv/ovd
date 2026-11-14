@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { createLogBuffer, ENTRY_OVERHEAD_BYTES, entryBytes } from '../../src/logs/logBuffer.js'
+import { compileLogFilter } from '../../src/logs/logFilter.js'
 import type { LogEntry } from '../../src/logs/types.js'
 
 const entry = (seq: number, over: Partial<LogEntry> = {}): LogEntry => ({
@@ -196,5 +197,110 @@ describe('the oldest retained time', () => {
     const buffer = createLogBuffer(10, (e) => e.seq > 5)
     buffer.add(timed(0, 8))
     expect(buffer.counts().oldest).toBe(at(0))
+  })
+})
+
+describe('with a compiled filter', () => {
+  const NOW = new Date('2026-11-08T12:00:00Z')
+
+  test('the verdict is stored when the entry arrives: eviction subtracts what the add counted', () => {
+    // A stateful evaluator: only the first two lines of each second are shown.
+    const calls: number[] = []
+    const filter = {
+      evaluator() {
+        let shownNow = 0
+        return {
+          next(e: LogEntry) {
+            calls.push(e.seq)
+            shownNow++
+            return { shown: shownNow <= 2, before: [] }
+          },
+          flush: () => []
+        }
+      }
+    }
+    const buffer = createLogBuffer(3, filter)
+    buffer.add(range(0, 5))
+    // Five arrivals, five judgements: dropping an entry doesn't judge it again.
+    expect(calls).toEqual([0, 1, 2, 3, 4])
+    // Entries 2..4 are held; only 0 and 1 were shown, and both are gone.
+    expect(buffer.counts().shown).toBe(0)
+    expect(buffer.filtered()).toEqual([])
+  })
+
+  test('add returns what to show, derived lines before the entry that closed them', () => {
+    const buffer = createLogBuffer(
+      10,
+      compileLogFilter({ processRules: [{ identity: 'a', rate: 1 }] }, NOW)
+    )
+    const at = (seq: number, second: number, process: string) =>
+      entry(seq, { process, time: `2026-11-08T07:27:0${second}.000Z`, message: `m${seq}` })
+    const out = buffer.add([at(0, 0, 'a'), at(1, 0, 'a'), at(2, 0, 'b'), at(3, 1, 'b')])
+    expect(out.map((e) => e.message)).toEqual(['m0', 'm2', 'a: 1 lines hidden by rate limit', 'm3'])
+    expect(buffer.filtered().map((e) => e.message)).toEqual(out.map((e) => e.message))
+    expect(buffer.counts().shown).toBe(4)
+  })
+
+  test('derived lines count as shown, are dropped with their entry and cut by throughSeq', () => {
+    const buffer = createLogBuffer(
+      3,
+      compileLogFilter({ processRules: [{ identity: 'a', rate: 1 }] }, NOW)
+    )
+    const at = (seq: number, second: number) =>
+      entry(seq, { process: 'a', time: `2026-11-08T07:27:0${second}.000Z`, message: `m${seq}` })
+    buffer.add([at(0, 0), at(1, 0), at(2, 1), at(3, 1), at(4, 2)])
+    // Held: m2, m3, m4. m3 is over the rate. The line before m2 closes second 0 (m1 hidden),
+    // the one before m4 closes second 1 (m3 hidden); a derived line goes with the entry that
+    // closed it, so it survives while that entry does.
+    expect(buffer.filtered().map((e) => e.message)).toEqual([
+      'a: 1 lines hidden by rate limit',
+      'm2',
+      'a: 1 lines hidden by rate limit',
+      'm4'
+    ])
+    expect(buffer.counts().shown).toBe(4)
+    // m4 and its derived line share seq 4: through seq 3 cuts both.
+    expect(buffer.filtered(3).map((e) => e.message)).toEqual([
+      'a: 1 lines hidden by rate limit',
+      'm2'
+    ])
+  })
+
+  test('flush gives the open seconds, keeps them after the last entry, and add retracts them', () => {
+    const buffer = createLogBuffer(
+      10,
+      compileLogFilter({ processRules: [{ identity: 'a', rate: 1 }] }, NOW)
+    )
+    buffer.add([entry(0, { process: 'a' }), entry(1, { process: 'a' })])
+    expect(buffer.flush().map((e) => e.message)).toEqual(['a: 1 lines hidden by rate limit'])
+    expect(buffer.flush()).toEqual([])
+    expect(buffer.filtered().map((e) => e.message)).toEqual([
+      'm 0',
+      'a: 1 lines hidden by rate limit'
+    ])
+    expect(buffer.counts().shown).toBe(2)
+    buffer.add([entry(2, { process: 'b' })])
+    expect(buffer.filtered().map((e) => e.message)).toEqual(['m 0', 'm 2'])
+    expect(buffer.counts().shown).toBe(2)
+  })
+
+  test('clear starts the rate counters afresh', () => {
+    const buffer = createLogBuffer(
+      10,
+      compileLogFilter({ processRules: [{ identity: 'a', rate: 1 }] }, NOW)
+    )
+    buffer.add([entry(0, { process: 'a' })])
+    buffer.clear()
+    expect(buffer.add([entry(1, { process: 'a' })]).map((e) => e.message)).toEqual(['m 1'])
+  })
+
+  test('a buffer that keeps nothing still judges: add returns the shown entries', () => {
+    const buffer = createLogBuffer(
+      0,
+      compileLogFilter({ processRules: [{ identity: 'a', rate: 1 }] }, NOW)
+    )
+    const out = buffer.add([entry(0, { process: 'a' }), entry(1, { process: 'a' })])
+    expect(out.map((e) => e.message)).toEqual(['m 0'])
+    expect(buffer.counts().shown).toBe(0)
   })
 })
