@@ -5,11 +5,14 @@ import { OvdError } from '../errors/ovdError.js'
 export const MAX_REGEX_CHARS = 512
 // A `{n}`, `{n,}` or `{n,m}` count above this is refused: `(a+){1000000,}` is no search.
 export const MAX_REPEAT_COUNT = 1000
-// Open-ended repeats (`*`, `+`, `{n,}`) in one pattern. Each one can take a share of the line, so
-// chained ones (`a*a*a*a*b`) cost a polynomial of this degree. Measured on a 4096-character line:
-// `a+b+` is fast, but an unanchored `.*a.*b` on `aaaa…!` already takes seconds (the engine also
-// tries every start), so no static count makes every pattern safe; this only caps the degree.
-export const MAX_UNBOUNDED = 2
+// A repeat that can cover a long stretch of the line: `*`, `+`, `{n,}`, or `{n,m}` with m above
+// MAX_SHORT_REPEAT. A pattern may hold only MAX_UNBOUNDED of them. The engine also tries every
+// start position, so with one such repeat an unanchored match on the 4096-character slice is at
+// most quadratic (start x repeat length: ~16M steps, about 10 ms). With two (`.*a.*b`, `a+b+`)
+// it is cubic, which took 10 s and more on `aaaa…!`. Repeats up to MAX_SHORT_REPEAT can't cover
+// enough of the line to matter, so `a{1,16}b{1,16}` stays.
+export const MAX_SHORT_REPEAT = 16
+export const MAX_UNBOUNDED = 1
 
 interface Frame {
   // A quantifier or an alternation somewhere inside the group.
@@ -23,8 +26,8 @@ interface Frame {
 // - a group that can repeat (`*`, `+`, `{n,}`, `{n,m}` with m > 1) and holds a quantifier or an
 //   alternation: `(a+)+`, `(a*)*`, `(a|aa)+`, `(.*a){3,}`. `(a+)?` and `(ab)+` stay;
 // - backreferences and lookbehind, whose cost no static rule bounds;
-// - more than MAX_UNBOUNDED open-ended repeats in total: chained overlapping repeats
-//   (`a*a*a*a*a*a*b`) are polynomial of that degree and take seconds on a 4096-character line;
+// - more than MAX_UNBOUNDED long repeats in total (see MAX_UNBOUNDED): chained ones
+//   (`.*a.*b`, `a*a*a*b`) multiply their costs and take seconds on a 4096-character line;
 // - a brace count over MAX_REPEAT_COUNT, however many digits it is written with;
 // - a pattern over MAX_REGEX_CHARS.
 // It reads a pattern `new RegExp` already accepted, so it only walks the syntax it needs.
@@ -86,16 +89,17 @@ export function assertSafeRegex(pattern: string): void {
     if (quantifier !== undefined) {
       const top = stack[stack.length - 1]
       if (top) top.inner = true
-      if (quantifier.max === Number.POSITIVE_INFINITY && ++unbounded > MAX_UNBOUNDED) {
-        refuse(
-          `has more than ${MAX_UNBOUNDED} open-ended repeats (*, + or {n,})`,
-          'Chained repeats can take forever on a long line; use fewer, or a plain-text search'
-        )
-      }
+      // The nested check first: it names the exponential case.
       if (group?.inner && quantifier.max > 1) {
         refuse(
           'has a repeated group that already repeats inside',
           'A pattern like (a+)+ can take forever on a long line; simplify it'
+        )
+      }
+      if (quantifier.long && ++unbounded > MAX_UNBOUNDED) {
+        refuse(
+          'has more than one long repeat (*, + or {n,})',
+          'Use at most one *, + or {n,} — or plain search'
         )
       }
       i += quantifier.length
@@ -119,10 +123,15 @@ function endOfClass(pattern: string, start: number): number {
 }
 
 // The quantifier that starts at `i` (its length and the most it repeats), or undefined.
-function quantifierAt(pattern: string, i: number): { length: number; max: number } | undefined {
+function quantifierAt(
+  pattern: string,
+  i: number
+): { length: number; max: number; long: boolean } | undefined {
   const char = pattern[i]
-  if (char === '*' || char === '+') return { length: 1, max: Number.POSITIVE_INFINITY }
-  if (char === '?') return { length: 1, max: 1 }
+  if (char === '*' || char === '+') {
+    return { length: 1, max: Number.POSITIVE_INFINITY, long: true }
+  }
+  if (char === '?') return { length: 1, max: 1, long: false }
   if (char !== '{') return undefined
   // The whole quantifier, whatever its length (the pattern is capped at MAX_REGEX_CHARS), so
   // leading zeros can't push a count out of view.
@@ -137,7 +146,9 @@ function quantifierAt(pattern: string, i: number): { length: number; max: number
       `Use a count of ${MAX_REPEAT_COUNT} or less`
     )
   }
-  return { length: text.length, max }
+  // An exact `{n}` is linear, however big: only a range can slide over the line.
+  const long = comma !== undefined && max > MAX_SHORT_REPEAT
+  return { length: text.length, max, long }
 }
 
 function refuse(problem: string, hint: string): never {

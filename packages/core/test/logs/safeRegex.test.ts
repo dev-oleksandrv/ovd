@@ -43,6 +43,14 @@ describe('assertSafeRegex: refused', () => {
   test.each(['(?<=a)b', '(?<!a)b', 'x(?<=\\d)y'])('lookbehind %s', rejects)
 
   test.each([
+    // More than one long repeat: cubic on a long line.
+    '.*a.*b',
+    '.{0,1000}a.{0,1000}b',
+    'a+b+',
+    '.*a.*b.*c'
+  ])('more than one long repeat: %s', rejects)
+
+  test.each([
     // Long brace quantifiers can't hide a repeat from the scan.
     '(a+){00000000000000000000000000000000002,}$',
     '(a+){0000000000000000000000000000000000000000001,3}',
@@ -67,9 +75,9 @@ describe('assertSafeRegex: refused', () => {
 // Shared with the timing check below: every accepted pattern must also be fast.
 const ACCEPTED = [
   'error',
-  'a+b+',
+  'a+b',
   '^\\d+ items',
-  '[a-z]+@[a-z]+',
+  '[a-z]+@',
   '(ab)+',
   '(?:ab)+',
   '(abc){2,3}',
@@ -80,10 +88,14 @@ const ACCEPTED = [
   '\\b(?:http|https|fetch)\\b',
   '(?=a+)b',
   '(?<name>ab)+',
+  '.*a',
+  'error.*timeout',
+  'a{1,16}b{1,16}',
+  '^fetch (ok|failed)',
   // A backslash then a digit inside a class is an octal escape, not a backreference.
   '[\\1]+',
   // An escaped paren or quantifier is a literal.
-  '\\(a+\\)+',
+  '\\(a+\\)',
   'a\\+\\+',
   // `{` that isn't a quantifier is a literal.
   '(a{x})+',
