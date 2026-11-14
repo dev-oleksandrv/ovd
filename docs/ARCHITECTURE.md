@@ -18,7 +18,7 @@ The official Vega tooling can do everything, but it is spread across about ten C
 
 **Constraints:**
 
-- **Open source** (Apache-2.0), public from day one: no secrets or personal data in the repo (ADR 0015).
+- **Open source** (Apache-2.0), public from day one: no secrets or personal data in the repo (ADR 0025).
 - **Wrap, don't reimplement:** the user's installed Vega SDK does the work; OVD never bundles it (ADR 0002).
 - **Platforms:** macOS and Ubuntu only (ADR 0013).
 - **Scriptable:** `--json` on every command (ADR 0006).
