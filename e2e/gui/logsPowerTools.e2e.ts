@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { inflateRawSync } from 'node:zlib'
 import type { ElectronApplication, Page } from '@playwright/test'
-import { BURST_LINES, bootIdAfter } from '../fake-sdk/world.ts'
+import { FAKE_CONSOLE_TOKEN } from '../fake-sdk/emulator.ts'
+import { BURST_LINES, STICK_IP, VVD_VDA_SERIAL, bootIdAfter } from '../fake-sdk/world.ts'
 import { ovd } from '../harness/cli.ts'
 import { expect, test } from '../harness/gui.ts'
 import type { Sandbox } from '../harness/sandbox.ts'
@@ -147,13 +148,9 @@ test.describe('Logs power tools', () => {
     await expect(echo(page)).toContainText('--grep "burst"')
   })
 
-  // Product bug (wave 3): the first "App errors only" of a session shows nothing. Main resets the
-  // list at once, while the side-loaded apps are unknown (fail closed); core reads them
-  // afterwards and re-evaluates its buffer, but main pushes no second reset, so the screen stays
-  // on "No lines match the filter" until the next filter change.
-  // apps/gui/src/main/logsController.ts (setFilter), packages/core/src/logs/logSession.ts
-  // (loadSideloadedHeld).
-  test.fixme('App errors only shows the side-loaded app’s error lines and no system line', async ({
+  // Main resets the list at once, while the side-loaded apps are still unknown to core; core reads
+  // them afterwards and tells main (`onRefilter`), which resets again with the apps' lines.
+  test('App errors only shows the side-loaded app’s error lines and no system line', async ({
     sandbox,
     launch
   }) => {
@@ -166,8 +163,14 @@ test.describe('Logs power tools', () => {
 
     await expect(preset(page, 'App errors only')).toHaveAttribute('aria-pressed', 'true')
     await expect(echo(page)).toContainText(`ovd logs --preset app-errors --device ${DEVICE}`)
-    await expect(rows(page).first()).toBeVisible()
+    // The player's error lines (the recording's `ERROR` lines of com.example.player) show...
+    await expect(rows(page).filter({ hasText: 'Request could not resolve host' })).toBeVisible()
+    await expect(rows(page).filter({ hasText: 'fetch failed' })).toBeVisible()
+    // ...and no system line, no non-error app line (the burst and the ticks are INFO).
+    await expect(rows(page).filter({ hasText: 'lcm_service' })).toHaveCount(0)
+    await expect(rows(page).filter({ hasText: 'pkgmgrd' })).toHaveCount(0)
     await expect(rows(page).filter({ hasText: 'player burst' })).toHaveCount(0)
+    await expect(rows(page).filter({ hasText: 'player tick' })).toHaveCount(0)
     await expect(rows(page).filter({ hasText: CLOSER })).toHaveCount(0)
   })
 
@@ -411,9 +414,38 @@ test.describe('Logs power tools', () => {
       format: number
       source: string
       lines: number
+      ovd: string
+      sdk: string
+      createdAt: string
+      device: { name: string; kind: string }
+      timeRange: { from: string; to: string } | null
       filter: Record<string, unknown>
     }
-    expect(manifest).toMatchObject({ format: 1, source: 'buffer', lines: BURST_LINES })
+    expect(manifest).toMatchObject({
+      format: 1,
+      source: 'buffer',
+      lines: BURST_LINES,
+      device: { name: 'Vega Virtual Device', kind: 'vvd' }
+    })
+    expect(manifest.ovd).toMatch(/^\d+\.\d+\.\d+/)
+    expect(manifest.sdk).toMatch(/^\d+\.\d+/)
+    expect(Number.isNaN(Date.parse(manifest.createdAt))).toBe(false)
+    expect(manifest.timeRange?.from).toBeTruthy()
+    expect(manifest.timeRange?.to).toBeTruthy()
+    // OVD's own files hold no serial, IP, host path or console token; logs.txt and logs.jsonl are
+    // the device's raw text (the documented exception, ADR 0026).
+    const secrets = [
+      VVD_VDA_SERIAL,
+      STICK_IP,
+      FAKE_CONSOLE_TOKEN,
+      sandbox.home,
+      sandbox.ovdHome,
+      dirname(sandbox.home)
+    ]
+    for (const [name, data] of entries) {
+      if (name === 'logs.txt' || name === 'logs.jsonl') continue
+      for (const secret of secrets) expect(data.toString('utf8'), name).not.toContain(secret)
+    }
     expect(JSON.stringify(manifest.filter)).toContain('31000')
     const jsonl = (entries.get('logs.jsonl')?.toString('utf8') ?? '').split('\n').filter(Boolean)
     expect(jsonl).toHaveLength(BURST_LINES)

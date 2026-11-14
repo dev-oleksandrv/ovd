@@ -151,6 +151,10 @@ export function createLogsController(opts: {
       onState: () => {
         if (started && n === session) push(n, following(started))
       },
+      // The side-loaded set arrived after `setFilter` returned: the buffer was judged again.
+      onRefilter: () => {
+        if (started && n === session) resetFrom(n, started)
+      },
       onRestart: (reason) => {
         if (reason !== 'install' || n !== session) return
         for (const arm of armed) {

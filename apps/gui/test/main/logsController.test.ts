@@ -306,6 +306,24 @@ describe('createLogsController', () => {
     expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ filter: { level: 'e' } }))
   })
 
+  test('a refilter after setFilter returned pushes a second reset with the re-judged entries', async () => {
+    const { controller, sessions, sent } = setup()
+    await controller.open(STICK)
+    await settle()
+    await controller.setFilter({ appsOnly: true })
+    const resets = sent.filter((u) => u.kind === 'reset').length
+    // Core read the side-loaded set later and judged its buffer again.
+    sessions[0]?.opts.onRefilter?.()
+    expect(sent.filter((u) => u.kind === 'reset')).toHaveLength(resets + 1)
+    expect(sent.at(-1)).toMatchObject({ kind: 'reset', session: 1 })
+    // Another session's late notice is ignored.
+    await controller.restart(STICK)
+    await settle()
+    const before = sent.length
+    sessions[0]?.opts.onRefilter?.()
+    expect(sent).toHaveLength(before)
+  })
+
   test('setFilter on 12,001 entries goes out as a reset and two appends, then live entries', async () => {
     const { controller, sessions, sent } = setup({ entries: 12_001 })
     await controller.open(STICK)
