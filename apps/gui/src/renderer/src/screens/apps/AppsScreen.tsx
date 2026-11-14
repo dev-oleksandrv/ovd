@@ -46,6 +46,8 @@ interface AppsScreenProps {
   onGoPackages: () => void
   // The open project folder or .vpkg: what "Uninstall & reinstall" installs from.
   projectPath: string | null
+  // Opens a crash report of this device in Crashes ("Open crash report" on a crashed launch).
+  onOpenCrash?: (device: string, id: number) => void
 }
 
 // The table's columns; the last one holds each row's Launch / Stop.
@@ -100,7 +102,12 @@ function appColumns(
 
 // Apps (Stage 2.4): the side-loaded and Appstore apps on the target, what runs, and the actions
 // on them. Each action echoes its `ovd apps …` and reloads the list when it is done.
-export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsScreenProps) {
+export function AppsScreen({
+  onSwitchTarget,
+  onGoPackages,
+  projectPath,
+  onOpenCrash
+}: AppsScreenProps) {
   const { echo } = useFeedback()
   const { state: devices } = useDevicesContext()
   const target = targetDevice(devices)
@@ -278,6 +285,9 @@ export function AppsScreen({ onSwitchTarget, onGoPackages, projectPath }: AppsSc
               outcome={outcomeFor(current)}
               onAction={onDetailAction}
               reinstall={reinstallPackage}
+              {...(onOpenCrash && device !== null
+                ? { onOpenCrash: (id: number) => onOpenCrash(device, id) }
+                : {})}
             />
           )}
         </div>

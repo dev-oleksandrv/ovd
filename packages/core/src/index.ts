@@ -48,7 +48,7 @@ export { parseVlcmTerminate } from './adapters/parseVlcmTerminate.js'
 export type { VlcmTerminate } from './adapters/parseVlcmTerminate.js'
 export { parseVlcmCrashHistory } from './adapters/parseVlcmCrashHistory.js'
 export type { CrashEntry } from './adapters/parseVlcmCrashHistory.js'
-export { parseTombstones, signalName } from './adapters/parseTombstones.js'
+export { parseTombstones, parseTombstonesStrict, signalName } from './adapters/parseTombstones.js'
 export type { Tombstone } from './adapters/parseTombstones.js'
 export { parseAcr } from './adapters/parseAcr.js'
 export type { AcrSummary } from './adapters/parseAcr.js'
@@ -192,7 +192,7 @@ export type {
 export type { LaunchCrash, LaunchVerification } from './deviceApps/launchVerification.js'
 export { LOG_BUFFER_SIZE } from './logs/types.js'
 export type { LogCounts, LogEntry, LogLevel, OvdEvent } from './logs/types.js'
-export { logText, logTextAll, ovdEventText } from './logs/logText.js'
+export { escapeControls, logText, logTextAll, ovdEventText } from './logs/logText.js'
 export {
   LOG_EXPORT_FORMATS,
   logExport,
@@ -265,8 +265,16 @@ export type {
   ClipboardDeps,
   ClipboardTool
 } from './screenshot/clipboard.js'
-export { commitFile, resolveDestination } from './screenshot/saveFile.js'
-export type { Destination, SaveFs } from './screenshot/saveFile.js'
+export {
+  commitFile,
+  PNG_KIND,
+  readPart,
+  resolveDestination,
+  stageFor,
+  tempFor,
+  writePart
+} from './screenshot/saveFile.js'
+export type { Destination, SaveFs, SaveKind, Staging } from './screenshot/saveFile.js'
 export { createScreen, LIVE_FORMAT } from './screen/screen.js'
 export type { LiveOptions, LiveScreen, Screen, ScreenBackend, ScreenDeps } from './screen/screen.js'
 export type { FrameStream } from './vvd/emulatorGrpc.js'
@@ -279,3 +287,35 @@ export type {
   RebootProgress,
   RebootResult
 } from './reboot/reboot.js'
+export {
+  createCrashReader,
+  createCrashLedger,
+  parseCrashId,
+  MAX_CRASHES
+} from './crashes/crashList.js'
+export type { CrashLedger, CrashReader, CrashReaderDeps } from './crashes/crashList.js'
+export { createCrashWatch, CRASH_POLL_MS } from './crashes/crashWatch.js'
+export {
+  ACR_KIND,
+  MAX_ACR_BYTES,
+  acrPullScript,
+  createCrashPull,
+  parsePullScript
+} from './crashes/crashPull.js'
+export type { CrashPull, CrashPullDeps } from './crashes/crashPull.js'
+export { crashesDir, ensureCrashesDir } from './crashes/crashesDir.js'
+export { packageInScope, createScope } from './crashes/scope.js'
+export type { InstalledPackage } from './crashes/scope.js'
+export { agentPrompt, PROMPT_UNTRUSTED_MAX_LINES } from './crashes/agentPrompt.js'
+export type { AgentPromptInput } from './crashes/agentPrompt.js'
+export type {
+  Crash,
+  CrashDetail,
+  CrashKind,
+  CrashPullOptions,
+  CrashPullResult,
+  Crashes,
+  CrashesList,
+  CrashWatch,
+  CrashWatchOptions
+} from './crashes/types.js'

@@ -1,0 +1,24 @@
+AppBuildNumber: 1
+AppVersion: 0.1.0
+BootId: 00000000000000000000000000000001
+BuildVariant: user
+CrashDescriptor: 5a0fa8b534c7227a11ce34ba23306a6c
+CrashLang: Native
+CrashReason: SIGABRT
+CrashTimeUTC: 1794604032000
+DeviceGroup: N/A
+DumpSuccess: true
+FileIndex: 94
+FullUnwind: false
+LastModified: 1794604032
+LcmProcessActivityState: inactive
+LibraryName: N/A
+OsBuildNumber: 2111248248030
+Process: com.example.player
+Screen: On
+Size: 300256
+Source: /var/lib/data/acr/tombstones/crash_1794604032_30042_5000_3605_6_com_example_player.acr
+SystemVersion: 1.0.228248.0(9a1d8dfa7da5d600)/102282480N:user/dev-keys
+UpTimems: 169000
+hasForegroundActivities: False
+

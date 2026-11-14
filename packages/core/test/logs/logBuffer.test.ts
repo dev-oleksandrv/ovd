@@ -24,7 +24,12 @@ test('keeps the latest entries once full, oldest dropped first', () => {
   const buffer = createLogBuffer(3)
   buffer.add(range(0, 5))
   expect(buffer.filtered().map((e) => e.seq)).toEqual([2, 3, 4])
-  expect(buffer.counts()).toEqual({ lines: 5, errors: 1, shown: 3 })
+  expect(buffer.counts()).toEqual({
+    lines: 5,
+    errors: 1,
+    shown: 3,
+    oldest: '2026-11-08T07:27:00.000Z'
+  })
 })
 
 test('shown follows the filter, also while entries are dropped', () => {
@@ -48,7 +53,12 @@ test('re-filtering 100,000 entries gives the right count', () => {
   const buffer = createLogBuffer()
   buffer.add(range(0, 100_000))
   buffer.setMatches((e) => e.level === 'E')
-  expect(buffer.counts()).toEqual({ lines: 100_000, errors: 10_000, shown: 10_000 })
+  expect(buffer.counts()).toEqual({
+    lines: 100_000,
+    errors: 10_000,
+    shown: 10_000,
+    oldest: '2026-11-08T07:27:00.000Z'
+  })
   expect(buffer.filtered()).toHaveLength(10_000)
 })
 
@@ -140,6 +150,51 @@ test('an OVD entry is kept and shown but counts in neither lines nor errors, and
   })
   buffer.add([ovd])
   expect(buffer.filtered().map((e) => e.seq)).toEqual([1, 2])
-  expect(buffer.counts()).toEqual({ lines: 1, errors: 0, shown: 2 })
+  expect(buffer.counts()).toEqual({
+    lines: 1,
+    errors: 0,
+    shown: 2,
+    oldest: '2026-11-08T07:27:00.000Z'
+  })
   expect(buffer.apps()).toEqual([])
+})
+
+describe('the oldest retained time', () => {
+  const at = (seq: number) => new Date(Date.UTC(2026, 10, 8, 7, 0, seq)).toISOString()
+  const timed = (from: number, to: number) =>
+    Array.from({ length: to - from }, (_, i) => entry(from + i, { time: at(from + i) }))
+
+  test('is the first entry while nothing was dropped, and absent while empty', () => {
+    const buffer = createLogBuffer(10)
+    expect(buffer.counts().oldest).toBeUndefined()
+    buffer.add(timed(3, 6))
+    expect(buffer.counts().oldest).toBe(at(3))
+  })
+
+  test('moves forward when a full buffer drops its oldest entries', () => {
+    const buffer = createLogBuffer(3)
+    buffer.add(timed(0, 5))
+    expect(buffer.counts().oldest).toBe(at(2))
+  })
+
+  test('moves forward when the byte budget drops entries', () => {
+    const buffer = createLogBuffer(100, () => true, entryBytes(entry(10, { time: at(10) })) * 2)
+    buffer.add(timed(10, 14))
+    expect(buffer.counts().oldest).toBe(at(12))
+  })
+
+  test('is absent after Clear, then the first line after it', () => {
+    const buffer = createLogBuffer(10)
+    buffer.add(timed(0, 4))
+    buffer.clear()
+    expect(buffer.counts().oldest).toBeUndefined()
+    buffer.add(timed(7, 9))
+    expect(buffer.counts().oldest).toBe(at(7))
+  })
+
+  test('does not depend on the filter', () => {
+    const buffer = createLogBuffer(10, (e) => e.seq > 5)
+    buffer.add(timed(0, 8))
+    expect(buffer.counts().oldest).toBe(at(0))
+  })
 })

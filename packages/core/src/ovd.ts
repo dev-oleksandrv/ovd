@@ -1,6 +1,10 @@
 import { homedir as osHomedir } from 'node:os'
 import { createActivityFeed } from './activity/activityFeed.js'
-import { createActivityLog, type Surface } from './activity/activityLog.js'
+import { createActivityLog, type ActivityLog, type Surface } from './activity/activityLog.js'
+import { createCrashReader } from './crashes/crashList.js'
+import { createCrashPull } from './crashes/crashPull.js'
+import { createCrashWatch } from './crashes/crashWatch.js'
+import type { Crashes } from './crashes/types.js'
 import { createDevices, type Devices } from './devices/devices.js'
 import { createDevmode, type Devmode } from './devmode/devmode.js'
 import { createDoctor, type Doctor } from './doctor/doctor.js'
@@ -58,7 +62,14 @@ export interface Ovd {
   screenshot: Screenshot
   screen: Screen
   reboot: Reboot
+  crashes: Crashes
 }
+
+const INSTALL_ACTIONS: ReadonlySet<string> = new Set([
+  'app.install',
+  'app.reinstall',
+  'app.uninstall'
+])
 
 // One core per surface process; every surface shares the host state directory (ADR 0022).
 export function createOvd(opts: OvdOptions): Ovd {
@@ -69,11 +80,25 @@ export function createOvd(opts: OvdOptions): Ovd {
   const sdk = createSdkLocator(
     opts.discover ?? (() => discoverSdk({ ...defaultDiscoverOptions(runner), env, homedir }))
   )
-  const activity = createActivityLog({
+  const activityLog = createActivityLog({
     home,
     surface: opts.surface,
     ...(opts.now ? { now: opts.now } : {})
   })
+  // OVD's own installs and uninstalls change what the crash scope matches names against, so the
+  // crash reader drops its installed snapshot of that device (set below, once it exists).
+  let installedChanged: (deviceId: string) => void = () => undefined
+  const activity: ActivityLog = {
+    async append(entry) {
+      try {
+        await activityLog.append(entry)
+      } finally {
+        if (INSTALL_ACTIONS.has(entry.action) && entry.target !== null) {
+          installedChanged(entry.target)
+        }
+      }
+    }
+  }
   const state = createStateStore(home)
   const devices = createDevices({ runner, sdk, state, activity, env })
   const emulator = createEmulator({
@@ -155,6 +180,35 @@ export function createOvd(opts: OvdOptions): Ovd {
   })
   const screen = createScreen({ devices, activity, emulator, vvd })
   const reboot = createReboot({ runner, sdk, devices, pairing, activity, env })
+  const reader = createCrashReader({
+    runner,
+    sdk,
+    devices,
+    // Every package, libraries without components too: the scope match must see what a name
+    // collides with.
+    installed: (device) => apps.installedPackages(device)
+  })
+  installedChanged = (deviceId) => reader.invalidate(deviceId)
+  const crashPull = createCrashPull({
+    reader,
+    runner,
+    sdk,
+    devices,
+    activity,
+    env,
+    homedir,
+    cwd
+  })
+  const crashes: Crashes = {
+    list: (device) => reader.list(device),
+    detail: async (id, device) => {
+      const found = await reader.find(id, device)
+      return { ...found, device: { id: found.device.id, name: found.device.name } }
+    },
+    watch: (watchOpts) => createCrashWatch({ reader, devices, activity }, watchOpts),
+    pull: (pullOpts) => crashPull.pull(pullOpts),
+    dir: () => crashPull.dir()
+  }
   return {
     sdk,
     devices,
@@ -172,6 +226,7 @@ export function createOvd(opts: OvdOptions): Ovd {
     input,
     screenshot,
     screen,
-    reboot
+    reboot,
+    crashes
   }
 }

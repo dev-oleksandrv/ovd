@@ -1,12 +1,17 @@
 import type { Device } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
+import { entries, logEntry } from './sample'
 import {
+  coversTime,
+  crashLogsOutcome,
   highlightSegments,
+  indexAtTime,
   logsBlocker,
   logsCli,
   logsExportCli,
   packageChoices,
   regexError,
+  ROTATION_HINT,
   sessionLabel,
   shellQuote,
   timeOfDay,
@@ -241,5 +246,58 @@ describe('labels', () => {
     expect(logsBlocker(undefined)).toBe('no-target')
     expect(logsBlocker({ ...device, status: 'offline' })).toBe('offline')
     expect(logsBlocker(device)).toBeNull()
+  })
+})
+
+describe('logs at crash time', () => {
+  const start = '2026-11-13T10:00:00.000Z'
+
+  test('the retained history covers a crash at or after its oldest line', () => {
+    expect(coversTime(start, '2026-11-13T10:00:05.000Z')).toBe(true)
+    expect(coversTime(start, start)).toBe(true)
+  })
+
+  test('it doesn’t cover a crash before its oldest line, an empty history or a bad time', () => {
+    expect(coversTime(start, '2026-11-13T09:59:59.000Z')).toBe(false)
+    expect(coversTime(undefined, start)).toBe(false)
+    expect(coversTime('nope', start)).toBe(false)
+    expect(coversTime(start, 'nope')).toBe(false)
+  })
+
+  test('a full buffer still covers a crash its oldest retained line reaches back to', () => {
+    // 150,000 lines were received, but the oldest of the retained ones is before the crash.
+    const outcome = crashLogsOutcome(
+      { n: 1, app: 'com.example.player', time: '2026-11-13T10:00:30.000Z' },
+      { lines: 150_000, oldest: start },
+      entries(5).map((e, i) => logEntry(e.seq, { time: `2026-11-13T10:00:${30 + i}.000Z` }))
+    )
+    expect(outcome).toEqual({ kind: 'scroll', index: 0 })
+  })
+
+  test('after Clear nothing is retained: the journal note, not a coverage claim', () => {
+    const outcome = crashLogsOutcome(
+      { n: 1, app: 'com.example.player', time: '2026-11-13T10:00:30.000Z' },
+      { lines: 0 },
+      []
+    )
+    expect(outcome).toMatchObject({ kind: 'note', body: ROTATION_HINT })
+  })
+
+  test('after an eviction past the crash the journal note is shown', () => {
+    const outcome = crashLogsOutcome(
+      { n: 1, app: 'com.example.player', time: '2026-11-13T10:00:30.000Z' },
+      { lines: 90_000, oldest: '2026-11-13T10:01:00.000Z' },
+      entries(5).map((e, i) => logEntry(e.seq, { time: `2026-11-13T10:01:0${i}.000Z` }))
+    )
+    expect(outcome).toMatchObject({ kind: 'note', body: ROTATION_HINT })
+  })
+
+  test('the row is the first line at or after the time, else the last before it', () => {
+    const lines = entries(5).map((e, i) => logEntry(e.seq, { time: `2026-11-13T10:00:0${i}.000Z` }))
+    expect(indexAtTime(lines, '2026-11-13T10:00:02.000Z')).toBe(2)
+    expect(indexAtTime(lines, '2026-11-13T10:00:01.500Z')).toBe(2)
+    expect(indexAtTime(lines, '2026-11-13T10:01:00.000Z')).toBe(4)
+    expect(indexAtTime(lines, '2026-11-13T09:00:00.000Z')).toBe(0)
+    expect(indexAtTime([], start)).toBe(-1)
   })
 })

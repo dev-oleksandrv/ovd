@@ -67,7 +67,13 @@ function stub(opts: StubOptions = {}): OvdApi {
   return stubAll(opts).api
 }
 
-function renderScreen(handlers: { onSwitchTarget?: () => void; onGoPackages?: () => void } = {}) {
+function renderScreen(
+  handlers: {
+    onSwitchTarget?: () => void
+    onGoPackages?: () => void
+    onOpenCrash?: (device: string, id: number) => void
+  } = {}
+) {
   render(
     <FeedbackProvider>
       <DevicesProvider>
@@ -75,6 +81,7 @@ function renderScreen(handlers: { onSwitchTarget?: () => void; onGoPackages?: ()
           onSwitchTarget={handlers.onSwitchTarget ?? (() => {})}
           onGoPackages={handlers.onGoPackages ?? (() => {})}
           projectPath={null}
+          {...(handlers.onOpenCrash ? { onOpenCrash: handlers.onOpenCrash } : {})}
         />
       </DevicesProvider>
       <StatusBar />
@@ -743,6 +750,34 @@ describe('Apps screen launch verification', () => {
     fireEvent.click(logs)
     expect(logs.getAttribute('aria-expanded')).toBe('true')
     expect(within(callout).getByText(/crashed with signal 6/)).toBeTruthy()
+  })
+
+  test('a crash with a report id offers Open crash report, which opens it in Crashes', async () => {
+    stub({
+      actions: {
+        launch: async () =>
+          crashedHello.ok
+            ? { ok: true, data: { ...crashedHello.data, crash: { ...helloCrash, id: 2100 } } }
+            : crashedHello
+      }
+    })
+    const onOpenCrash = vi.fn()
+    renderScreen({ onOpenCrash })
+
+    const panel = await launchHello()
+
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Open crash report' }))
+    expect(onOpenCrash).toHaveBeenCalledWith(stick.id, 2100)
+  })
+
+  test('a crash with no report id has no Open crash report', async () => {
+    stub({ actions: { launch: async () => crashedHello } })
+    renderScreen({ onOpenCrash: vi.fn() })
+
+    const panel = await launchHello()
+
+    await within(panel).findByRole('button', { name: 'Logs around crash' })
+    expect(within(panel).queryByRole('button', { name: 'Open crash report' })).toBeNull()
   })
 
   test('a crash without logs says so', async () => {

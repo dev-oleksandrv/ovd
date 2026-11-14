@@ -18,7 +18,7 @@ const CONTROLS =
   // eslint-disable-next-line no-control-regex -- matching control characters is the point
   /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
 
-function escapeControls(text: string): string {
+export function escapeControls(text: string): string {
   return text.replace(CONTROLS, (char) => {
     const code = char.charCodeAt(0)
     return code <= 0xff
@@ -77,6 +77,13 @@ export function ovdEventText(event: OvdEvent): string {
       return 'Log session reconnected'
     case 'build':
       return `Build folder changed: ${event.folder ?? ''}${event.file}`
+    case 'crash': {
+      const details = [
+        ...(event.pid === undefined ? [] : [`pid ${event.pid}`]),
+        ...(event.signal === undefined ? [] : [event.signal])
+      ]
+      return `Crash report: ${event.app ?? 'an app'}${details.length > 0 ? ` (${details.join(', ')})` : ''}`
+    }
     case 'launch': {
       const what = event.action === 'app.restart' ? 'Restart' : 'Launch'
       const app = event.app ?? 'the app'

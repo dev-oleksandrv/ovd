@@ -102,7 +102,8 @@ export function createLogBuffer(
       for (const entry of inOrder()) if (matches(entry)) shown++
     },
     counts() {
-      return { lines, errors, shown }
+      const oldest = size > 0 ? ring[start]?.time : undefined
+      return { lines, errors, shown, ...(oldest === undefined ? {} : { oldest }) }
     },
     filtered(throughSeq) {
       const out: LogEntry[] = []

@@ -33,18 +33,42 @@ export interface World {
   running: { device: string; app: string }[]
   // The Virtual Device player crashes right after `launch-app`, which still reports success
   // (ADR 0012): it never joins `running` (fixtures/0.24/README.md, row
-  // `vlcm-crash-history/virtual-device-after.txt`: "the app never shows in `vlcm list`").
+  // `vlcm-list/virtual-device-js-visible.txt`: the app is listed for about a second, then the
+  // JavaScript error crashes it). The launch's capture is `log-capture/virtual-device-js-started.txt`.
   playerCrashesOnLaunch: boolean
   // The Virtual Device player neither runs nor crashes after `launch-app`, which still reports
   // success (`vega-device-launch-app/launched.txt`): it never joins `running`, so
   // `vlcm list --app-id` answers `vlcm-list/app-missing.txt`, and the crash history keeps
-  // `vlcm-crash-history/virtual-device-before.txt`. A sequence synthesized from recordings
+  // `vlcm-crash-history/virtual-device-js-before.txt`. A sequence synthesized from recordings
   // (fixtures/0.24/README.md, Synthesized sequences). Not combined with `playerCrashesOnLaunch`.
   playerStopsOnLaunch: boolean
-  // The player crashed: the crash history, the vault and the capture answer with their "after"
-  // recordings (`vlcm-crash-history/virtual-device-after.txt`,
-  // `loggingctl-vault-ls/virtual-device-tombstones-after.json`, `log-capture/virtual-device-crashed.txt`).
+  // The player crashed with a launch (set by `launch-app` when `playerCrashesOnLaunch`): the
+  // crash history, the vault and the capture answer with the recording of the first crash
+  // (`vlcm-crash-history/virtual-device-js-after.txt`, `loggingctl-vault-ls/virtual-device-js-after.json`,
+  // `log-capture/virtual-device-js-crashed.txt`; index 105, pid 7746).
   playerCrashed: boolean
+  // A crash that shows up with no launch (`injectPlayerCrash`, e2e/harness/crash.ts), answered
+  // from the same recorded sequence: the first crash when it is the only one, the second
+  // (`virtual-device-js-after-second.*`, index 106) when `playerCrashed` is set too. Every
+  // in-scope report of every listing has a recorded bounded read (fixtures/0.24/README.md,
+  // Synthesized sequences).
+  playerCrashInjected: boolean
+  // The stick's player crashed (the recorded sequence `loggingctl-vault-ls/stick-before.json` →
+  // `stick-after.json`, index 2100): `loggingctl vault --ls` lists it, the bounded read, pull and
+  // `rm -rf` answer. A test sets it mid-run to inject a crash with no launch. The stick's
+  // `vlcm crash-history` recording (`stick-js-after.txt`) is not answered by the fake.
+  stickPlayerCrashed: boolean
+  // Vault indexes whose package was uninstalled since the crash: the full-ACR pull of them
+  // writes `loggingctl-vault-acr/insufficient-permissions.json` (status -7). The first crash
+  // on the Virtual Device is index 105, on the stick 2100.
+  uninstalledCrashes: number[]
+  // Remote ACR files the pull script wrote, until `rm -rf` removes their folder: the device kind,
+  // the remote file and the recording the file holds.
+  acrFiles: {
+    device: 'vvd' | 'stick'
+    remote: string
+    content: 'ok' | 'unknown-index' | 'uninstalled'
+  }[]
   // The stick's `loggingctl log -f`. They are read when a stream starts, so a test sets them
   // before it opens Logs or runs `ovd logs`; afterwards only `holdAfterLine: null` is polled.
   // `ends`: every stream prints the recording before a reboot and ends by itself (exit 0).
@@ -136,6 +160,10 @@ export function defaultWorld(): World {
     playerCrashesOnLaunch: false,
     playerStopsOnLaunch: false,
     playerCrashed: false,
+    playerCrashInjected: false,
+    stickPlayerCrashed: false,
+    uninstalledCrashes: [],
+    acrFiles: [],
     logStream: { ends: false, holdAfterLine: null },
     vvdLogStreams: 0,
     loginHold: false,

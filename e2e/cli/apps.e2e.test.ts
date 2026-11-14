@@ -168,10 +168,14 @@ const TOMBSTONES = `${SHELL} loggingctl vault --ls SYSTEM_TOMBSTONE/acr`
 // The device script a `… shell echo <base64> | base64 -d | sh` call ran, or null.
 const scriptOf = (call: string): string | null =>
   call.startsWith(`${SHELL} `) ? decodeScript(`shell ${call.slice(SHELL.length + 1)}`) : null
-// The capture stop (fixtures/0.24/log-capture/started.txt: timeout pid 2056) with its crash pid.
-const isStop = (call: string, crashPid: number): boolean => {
+// The capture stop with its crash pid and the pid of the capture it stops: 2056 for a launch that
+// stays up (fixtures/0.24/log-capture/started.txt), 1156 for the launch that crashes
+// (log-capture/virtual-device-js-started.txt).
+const isStop = (call: string, crashPid: number, capturePid = 2056): boolean => {
   const script = scriptOf(call) ?? ''
-  return script.startsWith('pkill -P 2056;') && script.includes(String.raw`'\[${crashPid}\]'`)
+  return (
+    script.startsWith(`pkill -P ${capturePid};`) && script.includes(String.raw`'\[${crashPid}\]'`)
+  )
 }
 
 describe('ovd apps actions', () => {
@@ -460,7 +464,7 @@ describe('ovd apps launch verification', () => {
       launched: true,
       verified: false,
       reason: 'crashed',
-      crash: { pid: 3200, signal: 'SIGABRT', language: 'JavaScript' }
+      crash: { pid: 7746, signal: 'SIGABRT', language: 'JavaScript' }
     })
     const logs = 'crash' in doc.launch ? doc.launch.crash.logs : []
     expect(logs.length).toBeGreaterThan(0)
@@ -470,7 +474,7 @@ describe('ovd apps launch verification', () => {
       action: 'app.launch',
       result: 'error',
       errorCode: 'LAUNCH_NOT_VERIFIED',
-      args: { app: PLAYER, reason: 'crashed', pid: '3200', signal: 'SIGABRT' }
+      args: { app: PLAYER, reason: 'crashed', pid: '7746', signal: 'SIGABRT' }
     })
     const calls = sandbox.calls()
     const steps = [
@@ -482,9 +486,9 @@ describe('ovd apps launch verification', () => {
       calls.lastIndexOf(CRASH_HISTORY),
       calls.indexOf(TOMBSTONES),
       calls.findIndex(
-        (c) => scriptOf(c)?.startsWith('loggingctl vault --cat SYSTEM_TOMBSTONE 37') ?? false
+        (c) => scriptOf(c)?.startsWith('loggingctl vault --cat SYSTEM_TOMBSTONE 105') ?? false
       ),
-      calls.findIndex((c) => isStop(c, 3200))
+      calls.findIndex((c) => isStop(c, 7746, 1156))
     ]
     expect(
       steps.every((i) => i >= 0),
@@ -514,7 +518,7 @@ describe('ovd apps launch verification', () => {
     const calls = sandbox.calls()
     const launched = calls.indexOf(LAUNCH)
     expect(launched).toBeGreaterThan(-1)
-    expect(calls.findIndex((c) => isStop(c, 3200))).toBeGreaterThan(launched)
+    expect(calls.findIndex((c) => isStop(c, 7746, 1156))).toBeGreaterThan(launched)
   })
 
   test('not running after launch exits 7, reason not-running', async () => {

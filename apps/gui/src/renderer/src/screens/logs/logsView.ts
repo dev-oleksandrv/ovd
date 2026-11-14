@@ -1,4 +1,4 @@
-import type { Device, LogExportFormat } from '@ovd/core'
+import type { Device, LogEntry, LogExportFormat } from '@ovd/core'
 import type { LogsFilter, LogsState } from '../../../../preload/api'
 import type { SelectOption } from '../../ui/Select'
 import { appsBlocker } from '../apps/appsView'
@@ -197,4 +197,64 @@ export function regexError(search: string, regex: boolean): string | null {
   } catch (error) {
     return error instanceof Error ? error.message : String(error)
   }
+}
+
+// "Logs at crash time" (Stage 5.1): Crashes asks Logs to filter on the crash's app and show
+// the crash's time. `n` tells two requests for the same crash apart.
+export interface CrashLogsRequest {
+  n: number
+  app: string
+  // ISO time of the crash.
+  time: string
+}
+
+// The journal rotates fast, so a crash is in the log only when a session was running before
+// it (ARCHITECTURE §8).
+export const ROTATION_HINT =
+  'The device journal rotates fast, so lines from before this session are gone. To catch a crash, start logs (or use Run) before launching the app.'
+
+// Whether the retained history reaches back to `time`: its oldest line (core's `counts.oldest`,
+// after any Clear or eviction) is at or before it. An empty history covers nothing.
+export function coversTime(oldest: string | null | undefined, time: string): boolean {
+  if (oldest === null || oldest === undefined) return false
+  const first = Date.parse(oldest)
+  const crash = Date.parse(time)
+  return Number.isFinite(first) && Number.isFinite(crash) && first <= crash
+}
+
+// The row to bring into view: the first line at or after `time`, else the last line before it;
+// -1 for an empty list. Entries are in time order.
+export function indexAtTime(entries: readonly LogEntry[], time: string): number {
+  if (entries.length === 0) return -1
+  const at = Date.parse(time)
+  const found = entries.findIndex((entry) => Date.parse(entry.time) >= at)
+  return found === -1 ? entries.length - 1 : found
+}
+
+export type CrashLogsOutcome =
+  { kind: 'scroll'; index: number } | { kind: 'note'; title: string; body: string }
+
+// What "Logs at crash time" does once the buffer is filtered on the app: scroll to the crash's
+// time when the retained history reaches back to it, else say the journal rotates fast.
+export function crashLogsOutcome(
+  request: CrashLogsRequest,
+  session: { lines: number; oldest?: string },
+  entries: readonly LogEntry[]
+): CrashLogsOutcome {
+  if (!coversTime(session.oldest, request.time)) {
+    return {
+      kind: 'note',
+      title: `No lines of ${request.app} from before this session`,
+      body: ROTATION_HINT
+    }
+  }
+  const index = indexAtTime(entries, request.time)
+  if (index === -1) {
+    return {
+      kind: 'note',
+      title: `No lines of ${request.app} in this session`,
+      body: 'The app logged nothing since the session started.'
+    }
+  }
+  return { kind: 'scroll', index }
 }

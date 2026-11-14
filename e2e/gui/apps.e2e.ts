@@ -457,7 +457,7 @@ test.describe('Apps', () => {
     const callout = detail.getByRole('alert')
     await expect(callout).toContainText('Launch reported success, but the app crashed')
     await expect(callout).toContainText('SIGABRT')
-    await expect(callout).toContainText('pid 3200')
+    await expect(callout).toContainText('pid 7746')
     await callout.getByRole('button', { name: 'Logs around crash' }).click()
     await expect(callout).toContainText('crashed with signal 6')
 
@@ -469,14 +469,29 @@ test.describe('Apps', () => {
     expect(activity.map((a) => [a.action, a.result])).toEqual([['app.launch', 'error']])
     expect(activity[0]).toMatchObject({
       errorCode: 'LAUNCH_NOT_VERIFIED',
-      args: { app: 'com.example.player', reason: 'crashed', pid: '3200', signal: 'SIGABRT' }
+      args: { app: 'com.example.player', reason: 'crashed', pid: '7746', signal: 'SIGABRT' }
     })
     const stop = sandbox
       .calls()
       .map(scriptOf)
-      .find((script) => script?.startsWith('pkill -P 2056;'))
-    expect(stop).toContain(String.raw`'\[3200\]'`)
+      .find((script) => script?.startsWith('pkill -P 1156;'))
+    expect(stop).toContain(String.raw`'\[7746\]'`)
     expect(sandbox.world().running).toEqual([])
+
+    // The callout's report: the launch's crash is index 105 in Crashes.
+    await detail.getByRole('alert').getByRole('button', { name: 'Open crash report' }).click()
+    await expect(page.getByRole('heading', { name: 'Crashes', level: 1 })).toBeVisible()
+    const report = page.getByRole('complementary', { name: 'Crash 105 details' })
+    await expect(report).toBeVisible()
+    await expect(report.getByRole('heading', { name: 'com.example.player' })).toBeVisible()
+    await expect(report).toContainText('7746')
+    await expect(echo(page)).toContainText('$ ovd crashes --device VirtualDevice')
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.surface === 'desktop')
+        .map((a) => [a.action, a.result])
+    ).toEqual([['app.launch', 'error']])
   })
 
   test('Launch on the player that isn’t running afterwards shows the not-running callout', async ({

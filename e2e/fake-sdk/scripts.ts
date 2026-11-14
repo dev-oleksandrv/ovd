@@ -42,3 +42,17 @@ export function captureStop(file: string, pid: number): RegExp {
 
 // The bounded read of a crash report: captures the vault index.
 export const ACR = new RegExp(`^${escape(ACR_TEXT).replace('<index>', '(\\d+)')}$`)
+
+// The full-ACR pull script (fixtures/0.24/README.md, row `loggingctl-vault-acr/pull-script-ok.txt`):
+// the report goes to a private temp file that `vda pull` then copies. The README writes it on one
+// line with `; `; core may send it as lines, so both spellings are folded into the one-line form
+// before matching. Captures the vault index.
+const PULL_TEXT = String.raw`umask 077; d=$(mktemp -d /tmp/ovd-acr.XXXXXX) || exit 1; f="$d/report.acr"; loggingctl vault --cat SYSTEM_TOMBSTONE <index> > "$f"; echo "$f"; wc -c < "$f"; ls -ld "$d" "$f"`
+const ACR_PULL = new RegExp(`^${escape(PULL_TEXT).replace('<index>', '(\\d+)')}$`)
+
+// The vault index of a full-ACR pull script, or null for any other script.
+export function acrPullIndex(script: string): number | null {
+  const oneLine = script.replace(/;?\n/g, '; ').replace(/;\s*$/, '').trim()
+  const m = ACR_PULL.exec(oneLine)
+  return m?.[1] === undefined ? null : Number(m[1])
+}

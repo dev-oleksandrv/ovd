@@ -7,6 +7,7 @@ import {
   existsSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync
 } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -30,7 +31,7 @@ import {
   type Stick,
   type World
 } from './world.ts'
-import { ACR, CAPTURE_START, captureStop, decodeScript } from './scripts.ts'
+import { ACR, CAPTURE_START, acrPullIndex, captureStop, decodeScript } from './scripts.ts'
 
 interface Reply {
   stdout?: string
@@ -400,7 +401,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
       return { stdout: fixture('vsm-developer-mode-set/enabled.txt') }
     }
     if (sub === 'shell loggingctl log -f -o short_concise') return vvdLogStream()
-    return vvdApps(w, sub)
+    return acrCommands(w, 'vvd', rest) ?? vvdApps(w, sub)
   }
   if (serial === VVD_VDA_SERIAL) {
     return notFound(sub, 'vda-shell/virtual-device-not-found.stderr.txt')
@@ -419,7 +420,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
     if (!stickOnUsb(w)) return notFound(sub, 'vda-shell/stick-usb-not-found.stderr.txt')
     if (sub === 'shell loggingctl log -f -o short_concise') return logStream(w)
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
+    return acrCommands(w, 'stick', rest) ?? stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
   }
   if (serial === STICK_ADDRESS && sub === 'usb' && w.stick && stickOnWifi(w)) {
     // VDA keeps the Wi‑Fi entry, now offline (vda-devices/stick-usb-and-wifi-offline.txt).
@@ -432,7 +433,7 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
   // Listed but offline (connected, stick unreachable): not recorded, so not answered.
   if (serial === STICK_ADDRESS && stickOnWifi(w)) {
     if (sub === 'shell inputd-cli start') return inputdConsole()
-    return stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
+    return acrCommands(w, 'stick', rest) ?? stickScreenshot(w, rest) ?? stickApps(w, serial, sub)
   }
   return null
 }
@@ -473,6 +474,132 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
     return {}
   }
   return null
+}
+
+// Crash reports on a device: the vault listing, the bounded read of a stick crash, the full-ACR
+// pull script, `vda pull` of its file and the removal of its folder (core's crash radar).
+// Virtual Device: one recorded sequence (`virtual-device-js-*`, `vvdCrashes`): the vault before the
+// player's first crash holds 19 reports of the player and three of a system package, a crash
+// (a launch that crashes, `playerCrashed`, or an injected one, `playerCrashInjected`) adds index
+// 105, a second adds 106. Every in-scope report of every listing has a recorded bounded read. The
+// listing, `--cat | sed`, pull script and `rm -rf` answers are all recordings
+// (`loggingctl-vault-ls/virtual-device-js-*.json`, `loggingctl-vault-acr/*`,
+// `vda-shell/rm-rf-acr-dir.txt`).
+// Stick (USB and Wi-Fi): one recorded sequence too (`stick-*`): the vault listing holds one report
+// of a third-party app in the undocumented `lrk` form (never read: core skips it) until
+// `injectPlayerCrash(sandbox, 'stick')`, then also the player's index 2100 with its recorded
+// bounded read; after the player is marked uninstalled the listing, the pull script and the pulled
+// file are the recorded -7 answers. The listing, bounded read, pull script, `vda pull` print and
+// `rm -rf` are recordings; only the .acr file `pull` copies is synthetic. Any other index stays
+// unanswered. Every in-scope report of every listing has a recorded bounded read (fixtures/0.24/README.md).
+const STICK_CRASH_INDEX = 2100
+// The player's reports in `virtual-device-js-before.json`, in the system package's, 50, 55 and 67.
+const VVD_PLAYER_INDEXES = [
+  97, 103, 99, 100, 88, 83, 101, 91, 102, 86, 84, 79, 90, 87, 96, 89, 93, 85, 94
+]
+const VVD_SYSTEM_INDEXES = [50, 67, 55]
+// The reports the first and the second crash add, with the first one's pid
+// (`vlcm-crash-history/virtual-device-js-after.txt`).
+const VVD_CRASH_INDEXES = [105, 106]
+const CRASH_PID = 7746
+const ACR_FOLDER = /^\/tmp\/ovd-acr\.[A-Za-z0-9]{6}$/
+const PULL_CONTENT = {
+  vvd: {
+    ok: 'loggingctl-vault-acr/pull-script-ok.txt',
+    'unknown-index': 'loggingctl-vault-acr/pull-script-unknown-index.txt',
+    uninstalled: 'loggingctl-vault-acr/pull-script-uninstalled.txt'
+  },
+  stick: {
+    ok: 'loggingctl-vault-acr/stick-pull-script-ok.txt',
+    uninstalled: 'loggingctl-vault-acr/stick-pull-script-uninstalled.txt'
+  }
+} as const
+const PULL_PRINT = { vvd: 'vda-pull/acr.txt', stick: 'vda-pull/stick-acr.txt' } as const
+const PULL_PRINT_REMOTE = {
+  vvd: '/tmp/ovd-acr.aB3dE9/report.acr',
+  stick: '/tmp/ovd-acr.kL8mQ2/report.acr'
+} as const
+const RM_RF = {
+  vvd: 'vda-shell/rm-rf-acr-dir.txt',
+  stick: 'vda-shell/stick-rm-rf-acr-dir.txt'
+} as const
+const PULLED_FILE = {
+  ok: 'vda-pull/synthetic-crash.acr',
+  'unknown-index': 'loggingctl-vault-acr/unknown-index.json',
+  uninstalled: 'loggingctl-vault-acr/insufficient-permissions.json'
+} as const
+const RECORDED_ACR_SIZE = { vvd: '301471', stick: '326986' } as const
+
+function acrCommands(w: World, device: 'vvd' | 'stick', rest: string[]): Reply | null {
+  const sub = rest.join(' ')
+  const stickCrashed = device === 'stick' && w.stickPlayerCrashed
+  if (sub === 'shell loggingctl vault --ls SYSTEM_TOMBSTONE/acr' && device === 'stick') {
+    const name = !stickCrashed
+      ? 'before'
+      : w.uninstalledCrashes.includes(STICK_CRASH_INDEX)
+        ? 'after-uninstall'
+        : 'after'
+    return { stdout: fixture(`loggingctl-vault-ls/stick-${name}.json`) }
+  }
+  const script = decodeScript(sub)
+  if (script !== null) {
+    if (device === 'stick') {
+      const acr = ACR.exec(script)
+      if (acr) {
+        return stickCrashed && Number(acr[1]) === STICK_CRASH_INDEX
+          ? { stdout: fixture('loggingctl-vault-acr/stick-js-2100.txt') }
+          : null
+      }
+    }
+    const index = acrPullIndex(script)
+    if (index === null) return null
+    const uninstalled = w.uninstalledCrashes.includes(index)
+    let content: AcrContent
+    if (device === 'stick') {
+      if (index !== STICK_CRASH_INDEX || !(stickCrashed || uninstalled)) return null
+      content = uninstalled ? 'uninstalled' : 'ok'
+    } else {
+      content = uninstalled
+        ? 'uninstalled'
+        : [...vvdPlayerIndexes(w), ...VVD_SYSTEM_INDEXES].includes(index)
+          ? 'ok'
+          : 'unknown-index'
+    }
+    const recorded = (PULL_CONTENT[device] as Record<string, string>)[content] as string
+    const stdout = fixture(recorded)
+    const remote = (stdout.split('\n')[0] as string).trim()
+    w.acrFiles = [...w.acrFiles.filter((f) => f.remote !== remote), { device, remote, content }]
+    return {
+      stdout: stdout.replaceAll(RECORDED_ACR_SIZE[device], () => String(acrSize(content)))
+    }
+  }
+  const [verb, ...args] = rest
+  if (verb === 'pull' && args.length === 2) {
+    const [remote, local] = args as [string, string]
+    const file = w.acrFiles.find((f) => f.device === device && f.remote === remote)
+    if (!file) return null
+    copyFileSync(join(FIXTURES, PULLED_FILE[file.content]), local)
+    return {
+      stdout: fixture(PULL_PRINT[device])
+        .replace(PULL_PRINT_REMOTE[device], () => remote)
+        .replaceAll(RECORDED_ACR_SIZE[device], () => String(acrSize(file.content)))
+    }
+  }
+  if (verb === 'shell' && args.length === 3 && args[0] === 'rm' && args[1] === '-rf') {
+    const folder = args[2] as string
+    if (!ACR_FOLDER.test(folder)) return null
+    w.acrFiles = w.acrFiles.filter((f) => !f.remote.startsWith(`${folder}/`))
+    return { stdout: fixture(RM_RF[device]) }
+  }
+  return null
+}
+
+type AcrContent = keyof typeof PULLED_FILE
+
+// The size of what a pull delivers: the synthetic ACR is 1254 bytes, not the recorded 301471 or
+// 326986, so the printed size follows the file that is copied.
+function acrSize(content: AcrContent): number {
+  return statSync(join(FIXTURES, PULLED_FILE[content])).size
 }
 
 // A `shell` command for a device VDA doesn't list: the same error whatever the command.
@@ -546,25 +673,31 @@ function vvdApps(w: World, sub: string): Reply | null {
   return launchVerification(w, sub, installed)
 }
 
-// The capture the recordings started (fixtures/0.24/log-capture/started.txt).
-const CAPTURE_FILE = '/tmp/tmp.XXXXHeBy6l'
-const CAPTURE_PID = 2056
-// The player's crash in `vlcm-crash-history/virtual-device-after.txt` and its vault index in
-// `loggingctl-vault-ls/virtual-device-tombstones-after.json`.
-const CRASH_PID = 3200
-const CRASH_INDEX = 37
+// The captures the recordings started: `log-capture/started.txt` (a launch that stays up) and
+// `log-capture/virtual-device-js-started.txt` (the launch that crashes).
+const CAPTURE = { file: '/tmp/tmp.XXXXHeBy6l', pid: 2056 }
+const CRASH_CAPTURE = { file: '/tmp/tmp.XXXXPi68t1', pid: 1156 }
+
+// How many crashes of the player the Virtual Device has had since the recorded sequence began
+// (`virtual-device-js-before` → `-after` → `-after-second`): one for a launch that crashed, one
+// for a crash injected with no launch, both when both happened.
+function vvdCrashes(w: World): 0 | 1 | 2 {
+  return (Number(w.playerCrashed) + Number(w.playerCrashInjected)) as 0 | 1 | 2
+}
+
+const SEQUENCE = ['before', 'after', 'after-second'] as const
+
+// The player's vault indexes the current listing holds, each with a recorded bounded read.
+function vvdPlayerIndexes(w: World): number[] {
+  return [...VVD_PLAYER_INDEXES, ...VVD_CRASH_INDEXES.slice(0, vvdCrashes(w))]
+}
 
 // What core reads around a launch on the Virtual Device (ADR 0012): the crash history, the
 // running component, the vault, the crash report and the bounded log capture.
 function launchVerification(w: World, sub: string, installed: boolean): Reply | null {
+  const step = SEQUENCE[vvdCrashes(w)]
   if (sub === 'shell vlcm crash-history') {
-    return {
-      stdout: fixture(
-        w.playerCrashed
-          ? 'vlcm-crash-history/virtual-device-after.txt'
-          : 'vlcm-crash-history/virtual-device-before.txt'
-      )
-    }
+    return { stdout: fixture(`vlcm-crash-history/virtual-device-js-${step}.txt`) }
   }
   if (sub === `shell vlcm list --app-id ${PLAYER}.main`) {
     return {
@@ -574,34 +707,39 @@ function launchVerification(w: World, sub: string, installed: boolean): Reply | 
     }
   }
   if (sub === 'shell loggingctl vault --ls SYSTEM_TOMBSTONE/acr') {
-    return {
-      stdout: fixture(
-        w.playerCrashed
-          ? 'loggingctl-vault-ls/virtual-device-tombstones-after.json'
-          : 'loggingctl-vault-ls/virtual-device-tombstones-before.json'
-      )
-    }
+    return { stdout: fixture(`loggingctl-vault-ls/virtual-device-js-${step}.json`) }
   }
   const script = decodeScript(sub)
   if (script === null) return null
-  if (CAPTURE_START.test(script)) return { stdout: fixture('log-capture/started.txt') }
+  if (CAPTURE_START.test(script)) {
+    return {
+      stdout: fixture(
+        w.playerCrashesOnLaunch
+          ? 'log-capture/virtual-device-js-started.txt'
+          : 'log-capture/started.txt'
+      )
+    }
+  }
   const acr = ACR.exec(script)
   if (acr) {
-    return w.playerCrashed && Number(acr[1]) === CRASH_INDEX
-      ? { stdout: fixture('loggingctl-vault-acr/virtual-device-crashed.txt') }
+    const index = Number(acr[1])
+    // The player's reports each have a recorded bounded read; the system package's have none.
+    return vvdPlayerIndexes(w).includes(index)
+      ? { stdout: fixture(`loggingctl-vault-acr/virtual-device-js-${index}.txt`) }
       : null
   }
-  const stop = captureStop(CAPTURE_FILE, CAPTURE_PID).exec(script)
-  if (stop && stop[1] === PLAYER) {
-    const crashPid = Number(stop[2])
-    // A later crash than virtual-device-after.txt's (its README row); e2e asserts its lines,
-    // not the pid inside them.
-    if (crashPid === CRASH_PID && w.playerCrashed) {
-      return { stdout: fixture('log-capture/virtual-device-crashed.txt') }
-    }
-    // The stop after a launch that stayed up (its README row); core discards these lines on a
-    // verified launch.
-    if (crashPid === 0) return { stdout: fixture('log-capture/virtual-device-verified.txt') }
+  const crashStop = captureStop(CRASH_CAPTURE.file, CRASH_CAPTURE.pid).exec(script)
+  if (crashStop && crashStop[1] === PLAYER) {
+    // The stop of the launch that crashed, with its crash pid (its README row).
+    return Number(crashStop[2]) === CRASH_PID && w.playerCrashed
+      ? { stdout: fixture('log-capture/virtual-device-js-crashed.txt') }
+      : null
+  }
+  const stop = captureStop(CAPTURE.file, CAPTURE.pid).exec(script)
+  // The stop after a launch that stayed up (its README row); core discards these lines on a
+  // verified launch.
+  if (stop && stop[1] === PLAYER && Number(stop[2]) === 0) {
+    return { stdout: fixture('log-capture/virtual-device-verified.txt') }
   }
   return null
 }

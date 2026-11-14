@@ -129,7 +129,15 @@ const READ_TIMEOUT_MS = 30_000
 // What VDA prints when the device left between the target check and the call.
 const GONE = /device '[^']*' not found|device offline|no devices\/emulators found/
 
-export function createApps(deps: AppsDeps): Apps {
+// Every installed package with its source, whether or not it has components.
+export interface InstalledPackageRef {
+  packageId: string
+  source: AppSource
+}
+
+export function createApps(deps: AppsDeps): Apps & {
+  installedPackages(device: Device): Promise<InstalledPackageRef[]>
+} {
   // A device shell call, whatever its exit code. Only a device that left is an error here.
   async function deviceShell(
     device: Device,
@@ -179,10 +187,12 @@ export function createApps(deps: AppsDeps): Apps {
     return pkg
   }
 
+  async function readPackages(device: Device): Promise<VpmPackage[]> {
+    return parseVpmPackages((await shell(device, [ALL_PACKAGES], 'the installed apps')).stdout)
+  }
+
   async function read(device: Device): Promise<InstalledApp[]> {
-    const packages = parseVpmPackages(
-      (await shell(device, [ALL_PACKAGES], 'the installed apps')).stdout
-    )
+    const packages = await readPackages(device)
     const running = parseVlcmList(
       (await shell(device, ['vlcm', 'list'], 'the running apps')).stdout
     )
@@ -230,6 +240,15 @@ export function createApps(deps: AppsDeps): Apps {
 
   return {
     ...createAppActions({ deps, deviceShell, shell, findPackage, installedPackage, packageIdOf }),
+
+    // Libraries have no components and are not apps, but a crash report's name can collide
+    // with one, so the crash scope needs them (one `vpm` round trip, no `vlcm`).
+    async installedPackages(device) {
+      return (await readPackages(device)).map((p) => ({
+        packageId: p.id,
+        source: sourceOf(p.installerId)
+      }))
+    },
 
     async list(opts = {}) {
       const device = await onlineTarget(deps.devices, opts.device)

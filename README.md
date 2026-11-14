@@ -2,7 +2,7 @@
 
 > Unofficial, open-source device toolkit for Vega OS developers. Not affiliated with Amazon. Vega and Fire TV are trademarks of Amazon.
 
-OVD wraps the official Vega SDK tools behind one consistent, scriptable interface: see your devices, inspect and install packages, launch apps and follow their logs, from a CLI (`ovd`) or a desktop app. Later stages add a remote, screenshots, crash alerts, an MCP server for AI agents and a GitHub Action.
+OVD wraps the official Vega SDK tools behind one consistent, scriptable interface: see your devices, inspect and install packages, launch apps and follow their logs, drive them with a remote, take screenshots and get alerted when your app crashes, from a CLI (`ovd`) or a desktop app. Later stages add an MCP server for AI agents and a GitHub Action.
 
 **Status:** early development. See the Status column in [docs/ROADMAP.md](docs/ROADMAP.md) for what's built and what's next.
 

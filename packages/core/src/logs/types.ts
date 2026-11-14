@@ -59,6 +59,9 @@ export type OvdEvent =
   // A watched build folder got a new build (`ovd run --watch`, the desktop's Watch): `folder`
   // is relative to the project (`build/aarch64-debug/`).
   | { kind: 'build'; folder?: string; file: string }
+  // A new crash report of the developer's app (`crash.detected`, the crash watcher): validated
+  // fields only.
+  | { kind: 'crash'; app?: string; pid?: number; signal?: string; index?: number }
 
 export interface LogCounts {
   // Lines (entries) and E entries received since the start or the last Clear.
@@ -66,6 +69,9 @@ export interface LogCounts {
   errors: number
   // Buffered entries that match the filter.
   shown: number
+  // The time of the oldest entry the buffer still holds (any filter), absent while it is empty:
+  // how far back the retained history reaches after a Clear or an eviction.
+  oldest?: string
 }
 
 // The desktop keeps this many entries (~100k lines, gui.md, Performance).

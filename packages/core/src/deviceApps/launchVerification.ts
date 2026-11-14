@@ -5,6 +5,7 @@ import { parseVlcmCrashHistory, type CrashEntry } from '../adapters/parseVlcmCra
 import { parseVlcmList, type VlcmEntry } from '../adapters/parseVlcmList.js'
 import type { VpmPackage } from '../adapters/parseVpmInfo.js'
 import { stripControl } from '../adapters/stripControl.js'
+import { launchReportedCrashes, type CrashLedger } from '../crashes/crashList.js'
 import type { Device } from '../devices/types.js'
 import type { AppActionsContext } from './appActions.js'
 import { assertAppId, type AppId } from './appId.js'
@@ -22,6 +23,8 @@ export interface LaunchCrash {
   pid: number
   // ISO time of the crash, from the crash history's `LCM_KILLTIME`.
   time: string
+  // The crash report's vault index (`ovd crashes`, `ovd crash pull`), when it was enrolled.
+  id?: number
   // `SIGABRT`…, from the crash report, else from its file name.
   signal?: string
   // `JavaScript`…, from the crash report.
@@ -72,7 +75,9 @@ export type VerifiedLaunch = (
 
 export function createLaunchVerifier(
   ctx: AppActionsContext,
-  sleep: (ms: number) => Promise<void>
+  sleep: (ms: number) => Promise<void>,
+  // Where a crash this launch reported is noted, so the crash watcher doesn't announce it again.
+  ledger: CrashLedger = launchReportedCrashes
 ): VerifiedLaunch {
   async function crashHistory(device: Device): Promise<CrashEntry[]> {
     return parseVlcmCrashHistory(
@@ -139,14 +144,18 @@ export function createLaunchVerifier(
     device: Device,
     pkg: VpmPackage,
     entry: CrashEntry
-  ): Promise<Pick<LaunchCrash, 'signal' | 'language' | 'message' | 'stack'>> {
+  ): Promise<Pick<LaunchCrash, 'id' | 'signal' | 'language' | 'message' | 'stack'>> {
     try {
       const tombstone = await tombstoneOf(device, pkg, entry)
       if (!tombstone) return { stack: [] }
-      const run = await ctx.deviceShell(device, [deviceScript(acrScript(Number(tombstone.index)))])
+      const index = Number(tombstone.index)
+      // Noted before the read: the launch reports this crash even if its cause can't be read.
+      ledger.add(device.id, index)
+      const run = await ctx.deviceShell(device, [deviceScript(acrScript(index))])
       const acr = parseAcr(run.stdout)
       const signal = acr?.signal ?? signalName(tombstone.signal)
       return {
+        id: index,
         ...(signal ? { signal } : {}),
         ...(acr?.language ? { language: acr.language } : {}),
         ...(acr?.message ? { message: acr.message } : {}),
@@ -157,7 +166,13 @@ export function createLaunchVerifier(
     }
   }
 
-  return async (device, pkg, component, launch, onVerifying) => {
+  async function verify(
+    device: Device,
+    pkg: VpmPackage,
+    component: AppId,
+    launch: () => Promise<void>,
+    onVerifying?: () => void
+  ): Promise<LaunchVerification> {
     // Checked as `fromDevice` does: the package ID goes into the stop script.
     const packageId = assertAppId(pkg.id, { from: 'device', device: device.name })
     const keyOf = (e: CrashEntry) => `${e.pid}|${e.timestamp}`
@@ -168,7 +183,9 @@ export function createLaunchVerifier(
 
     let crash: CrashEntry | undefined
     let running: VlcmEntry | undefined
-    let cause: Pick<LaunchCrash, 'signal' | 'language' | 'message' | 'stack'> = { stack: [] }
+    let cause: Pick<LaunchCrash, 'id' | 'signal' | 'language' | 'message' | 'stack'> = {
+      stack: []
+    }
     let logs: string[] = []
     try {
       await launch()
@@ -212,5 +229,16 @@ export function createLaunchVerifier(
     }
     if (running) return { verified: true, pid: running.pid }
     return { verified: false, reason: 'not-running' }
+  }
+
+  return async (device, pkg, component, launch, onVerifying) => {
+    // Held from before the launch to after the crash is noted, so the crash watcher (which polls
+    // every 5 s) doesn't announce a report this launch is about to report itself (F9).
+    const release = ledger.hold(device.id, pkg.id)
+    try {
+      return await verify(device, pkg, component, launch, onVerifying)
+    } finally {
+      release()
+    }
   }
 }

@@ -1,6 +1,16 @@
-import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import {
+  copyFile,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  symlink,
+  writeFile
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
 import {
   createActivityLog,
@@ -314,8 +324,12 @@ describe('Screenshot.take on a stick (gwsi-tool-screenshooter)', () => {
       height: 1080,
       bytes: 9780
     })
-    const temp = join(captures, `.${STICK_NAME}.${HEX}.part`)
-    expect(runner.displays()).toEqual([SHOOT, `${PULL}${temp}`, RM])
+    const [shoot, pulled, rm] = runner.displays()
+    expect([shoot, rm]).toEqual([SHOOT, RM])
+    // Pulled into a private staging folder inside the captures folder, not a guessable name.
+    expect(pulled).toMatch(
+      new RegExp(`^${PULL}${captures}/\\.ovd-pull-[A-Za-z0-9]{6}/pull\\.png\\.part$`)
+    )
     // Its own process group with a 15 s limit, so a hang stops the whole `vega` chain.
     expect(runner.calls[0]?.timeoutMs).toBe(15_000)
     expect(runner.calls[0]?.stopWhen?.('anything')).toBe(false)
@@ -459,6 +473,91 @@ describe('Screenshot.take --out', () => {
         errorCode: 'EXPORT_FILE_EXISTS'
       }
     ])
+  })
+
+  test('files are saved 0600, on the Virtual Device and on a stick', async () => {
+    const grpc = await setup({ target: vvd }).screenshot.take()
+    const pulled = await setup().screenshot.take()
+    expect((await lstat(grpc.path)).mode & 0o777).toBe(0o600)
+    expect((await lstat(pulled.path)).mode & 0o777).toBe(0o600)
+  })
+
+  test('the stick pull lands in a 0700 staging folder, a 0600 file, and nothing is left behind', async () => {
+    let folderMode = 0
+    const runner = fakeRunner({
+      pull: async (spec) => {
+        const local = spec.args.at(-1) ?? ''
+        folderMode = (await lstat(dirname(local))).mode & 0o777
+        await copyFile(SYNTHETIC, local)
+        return { stdout: fixture('0.24/vda-pull/pulled.txt') }
+      }
+    })
+    const { screenshot } = setup({ runner })
+    const result = await screenshot.take()
+    expect(folderMode).toBe(0o700)
+    expect((await lstat(result.path)).mode & 0o777).toBe(0o600)
+    expect(await files()).toEqual([STICK_NAME])
+  })
+
+  test('a link planted where the SDK writes is refused, its target untouched, staging removed', async () => {
+    await mkdir(captures)
+    await writeFile(join(root, 'victim'), 'precious')
+    const runner = fakeRunner({
+      pull: async (spec) => {
+        const local = spec.args.at(-1) ?? ''
+        await symlink(join(root, 'victim'), local)
+        return { stdout: fixture('0.24/vda-pull/pulled.txt') }
+      }
+    })
+    const { screenshot } = setup({ runner })
+    await expect(screenshot.take()).rejects.toMatchObject({ code: 'SCREENSHOT_FAILED' })
+    expect(await readFile(join(root, 'victim'), 'utf8')).toBe('precious')
+    expect(await files()).toEqual([])
+  })
+
+  test('a link planted at the old guessable temp name is never written through', async () => {
+    await mkdir(captures)
+    await writeFile(join(root, 'victim'), 'precious')
+    await symlink(join(root, 'victim'), join(captures, `.${STICK_NAME}.${HEX}.part`))
+    const { screenshot } = setup()
+    await screenshot.take()
+    expect(await readFile(join(root, 'victim'), 'utf8')).toBe('precious')
+  })
+
+  test('--out into a symlinked folder is accepted and written to the real folder', async () => {
+    const real = join(root, 'real')
+    await mkdir(real)
+    await symlink(real, join(root, 'linked'))
+    const { screenshot } = setup({ target: vvd })
+    const a = await screenshot.take({ out: join(root, 'linked', 'shot.png') })
+    expect(a.path).toBe(join(await realpath(real), 'shot.png'))
+    const b = await screenshot.take({ out: join(root, 'linked') })
+    expect(dirname(b.path)).toBe(await realpath(real))
+    const stick1 = await setup().screenshot.take({ out: join(root, 'linked', 'stick.png') })
+    expect(stick1.path).toBe(join(await realpath(real), 'stick.png'))
+    expect((await readdir(real)).filter((n) => n.startsWith('.'))).toEqual([])
+  })
+
+  test('a symlinked captures folder is refused before any capture', async () => {
+    const real = join(root, 'real')
+    await mkdir(real)
+    await symlink(real, captures)
+    const { screenshot, runner, shotCalls } = setup()
+    await expect(screenshot.take()).rejects.toMatchObject({ code: 'INVALID_PATH' })
+    expect(runner.displays()).toEqual([])
+    expect(shotCalls).toEqual([])
+    expect(await readdir(real)).toEqual([])
+  })
+
+  test('--out onto a symlink is refused, --force included, and its target is untouched', async () => {
+    await writeFile(join(root, 'victim.png'), 'precious')
+    await symlink(join(root, 'victim.png'), join(root, 'shot.png'))
+    const { screenshot, runner } = setup({ target: vvd })
+    await expect(screenshot.take({ out: 'shot.png', force: true })).rejects.toMatchObject({
+      code: 'INVALID_PATH'
+    })
+    expect(runner.calls).toEqual([])
+    expect(await readFile(join(root, 'victim.png'), 'utf8')).toBe('precious')
   })
 
   test('--force replaces it', async () => {

@@ -5,11 +5,12 @@ import type { LaunchOutcome } from './launchOutcomes'
 interface LaunchStatusProps {
   outcome: LaunchOutcome | undefined
   now: Date
+  onOpenCrash?: (id: number) => void
 }
 
 // The detail's launch state: "Verifying launch…" while core watches the app, then the callout
 // of a launch that wasn't verified. Nothing for a verified launch: the status pill says it.
-export function LaunchStatus({ outcome, now }: LaunchStatusProps) {
+export function LaunchStatus({ outcome, now, onOpenCrash }: LaunchStatusProps) {
   if (!outcome) return null
   if (outcome.state === 'verifying') {
     return (
@@ -19,5 +20,5 @@ export function LaunchStatus({ outcome, now }: LaunchStatusProps) {
       </div>
     )
   }
-  return <LaunchCallout outcome={outcome} now={now} />
+  return <LaunchCallout outcome={outcome} now={now} {...(onOpenCrash ? { onOpenCrash } : {})} />
 }
