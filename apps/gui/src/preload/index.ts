@@ -90,6 +90,12 @@ const api: OvdApi = {
     setRestartAfterInstall: (on) => ipcRenderer.invoke(channels.logsRestartAfterInstall, on),
     clear: () => ipcRenderer.invoke(channels.logsClear),
     export: (request) => ipcRenderer.invoke(channels.logsExport, request),
+    presets: () => ipcRenderer.invoke(channels.logsPresets),
+    savedList: () => ipcRenderer.invoke(channels.logsSavedList),
+    savedSave: (request) => ipcRenderer.invoke(channels.logsSavedSave, request),
+    savedRemove: (name) => ipcRenderer.invoke(channels.logsSavedRemove, name),
+    bundle: (request) => ipcRenderer.invoke(channels.logsBundle, request),
+    revealBundle: () => ipcRenderer.invoke(channels.logsBundleReveal),
     onUpdate: (listener) => {
       const handler = (_event: IpcRendererEvent, update: LogsUpdate): void => listener(update)
       ipcRenderer.on(channels.logsUpdate, handler)
