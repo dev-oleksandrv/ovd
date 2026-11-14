@@ -100,6 +100,9 @@ export interface LogsApi extends Logs {
 
 // A held last entry waits this long for continuation lines before it is delivered.
 const FLUSH_IDLE_MS = 250
+// How many entries, and for how long, `setFilter`'s side-loaded read may hold the stream's lines.
+const HOLD_MAX_ENTRIES = 10_000
+const HOLD_MAX_MS = 5_000
 // Node fires a longer `setTimeout` after 1 ms, so the `until` clock re-arms in steps.
 const MAX_TIMER_MS = 2_147_483_647
 // While reconnecting, the target is read this often, for at most this long.
@@ -205,6 +208,7 @@ export function createLogs(deps: LogsDeps): LogsApi {
         // is gone and the pending activity writes are done.
         const finish = (end: LogSessionEnd): Promise<void> => {
           finishing ??= (async () => {
+            releaseHeld()
             // The rate-limited lines of the seconds still open: nothing later closes them.
             const tail = buffer.flush()
             if (tail.length > 0) opts.onEntries?.(tail, buffer.counts(), buffer.apps())
@@ -227,9 +231,33 @@ export function createLogs(deps: LogsDeps): LogsApi {
 
         const endAtUntil = () => void finish({ reason: 'until' })
 
-        const emit = (entries: LogEntry[]) => {
+        // While `setFilter` reads the side-loaded list for an `appsOnly` filter that has no set
+        // yet, the entries that arrive wait here, in order, so they are judged once the set is
+        // known instead of hidden for good. Bounded: past HOLD_MAX_ENTRIES or HOLD_MAX_MS they
+        // are judged with the fail-closed rule, and the buffer is re-evaluated when the set comes.
+        let held: LogEntry[] | undefined
+        let holdTimer: ReturnType<typeof setTimeout> | undefined
+
+        const emitNow = (entries: LogEntry[]) => {
           const shown = buffer.add(entries)
           opts.onEntries?.(shown, buffer.counts(), buffer.apps())
+        }
+
+        const releaseHeld = () => {
+          clearTimer(holdTimer)
+          holdTimer = undefined
+          const entries = held
+          held = undefined
+          if (entries !== undefined && entries.length > 0) emitNow(entries)
+        }
+
+        const emit = (entries: LogEntry[]) => {
+          if (held === undefined) {
+            emitNow(entries)
+            return
+          }
+          held.push(...entries)
+          if (held.length >= HOLD_MAX_ENTRIES) releaseHeld()
         }
 
         const addOvd = (event: OvdEvent, time = deps.now().toISOString()) => {
@@ -293,9 +321,8 @@ export function createLogs(deps: LogsDeps): LogsApi {
         // The boot ID each stream started in, when it was read.
         const boots = new WeakMap<LogStreamRun, string>()
         // The streams whose boot ID was asked for (at the start, or later by `ensureBoot`), and
-        // the ones whose side-loaded listing was read: one read per stream, success or not.
+
         const bootAsked = new WeakSet<LogStreamRun>()
-        const sideloadAsked = new WeakSet<LogStreamRun>()
         let bootPending = false
         let sideloadPending = false
         let currentSerial = vdaSerial
@@ -342,27 +369,55 @@ export function createLogs(deps: LogsDeps): LogsApi {
           addOvd({ kind: 'boot-late' })
         }
 
-        // The side-loaded listing, for an `appsOnly` filter: once per stream (an install changes
-        // it, and an install restarts the stream). While the set is unknown `appsOnly` shows
-        // nothing: a failed read says so with one OVD line, and the next stream tries again.
-        const ensureSideloaded = async () => {
-          const stream = current
-          if (finished || !filter.usesAppsOnly || stream === undefined || !deps.installed) return
-          if (sideloadAsked.has(stream) || sideloadPending) return
-          sideloadAsked.add(stream)
-          sideloadPending = true
+        // The side-loaded listing, for an `appsOnly` filter. True once `sideloaded` is set.
+        const readSideloaded = async (): Promise<boolean> => {
+          if (!deps.installed) return false
           try {
             const packages = await deps.installed(device)
-            if (finished) return
+            if (finished) return false
             sideloaded = new Set(
               packages.filter((p) => p.source === 'sideloaded').map((p) => p.packageId)
             )
-            buffer.setFilter(filter)
+            return true
           } catch {
-            // A set from an earlier stream stays; with none, nothing can be shown.
-            if (sideloaded === undefined) addOvd({ kind: 'app-list-unavailable' })
+            return false
+          }
+        }
+
+        // Before a stream starts (the first, after an install, after a reconnect): the backlog
+        // arrives right at its start, so the set must be known by then. An install changes it, so
+        // it is read again. A failed read keeps the set from before; with none, `appsOnly` shows
+        // nothing (fail closed) and one OVD line says so.
+        const preloadSideloaded = async () => {
+          if (finished || !filter.usesAppsOnly || !deps.installed) return
+          if (sideloadPending) return
+          sideloadPending = true
+          try {
+            const ok = await readSideloaded()
+            if (finished) return
+            if (ok) buffer.setFilter(filter)
+            else if (sideloaded === undefined) addOvd({ kind: 'app-list-unavailable' })
           } finally {
             sideloadPending = false
+          }
+        }
+
+        // `setFilter` turned `appsOnly` on mid-stream and no set is known: read it, holding the
+        // entries that arrive meanwhile, then re-evaluate the buffer so its app lines show.
+        const loadSideloadedHeld = async () => {
+          if (finished || !deps.installed || sideloaded !== undefined || sideloadPending) return
+          sideloadPending = true
+          held = []
+          holdTimer = setTimeout(releaseHeld, HOLD_MAX_MS)
+          try {
+            const ok = await readSideloaded()
+            if (finished) return
+            if (ok) buffer.setFilter(filter)
+            releaseHeld()
+            if (!ok && sideloaded === undefined) addOvd({ kind: 'app-list-unavailable' })
+          } finally {
+            sideloadPending = false
+            releaseHeld()
           }
         }
 
@@ -372,7 +427,6 @@ export function createLogs(deps: LogsDeps): LogsApi {
         const bootStarted = ({ asked, boot }: BootRead) => {
           if (current !== undefined && asked) bootAsked.add(current)
           void ensureBoot()
-          void ensureSideloaded()
           if (!asked) return
           const changed = boot !== currentBoot
           currentBoot = boot
@@ -438,7 +492,9 @@ export function createLogs(deps: LogsDeps): LogsApi {
             armPoll()
             return
           }
-          // The device may have rebooted: its boot ID is read again.
+          // The device may have rebooted: its boot ID is read again, and the apps with it.
+          await preloadSideloaded()
+          if (finished) return
           const read = await readBoot(serial)
           if (finished) return
           const stream = launch(serial, overlap.snapshot(), read.boot, () => {
@@ -523,6 +579,8 @@ export function createLogs(deps: LogsDeps): LogsApi {
             reconnect()
             return
           }
+          await preloadSideloaded()
+          if (finished) return
           const read = await readBoot(serial)
           if (finished) return
           const stream = launch(serial, overlap.snapshot(), read.boot, () => {
@@ -564,6 +622,11 @@ export function createLogs(deps: LogsDeps): LogsApi {
 
         let markStarted = (): void => undefined
         const firstChunk = new Promise<void>((resolve) => (markStarted = resolve))
+        await preloadSideloaded()
+        if (opts.signal?.aborted) {
+          await finish({ reason: 'stopped' })
+          throw abortError(opts.signal)
+        }
         const firstRead = await readBoot(vdaSerial)
         if (opts.signal?.aborted) {
           await finish({ reason: 'stopped' })
@@ -608,7 +671,7 @@ export function createLogs(deps: LogsDeps): LogsApi {
             const next = compileLogFilter(input, deps.now(), filterContext)
             filter = next
             buffer.setFilter(next)
-            void ensureSideloaded()
+            if (next.usesAppsOnly) void loadSideloadedHeld()
             if (!next.usesBoot) return
             const stream = current
             if (stream !== undefined && !bootAsked.has(stream) && !restarting) void ensureBoot()
