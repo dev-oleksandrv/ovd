@@ -28,6 +28,23 @@ describe('createActivityLog', () => {
     ])
   })
 
+  test('logs.bundle holds the device, line count, bytes and file name only', async () => {
+    await createActivityLog({ home, surface: 'cli', now }).append({
+      action: 'logs.bundle',
+      target: 'VirtualDevice',
+      args: { lines: 120, bytes: 4096, file: 'ovd-logs-vega-virtual-device-20261114-101500.zip' },
+      result: 'ok'
+    })
+    expect(JSON.parse((await lines('activity.jsonl'))[0] ?? '')).toEqual({
+      time: '2026-10-20T15:00:00.000Z',
+      surface: 'cli',
+      action: 'logs.bundle',
+      target: 'VirtualDevice',
+      args: { lines: 120, bytes: 4096, file: 'ovd-logs-vega-virtual-device-20261114-101500.zip' },
+      result: 'ok'
+    })
+  })
+
   test('crash.detected holds numbers and the package: no stack, source, boot id or log text', async () => {
     await createActivityLog({ home, surface: 'desktop', now }).append({
       action: 'crash.detected',
