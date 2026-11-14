@@ -1,0 +1,6 @@
+{
+ "message": [
+  "com.example.player:rate -> [reset to default]"
+ ],
+ "status": "success"
+}

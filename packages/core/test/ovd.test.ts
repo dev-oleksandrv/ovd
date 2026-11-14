@@ -30,3 +30,19 @@ test('createOvd wires devices to the runner, OVD_HOME and the surface', async ()
   expect(runner.calls[0]?.file).toBe('/sdk/vega')
   expect(await ovd.sdk.get()).toMatchObject({ sdkVersion: '0.24.12112' })
 })
+
+test('ovd.logs is the LogsApi: the built-in presets are reachable by consumers', () => {
+  const ovd = createOvd({
+    surface: 'cli',
+    env: { OVD_HOME: '/nowhere/ovd' },
+    homedir: '/nowhere',
+    runner: new FakeRunner({}),
+    discover: async () => ({ vegaPath: '/sdk/vega', cli: 'manager', sdkVersion: '0.24.12112' })
+  })
+  expect(ovd.logs.presets().map((preset) => preset.key)).toEqual([
+    'all',
+    'app-errors',
+    'network',
+    'lifecycle'
+  ])
+})

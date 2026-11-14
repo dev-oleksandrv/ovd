@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  createSavedFilters,
   LOG_BUFFER_SIZE,
   OvdError,
   type LogCounts,
@@ -10,6 +11,9 @@ import {
   type LogStartOptions,
   type Ovd
 } from '@ovd/core'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createLogsController, FOLLOW_TIMEOUT_MS } from '../../src/main/logsController'
 import type { LogsUpdate } from '../../src/preload/api'
@@ -115,7 +119,12 @@ const settle = () => new Promise<void>((resolve) => setImmediate(resolve))
 function setup(opts: { failWith?: OvdError; entries?: number } = {}) {
   const fake = fakeLogs(opts)
   const sent: LogsUpdate[] = []
-  const controller = createLogsController({ logs: fake.logs, send: (u) => sent.push(u) })
+  const controller = createLogsController({
+    logs: fake.logs,
+    logFilters: {} as Ovd['logFilters'],
+    logBundle: {} as Ovd['logBundle'],
+    send: (u) => sent.push(u)
+  })
   return { ...fake, sent, controller }
 }
 
@@ -297,6 +306,24 @@ describe('createLogsController', () => {
     expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ filter: { level: 'e' } }))
   })
 
+  test('a refilter after setFilter returned pushes a second reset with the re-judged entries', async () => {
+    const { controller, sessions, sent } = setup()
+    await controller.open(STICK)
+    await settle()
+    await controller.setFilter({ appsOnly: true })
+    const resets = sent.filter((u) => u.kind === 'reset').length
+    // Core read the side-loaded set later and judged its buffer again.
+    sessions[0]?.opts.onRefilter?.()
+    expect(sent.filter((u) => u.kind === 'reset')).toHaveLength(resets + 1)
+    expect(sent.at(-1)).toMatchObject({ kind: 'reset', session: 1 })
+    // Another session's late notice is ignored.
+    await controller.restart(STICK)
+    await settle()
+    const before = sent.length
+    sessions[0]?.opts.onRefilter?.()
+    expect(sent).toHaveLength(before)
+  })
+
   test('setFilter on 12,001 entries goes out as a reset and two appends, then live entries', async () => {
     const { controller, sessions, sent } = setup({ entries: 12_001 })
     await controller.open(STICK)
@@ -352,6 +379,209 @@ describe('createLogsController', () => {
     await controller.open(STICK)
     await settle()
     expect(controller.exportEntries()).toEqual({ entries: [], until: null })
+  })
+
+  describe('bundle and saved filters', () => {
+    const bundleResult = {
+      device: { id: STICK, name: 'Fire TV stick' },
+      path: '/home/user/ovd/bundles/ovd-logs-x.zip',
+      bytes: 1234,
+      lines: 2,
+      files: ['README.txt', 'manifest.json']
+    }
+    function withDeps() {
+      const bundleEntries = vi.fn(async () => bundleResult)
+      const save = vi.fn(async (name: string, filter: object) => ({ name, filter }))
+      const remove = vi.fn(async (name: string) => ({ name }))
+      const list = vi.fn(async () => [
+        { name: 'errors', filter: { level: 'e' }, valid: true as const },
+        {
+          name: 'broken',
+          filter: {},
+          valid: false as const,
+          error: { code: 'INVALID_LOG_FILTER', message: 'bad', hint: 'fix' }
+        }
+      ])
+      const fake = fakeLogs()
+      const sent: LogsUpdate[] = []
+      const controller = createLogsController({
+        logs: {
+          ...fake.logs,
+          presets: () => [{ key: 'all', label: 'All', filter: {} }]
+        } as Ovd['logs'],
+        logFilters: { list, save, remove } as unknown as Ovd['logFilters'],
+        logBundle: {
+          bundleEntries,
+          dir: () => '/home/user/ovd/bundles'
+        } as unknown as Ovd['logBundle'],
+        send: (u) => sent.push(u)
+      })
+      return { controller, bundleEntries, save, remove, list }
+    }
+
+    test('bundles the buffer with the active filter, at the path the dialog chose', async () => {
+      const { controller, bundleEntries } = withDeps()
+      await controller.open(STICK)
+      await settle()
+      await controller.setFilter({ level: 'e', pid: [27178] })
+      const choose = vi.fn(async () => '/tmp/picked.zip')
+      const result = await controller.bundle(undefined, choose)
+      expect(choose).toHaveBeenCalledWith('/home/user/ovd/bundles', expect.stringMatching(/\.zip$/))
+      expect(bundleEntries).toHaveBeenCalledWith({
+        entries: [expect.objectContaining({ seq: 1, level: 'E' })],
+        device: STICK,
+        filter: { level: 'e', pid: [27178] },
+        out: '/tmp/picked.zip',
+        force: true
+      })
+      expect(result).toMatchObject({
+        ok: true,
+        data: { status: 'saved', path: bundleResult.path, bytes: 1234, lines: 2 }
+      })
+      expect(controller.lastBundle()).toBe(bundleResult.path)
+    })
+
+    test('a pause bundles only the lines up to it', async () => {
+      const { controller, bundleEntries } = withDeps()
+      await controller.open(STICK)
+      await settle()
+      await controller.bundle(0, async () => '/tmp/a.zip')
+      expect(bundleEntries).toHaveBeenCalledWith(
+        expect.objectContaining({ entries: [expect.objectContaining({ seq: 0 })] })
+      )
+    })
+
+    test('a canceled dialog writes nothing', async () => {
+      const { controller, bundleEntries } = withDeps()
+      await controller.open(STICK)
+      await settle()
+      expect(await controller.bundle(undefined, async () => null)).toEqual({
+        ok: true,
+        data: { status: 'canceled' }
+      })
+      expect(bundleEntries).not.toHaveBeenCalled()
+      expect(controller.lastBundle()).toBeNull()
+    })
+
+    test('without a session or lines there is nothing to bundle and no dialog', async () => {
+      const { controller, bundleEntries } = withDeps()
+      const choose = vi.fn(async () => '/tmp/a.zip')
+      expect(await controller.bundle(undefined, choose)).toEqual({
+        ok: true,
+        data: { status: 'empty' }
+      })
+      expect(choose).not.toHaveBeenCalled()
+      expect(bundleEntries).not.toHaveBeenCalled()
+    })
+
+    test('a bundle error comes back as an error result with its code', async () => {
+      const { controller, bundleEntries } = withDeps()
+      bundleEntries.mockRejectedValueOnce(
+        new OvdError('LOG_BUNDLE_FAILED', 'disk full', 'free space')
+      )
+      await controller.open(STICK)
+      await settle()
+      expect(await controller.bundle(undefined, async () => '/tmp/a.zip')).toMatchObject({
+        ok: false,
+        error: { code: 'LOG_BUNDLE_FAILED' }
+      })
+      expect(controller.lastBundle()).toBeNull()
+    })
+
+    test('the dialog starts from core’s file name: the device name and a UTC stamp, no ID', async () => {
+      const { controller } = withDeps()
+      await controller.open(STICK)
+      await settle()
+      const choose = vi.fn(async () => null)
+      await controller.bundle(undefined, choose)
+      const [, fileName] = choose.mock.calls[0] as unknown as [string, string]
+      expect(fileName).toMatch(/^ovd-logs-fire-tv-stick-\d{8}-\d{6}\.zip$/)
+      expect(fileName).not.toContain(STICK)
+    })
+
+    test('the active preset or saved name goes to the bundle for the manifest', async () => {
+      const { controller, bundleEntries } = withDeps()
+      await controller.open(STICK)
+      await settle()
+      await controller.bundle(undefined, async () => '/tmp/a.zip', 'app-errors')
+      expect(bundleEntries).toHaveBeenLastCalledWith(
+        expect.objectContaining({ preset: 'app-errors' })
+      )
+      await controller.bundle(undefined, async () => '/tmp/a.zip')
+      expect(bundleEntries).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ preset: expect.anything() })
+      )
+    })
+
+    test('a filter saved by the CLI (string IDs and rates, upper-case facility) applies', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'ovd-logs-controller-'))
+      const fake = fakeLogs()
+      const controller = createLogsController({
+        logs: fake.logs,
+        logFilters: createSavedFilters({ home }),
+        logBundle: {} as Ovd['logBundle'],
+        send: () => undefined
+      })
+      await createSavedFilters({ home }).save('from-cli', {
+        pid: ['27178'],
+        tid: ['5'],
+        facility: ['LOCAL0'],
+        processRules: [{ identity: 'com.example.player', rate: '5' }]
+      })
+      await controller.open(STICK)
+      await settle()
+      const listed = await controller.savedList()
+      const want = {
+        pid: [27178],
+        tid: [5],
+        facility: ['local0'],
+        processRules: [{ identity: 'com.example.player', rate: 5 }]
+      }
+      expect(listed).toEqual({
+        ok: true,
+        data: [{ name: 'from-cli', filter: want, valid: true }]
+      })
+      expect(await controller.setFilter(want)).toEqual({ ok: true, data: null })
+      expect(fake.sessions[0]?.setFilter).toHaveBeenLastCalledWith(want)
+    })
+
+    test('presets come from core', () => {
+      expect(withDeps().controller.presets()).toEqual([{ key: 'all', label: 'All', filter: {} }])
+    })
+
+    test('the saved filters: list, save (with force) and remove go to core', async () => {
+      const { controller, save, remove } = withDeps()
+      expect(await controller.savedList()).toEqual({
+        ok: true,
+        data: [
+          { name: 'errors', filter: { level: 'e' }, valid: true },
+          {
+            name: 'broken',
+            filter: {},
+            valid: false,
+            error: { code: 'INVALID_LOG_FILTER', message: 'bad', hint: 'fix' }
+          }
+        ]
+      })
+      expect(await controller.savedSave({ name: 'net', filter: { tag: ['x'] } })).toEqual({
+        ok: true,
+        data: null
+      })
+      expect(save).toHaveBeenLastCalledWith('net', { tag: ['x'] }, {})
+      await controller.savedSave({ name: 'net', filter: {}, force: true })
+      expect(save).toHaveBeenLastCalledWith('net', {}, { force: true })
+      expect(await controller.savedRemove('net')).toEqual({ ok: true, data: null })
+      expect(remove).toHaveBeenCalledWith('net')
+    })
+
+    test('a core error on save comes back with its code', async () => {
+      const { controller, save } = withDeps()
+      save.mockRejectedValueOnce(new OvdError('LOG_FILTER_EXISTS', 'exists', 'use force'))
+      expect(await controller.savedSave({ name: 'net', filter: {} })).toMatchObject({
+        ok: false,
+        error: { code: 'LOG_FILTER_EXISTS' }
+      })
+    })
   })
 
   test('stop awaits the session’s end', async () => {

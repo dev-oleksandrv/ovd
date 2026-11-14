@@ -27,7 +27,7 @@ import type { ScreenController } from './screenController'
 import type { WatchController } from './watchController'
 
 // One core for the app's lifetime (ADR 0001): the desktop never shells out to `ovd`.
-const ovd = createOvd({ surface: 'desktop' })
+const ovd = createOvd({ surface: 'desktop', ovdVersion: app.getVersion() })
 let mainWindow: BrowserWindow | undefined
 // Before `devices`: main's log session follows every target change the device watcher sees.
 const logs = registerLogsIpc(ovd, () => mainWindow)

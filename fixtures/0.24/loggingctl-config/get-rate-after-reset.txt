@@ -1,0 +1,8 @@
+{
+ "message": "com.example.player:rate not set, DEFAULT value will be used",
+ "note": [
+  "Journal RateLimitBurst value: 300",
+  "DEFAULT:rate -> 300"
+ ],
+ "status": "success"
+}

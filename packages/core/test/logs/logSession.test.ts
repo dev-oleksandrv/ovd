@@ -15,7 +15,12 @@ import {
   type LogSessionEnd,
   type LogStartOptions
 } from '../../src/index.js'
-import { createLogs, RECONNECT_POLL_MS, RECONNECT_TIMEOUT_MS } from '../../src/logs/logSession.js'
+import {
+  createLogs,
+  type LogsDeps,
+  RECONNECT_POLL_MS,
+  RECONNECT_TIMEOUT_MS
+} from '../../src/logs/logSession.js'
 import { createFakeFeed, type FakeFeed } from '../support/fakeFeed.js'
 import { FakeRunner, FakeStream } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
@@ -54,7 +59,8 @@ afterEach(async () => {
 function setup(
   script: ConstructorParameters<typeof FakeRunner>[0],
   discover?: () => Promise<never>,
-  logsDiscover?: () => Promise<never>
+  logsDiscover?: () => Promise<never>,
+  installed?: LogsDeps['installed']
 ) {
   const runner = new FakeRunner(script)
   const sdk = createSdkLocator(
@@ -78,6 +84,7 @@ function setup(
     devices,
     activity,
     feed,
+    ...(installed ? { installed } : {}),
     now: () => new Date()
   })
   return { logs, runner, feed }
@@ -153,14 +160,21 @@ async function startWith(
   first = `${FOLLOW.split('\n')[0] ?? ''}\n`,
   {
     streams = [new FakeStream()],
-    script = {}
+    script = {},
+    installed
   }: {
     streams?: FakeStream[]
     script?: ConstructorParameters<typeof FakeRunner>[0]
+    installed?: LogsDeps['installed']
   } = {}
 ): Promise<Started> {
   const [stream = new FakeStream()] = streams
-  const { logs, runner, feed } = setup({ ...online, ...script, [LOG]: streams })
+  const { logs, runner, feed } = setup(
+    { ...online, ...script, [LOG]: streams },
+    undefined,
+    undefined,
+    installed
+  )
   const batches: Started['batches'] = []
   const starting = logs.start({
     ...opts,
@@ -853,5 +867,434 @@ describe('reconnect', () => {
     for (let i = 0; i < 20; i++) await settle()
     expect(s.runner.count(LOG)).toBe(1)
     expect(s.runner.count(VDA)).toBe(1)
+  })
+})
+
+describe('boot tagging', () => {
+  const BOOT = `vega exec vda -s ${STICK} shell cat /proc/sys/kernel/random/boot_id`
+  // Sample IDs (ADR 0016), as the device prints them (dashed) and as core keeps them.
+  const ID_A = '0b6a5f2e-3c41-4d7a-9e58-1f2a3b4c5d6e'
+  const ID_B = '7d1c9a40-52be-4f0e-8a6b-99c0d1e2f3a4'
+  const bare = (id: string) => id.replaceAll('-', '')
+  const bootOut = (id: string) => ({ stdout: `${id}\n`, exitCode: 0 })
+  const device = (s: Started) => s.delivered().filter((e) => e.ovd === undefined)
+
+  test('is on by default: the boot command runs once and the entries carry the boot', async () => {
+    const s = await startWith({}, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
+    expect(s.runner.count(BOOT)).toBe(1)
+    expect(device(s).every((e) => e.boot === bare(ID_A))).toBe(true)
+  })
+
+  test('with tagBoot false there is no boot command and no tag', async () => {
+    const s = await startWith({ tagBoot: false })
+    expect(s.runner.count(BOOT)).toBe(0)
+    expect(device(s).every((e) => e.boot === undefined)).toBe(true)
+  })
+
+  test('with tagBoot the stream’s entries carry the boot ID, read once before the stream', async () => {
+    const s = await startWith({ tagBoot: true }, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
+    expect(s.runner.count(BOOT)).toBe(1)
+    // The command is the fixed one, with no user input in it.
+    const spec = s.runner.calls.find((c) => c.display === BOOT)
+    expect(spec?.args).toEqual([
+      'exec',
+      'vda',
+      '-s',
+      STICK,
+      'shell',
+      'cat',
+      '/proc/sys/kernel/random/boot_id'
+    ])
+    // It ran before the stream started.
+    expect(s.runner.calls.findIndex((c) => c.display === BOOT)).toBeLessThan(
+      s.runner.calls.findIndex((c) => c.display === LOG)
+    )
+    expect(device(s).length).toBeGreaterThan(100)
+    expect(device(s).every((e) => e.boot === bare(ID_A))).toBe(true)
+    expect(s.session.entries().every((e) => e.ovd !== undefined || e.boot === bare(ID_A))).toBe(
+      true
+    )
+    expect(s.ovd()).toEqual([])
+  })
+
+  test('a reconnect after a reboot reads the boot ID again: each stream keeps its own', async () => {
+    const s = await startWith({ tagBoot: true }, REBOOT, {
+      streams: streamsOf(2),
+      script: {
+        [VDA]: [
+          out('vda-devices/stick-usb.txt'),
+          out('vda-devices/none.txt'),
+          out('vda-devices/stick-usb.txt')
+        ],
+        [BOOT]: [bootOut(ID_A), bootOut(ID_B)]
+      }
+    })
+    const [s1, s2] = s.streams as [FakeStream, FakeStream]
+    s1.end(0)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    await advanceUntil(() => s2.spec !== undefined)
+    expect(s.runner.count(BOOT)).toBe(2)
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(s.session.state()).toBe('following')
+    const boots = new Set(device(s).map((e) => e.boot))
+    expect(boots).toEqual(new Set([bare(ID_A), bare(ID_B)]))
+    // Every entry before the reconnect line is boot A, every one after it boot B.
+    const all = s.delivered()
+    const at = all.findIndex((e) => e.ovd?.kind === 'reconnected')
+    expect(all.slice(0, at).every((e) => e.boot === undefined || e.boot === bare(ID_A))).toBe(true)
+    expect(all.slice(at).every((e) => e.ovd !== undefined || e.boot === bare(ID_B))).toBe(true)
+    await s.session.stop()
+  })
+
+  test.each([
+    ['a failing command', { exitCode: 1, stderr: 'cat: no such file' }],
+    ['output that isn’t a UUID', { stdout: 'not a boot id\n', exitCode: 0 }],
+    ['an empty answer', { stdout: '', exitCode: 0 }],
+    ['a runner error', new OvdError('COMMAND_FAILED', 'The command could not run', 'Try again')]
+  ])('a failed read (%s) is harmless: no tag, no error, no line', async (_name, result) => {
+    const s = await startWith({ tagBoot: true }, FOLLOW, { script: { [BOOT]: result } })
+    expect(device(s).length).toBeGreaterThan(100)
+    expect(device(s).every((e) => e.boot === undefined)).toBe(true)
+    expect(s.ovd()).toEqual([])
+    expect(s.end()).toBeUndefined()
+    await s.session.stop()
+    expect(await activity()).toEqual([{ action: 'logs', target: STICK, args: {}, result: 'ok' }])
+  })
+
+  test('a boot filter turns the read on by itself and shows only that boot', async () => {
+    const s = await startWith({ filter: { boot: [ID_A] } }, FOLLOW, {
+      script: { [BOOT]: bootOut(ID_A) }
+    })
+    expect(s.runner.count(BOOT)).toBe(1)
+    expect(device(s).length).toBeGreaterThan(100)
+    expect(s.delivered().every((e) => e.ovd !== undefined || e.boot === bare(ID_A))).toBe(true)
+  })
+
+  test('a boot filter for another boot shows no device line', async () => {
+    const s = await startWith({ filter: { boot: [ID_B] } }, FOLLOW, {
+      script: { [BOOT]: bootOut(ID_A) }
+    })
+    expect(device(s)).toEqual([])
+    expect(s.session.counts().lines).toBeGreaterThan(100)
+    expect(s.session.counts().shown).toBe(0)
+  })
+
+  test('a boot filter with a failed read: one OVD line says the boot ID is unknown', async () => {
+    const s = await startWith({ filter: { boot: ['current'] } }, FOLLOW, {
+      script: { [BOOT]: { exitCode: 1 } }
+    })
+    expect(device(s)).toEqual([])
+    expect(s.ovd()).toEqual(['Boot ID unknown: the boot filter shows no device lines'])
+    expect(s.end()).toBeUndefined()
+  })
+
+  test('boot current is the running stream’s boot: it follows a reboot', async () => {
+    const s = await startWith({ tagBoot: true, filter: { boot: ['current'] } }, REBOOT, {
+      streams: streamsOf(2),
+      script: {
+        [VDA]: [
+          out('vda-devices/stick-usb.txt'),
+          out('vda-devices/none.txt'),
+          out('vda-devices/stick-usb.txt')
+        ],
+        [BOOT]: [bootOut(ID_A), bootOut(ID_B)]
+      }
+    })
+    const [s1, s2] = s.streams as [FakeStream, FakeStream]
+    s1.end(0)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    await advanceUntil(() => s2.spec !== undefined)
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    // The buffer is judged again against the new boot: boot A's lines are no longer `current`.
+    const shown = s.session.entries().filter((e) => e.ovd === undefined)
+    expect(shown.length).toBeGreaterThan(100)
+    expect(shown.every((e) => e.boot === bare(ID_B))).toBe(true)
+    expect(s.session.counts().shown).toBe(s.session.entries().length)
+    await s.session.stop()
+  })
+
+  test('setFilter with a boot filter on a session that opted out of tags reads the boot ID once, then tags', async () => {
+    const s = await startWith({ tagBoot: false }, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
+    expect(s.runner.count(BOOT)).toBe(0)
+    s.session.setFilter({ boot: ['current'] })
+    await waitFor(() => s.ovd().length > 0)
+    expect(s.runner.count(BOOT)).toBe(1)
+    // One line says the buffered entries stay unmatched.
+    expect(s.ovd()).toEqual([
+      'Boot filter on: lines received before have no boot ID and stay hidden'
+    ])
+    expect(s.session.entries().filter((e) => e.ovd === undefined)).toEqual([])
+    // Later entries of the stream carry the boot and match `current`.
+    s.stream.emit(`${FOLLOW.split('\n')[0] ?? ''}\n`)
+    await vi.advanceTimersByTimeAsync(250)
+    const shown = s.session.entries().filter((e) => e.ovd === undefined)
+    expect(shown.length).toBeGreaterThan(0)
+    expect(shown.every((e) => e.boot === bare(ID_A))).toBe(true)
+    // Setting a boot filter again doesn't read again.
+    s.session.setFilter({ boot: [ID_A] })
+    await settle()
+    expect(s.runner.count(BOOT)).toBe(1)
+    await s.session.stop()
+  })
+
+  test('a boot filter set later whose read fails says the boot ID is unknown, once', async () => {
+    const s = await startWith({}, FOLLOW, { script: { [BOOT]: { exitCode: 1 } } })
+    s.session.setFilter({ boot: ['current'] })
+    await waitFor(() => s.ovd().length > 0)
+    expect(s.ovd()).toEqual(['Boot ID unknown: the boot filter shows no device lines'])
+    await s.session.stop()
+  })
+
+  test('a boot filter set later keeps the next streams tagged', async () => {
+    const s = await startWith({}, FOLLOW, {
+      streams: streamsOf(2),
+      script: { [BOOT]: [bootOut(ID_A), bootOut(ID_B)] }
+    })
+    s.session.setFilter({ boot: ['current'] })
+    await waitFor(() => s.runner.count(BOOT) === 1)
+    s.feed.emit(installOn(STICK))
+    const s2 = s.streams[1] as FakeStream
+    await waitFor(() => s2.spec !== undefined)
+    expect(s.runner.count(BOOT)).toBe(2)
+    await s.session.stop()
+  })
+
+  test('setFilter with a boot filter after a failed tagged read says the boot is unknown', async () => {
+    const s = await startWith({ tagBoot: true }, FOLLOW, { script: { [BOOT]: { exitCode: 1 } } })
+    s.session.setFilter({ boot: ['current'] })
+    expect(s.ovd()).toEqual(['Boot ID unknown: the boot filter shows no device lines'])
+    expect(s.session.entries().filter((e) => e.ovd === undefined)).toEqual([])
+    s.session.setFilter({})
+    expect(s.session.entries().filter((e) => e.ovd === undefined).length).toBeGreaterThan(0)
+  })
+
+  test('an invalid boot filter is a usage error before any SDK call', async () => {
+    const { logs, runner } = setup({ ...online })
+    await expect(logs.start({ filter: { boot: ['nope'] } })).rejects.toMatchObject({
+      code: 'INVALID_LOG_FILTER'
+    })
+    expect(runner.calls).toEqual([])
+  })
+})
+
+describe('advanced filters and rules in a session', () => {
+  test('the new fields never reach a device command', async () => {
+    const s = await startWith({
+      filter: {
+        pid: [27178],
+        tid: [1],
+        tag: ['com.amazon.keplerscript'],
+        identity: [PLAYER],
+        facility: ['local0'],
+        processRules: [{ identity: PLAYER, rate: 5 }]
+      }
+    })
+    for (const call of s.runner.calls) {
+      expect(call.args.join(' ')).not.toMatch(/27178|keplerscript|local0|com\.example/)
+    }
+    await s.session.stop()
+  })
+
+  test('--pid filters the stream', async () => {
+    const s = await startWith({ filter: { pid: [27178] } }, FOLLOW)
+    const device = s.delivered().filter((e) => e.ovd === undefined)
+    expect(device.length).toBeGreaterThan(2)
+    expect(device.every((e) => e.pid === 27178)).toBe(true)
+    await s.session.stop()
+  })
+
+  test('a rate rule: the lines over the rate are hidden, and stopping reports the open second', async () => {
+    const s = await startWith({ filter: { processRules: [{ identity: PLAYER, rate: 1 }] } }, FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    const shown = s.delivered()
+    const hidden = shown.filter((e) => e.ovd?.kind === 'rate-limited')
+    // The player prints several lines in each of two device seconds.
+    expect(hidden.map((e) => e.message)).toEqual([`${PLAYER}: 5 lines hidden by rate limit`])
+    const player = shown.filter((e) => e.process === PLAYER)
+    expect(player.length).toBe(2)
+    const before = s.delivered().length
+    await s.session.stop()
+    const last = s.delivered().slice(before)
+    expect(last.every((e) => e.ovd?.kind === 'rate-limited')).toBe(true)
+    // What a re-filter gives is what streaming gave, the stop's lines included.
+    s.session.setFilter({ processRules: [{ identity: PLAYER, rate: 1 }] })
+    expect(s.session.entries().map((e) => e.message)).toEqual(s.delivered().map((e) => e.message))
+  })
+
+  test('presets() lists the built-in presets', async () => {
+    const { logs } = setup({ ...online })
+    expect(logs.presets().map((p) => p.key)).toEqual(['all', 'app-errors', 'network', 'lifecycle'])
+  })
+})
+
+describe('app-errors and the side-loaded apps', () => {
+  const SYSTEM = 'com.amazon.keplerlauncherapp'
+  const errorLine = (identity: string, i: number) =>
+    `Nov 08 07:27:0${i}.100000 firestick-0000000000000001 local0.err ${identity}[500]: 600 ERROR com.amazon.keplerscript: [KeplerScript-JavaScript] boom ${i}\n`
+  const lines = errorLine(PLAYER, 1) + errorLine(SYSTEM, 2)
+
+  test('an installed system app’s errors are excluded once the listing is read', async () => {
+    const installed = vi.fn(async () => [
+      { packageId: PLAYER, source: 'sideloaded' as const },
+      { packageId: SYSTEM, source: 'system' as const }
+    ])
+    const s = await startWith({ filter: { level: 'error', appsOnly: true } }, lines, { installed })
+    await waitFor(() => installed.mock.calls.length > 0)
+    await waitFor(() => s.session.entries().every((e) => e.process !== SYSTEM))
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER])
+    // One read per stream.
+    s.stream.emit(errorLine(SYSTEM, 3))
+    await vi.advanceTimersByTimeAsync(250)
+    expect(installed).toHaveBeenCalledTimes(1)
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER])
+    await s.session.stop()
+  })
+
+  test('without an appsOnly filter the listing is never read', async () => {
+    const installed = vi.fn(async () => [])
+    const s = await startWith({}, lines, { installed })
+    await settle()
+    expect(installed).not.toHaveBeenCalled()
+    await s.session.stop()
+  })
+
+  test('setFilter with appsOnly reads it then', async () => {
+    const installed = vi.fn(async () => [{ packageId: PLAYER, source: 'sideloaded' as const }])
+    const s = await startWith({}, lines, { installed })
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    await waitFor(() => s.session.entries().every((e) => e.process !== SYSTEM))
+    await s.session.stop()
+  })
+
+  // A listing that answers once `release` is called, for the order of the read and the stream.
+  function gatedListing() {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const installed = vi.fn(async () => {
+      await gate
+      return [
+        { packageId: PLAYER, source: 'sideloaded' as const },
+        { packageId: SYSTEM, source: 'system' as const }
+      ]
+    })
+    return { installed, release }
+  }
+
+  test('with appsOnly at the start, the list is read before the stream starts, so the backlog is judged with it', async () => {
+    const { installed, release } = gatedListing()
+    const stream = new FakeStream()
+    const { logs } = setup({ ...online, [LOG]: [stream] }, undefined, undefined, installed)
+    const shown: LogEntry[] = []
+    const starting = logs.start({
+      filter: { appsOnly: true },
+      onEntries: (entries) => shown.push(...entries)
+    })
+    await waitFor(() => installed.mock.calls.length > 0)
+    await settle()
+    expect(stream.spec).toBeUndefined()
+    release()
+    await waitFor(() => stream.spec !== undefined)
+    stream.emit(lines)
+    const session = await starting
+    await vi.advanceTimersByTimeAsync(250)
+    // Delivered as they arrived, not only after a later re-evaluation.
+    expect(shown.filter((e) => e.ovd === undefined).map((e) => e.process)).toEqual([PLAYER])
+    expect(installed).toHaveBeenCalledTimes(1)
+    await session.stop()
+  })
+
+  test('setFilter turning appsOnly on holds the arriving lines, in order, until the list is read', async () => {
+    const { installed, release } = gatedListing()
+    const s = await startWith({}, errorLine(PLAYER, 1) + errorLine(SYSTEM, 2), { installed })
+    await vi.advanceTimersByTimeAsync(250)
+    const before = s.delivered().length
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    s.stream.emit(errorLine(PLAYER, 3) + errorLine(SYSTEM, 4) + errorLine(PLAYER, 5))
+    await vi.advanceTimersByTimeAsync(250)
+    // Nothing of them is delivered, or hidden for good, while the read is out.
+    expect(s.delivered()).toHaveLength(before)
+    release()
+    await waitFor(() => s.delivered().length > before)
+    const after = s.delivered().slice(before)
+    expect(after.map((e) => e.message)).toEqual([
+      expect.stringContaining('boom 3'),
+      expect.stringContaining('boom 5')
+    ])
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER, PLAYER, PLAYER])
+    await s.session.stop()
+  })
+
+  test('setFilter turning appsOnly on calls onRefilter once the list is read and the buffer judged with it', async () => {
+    const { installed, release } = gatedListing()
+    const onRefilter = vi.fn()
+    const s = await startWith({ onRefilter }, errorLine(PLAYER, 1) + errorLine(SYSTEM, 2), {
+      installed
+    })
+    await vi.advanceTimersByTimeAsync(250)
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    // The read is out: `entries()` still show nothing of the apps, and no one was told.
+    expect(onRefilter).not.toHaveBeenCalled()
+    release()
+    await waitFor(() => onRefilter.mock.calls.length > 0)
+    // The callback fires after the re-evaluation, so a re-read sees the app's line.
+    expect(s.session.entries().map((e) => e.process)).toEqual([PLAYER])
+    expect(onRefilter).toHaveBeenCalledTimes(1)
+    await s.session.stop()
+  })
+
+  test('the hold is bounded: after 5 s the lines are judged fail-closed, and the buffer is re-evaluated when the list comes', async () => {
+    const { installed, release } = gatedListing()
+    const s = await startWith({}, errorLine(PLAYER, 1) + errorLine(SYSTEM, 2), { installed })
+    await vi.advanceTimersByTimeAsync(250)
+    s.session.setFilter({ appsOnly: true })
+    await waitFor(() => installed.mock.calls.length > 0)
+    s.stream.emit(errorLine(PLAYER, 3) + errorLine(SYSTEM, 4))
+    await vi.advanceTimersByTimeAsync(250)
+    const before = s.delivered().length
+    await vi.advanceTimersByTimeAsync(5_000)
+    // Released, and the set is still unknown: no device line shows.
+    expect(
+      s
+        .delivered()
+        .slice(before)
+        .filter((e) => e.ovd === undefined)
+    ).toEqual([])
+    release()
+    await waitFor(() => s.session.entries().some((e) => e.process === PLAYER))
+    expect(s.session.entries().every((e) => e.process === PLAYER)).toBe(true)
+    await s.session.stop()
+  })
+
+  test('a failed read fails closed: no line shows, one OVD line says why, the next stream retries', async () => {
+    const installed = vi
+      .fn<NonNullable<LogsDeps['installed']>>()
+      .mockRejectedValueOnce(new OvdError('COMMAND_FAILED', 'could not read', 'Try again'))
+      .mockResolvedValue([{ packageId: PLAYER, source: 'sideloaded' }])
+    const s = await startWith({ filter: { appsOnly: true } }, lines, {
+      installed,
+      streams: streamsOf(2)
+    })
+    await waitFor(() => s.ovd().length > 0)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(s.session.entries().filter((e) => e.ovd === undefined)).toEqual([])
+    expect(s.ovd()).toEqual([
+      'App list unavailable — App errors only shows nothing until it can be read'
+    ])
+    expect(s.end()).toBeUndefined()
+    // An install restarts the stream, and the listing is read again.
+    const s2 = s.streams[1] as FakeStream
+    s.feed.emit(installOn(STICK))
+    await waitFor(() => s2.spec !== undefined)
+    s2.emit(lines)
+    await waitFor(() => installed.mock.calls.length === 2)
+    await vi.advanceTimersByTimeAsync(250)
+    await waitFor(() => s.session.entries().some((e) => e.process === PLAYER))
+    expect(s.session.entries().some((e) => e.process === SYSTEM)).toBe(false)
+    await s.session.stop()
   })
 })

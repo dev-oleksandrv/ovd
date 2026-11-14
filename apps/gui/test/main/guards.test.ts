@@ -2,8 +2,19 @@
 import { mkdir, mkdtemp, realpath, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { FILTER_TEXT_MAX, LOG_FACILITIES, MAX_FILTER_NAME_CHARS, MAX_PROCESS_RATE } from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import {
+  FILTER_TEXT_MAX as RENDERER_TEXT_MAX,
+  LOG_FACILITIES as RENDERER_FACILITIES,
+  MAX_FILTER_NAME_CHARS as RENDERER_NAME_MAX,
+  MAX_PROCESS_RATE as RENDERER_RATE_MAX
+} from '../../src/renderer/src/screens/logs/logsView'
+import {
+  logsBundleRequest,
+  saveLogsFilterRequest,
+  savedFilterName,
+  savedFilterRef,
   capturePath,
   crashRef,
   crashReportPath,
@@ -74,6 +85,177 @@ describe('logsFilter', () => {
     ['an unknown key', { until: '07:30' }, 'filter.until is not a log filter']
   ])('rejects %s', (_label, value, message) => {
     expect(() => logsFilter(value)).toThrow(new TypeError(message))
+  })
+})
+
+const everyKey = {
+  app: 'com.example.player',
+  system: false,
+  level: 'e',
+  search: 'tick',
+  regex: true,
+  appsOnly: true,
+  lifecycle: true,
+  pid: [27178, 0],
+  tid: [2842092448],
+  tag: ['com.amazon.keplerscript'],
+  identity: ['com.example.player'],
+  facility: ['user', 'local7'],
+  boot: ['current', '0123456789abcdef0123456789abcdef', '01234567-89ab-cdef-0123-456789abcdef'],
+  processRules: [
+    { identity: 'com.example.player', level: 'W', rate: 10, mute: true },
+    { identity: 'lcm_service', rate: MAX_PROCESS_RATE }
+  ]
+}
+
+describe('logsFilter, the advanced fields', () => {
+  test('accepts every key', () => {
+    expect(logsFilter(everyKey)).toEqual(everyKey)
+  })
+
+  test.each([
+    ['a string PID', { pid: ['27178'] }],
+    ['a negative PID', { pid: [-1] }],
+    ['a fractional TID', { tid: [1.5] }],
+    ['an unsafe TID', { tid: [2 ** 60] }],
+    ['PIDs that aren’t an array', { pid: 27178 }],
+    ['too many PIDs', { pid: Array.from({ length: 101 }, (_, i) => i) }],
+    ['an empty tag', { tag: [''] }],
+    ['a numeric tag', { tag: [4] }],
+    ['a tag with a control character', { tag: ['a\nb'] }],
+    ['an overlong identity', { identity: ['x'.repeat(FILTER_TEXT_MAX + 1)] }],
+    ['too many identities', { identity: Array.from({ length: 101 }, () => 'x') }],
+    ['an unknown facility', { facility: ['kernel'] }],
+    ['a bad boot', { boot: ['not-a-boot'] }],
+    ['a boot of 31 characters', { boot: ['0123456789abcdef0123456789abcde'] }],
+    ['a level that isn’t one', { level: 'fatal' }],
+    ['a non-boolean appsOnly', { appsOnly: 1 }],
+    ['a non-boolean lifecycle', { lifecycle: 'yes' }],
+    ['a search over the bound', { search: 'x'.repeat(4097) }],
+    ['an app over the bound', { app: 'x'.repeat(257) }],
+    ['rules that aren’t an array', { processRules: {} }],
+    ['a rule that isn’t an object', { processRules: ['x'] }],
+    ['a rule without an identity', { processRules: [{ mute: true }] }],
+    ['a rule that sets nothing', { processRules: [{ identity: 'x' }] }],
+    ['a rule with a bad level', { processRules: [{ identity: 'x', level: 'loud' }] }],
+    ['a rule rate of 0', { processRules: [{ identity: 'x', rate: 0 }] }],
+    [
+      'a rule rate over the maximum',
+      { processRules: [{ identity: 'x', rate: MAX_PROCESS_RATE + 1 }] }
+    ],
+    ['a fractional rule rate', { processRules: [{ identity: 'x', rate: 1.5 }] }],
+    ['a string rule rate', { processRules: [{ identity: 'x', rate: '5' }] }],
+    ['a non-boolean mute', { processRules: [{ identity: 'x', mute: 'yes' }] }],
+    ['an unknown rule key', { processRules: [{ identity: 'x', mute: true, path: '/' }] }],
+    [
+      'too many rules',
+      { processRules: Array.from({ length: 101 }, () => ({ identity: 'x', mute: true })) }
+    ]
+  ])('rejects %s', (_label, value) => {
+    expect(() => logsFilter(value)).toThrow(TypeError)
+  })
+
+  test.each(['since', 'until', 'out', 'path', 'preset'])('rejects the key %s', (key) => {
+    expect(() => logsFilter({ [key]: 'x' })).toThrow(
+      new TypeError(`filter.${key} is not a log filter`)
+    )
+  })
+
+  test('the renderer’s copies of core’s limits match', () => {
+    expect(RENDERER_TEXT_MAX).toBe(FILTER_TEXT_MAX)
+    expect(RENDERER_RATE_MAX).toBe(MAX_PROCESS_RATE)
+    expect(RENDERER_NAME_MAX).toBe(MAX_FILTER_NAME_CHARS)
+    expect([...RENDERER_FACILITIES]).toEqual([...LOG_FACILITIES])
+  })
+})
+
+describe('savedFilterName', () => {
+  test.each(['errors', 'a', '0-9', 'a'.repeat(40)])('accepts %s', (name) => {
+    expect(savedFilterName(name)).toBe(name)
+  })
+
+  test.each([
+    ['empty', ''],
+    ['too long', 'a'.repeat(41)],
+    ['upper case', 'Errors'],
+    ['a leading hyphen', '-a'],
+    ['a space', 'a b'],
+    ['a slash', '../x'],
+    ['a number', 4],
+    ['undefined', undefined]
+  ])('rejects %s', (_label, value) => {
+    expect(() => savedFilterName(value)).toThrow(TypeError)
+  })
+})
+
+describe('savedFilterRef', () => {
+  test('lets a stored name that breaks the save rule be deleted', () => {
+    expect(savedFilterRef('Odd Name')).toBe('Odd Name')
+  })
+
+  test.each([
+    ['empty', ''],
+    ['too long', 'a'.repeat(161)],
+    ['a number', 4]
+  ])('rejects %s', (_label, value) => {
+    expect(() => savedFilterRef(value)).toThrow(TypeError)
+  })
+})
+
+describe('saveLogsFilterRequest', () => {
+  test('a name, a filter and an optional force', () => {
+    expect(saveLogsFilterRequest({ name: 'errors', filter: { level: 'e' } })).toEqual({
+      name: 'errors',
+      filter: { level: 'e' }
+    })
+    expect(saveLogsFilterRequest({ name: 'errors', filter: {}, force: true })).toEqual({
+      name: 'errors',
+      filter: {},
+      force: true
+    })
+  })
+
+  test.each([
+    ['no name', { filter: {} }],
+    ['a bad name', { name: 'Bad Name', filter: {} }],
+    ['no filter', { name: 'errors' }],
+    ['a bad filter', { name: 'errors', filter: { pid: ['x'] } }],
+    ['a non-boolean force', { name: 'errors', filter: {}, force: 1 }],
+    ['a path', { name: 'errors', filter: {}, path: '/tmp/x.json' }],
+    ['null', null],
+    ['an array', []]
+  ])('rejects %s', (_label, value) => {
+    expect(() => saveLogsFilterRequest(value)).toThrow(TypeError)
+  })
+})
+
+describe('logsBundleRequest', () => {
+  test('accepts nothing or a throughSeq', () => {
+    expect(logsBundleRequest({})).toEqual({})
+    expect(logsBundleRequest({ throughSeq: 7 })).toEqual({ throughSeq: 7 })
+  })
+
+  test('accepts a built-in preset key or a valid saved name, nothing else', () => {
+    expect(logsBundleRequest({ preset: 'app-errors' })).toEqual({ preset: 'app-errors' })
+    expect(logsBundleRequest({ throughSeq: 1, preset: 'my-filter' })).toEqual({
+      throughSeq: 1,
+      preset: 'my-filter'
+    })
+    for (const bad of ['Has Space', '../x', 'a\nb', '', 5, null]) {
+      expect(() => logsBundleRequest({ preset: bad })).toThrow(TypeError)
+    }
+  })
+
+  test.each([
+    ['a path', { out: '/tmp/x.zip' }],
+    ['a path next to a seq', { throughSeq: 1, path: '/tmp' }],
+    ['a force flag', { force: true }],
+    ['a negative seq', { throughSeq: -1 }],
+    ['a string seq', { throughSeq: '1' }],
+    ['null', null],
+    ['a string', '/tmp/x.zip']
+  ])('rejects %s', (_label, value) => {
+    expect(() => logsBundleRequest(value)).toThrow(TypeError)
   })
 })
 

@@ -31,6 +31,12 @@ export const PNG_KIND: SaveKind = {
   failure: 'SCREENSHOT_FAILED'
 }
 
+export const ZIP_KIND: SaveKind = {
+  ext: 'zip',
+  noun: 'log bundle',
+  failure: 'LOG_BUNDLE_FAILED'
+}
+
 const nameOf = (kind: SaveKind, base: string, n: number) =>
   `${n === 1 ? base : `${base}-${n}`}.${kind.ext}`
 

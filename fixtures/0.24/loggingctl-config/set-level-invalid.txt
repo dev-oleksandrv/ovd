@@ -1,0 +1,4 @@
+{
+ "error": "Invalid syslog severity level: err",
+ "status": "failed"
+}

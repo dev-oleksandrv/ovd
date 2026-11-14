@@ -1,4 +1,6 @@
 import {
+  BUNDLE_WARNING,
+  bundleFileName,
   isOvdError,
   toErrorJson,
   type ErrorJson,
@@ -6,8 +8,19 @@ import {
   type LogSession,
   type Ovd
 } from '@ovd/core'
-import type { FollowOutcome, IpcResult, LogsFilter, LogsState, LogsUpdate } from '../preload/api'
+import type {
+  FollowOutcome,
+  IpcResult,
+  LogsBundleResult,
+  LogsFilter,
+  LogsPreset,
+  LogsState,
+  LogsUpdate,
+  SaveLogsFilterRequest,
+  SavedLogsFilter
+} from '../preload/api'
 import { createLogBatcher, realTimers, type Timers } from './logBatcher'
+import { normalizeSavedFilter } from './guards'
 import { toResult } from './ipcResult'
 
 export interface LogsController {
@@ -22,6 +35,23 @@ export interface LogsController {
   // The shown entries (up to `throughSeq`) and the time of the last one, which the CLI echo's
   // `--until` ends at; null without a session.
   exportEntries(throughSeq?: number): { entries: LogEntry[]; until: string | null } | null
+  // The built-in presets, core's one list.
+  presets(): LogsPreset[]
+  // The saved filters (`ovd logs filter list|save|rm`): host files, not the device.
+  savedList(): Promise<IpcResult<SavedLogsFilter[]>>
+  savedSave(request: SaveLogsFilterRequest): Promise<IpcResult<null>>
+  savedRemove(name: string): Promise<IpcResult<null>>
+  // Bundles the shown entries (up to `throughSeq`) with the active filter. `choose` is main's
+  // save dialog: it gets the bundles folder and the default file name, and answers the file the user picked, or null when
+  // they canceled. The path comes only from it; the renderer never supplies one.
+  bundle(
+    throughSeq: number | undefined,
+    choose: (dir: string, fileName: string) => Promise<string | null>,
+    // The validated preset key or saved name the filter equals, for the manifest.
+    preset?: string
+  ): Promise<IpcResult<LogsBundleResult>>
+  // The file the last bundle was saved to, for Reveal; null before any.
+  lastBundle(): string | null
   // Stops the session and waits until its process group is gone.
   stop(): Promise<void>
   running(): boolean
@@ -50,6 +80,8 @@ export const FOLLOW_TIMEOUT_MS = 15_000
 // number, so the renderer ignores what an old session still sends.
 export function createLogsController(opts: {
   logs: Ovd['logs']
+  logFilters: Ovd['logFilters']
+  logBundle: Ovd['logBundle']
   send: (update: LogsUpdate) => void
   timers?: Timers
 }): LogsController {
@@ -64,6 +96,7 @@ export function createLogsController(opts: {
   // Kept for the app's run (not persisted), carried by every non-idle state.
   let restartAfterInstall = true
   let current: LogSession | undefined
+  let lastBundle: string | null = null
   // Stops whatever the current session number started (a start in progress included).
   let stopCurrent: () => Promise<void> = async () => undefined
   // The current session's start, which `follow` waits for.
@@ -117,6 +150,10 @@ export function createLogsController(opts: {
       },
       onState: () => {
         if (started && n === session) push(n, following(started))
+      },
+      // The side-loaded set arrived after `setFilter` returned: the buffer was judged again.
+      onRefilter: () => {
+        if (started && n === session) resetFrom(n, started)
       },
       onRestart: (reason) => {
         if (reason !== 'install' || n !== session) return
@@ -180,6 +217,24 @@ export function createLogsController(opts: {
     return state
   }
 
+  const exportEntries: LogsController['exportEntries'] = (throughSeq) => {
+    if (!current) return null
+    const entries = current.entries(throughSeq)
+    return { entries, until: entries.at(-1)?.time ?? null }
+  }
+
+  // The dialog's first file name: core's own (F37), so it holds the sanitized device name and a
+  // UTC stamp, never the device ID (a serial or an IP).
+  const defaultBundleName = (): string =>
+    bundleFileName(
+      {
+        id: state.status === 'idle' ? 'device' : state.device,
+        name: state.status === 'idle' ? '' : state.name,
+        kind: state.status !== 'idle' && state.device === 'VirtualDevice' ? 'vvd' : 'stick'
+      },
+      new Date()
+    )
+
   const isFor = (device: string | null) => state.status !== 'idle' && state.device === device
   const live = () =>
     state.status === 'starting' || state.status === 'running' || state.status === 'reconnecting'
@@ -222,11 +277,66 @@ export function createLogsController(opts: {
       current.clear()
       resetFrom(session, current)
     },
-    exportEntries(throughSeq) {
-      if (!current) return null
-      const entries = current.entries(throughSeq)
-      return { entries, until: entries.at(-1)?.time ?? null }
+    exportEntries,
+    presets: () => opts.logs.presets(),
+    savedList: () =>
+      toResult(async () =>
+        (await opts.logFilters.list()).map((item): SavedLogsFilter => {
+          if (!item.valid) return { name: item.name, filter: {}, valid: false, error: item.error }
+          try {
+            return { name: item.name, filter: normalizeSavedFilter(item.filter), valid: true }
+          } catch {
+            // Core accepted it but the desktop can't carry it: shown as unusable, deletable.
+            return {
+              name: item.name,
+              filter: {},
+              valid: false,
+              error: {
+                code: 'INVALID_LOG_FILTER',
+                message: 'The desktop can’t apply this saved filter',
+                hint: 'Re-save it with ovd logs filter save, or delete it'
+              }
+            }
+          }
+        })
+      ),
+    savedSave: ({ name, filter: saved, force }) =>
+      toResult(async () => {
+        await opts.logFilters.save(name, saved, force === true ? { force: true } : {})
+        return null
+      }),
+    savedRemove: (name) =>
+      toResult(async () => {
+        await opts.logFilters.remove(name)
+        return null
+      }),
+    bundle(throughSeq, choose, preset) {
+      return toResult(async (): Promise<LogsBundleResult> => {
+        const exported = exportEntries(throughSeq)
+        if (!exported || exported.entries.length === 0) return { status: 'empty' }
+        const out = await choose(opts.logBundle.dir(), defaultBundleName())
+        if (out === null) return { status: 'canceled' }
+        // The save dialog already confirmed a replace, so `force` is for this path only.
+        const saved = await opts.logBundle.bundleEntries({
+          entries: exported.entries,
+          ...(state.status === 'idle' ? {} : { device: state.device }),
+          filter,
+          ...(preset === undefined ? {} : { preset }),
+          out,
+          force: true
+        })
+        lastBundle = saved.path
+        return {
+          status: 'saved',
+          path: saved.path,
+          bytes: saved.bytes,
+          lines: saved.lines,
+          files: saved.files,
+          warning: BUNDLE_WARNING
+        }
+      })
     },
+    lastBundle: () => lastBundle,
     async stop() {
       await replace()
       state = { status: 'idle' }

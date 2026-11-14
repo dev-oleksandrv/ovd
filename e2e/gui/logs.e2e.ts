@@ -268,7 +268,7 @@ test.describe('Logs', () => {
     })
   })
 
-  test('a search with no hit: No lines match the filters; Clear filters shows them again', async ({
+  test('a search with no hit: No lines match the filter; Reset to All shows them again', async ({
     sandbox,
     launch
   }) => {
@@ -279,12 +279,12 @@ test.describe('Logs', () => {
 
     await page.getByRole('textbox', { name: 'Search logs' }).fill('no such line')
 
-    const none = page.getByText('No lines match the filters')
+    const none = page.getByText('No lines match the filter')
     await expect(none).toBeVisible()
     await expect(rows(page)).toHaveCount(0)
     await expect(echo(page)).toContainText('--grep "no such line"')
 
-    await page.getByRole('button', { name: 'Clear filters' }).click()
+    await page.getByRole('button', { name: 'Reset to All' }).click()
 
     await expect(rows(page).filter({ hasText: 'player flood 62' })).toBeVisible()
     await expect(none).toHaveCount(0)

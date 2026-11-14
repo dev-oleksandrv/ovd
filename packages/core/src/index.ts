@@ -207,10 +207,54 @@ export type {
   LogExportWriter,
   LogJson
 } from './logs/logExport.js'
-export { isAppIdentity } from './logs/logFilter.js'
-export type { LogFilterInput } from './logs/logFilter.js'
+export { isAppIdentity, LOG_FACILITIES } from './logs/logFilter.js'
+export type {
+  LogEvaluator,
+  LogFilter,
+  LogFilterContext,
+  LogFilterInput,
+  LogVerdict
+} from './logs/logFilter.js'
+export { compileLogFilter } from './logs/logFilter.js'
+export { assertSafeRegex, MAX_REGEX_CHARS } from './logs/safeRegex.js'
+export {
+  assertFilterText,
+  compileProcessRules,
+  FILTER_TEXT_MAX,
+  MAX_PROCESS_RATE
+} from './logs/processRules.js'
+export type { ProcessRule, ProcessRuleInput } from './logs/processRules.js'
+export { logPresetKeys, logPresets, mergeLogFilter, resolvePreset } from './logs/logPresets.js'
+export type { LogPreset, SavedLogFilter } from './logs/logPresets.js'
+export { bundlesDir, ensureBundlesDir } from './logs/bundlesDir.js'
+export {
+  BUNDLE_FILES,
+  BUNDLE_WARNING,
+  bundleFileName,
+  createLogBundle,
+  DEFAULT_BUNDLE_SECONDS,
+  MAX_BUNDLE_SECONDS
+} from './logs/logBundle.js'
+export type {
+  BundleCaptureOptions,
+  BundleEntriesOptions,
+  BundleOptions,
+  BundleResult,
+  LogBundle,
+  LogBundleDeps
+} from './logs/logBundle.js'
+export {
+  assertFilterName,
+  createSavedFilters,
+  MAX_FILTER_NAME_CHARS,
+  MAX_SAVED_FILTERS
+} from './logs/savedFilters.js'
+export type { SavedFilterItem, SavedFilters, SaveFilterOptions } from './logs/savedFilters.js'
+export { writeJsonAtomic } from './state/atomicJson.js'
+export { parseBootId } from './adapters/parseBootId.js'
 export type {
   Logs,
+  LogsApi,
   LogSession,
   LogSessionEnd,
   LogSessionState,
@@ -272,7 +316,8 @@ export {
   resolveDestination,
   stageFor,
   tempFor,
-  writePart
+  writePart,
+  ZIP_KIND
 } from './screenshot/saveFile.js'
 export type { Destination, SaveFs, SaveKind, Staging } from './screenshot/saveFile.js'
 export { createScreen, LIVE_FORMAT } from './screen/screen.js'
