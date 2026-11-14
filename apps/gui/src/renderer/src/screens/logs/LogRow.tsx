@@ -18,14 +18,18 @@ interface LogRowProps {
   regex: boolean
   // Absolute position in the list (virtualized).
   top?: number
+  // Opens the process menu for the row's process at the pointer (F31).
+  onProcess?: (identity: string, x: number, y: number) => void
 }
 
 // One log entry: time, level, tag, pid and the first message line; the full text on hover.
 // An OVD line (OVD's own event) shows OVD in the level and tag columns, no pid, in the accent
 // color.
-export function LogRow({ entry, search, regex, top }: LogRowProps) {
+export function LogRow({ entry, search, regex, top, onProcess }: LogRowProps) {
   const [first = '', ...rest] = entry.message.split('\n')
   const ovd = entry.ovd !== undefined
+  // A row's process is its syslog identity; an OVD line or an unparsed line has none.
+  const process = ovd ? null : entry.process
   const full = ovd
     ? `${timeOfDay(entry.time)} OVD ${entry.message}`
     : `${timeOfDay(entry.time)} ${entry.level} ${entry.tag} ${entry.pid ?? '-'} ${entry.message}`
@@ -33,6 +37,14 @@ export function LogRow({ entry, search, regex, top }: LogRowProps) {
     <div
       role="listitem"
       title={full}
+      onContextMenu={
+        process !== null && onProcess
+          ? (event) => {
+              event.preventDefault()
+              onProcess(process, event.clientX, event.clientY)
+            }
+          : undefined
+      }
       style={{ height: ROW_HEIGHT, ...(top === undefined ? {} : { top }) }}
       className={
         (top === undefined ? '' : 'absolute right-0 left-0 ') +
@@ -50,7 +62,21 @@ export function LogRow({ entry, search, regex, top }: LogRowProps) {
         {ovd ? 'OVD' : highlighted(entry.tag, search, regex)}
       </span>
       <span className="w-[52px] shrink-0 text-right text-subtle">
-        {ovd ? '' : (entry.pid ?? '-')}
+        {ovd ? (
+          ''
+        ) : process !== null && onProcess ? (
+          <button
+            type="button"
+            aria-label={`Process menu for ${process}`}
+            title={`${process}: mute, level or limit`}
+            onClick={(event) => onProcess(process, event.clientX, event.clientY)}
+            className="cursor-pointer font-mono hover:text-accent hover:underline"
+          >
+            {entry.pid ?? '-'}
+          </button>
+        ) : (
+          (entry.pid ?? '-')
+        )}
       </span>
       <span className={`min-w-0 truncate ${ovd ? 'text-accent' : 'text-text-soft'}`}>
         {highlighted(first, search, regex)}

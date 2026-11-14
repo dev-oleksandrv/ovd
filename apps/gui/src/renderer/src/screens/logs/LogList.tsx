@@ -18,6 +18,16 @@ interface LogListProps {
   // Brings the row at `index` to the middle of the view (a crash's time); `n` tells two
   // requests for the same row apart.
   scrollTo?: { n: number; index: number } | null
+  // Opens the process menu for a row's process.
+  onProcess?: (identity: string, x: number, y: number) => void
+}
+
+// A rate-limited line shares its `seq` with the entry that closed the second, so `seq` alone
+// doesn't tell the rows apart.
+function rowKey(entry: LogEntry): string {
+  if (entry.ovd === undefined) return String(entry.seq)
+  const extra = entry.ovd.kind === 'rate-limited' ? `${entry.ovd.process}@${entry.ovd.second}` : ''
+  return `${entry.seq}:${entry.ovd.kind}:${extra}`
 }
 
 // A virtualized list: a spacer as tall as every row, and only the rows in view drawn.
@@ -29,7 +39,8 @@ export function LogList({
   follow,
   onFollowChange,
   onSeenBottom,
-  scrollTo = null
+  scrollTo = null,
+  onProcess
 }: LogListProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -97,11 +108,12 @@ export function LogList({
       <div style={{ height: total }} aria-hidden="true" />
       {rows.map((entry, i) => (
         <LogRow
-          key={entry.seq}
+          key={rowKey(entry)}
           entry={entry}
           search={search}
           regex={regex}
           top={(start + i) * ROW_HEIGHT}
+          {...(onProcess ? { onProcess } : {})}
         />
       ))}
     </div>

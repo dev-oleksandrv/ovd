@@ -1,6 +1,6 @@
 import type { Device, LogExportFormat } from '@ovd/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { LogsFilter } from '../../../../preload/api'
+import type { IpcResult, LogsFilter, LogsPreset, SavedLogsFilter } from '../../../../preload/api'
 import { useFeedback } from '../../feedback/feedbackContext'
 import {
   applyUpdate,
@@ -11,7 +11,20 @@ import {
   setFollow as setFollowStore,
   type LogStore
 } from './logStore'
-import { heldDevice, logsCli, logsExportCli, regexError, withPackage, without } from './logsView'
+import {
+  BUNDLE_CLI_NOTE,
+  heldDevice,
+  levelLetter,
+  logsBundleCli,
+  logsCli,
+  logsExportCli,
+  logsRemoveCli,
+  logsSaveCli,
+  presetMatch,
+  regexError,
+  withPackage,
+  without
+} from './logsView'
 
 // The toast when Export has nothing to save (no session, or no shown lines).
 export const NO_LINES_TO_EXPORT = 'No log lines to export'
@@ -29,8 +42,24 @@ export interface LogsValue {
   setLevel(level: string): void
   // The package picker's value: all, system or an app ID.
   setPackage(value: string): void
-  // Filters on one app (a crash's), answering once main has re-filtered the buffer.
-  showApp(app: string): Promise<void>
+  // Filters on one app and one process (a crash's), answering once main has re-filtered the
+  // buffer.
+  showCrash(app: string, pid: number): Promise<void>
+  // The built-in presets and the saved filters, and which one the filter equals (a key or a
+  // name; null: Custom, F19).
+  presets: LogsPreset[]
+  saved: SavedLogsFilter[]
+  activePreset: string | null
+  // Replaces the filter with a preset's or a saved filter's, by key or name.
+  applyPreset(name: string): void
+  // Changes the filter (the filters popover, the process menu, a chip's remove).
+  edit(change: (filter: LogsFilter) => LogsFilter): void
+  // `ovd logs filter save <name>`: resolves with main's answer, for the dialog to show.
+  saveFilter(name: string, force: boolean): Promise<IpcResult<null>>
+  removeSaved(name: string): void
+  // Saves the shown lines (up to the pause) as a bundle, after the save dialog.
+  bundle(): void
+  revealBundle(): void
   setSearch(text: string): void
   setRegex(on: boolean): void
   clearFilters(): void
@@ -66,6 +95,27 @@ export function useLogs(target: Device | undefined): LogsValue {
   // The latest filter asked for, ahead of main's answer: two quick changes (level, then
   // package) build on each other instead of the second undoing the first.
   const filterRef = useRef<LogsFilter>({})
+  const [presets, setPresets] = useState<LogsPreset[]>([])
+  const [saved, setSaved] = useState<SavedLogsFilter[]>([])
+  const baseRef = useRef<(filter: LogsFilter) => string | null>(() => null)
+  baseRef.current = (f) => presetMatch(f, presets, saved)
+  // The echo of a filter: `--preset` when it equals a preset or a saved filter.
+  const cliFor = useCallback(
+    (f: LogsFilter, id: string, toggle: boolean) => logsCli(f, id, toggle, baseRef.current(f)),
+    []
+  )
+
+  const refreshSaved = useCallback(async () => {
+    const result = await window.ovd.logs.savedList()
+    if (result.ok) setSaved(result.data)
+    else notify({ tone: 'error', text: `${result.error.code}: ${result.error.message}` })
+  }, [notify])
+  useEffect(() => {
+    void window.ovd.logs.presets().then((result) => {
+      if (result.ok) setPresets(result.data)
+    })
+    void refreshSaved()
+  }, [refreshSaved])
 
   useEffect(() => window.ovd.logs.onUpdate((update) => setStore((s) => applyUpdate(s, update))), [])
 
@@ -90,9 +140,9 @@ export function useLogs(target: Device | undefined): LogsValue {
       : null
   useEffect(() => {
     if (liveSession !== null && targetId !== null) {
-      echo(logsCli(filterRef.current, targetId, toggleRef.current))
+      echo(cliFor(filterRef.current, targetId, toggleRef.current))
     }
-  }, [liveSession, targetId, echo])
+  }, [liveSession, targetId, echo, cliFor])
 
   const apply = useCallback(
     async (next: LogsFilter) => {
@@ -100,7 +150,7 @@ export function useLogs(target: Device | undefined): LogsValue {
       filterRef.current = next
       setFilterState(next)
       const result = await window.ovd.logs.setFilter(next)
-      const cli = targetId === null ? undefined : logsCli(next, targetId, toggleRef.current)
+      const cli = targetId === null ? undefined : cliFor(next, targetId, toggleRef.current)
       if (!result.ok) {
         if (filterRef.current === next) {
           filterRef.current = previous
@@ -111,7 +161,7 @@ export function useLogs(target: Device | undefined): LogsValue {
       }
       notify({ tone: 'info', text: 'Log filter applied', ...(cli ? { cli } : {}) })
     },
-    [targetId, notify]
+    [targetId, notify, cliFor]
   )
 
   // The search reaches the filter after typing stops; an invalid regex changes nothing.
@@ -132,6 +182,13 @@ export function useLogs(target: Device | undefined): LogsValue {
     return () => clearTimeout(timer)
   }, [search, regex, invalid, apply])
 
+  function revealBundle(): void {
+    void window.ovd.logs.revealBundle().then((result) => {
+      if (!result.ok)
+        notify({ tone: 'error', text: `${result.error.code}: ${result.error.message}` })
+    })
+  }
+
   return {
     store,
     filter,
@@ -145,7 +202,83 @@ export function useLogs(target: Device | undefined): LogsValue {
     setPackage(value) {
       void apply(withPackage(filterRef.current, value))
     },
-    showApp: (app) => apply(withPackage(filterRef.current, app)),
+    showCrash: (app, pid) => apply({ ...withPackage(filterRef.current, app), pid: [pid] }),
+    presets,
+    saved,
+    activePreset: presetMatch(filter, presets, saved),
+    applyPreset(name) {
+      const found =
+        presets.find((preset) => preset.key === name)?.filter ??
+        saved.find((item) => item.valid && item.name === name)?.filter
+      if (found === undefined) return
+      // The search box follows the filter: a preset's search shows up there.
+      setSearchText(found.search ?? '')
+      setRegexState(found.search !== undefined && found.regex === true)
+      // The toolbar speaks level letters; a preset may spell the level as a name.
+      const { level, ...rest } = found
+      const letter = levelLetter(level)
+      void apply({ ...rest, ...(level === undefined || letter === 'v' ? {} : { level: letter }) })
+    },
+    edit: (change) => void apply(change(filterRef.current)),
+    async saveFilter(name, force) {
+      // Never a boot ID: it's bound to one boot (F20).
+      const filterToSave = without(filterRef.current, 'boot')
+      const result = await window.ovd.logs.savedSave({
+        name,
+        filter: filterToSave,
+        ...(force ? { force: true } : {})
+      })
+      if (result.ok) {
+        await refreshSaved()
+        notify({
+          tone: 'info',
+          text: `Saved the filter ${name}`,
+          cli: logsSaveCli(name, filterToSave, baseRef.current(filterToSave), force)
+        })
+      }
+      return result
+    },
+    removeSaved(name) {
+      void window.ovd.logs.savedRemove(name).then(async (result) => {
+        const cli = logsRemoveCli(name)
+        if (!result.ok) {
+          notify({ tone: 'error', text: `${result.error.code}: ${result.error.message}`, cli })
+          return
+        }
+        await refreshSaved()
+        notify({ tone: 'info', text: `Deleted the saved filter ${name}`, cli })
+      })
+    },
+    bundle() {
+      const through = store.pausedThrough
+      const request = through === null ? {} : { throughSeq: through }
+      void window.ovd.logs.bundle(request).then((result) => {
+        const cli =
+          targetId === null
+            ? undefined
+            : logsBundleCli(filterRef.current, targetId, baseRef.current(filterRef.current))
+        if (!result.ok) {
+          // The error toast names the code (F46).
+          notify({
+            tone: 'error',
+            text: `${result.error.code}: ${result.error.message}`,
+            ...(cli ? { cli } : {})
+          })
+          return
+        }
+        const bundled = result.data
+        if (bundled.status === 'empty') notify({ tone: 'info', text: 'No log lines to bundle' })
+        if (bundled.status !== 'saved') return
+        notify({
+          tone: 'info',
+          text: `Bundled ${bundled.lines} lines to ${bundled.path}. ${BUNDLE_CLI_NOTE}`,
+          action: { label: 'Reveal', run: () => revealBundle() },
+          ...(cli ? { cli } : {})
+        })
+        notify({ tone: 'info', text: bundled.warning })
+      })
+    },
+    revealBundle: () => revealBundle(),
     setSearch: setSearchText,
     setRegex: setRegexState,
     clearFilters() {
@@ -156,7 +289,7 @@ export function useLogs(target: Device | undefined): LogsValue {
     restartAfterInstall,
     setRestartAfterInstall(on) {
       void window.ovd.logs.setRestartAfterInstall(on).then((result) => {
-        const cli = targetId === null ? undefined : logsCli(filterRef.current, targetId, on)
+        const cli = targetId === null ? undefined : cliFor(filterRef.current, targetId, on)
         if (!result.ok) {
           notify({ tone: 'error', text: result.error.message, ...(cli ? { cli } : {}) })
           return
@@ -172,7 +305,7 @@ export function useLogs(target: Device | undefined): LogsValue {
       if (targetId === null) return
       const id = targetId
       void window.ovd.logs.restart(id).then((result) => {
-        const cli = logsCli(filterRef.current, id, toggleRef.current)
+        const cli = cliFor(filterRef.current, id, toggleRef.current)
         if (result.ok) {
           notify({
             tone: 'info',
@@ -193,7 +326,7 @@ export function useLogs(target: Device | undefined): LogsValue {
       void window.ovd.logs.export(request).then((result) => {
         if (!result.ok) {
           const cli =
-            targetId === null ? undefined : logsCli(filterRef.current, targetId, toggleRef.current)
+            targetId === null ? undefined : cliFor(filterRef.current, targetId, toggleRef.current)
           notify({ tone: 'error', text: result.error.message, ...(cli ? { cli } : {}) })
           return
         }
@@ -203,7 +336,13 @@ export function useLogs(target: Device | undefined): LogsValue {
         const cli =
           targetId === null
             ? undefined
-            : logsExportCli(filterRef.current, targetId, toggleRef.current, exported)
+            : logsExportCli(
+                filterRef.current,
+                targetId,
+                toggleRef.current,
+                exported,
+                baseRef.current(filterRef.current)
+              )
         notify({
           tone: 'info',
           text: `Exported ${exported.lines} lines to ${exported.path}`,

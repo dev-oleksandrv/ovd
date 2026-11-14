@@ -72,7 +72,63 @@ export interface SdkSummary {
 }
 
 // The filters the Logs screen sets; `since`/`until` are CLI-only.
-export type LogsFilter = Pick<LogFilterInput, 'app' | 'system' | 'level' | 'search' | 'regex'>
+export type LogsFilter = Pick<
+  LogFilterInput,
+  | 'app'
+  | 'system'
+  | 'level'
+  | 'search'
+  | 'regex'
+  | 'appsOnly'
+  | 'lifecycle'
+  | 'pid'
+  | 'tid'
+  | 'tag'
+  | 'identity'
+  | 'facility'
+  | 'boot'
+  | 'processRules'
+>
+
+// A built-in preset (core's one list, F15): `key` is what `--preset` takes.
+export interface LogsPreset {
+  key: string
+  label: string
+  filter: LogsFilter
+}
+
+// A saved filter as the list shows it. An invalid one has no usable filter (`{}`) and can only
+// be deleted.
+export type SavedLogsFilter =
+  | { name: string; filter: LogsFilter; valid: true }
+  | { name: string; filter: LogsFilter; valid: false; error: ErrorJson }
+
+// Save: a name (core checks it again), the filter without `since`, `until` or a boot ID, and
+// `force` to replace one of that name.
+export interface SaveLogsFilterRequest {
+  name: string
+  filter: LogsFilter
+  force?: boolean
+}
+
+// What Bundle asks main for: the shown lines (up to `throughSeq` while paused). Never a path.
+export interface LogsBundleRequest {
+  throughSeq?: number
+}
+
+// What Bundle did. `saved` carries what the toast needs; `replaced`: the file existed and the
+// save dialog confirmed the replace. `warning` is core's text about unredacted log lines.
+export type LogsBundleResult =
+  | { status: 'empty' }
+  | { status: 'canceled' }
+  | {
+      status: 'saved'
+      path: string
+      bytes: number
+      lines: number
+      files: string[]
+      warning: string
+    }
 
 // The log session main runs for the target (one at a time). `restartAfterInstall` is the
 // footer toggle, kept for the app's run; `reconnecting` while the device is away.
@@ -335,6 +391,19 @@ export interface OvdApi {
     clear(): Promise<void>
     // Saves the shown lines (up to `throughSeq`) in `format`, after the native save dialog.
     export(request: LogsExportRequest): Promise<IpcResult<LogsExportResult>>
+    // The built-in presets (all, app-errors, network, lifecycle).
+    presets(): Promise<IpcResult<LogsPreset[]>>
+    // The saved filters (`ovd logs filter list`), valid or not.
+    savedList(): Promise<IpcResult<SavedLogsFilter[]>>
+    // `ovd logs filter save <name>`; LOG_FILTER_EXISTS for a name in use without `force`.
+    savedSave(request: SaveLogsFilterRequest): Promise<IpcResult<null>>
+    // `ovd logs filter rm <name>`.
+    savedRemove(name: string): Promise<IpcResult<null>>
+    // Bundles the shown lines with the active filter, after the native save dialog (which opens
+    // in the bundles folder); the renderer never sends a path.
+    bundle(request: LogsBundleRequest): Promise<IpcResult<LogsBundleResult>>
+    // Shows the bundle saved last in the file manager (main remembers its path).
+    revealBundle(): Promise<IpcResult<null>>
     onUpdate(listener: (update: LogsUpdate) => void): () => void
   }
   run: {
@@ -452,6 +521,12 @@ export const channels = {
   logsRestartAfterInstall: 'ovd:logs:restart-after-install',
   logsClear: 'ovd:logs:clear',
   logsExport: 'ovd:logs:export',
+  logsPresets: 'ovd:logs:presets',
+  logsSavedList: 'ovd:logs:filters:list',
+  logsSavedSave: 'ovd:logs:filters:save',
+  logsSavedRemove: 'ovd:logs:filters:remove',
+  logsBundle: 'ovd:logs:bundle',
+  logsBundleReveal: 'ovd:logs:bundle:reveal',
   logsUpdate: 'ovd:logs:update',
   run: 'ovd:run',
   runProgress: 'ovd:run:progress',

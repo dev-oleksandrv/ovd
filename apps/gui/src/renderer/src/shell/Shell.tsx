@@ -147,7 +147,12 @@ export function Shell() {
   // Logs, filtered to the crash's app, at the crash's time.
   const showCrashLogs = (crash: Crash): void => {
     if (go('logs'))
-      setCrashLogs({ n: ++requestCount.current, app: crash.package, time: crash.time })
+      setCrashLogs({
+        n: ++requestCount.current,
+        app: crash.package,
+        pid: crash.pid,
+        time: crash.time
+      })
   }
 
   const platform = window.ovd.platform
