@@ -1,0 +1,4 @@
+{
+ "message": "com.example.player:rate -> 2",
+ "status": "success"
+}
