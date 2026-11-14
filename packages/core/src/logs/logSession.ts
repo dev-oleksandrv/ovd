@@ -134,7 +134,8 @@ export function createLogs(deps: LogsDeps): LogsApi {
       let sideloaded: ReadonlySet<string> | undefined
       const filterContext: LogFilterContext = {
         currentBoot: () => currentBoot,
-        sideloaded: () => sideloaded
+        // Without a listing to read, the filter keeps its syntax check instead of failing closed.
+        ...(deps.installed ? { sideloaded: () => sideloaded } : {})
       }
       // Usage errors and the target come first: they write no activity entry.
       const startFilter = compileLogFilter(opts.filter ?? {}, deps.now(), filterContext)
@@ -341,8 +342,8 @@ export function createLogs(deps: LogsDeps): LogsApi {
         }
 
         // The side-loaded listing, for an `appsOnly` filter: once per stream (an install changes
-        // it, and an install restarts the stream). A failed read keeps the last set, or the
-        // syntax check while there is none.
+        // it, and an install restarts the stream). While the set is unknown `appsOnly` shows
+        // nothing: a failed read says so with one OVD line, and the next stream tries again.
         const ensureSideloaded = async () => {
           const stream = current
           if (finished || !filter.usesAppsOnly || stream === undefined || !deps.installed) return
@@ -357,7 +358,8 @@ export function createLogs(deps: LogsDeps): LogsApi {
             )
             buffer.setFilter(filter)
           } catch {
-            // Keeps the fallback.
+            // A set from an earlier stream stays; with none, nothing can be shown.
+            if (sideloaded === undefined) addOvd({ kind: 'app-list-unavailable' })
           } finally {
             sideloadPending = false
           }

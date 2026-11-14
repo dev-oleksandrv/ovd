@@ -139,6 +139,11 @@ test.each<[string, OvdEvent, string]>([
     'Boot ID unknown: the boot filter shows no device lines'
   ],
   [
+    'app list unavailable',
+    { kind: 'app-list-unavailable' },
+    'App list unavailable — App errors only shows nothing until it can be read'
+  ],
+  [
     'boot late',
     { kind: 'boot-late' },
     'Boot filter on: lines received before have no boot ID and stay hidden'

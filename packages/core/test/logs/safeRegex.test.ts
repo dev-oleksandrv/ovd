@@ -43,12 +43,14 @@ describe('assertSafeRegex: refused', () => {
   test.each(['(?<=a)b', '(?<!a)b', 'x(?<=\\d)y'])('lookbehind %s', rejects)
 
   test.each([
-    // More than one long repeat: cubic on a long line.
+    // Ranges that multiply past the backtracking bound.
     '.*a.*b',
     '.{0,1000}a.{0,1000}b',
     'a+b+',
-    '.*a.*b.*c'
-  ])('more than one long repeat: %s', rejects)
+    '.*a.*b.*c',
+    'a{0,16}'.repeat(8) + 'b',
+    '^' + 'a{0,16}'.repeat(10) + 'b$'
+  ])('ranges multiply past the bound: %s', rejects)
 
   test.each([
     // Long brace quantifiers can't hide a repeat from the scan.
@@ -89,6 +91,7 @@ const ACCEPTED = [
   '(?=a+)b',
   '(?<name>ab)+',
   '.*a',
+  'a?b?c?d?',
   'error.*timeout',
   'a{1,16}b{1,16}',
   '^fetch (ok|failed)',

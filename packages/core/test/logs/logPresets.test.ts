@@ -235,9 +235,15 @@ describe('app-errors against the side-loaded apps', () => {
     expect(filter.matches(entry('lcm_service'))).toBe(false)
   })
 
-  test('an unknown set falls back to the package-ID syntax', () => {
+  test('an unknown set fails closed: nothing is an app until the listing is read', () => {
     const filter = compileLogFilter(input, NOW, { sideloaded: () => undefined })
-    expect(filter.matches(entry('com.amazon.keplerlauncherapp'))).toBe(true)
+    expect(filter.matches(entry('com.amazon.keplerlauncherapp'))).toBe(false)
+    expect(filter.matches(entry('com.example.player'))).toBe(false)
+  })
+
+  test('without the hook (a filter on its own) the package-ID syntax decides', () => {
+    const filter = compileLogFilter(input, NOW)
+    expect(filter.matches(entry('com.example.player'))).toBe(true)
     expect(filter.matches(entry('lcm_service'))).toBe(false)
   })
 })

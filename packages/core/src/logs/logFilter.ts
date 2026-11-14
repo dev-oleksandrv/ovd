@@ -69,9 +69,10 @@ export interface LogFilterContext {
   // unknown.
   currentBoot?: () => string | undefined
   // The package IDs of the side-loaded apps on the target (F15: the `app-errors` preset is the
-  // developer's own apps, not the installed system ones), undefined while not read. Unknown
-  // falls back to the package-ID syntax check, which also lets `com.amazon.*` system apps
-  // through: better a few extra lines than none, until the session has read the listing.
+  // developer's own apps, not the installed system ones). A session that gives this hook fails
+  // closed: while it returns undefined (the listing failed or isn't read yet), `appsOnly`
+  // matches no line, because the syntax check would let installed system apps through. Without
+  // the hook (a filter compiled on its own) the package-ID syntax check decides.
   sideloaded?: () => ReadonlySet<string> | undefined
 }
 
@@ -222,10 +223,10 @@ export function compileLogFilter(
   const wantsCurrent = boots?.has('current') ?? false
   const currentBoot = ctx.currentBoot ?? (() => undefined)
   const isAppEntry = (identity: string | null): boolean => {
-    const set = ctx.sideloaded?.()
-    // Unknown set: the syntax check (see LogFilterContext.sideloaded).
-    if (set === undefined) return isAppIdentity(identity)
-    return identity !== null && set.has(identity)
+    if (ctx.sideloaded === undefined) return isAppIdentity(identity)
+    const set = ctx.sideloaded()
+    // Unknown set: fail closed (see LogFilterContext.sideloaded).
+    return set !== undefined && identity !== null && set.has(identity)
   }
   const matchesBoot = (boot: string | undefined): boolean => {
     if (boots === undefined) return true

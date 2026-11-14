@@ -1163,15 +1163,31 @@ describe('app-errors and the side-loaded apps', () => {
     await s.session.stop()
   })
 
-  test('a failed read keeps the package-ID syntax check', async () => {
-    const installed = vi.fn(async () => {
-      throw new OvdError('COMMAND_FAILED', 'could not read', 'Try again')
+  test('a failed read fails closed: no line shows, one OVD line says why, the next stream retries', async () => {
+    const installed = vi
+      .fn<NonNullable<LogsDeps['installed']>>()
+      .mockRejectedValueOnce(new OvdError('COMMAND_FAILED', 'could not read', 'Try again'))
+      .mockResolvedValue([{ packageId: PLAYER, source: 'sideloaded' }])
+    const s = await startWith({ filter: { appsOnly: true } }, lines, {
+      installed,
+      streams: streamsOf(2)
     })
-    const s = await startWith({ filter: { appsOnly: true } }, lines, { installed })
-    await waitFor(() => installed.mock.calls.length > 0)
+    await waitFor(() => s.ovd().length > 0)
     await vi.advanceTimersByTimeAsync(250)
-    expect(new Set(s.session.entries().map((e) => e.process))).toEqual(new Set([PLAYER, SYSTEM]))
+    expect(s.session.entries().filter((e) => e.ovd === undefined)).toEqual([])
+    expect(s.ovd()).toEqual([
+      'App list unavailable — App errors only shows nothing until it can be read'
+    ])
     expect(s.end()).toBeUndefined()
+    // An install restarts the stream, and the listing is read again.
+    const s2 = s.streams[1] as FakeStream
+    s.feed.emit(installOn(STICK))
+    await waitFor(() => s2.spec !== undefined)
+    s2.emit(lines)
+    await waitFor(() => installed.mock.calls.length === 2)
+    await vi.advanceTimersByTimeAsync(250)
+    await waitFor(() => s.session.entries().some((e) => e.process === PLAYER))
+    expect(s.session.entries().some((e) => e.process === SYSTEM)).toBe(false)
     await s.session.stop()
   })
 })

@@ -76,6 +76,9 @@ export type OvdEvent =
   // A boot filter was set on a running stream and its boot ID was read then: lines buffered
   // before have no boot ID and stay hidden.
   | { kind: 'boot-late' }
+  // The side-loaded apps couldn't be listed for a stream, so `appsOnly` (the `app-errors`
+  // preset) shows nothing until a later stream reads them.
+  | { kind: 'app-list-unavailable' }
 
 export interface LogCounts {
   // Lines (entries) and E entries received since the start or the last Clear.
