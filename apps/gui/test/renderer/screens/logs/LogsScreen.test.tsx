@@ -1025,7 +1025,9 @@ describe('LogsScreen, the power tools', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Pause/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Bundle' }))
-    await waitFor(() => expect(stub.api.logs.bundle).toHaveBeenCalledWith({ throughSeq: 2 }))
+    await waitFor(() =>
+      expect(stub.api.logs.bundle).toHaveBeenCalledWith({ throughSeq: 2, preset: 'all' })
+    )
     expect(screen.queryByRole('button', { name: 'Reveal' })).toBeNull()
   })
 

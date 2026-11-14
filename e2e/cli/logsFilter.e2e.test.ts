@@ -1,12 +1,20 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { BURST_LINES, bootIdAfter, usbStick, type World } from '../fake-sdk/world.ts'
-import { ovd } from '../harness/cli.ts'
+import {
+  ALL_PACKAGES_SCRIPT,
+  BURST_LINES,
+  bootIdAfter,
+  usbStick,
+  type World
+} from '../fake-sdk/world.ts'
+import { ovd, startOvd } from '../harness/cli.ts'
 import { createSandbox, type Sandbox } from '../harness/vitest.ts'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const PLAYER = 'com.example.player'
+// The start of the side-loaded listing's command (a base64 script, as the calls show it).
+const LISTING = Buffer.from(ALL_PACKAGES_SCRIPT).toString('base64').slice(0, 40)
 
 interface Line {
   time: string
@@ -31,6 +39,38 @@ function withPresets(world: Partial<World> = {}): Sandbox {
   })
   sandbox.installSdk()
   return sandbox
+}
+
+// The Virtual Device with the player side-loaded (its recorded package), so the player's lines
+// are an app's. The stick is recorded with no side-loaded app (fixtures/0.24/vpm-info-package-all).
+function withPlayer(): Sandbox {
+  return withPresets({
+    stick: null,
+    vvd: { running: true, developerMode: true },
+    installed: [{ device: 'VirtualDevice', package: 'player-aarch64-debug' }],
+    logStream: { ends: false, holdAfterLine: 1, recording: 'presets', burst: true }
+  })
+}
+
+// `ovd logs` on the `withPlayer` world, with the stream held after its first line until core has
+// asked the device which apps are side-loaded: an apps-only filter shows nothing before the
+// answer, and the fake replays the whole recording at once, so without the hold the run would
+// race the listing.
+async function playerLines(sandbox: Sandbox, args: string[]) {
+  const running = startOvd(sandbox, ['logs', ...args, '--json', '--until', UNTIL_RECORDING])
+  await expect
+    .poll(() => sandbox.calls().some((c) => c.includes(LISTING)), { timeout: 15_000 })
+    .toBe(true)
+  sandbox.update((w) => {
+    w.logStream.holdAfterLine = null
+  })
+  const run = await running.done
+  expect(run.exitCode).toBe(0)
+  const lines = run.jsonLines<Line>()
+  return {
+    events: lines.filter((l) => l.ovd !== undefined),
+    device: lines.filter((l) => l.ovd === undefined)
+  }
 }
 
 // A device time (UTC, no year) as core reads it: the current UTC year, the next, or the one
@@ -85,13 +125,24 @@ describe('ovd logs presets', () => {
     expect(device.some((l) => l.process === 'lcm_service')).toBe(true)
   }, 90_000)
 
-  test('app-errors shows only side-loaded apps: none on the stick, so no line', async () => {
-    const sandbox = withPresets()
-    expect((await logLines(sandbox, ['--preset', 'app-errors'])).device).toEqual([])
+  test('app-errors shows the side-loaded app’s error lines and no system line', async () => {
+    const sandbox = withPlayer()
+    const errors = await playerLines(sandbox, ['--preset', 'app-errors'])
+    expect(errors.device.length).toBeGreaterThan(0)
+    for (const line of errors.device) {
+      expect(line.process).toBe(PLAYER)
+      expect(line.level).toBe('E')
+    }
     // `--level info` replaces the preset's level; the apps-only part stays.
-    const info = await logLines(sandbox, ['--preset', 'app-errors', '--level', 'info'])
-    expect(info.device).toEqual([])
+    sandbox.update((w) => {
+      w.logStream.holdAfterLine = 1
+    })
+    const info = await playerLines(sandbox, ['--preset', 'app-errors', '--level', 'info'])
+    expect(info.device.length).toBeGreaterThanOrEqual(errors.device.length)
+    for (const line of info.device) expect(line.process).toBe(PLAYER)
     expect(info.events.map((e) => e.ovd?.kind)).not.toContain('app-list-unavailable')
+    // Without the app on the device there is nothing of an app's to show.
+    expect((await logLines(withPresets(), ['--preset', 'app-errors'])).device).toEqual([])
   }, 90_000)
 
   test('an unknown preset is exit 2 and starts no stream', async () => {

@@ -165,3 +165,25 @@ describe('ovd logs filter flags', () => {
     )
   })
 })
+
+describe('ovd logs bundle output', () => {
+  test('a path with a newline or a terminal sequence is printed escaped', async () => {
+    const path = '/tmp/a\nWrote fake\u001b]0;pwned\u0007.zip'
+    const bundle = vi.fn(async () => ({
+      device: { id: 'X', name: 'Fire TV stick' },
+      path,
+      bytes: 10,
+      lines: 1,
+      files: ['README.txt']
+    }))
+    const run = await cli(['logs', 'bundle'], {
+      ovd: { logBundle: { bundle } } as unknown as Partial<Ovd>
+    })
+    expect(run.exitCode).toBe(0)
+    // One line, and no raw control character.
+    expect(run.stdout.trimEnd().split('\n')).toHaveLength(1)
+    // eslint-disable-next-line no-control-regex -- the point of the test
+    expect(run.stdout.replace(/\n$/, '')).not.toMatch(/[\u0000-\u001f\u007f]/)
+    expect(run.stdout).toContain('/tmp/a')
+  })
+})

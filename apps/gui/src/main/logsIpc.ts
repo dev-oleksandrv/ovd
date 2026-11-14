@@ -99,19 +99,23 @@ export function registerLogsIpc(
     controller.savedRemove(savedFilterRef(name))
   )
   ipcMain.handle(channels.logsBundle, (_event, request: unknown) => {
-    const { throughSeq } = logsBundleRequest(request)
-    return controller.bundle(throughSeq, async (dir) => {
-      const win = window()
-      const options = {
-        title: 'Save log bundle',
-        defaultPath: join(dir, bundleName(new Date())),
-        filters: [{ name: 'Zip archive', extensions: ['zip'] }]
-      }
-      const result = win
-        ? await dialog.showSaveDialog(win, options)
-        : await dialog.showSaveDialog(options)
-      return result.canceled || !result.filePath ? null : result.filePath
-    })
+    const { throughSeq, preset } = logsBundleRequest(request)
+    return controller.bundle(
+      throughSeq,
+      async (dir, fileName) => {
+        const win = window()
+        const options = {
+          title: 'Save log bundle',
+          defaultPath: join(dir, fileName),
+          filters: [{ name: 'Zip archive', extensions: ['zip'] }]
+        }
+        const result = win
+          ? await dialog.showSaveDialog(win, options)
+          : await dialog.showSaveDialog(options)
+        return result.canceled || !result.filePath ? null : result.filePath
+      },
+      preset
+    )
   })
   ipcMain.handle(channels.logsBundleReveal, (): IpcResult<null> => {
     const path = controller.lastBundle()
@@ -139,11 +143,6 @@ export function registerLogsIpc(
     follow: (device, arm) => controller.follow(device, arm),
     open: (device) => controller.open(device),
     device: () => controller.device()
-  }
-
-  // `ovd-logs-<device>-<YYYYMMDD-HHMMSS>.zip`, as `ovd logs bundle` names its file.
-  function bundleName(now: Date): string {
-    return exportName(now, 'text').replace(/\.txt$/, '.zip')
   }
 
   // `ovd-logs-<device>-<YYYYMMDD-HHMMSS>.<txt|jsonl>`, with `:` (an IP:port) as `-`.

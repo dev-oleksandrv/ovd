@@ -251,7 +251,11 @@ export function useLogs(target: Device | undefined): LogsValue {
     },
     bundle() {
       const through = store.pausedThrough
-      const request = through === null ? {} : { throughSeq: through }
+      const preset = baseRef.current(filterRef.current)
+      const request = {
+        ...(through === null ? {} : { throughSeq: through }),
+        ...(preset === null ? {} : { preset })
+      }
       void window.ovd.logs.bundle(request).then((result) => {
         const cli =
           targetId === null

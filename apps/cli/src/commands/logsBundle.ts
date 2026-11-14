@@ -23,6 +23,12 @@ interface BundleFlags extends FilterFlags {
   force?: boolean
 }
 
+// A path as one safe word on one line: `escapeControls` keeps tab and newline (log text needs
+// them), but a file name holding either could forge a second line of output.
+function printable(path: string): string {
+  return escapeControls(path).replaceAll('\n', '\\n').replaceAll('\t', '\\t')
+}
+
 function durationOf(value: string | undefined): number | undefined {
   if (value === undefined) return undefined
   if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > MAX_BUNDLE_SECONDS) {
@@ -70,7 +76,7 @@ export function registerLogsBundle(
           {
             json: (result) => ({ ...result }),
             human: (result) =>
-              `Wrote ${result.path} (${bytesText(result.bytes)}, ${result.lines} lines). ${BUNDLE_WARNING}\n`
+              `Wrote ${printable(result.path)} (${bytesText(result.bytes)}, ${result.lines} lines). ${BUNDLE_WARNING}\n`
           }
         )
       } finally {

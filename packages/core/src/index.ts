@@ -230,6 +230,7 @@ export { bundlesDir, ensureBundlesDir } from './logs/bundlesDir.js'
 export {
   BUNDLE_FILES,
   BUNDLE_WARNING,
+  bundleFileName,
   createLogBundle,
   DEFAULT_BUNDLE_SECONDS,
   MAX_BUNDLE_SECONDS

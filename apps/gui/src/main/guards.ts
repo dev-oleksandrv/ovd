@@ -1,9 +1,11 @@
 import { sep } from 'node:path'
 import {
+  assertFilterName,
   FILTER_TEXT_MAX,
   isRemoteKey,
   LOG_EXPORT_FORMATS,
   LOG_FACILITIES,
+  logPresetKeys,
   MAX_FILTER_NAME_CHARS,
   MAX_PROCESS_RATE,
   type LogExportFormat,
@@ -176,6 +178,40 @@ export function logsFilter(value: unknown): LogsFilter {
   return filter
 }
 
+// A saved filter as the renderer's guard takes it. The CLI saves what its flags held: PIDs, TIDs
+// and rates as digit strings, facilities in any case; core accepts those, `logsFilter` wants
+// numbers and lower case. Done on main, where core's own rules (digits only, case-insensitive
+// facility) are applied, then the result goes through `logsFilter` like any renderer filter.
+export function normalizeSavedFilter(filter: unknown): LogsFilter {
+  if (typeof filter !== 'object' || filter === null || Array.isArray(filter)) {
+    throw new TypeError('filter must be an object')
+  }
+  const out: Record<string, unknown> = { ...(filter as Record<string, unknown>) }
+  const numbers = (items: unknown): unknown =>
+    Array.isArray(items)
+      ? items.map((item) =>
+          typeof item === 'string' && /^\d{1,15}$/.test(item) ? Number(item) : item
+        )
+      : items
+  if (out.pid !== undefined) out.pid = numbers(out.pid)
+  if (out.tid !== undefined) out.tid = numbers(out.tid)
+  if (Array.isArray(out.facility)) {
+    out.facility = out.facility.map((item) =>
+      typeof item === 'string' ? item.toLowerCase() : item
+    )
+  }
+  if (Array.isArray(out.processRules)) {
+    out.processRules = out.processRules.map((rule: unknown) => {
+      if (typeof rule !== 'object' || rule === null) return rule
+      const { rate, ...rest } = rule as Record<string, unknown>
+      return typeof rate === 'string' && /^\d{1,9}$/.test(rate)
+        ? { ...rest, rate: Number(rate) }
+        : rule
+    })
+  }
+  return logsFilter(out)
+}
+
 // A saved filter's name as the renderer sends it to save: core's rule (F21), checked here too.
 export function savedFilterName(value: unknown): string {
   if (
@@ -195,6 +231,17 @@ export function savedFilterRef(value: unknown): string {
   const text = boundedText(value, 'name', 4 * MAX_FILTER_NAME_CHARS)
   if (text === '') throw new TypeError('name must not be empty')
   return text
+}
+
+// A preset label for the bundle manifest: a built-in key or a name core's rule accepts. Never
+// free text, so nothing a renderer makes up reaches the manifest.
+function presetLabel(value: unknown): string {
+  if (typeof value === 'string' && logPresetKeys().includes(value)) return value
+  try {
+    return assertFilterName(value)
+  } catch {
+    throw new TypeError('preset must be a built-in preset or a valid saved filter name')
+  }
 }
 
 // Save's request: a name, a filter and an optional `force`, nothing else.
@@ -242,11 +289,14 @@ export function logsBundleRequest(value: unknown): LogsBundleRequest {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new TypeError('bundle request must be an object')
   }
-  const { throughSeq, ...rest } = value as Record<string, unknown>
+  const { throughSeq, preset, ...rest } = value as Record<string, unknown>
   const extra = Object.keys(rest)[0]
   if (extra !== undefined) throw new TypeError(`${extra} is not a bundle option`)
   const seq = optionalSeq(throughSeq)
-  return seq === undefined ? {} : { throughSeq: seq }
+  return {
+    ...(seq === undefined ? {} : { throughSeq: seq }),
+    ...(preset === undefined ? {} : { preset: presetLabel(preset) })
+  }
 }
 
 // A remote key the pad or the keyboard sent (`down`, `play-pause`).

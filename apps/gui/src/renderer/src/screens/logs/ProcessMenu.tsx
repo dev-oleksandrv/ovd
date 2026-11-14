@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '../../ui/Button'
 import { TextField } from '../../ui/TextField'
 import { LEVELS, MAX_PROCESS_RATE, parseRateValue } from './logsView'
@@ -14,6 +14,9 @@ interface ProcessMenuProps {
   onLimit: (rate: number) => void
   onClose: () => void
 }
+
+// Space kept between the menu and the window's edge.
+const EDGE = 8
 
 const ITEM =
   'flex w-full cursor-pointer items-center rounded-control-sm px-2.5 py-1.5 text-left text-small hover:bg-control-hover'
@@ -33,6 +36,21 @@ export function ProcessMenu({
   const [rate, setRate] = useState('')
   const [error, setError] = useState<string | null>(null)
   const root = useRef<HTMLDivElement>(null)
+  const [at, setAt] = useState({ left: x, top: y })
+
+  // The menu opens at the pointer but must stay in the window: a row near the bottom or right
+  // edge would put it, or the Level and Limit views (taller than the root one), out of reach.
+  // Measured after every view change, before paint.
+  useLayoutEffect(() => {
+    const box = root.current?.getBoundingClientRect()
+    if (!box) return
+    const fit = (point: number, size: number, room: number) =>
+      Math.max(EDGE, Math.min(point, room - size - EDGE))
+    setAt({
+      left: fit(x, box.width, window.innerWidth),
+      top: fit(y, box.height, window.innerHeight)
+    })
+  }, [x, y, mode, error])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -61,7 +79,7 @@ export function ProcessMenu({
       ref={root}
       role="menu"
       aria-label={`Process ${identity}`}
-      style={{ left: x, top: y }}
+      style={at}
       className="fixed z-20 flex w-[260px] animate-enter flex-col gap-0.5 rounded-card border border-line-strong bg-raised p-1.5 shadow-popover"
     >
       <div className="truncate px-2.5 py-1 font-mono text-label text-muted" title={identity}>

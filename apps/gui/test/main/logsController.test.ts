@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  createSavedFilters,
   LOG_BUFFER_SIZE,
   OvdError,
   type LogCounts,
@@ -10,6 +11,9 @@ import {
   type LogStartOptions,
   type Ovd
 } from '@ovd/core'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createLogsController, FOLLOW_TIMEOUT_MS } from '../../src/main/logsController'
 import type { LogsUpdate } from '../../src/preload/api'
@@ -404,7 +408,7 @@ describe('createLogsController', () => {
       await controller.setFilter({ level: 'e', pid: [27178] })
       const choose = vi.fn(async () => '/tmp/picked.zip')
       const result = await controller.bundle(undefined, choose)
-      expect(choose).toHaveBeenCalledWith('/home/user/ovd/bundles')
+      expect(choose).toHaveBeenCalledWith('/home/user/ovd/bundles', expect.stringMatching(/\.zip$/))
       expect(bundleEntries).toHaveBeenCalledWith({
         entries: [expect.objectContaining({ seq: 1, level: 'E' })],
         device: STICK,
@@ -464,6 +468,63 @@ describe('createLogsController', () => {
         error: { code: 'LOG_BUNDLE_FAILED' }
       })
       expect(controller.lastBundle()).toBeNull()
+    })
+
+    test('the dialog starts from core’s file name: the device name and a UTC stamp, no ID', async () => {
+      const { controller } = withDeps()
+      await controller.open(STICK)
+      await settle()
+      const choose = vi.fn(async () => null)
+      await controller.bundle(undefined, choose)
+      const [, fileName] = choose.mock.calls[0] as unknown as [string, string]
+      expect(fileName).toMatch(/^ovd-logs-fire-tv-stick-\d{8}-\d{6}\.zip$/)
+      expect(fileName).not.toContain(STICK)
+    })
+
+    test('the active preset or saved name goes to the bundle for the manifest', async () => {
+      const { controller, bundleEntries } = withDeps()
+      await controller.open(STICK)
+      await settle()
+      await controller.bundle(undefined, async () => '/tmp/a.zip', 'app-errors')
+      expect(bundleEntries).toHaveBeenLastCalledWith(
+        expect.objectContaining({ preset: 'app-errors' })
+      )
+      await controller.bundle(undefined, async () => '/tmp/a.zip')
+      expect(bundleEntries).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ preset: expect.anything() })
+      )
+    })
+
+    test('a filter saved by the CLI (string IDs and rates, upper-case facility) applies', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'ovd-logs-controller-'))
+      const fake = fakeLogs()
+      const controller = createLogsController({
+        logs: fake.logs,
+        logFilters: createSavedFilters({ home }),
+        logBundle: {} as Ovd['logBundle'],
+        send: () => undefined
+      })
+      await createSavedFilters({ home }).save('from-cli', {
+        pid: ['27178'],
+        tid: ['5'],
+        facility: ['LOCAL0'],
+        processRules: [{ identity: 'com.example.player', rate: '5' }]
+      })
+      await controller.open(STICK)
+      await settle()
+      const listed = await controller.savedList()
+      const want = {
+        pid: [27178],
+        tid: [5],
+        facility: ['local0'],
+        processRules: [{ identity: 'com.example.player', rate: 5 }]
+      }
+      expect(listed).toEqual({
+        ok: true,
+        data: [{ name: 'from-cli', filter: want, valid: true }]
+      })
+      expect(await controller.setFilter(want)).toEqual({ ok: true, data: null })
+      expect(fake.sessions[0]?.setFilter).toHaveBeenLastCalledWith(want)
     })
 
     test('presets come from core', () => {

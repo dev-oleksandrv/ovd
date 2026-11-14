@@ -235,6 +235,17 @@ describe('logsBundleRequest', () => {
     expect(logsBundleRequest({ throughSeq: 7 })).toEqual({ throughSeq: 7 })
   })
 
+  test('accepts a built-in preset key or a valid saved name, nothing else', () => {
+    expect(logsBundleRequest({ preset: 'app-errors' })).toEqual({ preset: 'app-errors' })
+    expect(logsBundleRequest({ throughSeq: 1, preset: 'my-filter' })).toEqual({
+      throughSeq: 1,
+      preset: 'my-filter'
+    })
+    for (const bad of ['Has Space', '../x', 'a\nb', '', 5, null]) {
+      expect(() => logsBundleRequest({ preset: bad })).toThrow(TypeError)
+    }
+  })
+
   test.each([
     ['a path', { out: '/tmp/x.zip' }],
     ['a path next to a seq', { throughSeq: 1, path: '/tmp' }],

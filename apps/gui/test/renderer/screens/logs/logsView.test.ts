@@ -169,6 +169,16 @@ describe('packageChoices', () => {
   })
 })
 
+describe('withPackage and appsOnly', () => {
+  test.each([
+    ['system', { system: true }],
+    ['com.example.player', { app: 'com.example.player' }],
+    ['all', {}]
+  ])('choosing %s after "App errors only" drops appsOnly', (value, filter) => {
+    expect(withPackage({ appsOnly: true, level: 'e' }, value)).toEqual({ level: 'e', ...filter })
+  })
+})
+
 describe('highlightSegments', () => {
   test.each([
     ['no search', 'player tick 2', '', false, [{ text: 'player tick 2', hit: false }]],

@@ -270,6 +270,14 @@ function clean(value: string, max = 80): string {
 // four), would put them in every file name and the manifest, so it's replaced by the kind.
 const MIN_LEAK = 4
 
+type BundleNameFields = 'id' | 'name' | 'kind' | 'serial' | 'vdaSerial' | 'ip'
+
+// `ovd-logs-<device name slug>-<UTC yyyymmdd-hhmmss>.zip` (F37): the name `ovd logs bundle`
+// gives its file, and the desktop's save dialog starts from. It holds no serial, ID or address.
+export function bundleFileName(device: Pick<Device, BundleNameFields>, at: Date): string {
+  return `ovd-logs-${slug(deviceName(device))}-${stamp(at)}.zip`
+}
+
 function sharesPart(name: string, secret: string): boolean {
   if (secret.length < MIN_LEAK) return name.includes(secret)
   const lower = name.toLowerCase()
@@ -280,7 +288,7 @@ function sharesPart(name: string, secret: string): boolean {
   return false
 }
 
-function deviceName(device: Device): string {
+function deviceName(device: Pick<Device, BundleNameFields>): string {
   const name = clean(device.name, 64)
   const secrets = [device.id, device.serial, device.vdaSerial, device.ip].filter(
     (value): value is string => typeof value === 'string' && value.length > 0
@@ -546,7 +554,7 @@ export function createLogBundle(deps: LogBundleDeps): LogBundle {
     zip: Buffer,
     lines: number
   ): Promise<BundleResult> {
-    const base = `ovd-logs-${slug(deviceName(device))}-${stamp(deps.now())}`
+    const base = bundleFileName(device, deps.now()).replace(/\.zip$/, '')
     const ready: Destination = dest.kind === 'auto' ? { ...dest, create: false } : dest
     if (dest.kind === 'auto' && dest.create) await ensureBundlesDir(dest.dir)
     const temp = await tempFor(ready, base, randomHex(), ZIP_KIND)

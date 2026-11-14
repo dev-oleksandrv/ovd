@@ -114,6 +114,9 @@ export interface SaveLogsFilterRequest {
 // What Bundle asks main for: the shown lines (up to `throughSeq` while paused). Never a path.
 export interface LogsBundleRequest {
   throughSeq?: number
+  // The built-in preset key or saved-filter name the shown filter equals, recorded in the
+  // manifest. Main checks it again.
+  preset?: string
 }
 
 // What Bundle did. `saved` carries what the toast needs; `replaced`: the file existed and the

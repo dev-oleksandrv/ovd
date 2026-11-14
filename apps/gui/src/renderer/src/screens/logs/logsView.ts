@@ -203,9 +203,10 @@ export function packageValue(filter: LogsFilter): string {
   return filter.system ? SYSTEM_PACKAGES : ALL_PACKAGES
 }
 
-// The filter with the package picker's choice applied.
+// The filter with the package picker's choice applied. `appsOnly` goes with `app` and `system`
+// (core's override group, F18): "App errors only" then System would otherwise be refused.
 export function withPackage(filter: LogsFilter, value: string): LogsFilter {
-  const rest = without(filter, 'app', 'system')
+  const rest = without(filter, 'app', 'system', 'appsOnly')
   if (value === ALL_PACKAGES) return rest
   if (value === SYSTEM_PACKAGES) return { ...rest, system: true }
   return { ...rest, app: value }
