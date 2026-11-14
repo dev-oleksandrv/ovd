@@ -1,5 +1,18 @@
 # @ovd/cli
 
+## 0.4.0
+
+### Minor Changes
+
+- fa47f09: - The desktop app tells you when one of your apps crashes: a toast within seconds, a badge on the new Crashes screen, and a list of crashes with their stack. From a crash you can download the whole report, copy its path, copy a prompt for your AI agent, or jump to the logs at the time of the crash. Only apps you installed yourself are shown.
+  - `ovd crashes` lists the crash reports of your apps on the target, and `ovd crashes --watch` prints new ones as they happen. `ovd crash pull <id>` saves a report to `~/ovd/crashes` (or `--out <file or folder>`, `--force` to replace a file).
+  - `ovd screenshot --out` into a symbolic link to a folder now saves into the real folder, and a symbolic link as the target file is refused, with or without `--force`.
+- 1f83b7a: - `ovd logs` filters more: `--pid`, `--tid`, `--tag`, `--identity`, `--facility` and `--boot <id|current>` (each repeatable), and shows only the lines of one boot. A search pattern that could backtrack badly is refused.
+  - `ovd logs --preset <name>` starts from `all`, `app-errors` (errors of your own apps), `network`, `lifecycle` or a filter you saved; flags you add override it. `ovd logs filter save <name>`, `ovd logs filter list` and `ovd logs filter rm <name>` manage saved filters.
+  - `--process-level <identity>=<level>`, `--process-rate <identity>=<n>` and `--mute <identity>` quiet a noisy process in what OVD shows, without changing the device.
+  - `ovd logs bundle` saves a `.zip` for a bug report with the filtered log, the apps and the crash list, to `~/ovd/bundles` (or `--out`; `--duration <s>` adds live seconds).
+  - The Logs screen of the desktop app gets presets, saved filters, advanced filters, per-process Mute, Level and Limit, and Bundle next to Export. "Logs at crash time" now filters by the crashed process.
+
 ## 0.3.0
 
 ### Minor Changes
