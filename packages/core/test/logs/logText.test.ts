@@ -124,6 +124,21 @@ test.each<[string, OvdEvent, string]>([
   ['disconnected', { kind: 'disconnected' }, 'Device dropped · reconnecting…'],
   ['reconnected', { kind: 'reconnected' }, 'Log session reconnected'],
   [
+    'rate-limited',
+    {
+      kind: 'rate-limited',
+      process: 'com.example.player',
+      hidden: 18,
+      second: '2026-11-08T07:27:01Z'
+    },
+    'com.example.player: 18 lines hidden by rate limit'
+  ],
+  [
+    'boot unknown',
+    { kind: 'boot-unknown' },
+    'Boot ID unknown: the boot filter shows no device lines'
+  ],
+  [
     'launch verified',
     {
       kind: 'launch',

@@ -207,10 +207,29 @@ export type {
   LogExportWriter,
   LogJson
 } from './logs/logExport.js'
-export { isAppIdentity } from './logs/logFilter.js'
-export type { LogFilterInput } from './logs/logFilter.js'
+export { isAppIdentity, LOG_FACILITIES } from './logs/logFilter.js'
+export type {
+  LogEvaluator,
+  LogFilter,
+  LogFilterContext,
+  LogFilterInput,
+  LogVerdict
+} from './logs/logFilter.js'
+export { compileLogFilter } from './logs/logFilter.js'
+export { assertSafeRegex, MAX_REGEX_CHARS } from './logs/safeRegex.js'
+export {
+  assertFilterText,
+  compileProcessRules,
+  FILTER_TEXT_MAX,
+  MAX_PROCESS_RATE
+} from './logs/processRules.js'
+export type { ProcessRule, ProcessRuleInput } from './logs/processRules.js'
+export { logPresetKeys, logPresets, mergeLogFilter, resolvePreset } from './logs/logPresets.js'
+export type { LogPreset, SavedLogFilter } from './logs/logPresets.js'
+export { parseBootId } from './adapters/parseBootId.js'
 export type {
   Logs,
+  LogsApi,
   LogSession,
   LogSessionEnd,
   LogSessionState,

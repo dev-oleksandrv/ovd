@@ -75,6 +75,10 @@ export function ovdEventText(event: OvdEvent): string {
       return 'Device dropped · reconnecting…'
     case 'reconnected':
       return 'Log session reconnected'
+    case 'rate-limited':
+      return `${event.process}: ${event.hidden} lines hidden by rate limit`
+    case 'boot-unknown':
+      return 'Boot ID unknown: the boot filter shows no device lines'
     case 'build':
       return `Build folder changed: ${event.folder ?? ''}${event.file}`
     case 'crash': {

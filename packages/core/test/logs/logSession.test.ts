@@ -855,3 +855,210 @@ describe('reconnect', () => {
     expect(s.runner.count(VDA)).toBe(1)
   })
 })
+
+describe('boot tagging', () => {
+  const BOOT = `vega exec vda -s ${STICK} shell cat /proc/sys/kernel/random/boot_id`
+  // Sample IDs (ADR 0016), as the device prints them (dashed) and as core keeps them.
+  const ID_A = '0b6a5f2e-3c41-4d7a-9e58-1f2a3b4c5d6e'
+  const ID_B = '7d1c9a40-52be-4f0e-8a6b-99c0d1e2f3a4'
+  const bare = (id: string) => id.replaceAll('-', '')
+  const bootOut = (id: string) => ({ stdout: `${id}\n`, exitCode: 0 })
+  const device = (s: Started) => s.delivered().filter((e) => e.ovd === undefined)
+
+  test('is off by default: no boot command, no tag', async () => {
+    const s = await startWith()
+    expect(s.runner.count(BOOT)).toBe(0)
+    expect(device(s).every((e) => e.boot === undefined)).toBe(true)
+  })
+
+  test('with tagBoot the stream’s entries carry the boot ID, read once before the stream', async () => {
+    const s = await startWith({ tagBoot: true }, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
+    expect(s.runner.count(BOOT)).toBe(1)
+    // The command is the fixed one, with no user input in it.
+    const spec = s.runner.calls.find((c) => c.display === BOOT)
+    expect(spec?.args).toEqual([
+      'exec',
+      'vda',
+      '-s',
+      STICK,
+      'shell',
+      'cat',
+      '/proc/sys/kernel/random/boot_id'
+    ])
+    // It ran before the stream started.
+    expect(s.runner.calls.findIndex((c) => c.display === BOOT)).toBeLessThan(
+      s.runner.calls.findIndex((c) => c.display === LOG)
+    )
+    expect(device(s).length).toBeGreaterThan(100)
+    expect(device(s).every((e) => e.boot === bare(ID_A))).toBe(true)
+    expect(s.session.entries().every((e) => e.ovd !== undefined || e.boot === bare(ID_A))).toBe(
+      true
+    )
+    expect(s.ovd()).toEqual([])
+  })
+
+  test('a reconnect after a reboot reads the boot ID again: each stream keeps its own', async () => {
+    const s = await startWith({ tagBoot: true }, REBOOT, {
+      streams: streamsOf(2),
+      script: {
+        [VDA]: [
+          out('vda-devices/stick-usb.txt'),
+          out('vda-devices/none.txt'),
+          out('vda-devices/stick-usb.txt')
+        ],
+        [BOOT]: [bootOut(ID_A), bootOut(ID_B)]
+      }
+    })
+    const [s1, s2] = s.streams as [FakeStream, FakeStream]
+    s1.end(0)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    await advanceUntil(() => s2.spec !== undefined)
+    expect(s.runner.count(BOOT)).toBe(2)
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    expect(s.session.state()).toBe('following')
+    const boots = new Set(device(s).map((e) => e.boot))
+    expect(boots).toEqual(new Set([bare(ID_A), bare(ID_B)]))
+    // Every entry before the reconnect line is boot A, every one after it boot B.
+    const all = s.delivered()
+    const at = all.findIndex((e) => e.ovd?.kind === 'reconnected')
+    expect(all.slice(0, at).every((e) => e.boot === undefined || e.boot === bare(ID_A))).toBe(true)
+    expect(all.slice(at).every((e) => e.ovd !== undefined || e.boot === bare(ID_B))).toBe(true)
+    await s.session.stop()
+  })
+
+  test.each([
+    ['a failing command', { exitCode: 1, stderr: 'cat: no such file' }],
+    ['output that isn’t a UUID', { stdout: 'not a boot id\n', exitCode: 0 }],
+    ['an empty answer', { stdout: '', exitCode: 0 }],
+    ['a runner error', new OvdError('COMMAND_FAILED', 'The command could not run', 'Try again')]
+  ])('a failed read (%s) is harmless: no tag, no error, no line', async (_name, result) => {
+    const s = await startWith({ tagBoot: true }, FOLLOW, { script: { [BOOT]: result } })
+    expect(device(s).length).toBeGreaterThan(100)
+    expect(device(s).every((e) => e.boot === undefined)).toBe(true)
+    expect(s.ovd()).toEqual([])
+    expect(s.end()).toBeUndefined()
+    await s.session.stop()
+    expect(await activity()).toEqual([{ action: 'logs', target: STICK, args: {}, result: 'ok' }])
+  })
+
+  test('a boot filter turns the read on by itself and shows only that boot', async () => {
+    const s = await startWith({ filter: { boot: [ID_A] } }, FOLLOW, {
+      script: { [BOOT]: bootOut(ID_A) }
+    })
+    expect(s.runner.count(BOOT)).toBe(1)
+    expect(device(s).length).toBeGreaterThan(100)
+    expect(s.delivered().every((e) => e.ovd !== undefined || e.boot === bare(ID_A))).toBe(true)
+  })
+
+  test('a boot filter for another boot shows no device line', async () => {
+    const s = await startWith({ filter: { boot: [ID_B] } }, FOLLOW, {
+      script: { [BOOT]: bootOut(ID_A) }
+    })
+    expect(device(s)).toEqual([])
+    expect(s.session.counts().lines).toBeGreaterThan(100)
+    expect(s.session.counts().shown).toBe(0)
+  })
+
+  test('a boot filter with a failed read: one OVD line says the boot ID is unknown', async () => {
+    const s = await startWith({ filter: { boot: ['current'] } }, FOLLOW, {
+      script: { [BOOT]: { exitCode: 1 } }
+    })
+    expect(device(s)).toEqual([])
+    expect(s.ovd()).toEqual(['Boot ID unknown: the boot filter shows no device lines'])
+    expect(s.end()).toBeUndefined()
+  })
+
+  test('boot current is the running stream’s boot: it follows a reboot', async () => {
+    const s = await startWith({ tagBoot: true, filter: { boot: ['current'] } }, REBOOT, {
+      streams: streamsOf(2),
+      script: {
+        [VDA]: [
+          out('vda-devices/stick-usb.txt'),
+          out('vda-devices/none.txt'),
+          out('vda-devices/stick-usb.txt')
+        ],
+        [BOOT]: [bootOut(ID_A), bootOut(ID_B)]
+      }
+    })
+    const [s1, s2] = s.streams as [FakeStream, FakeStream]
+    s1.end(0)
+    await waitFor(() => s.session.state() === 'reconnecting')
+    await advanceUntil(() => s2.spec !== undefined)
+    s2.emit(FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    // The buffer is judged again against the new boot: boot A's lines are no longer `current`.
+    const shown = s.session.entries().filter((e) => e.ovd === undefined)
+    expect(shown.length).toBeGreaterThan(100)
+    expect(shown.every((e) => e.boot === bare(ID_B))).toBe(true)
+    expect(s.session.counts().shown).toBe(s.session.entries().length)
+    await s.session.stop()
+  })
+
+  test('setFilter with a boot filter on an untagged session says the boot is unknown', async () => {
+    const s = await startWith({}, FOLLOW)
+    s.session.setFilter({ boot: ['current'] })
+    expect(s.ovd()).toEqual(['Boot ID unknown: the boot filter shows no device lines'])
+    expect(s.session.entries().filter((e) => e.ovd === undefined)).toEqual([])
+    s.session.setFilter({})
+    expect(s.session.entries().filter((e) => e.ovd === undefined).length).toBeGreaterThan(0)
+  })
+
+  test('an invalid boot filter is a usage error before any SDK call', async () => {
+    const { logs, runner } = setup({ ...online })
+    await expect(logs.start({ filter: { boot: ['nope'] } })).rejects.toMatchObject({
+      code: 'INVALID_LOG_FILTER'
+    })
+    expect(runner.calls).toEqual([])
+  })
+})
+
+describe('advanced filters and rules in a session', () => {
+  test('the new fields never reach a device command', async () => {
+    const s = await startWith({
+      filter: {
+        pid: [27178],
+        tid: [1],
+        tag: ['com.amazon.keplerscript'],
+        identity: [PLAYER],
+        facility: ['local0'],
+        processRules: [{ identity: PLAYER, rate: 5 }]
+      }
+    })
+    for (const call of s.runner.calls) {
+      expect(call.args.join(' ')).not.toMatch(/27178|keplerscript|local0|com\.example/)
+    }
+    await s.session.stop()
+  })
+
+  test('--pid filters the stream', async () => {
+    const s = await startWith({ filter: { pid: [27178] } }, FOLLOW)
+    const device = s.delivered().filter((e) => e.ovd === undefined)
+    expect(device.length).toBeGreaterThan(2)
+    expect(device.every((e) => e.pid === 27178)).toBe(true)
+    await s.session.stop()
+  })
+
+  test('a rate rule: the lines over the rate are hidden, and stopping reports the open second', async () => {
+    const s = await startWith({ filter: { processRules: [{ identity: PLAYER, rate: 1 }] } }, FOLLOW)
+    await vi.advanceTimersByTimeAsync(250)
+    const shown = s.delivered()
+    const hidden = shown.filter((e) => e.ovd?.kind === 'rate-limited')
+    // The player prints several lines in each of two device seconds.
+    expect(hidden.map((e) => e.message)).toEqual([`${PLAYER}: 5 lines hidden by rate limit`])
+    const player = shown.filter((e) => e.process === PLAYER)
+    expect(player.length).toBe(2)
+    const before = s.delivered().length
+    await s.session.stop()
+    const last = s.delivered().slice(before)
+    expect(last.every((e) => e.ovd?.kind === 'rate-limited')).toBe(true)
+    // What a re-filter gives is what streaming gave, the stop's lines included.
+    s.session.setFilter({ processRules: [{ identity: PLAYER, rate: 1 }] })
+    expect(s.session.entries().map((e) => e.message)).toEqual(s.delivered().map((e) => e.message))
+  })
+
+  test('presets() lists the built-in presets', async () => {
+    const { logs } = setup({ ...online })
+    expect(logs.presets().map((p) => p.key)).toEqual(['all', 'app-errors', 'network', 'lifecycle'])
+  })
+})
