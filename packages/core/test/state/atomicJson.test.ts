@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -21,5 +21,14 @@ describe('writeJsonAtomic', () => {
     await writeJsonAtomic(file, { long: 'a'.repeat(500) })
     await writeJsonAtomic(file, { short: 1 })
     expect(JSON.parse(await readFile(file, 'utf8'))).toEqual({ short: 1 })
+  })
+
+  test('removes the temp file when the rename fails', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ovd-atomic-'))
+    // A folder at the target: the rename of a file onto it fails.
+    const file = join(dir, 'x.json')
+    await mkdir(join(file, 'inner'), { recursive: true })
+    await expect(writeJsonAtomic(file, { a: 1 })).rejects.toThrow()
+    expect(await readdir(dir)).toEqual(['x.json'])
   })
 })

@@ -311,6 +311,118 @@ describe('bundleEntries', () => {
     })
   })
 
+  test('events are rebuilt from an allow-list: paths in app, unknown fields and bad patterns are dropped', async () => {
+    const out = join(root, 'b.zip')
+    const loose = (event: Record<string, unknown>) => event as unknown as OvdEvent
+    await createLogBundle(deps).bundleEntries({
+      entries: [
+        ovdLine(
+          0,
+          loose({
+            kind: 'launch',
+            action: 'app.launch',
+            surface: 'cli',
+            result: 'crashed',
+            app: HOME_PATH,
+            signal: `${LINUX_PATH}/x`,
+            extra: HOME_PATH
+          }),
+          'x'
+        ),
+        ovdLine(
+          1,
+          loose({ kind: 'crash', app: LINUX_PATH, pid: 4, signal: 'SIGSEGV', secret: HOME_PATH }),
+          'x'
+        ),
+        ovdLine(
+          2,
+          loose({ kind: 'rate-limited', process: HOME_PATH, hidden: 3, second: LINUX_PATH }),
+          'x'
+        ),
+        ovdLine(3, loose({ kind: 'disconnected', note: HOME_PATH }), 'x')
+      ],
+      out
+    })
+    const files = await read(out)
+    const joined = [...files.values()].join('\n')
+    for (const bad of [HOME_PATH, LINUX_PATH, 'secret', 'extra', 'note']) {
+      expect(joined).not.toContain(bad)
+    }
+    const jsonl = (files.get('logs.jsonl') ?? '')
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l))
+    expect(jsonl[0].ovd).toEqual({
+      kind: 'launch',
+      action: 'app.launch',
+      surface: 'cli',
+      result: 'crashed'
+    })
+    expect(jsonl[1].ovd).toEqual({ kind: 'crash', pid: 4, signal: 'SIGSEGV' })
+    expect(jsonl[3].ovd).toEqual({ kind: 'disconnected' })
+  })
+
+  test('the manifest filter masks tag, identity and rule identities', async () => {
+    const out = join(root, 'b.zip')
+    await createLogBundle(deps).bundleEntries({
+      entries: [],
+      filter: {
+        tag: [HOME_PATH, 'two'],
+        identity: [LINUX_PATH],
+        level: 'info',
+        pid: [5],
+        processRules: [
+          { identity: `${HOME_PATH}/a`, level: 'warn' },
+          { identity: `${LINUX_PATH}/b`, rate: 5 },
+          { identity: 'secret-proc', mute: true }
+        ]
+      },
+      out
+    })
+    const files = await read(out)
+    const joined = [...files.values()].join('\n')
+    for (const bad of [HOME_PATH, LINUX_PATH, 'secret-proc', '/Users/', '/home/']) {
+      expect(joined).not.toContain(bad)
+    }
+    const { filter } = JSON.parse(files.get('manifest.json') ?? '')
+    expect(filter).toMatchObject({
+      level: 'info',
+      pid: '5',
+      tag: '2 values',
+      identity: '1 value',
+      mute: '1 value',
+      'process-rate': '#2=5'
+    })
+    expect(filter['process-level']).toMatch(/^#1=/)
+  })
+
+  test('crashes.json drops a crash whose package isn’t an app ID', async () => {
+    crashList.mockResolvedValue({
+      device: device.name,
+      crashes: [CRASH, { ...CRASH, id: 4, package: `${HOME_PATH}/x` }]
+    })
+    const out = join(root, 'b.zip')
+    await createLogBundle(deps).bundleEntries({ entries: [], out })
+    const files = await read(out)
+    const crashes = JSON.parse(files.get('crashes.json') ?? '').crashes
+    expect(crashes.map((c: { id: number }) => c.id)).toEqual([3])
+    expect(files.get('crashes.json')).not.toContain(HOME_PATH)
+  })
+
+  test('the default multi-stick name is replaced when it holds part of the serial', async () => {
+    currentTarget.mockResolvedValue({
+      device: { ...device, name: `Fire TV stick ${SERIAL.slice(-4)}` }
+    })
+    const result = await createLogBundle(deps).bundleEntries({ entries: [], out: root })
+    expect(result.device.name).toBe('Fire TV stick')
+    expect(result.path).not.toContain(SERIAL.slice(-4).toLowerCase())
+    currentTarget.mockResolvedValue({
+      device: { ...device, kind: 'vvd', name: `Vega ${SERIAL.slice(2, 8)}` }
+    })
+    const vvd = await createLogBundle(deps).bundleEntries({ entries: [], out: root })
+    expect(vvd.device.name).toBe('Vega Virtual Device')
+  })
+
   test('crash and rate-limited events keep their validated fields', async () => {
     const out = join(root, 'b.zip')
     await createLogBundle(deps).bundleEntries({
@@ -350,10 +462,10 @@ describe('bundleEntries', () => {
     const dir = join(root, 'out')
     await mkdir(dir)
     const result = await createLogBundle(deps).bundleEntries({ entries: [], out: dir })
-    expect(result.device.name).toBe('device')
-    expect(result.path).toBe(join(dir, 'ovd-logs-device-20261114-101530.zip'))
+    expect(result.device.name).toBe('Fire TV stick')
+    expect(result.path).toBe(join(dir, 'ovd-logs-fire-tv-stick-20261114-101530.zip'))
     expect(JSON.parse((await read(result.path)).get('manifest.json') ?? '').device.name).toBe(
-      'device'
+      'Fire TV stick'
     )
   })
 
@@ -534,7 +646,7 @@ describe('bundle (a bounded capture)', () => {
     return { start, stop }
   }
 
-  test('runs a session for the duration with boot tagging, then bundles its entries', async () => {
+  test('runs a session for the duration (boot tagging is the default), then bundles its entries', async () => {
     const { start, stop } = fakeSession([entry(0), entry(1)])
     const sleep = vi.fn(async () => undefined)
     const out = join(root, 'b.zip')
@@ -545,8 +657,7 @@ describe('bundle (a bounded capture)', () => {
     })
     expect(start).toHaveBeenCalledWith({
       device: SERIAL,
-      filter: { level: 'info' },
-      tagBoot: true
+      filter: { level: 'info' }
     })
     expect(sleep).toHaveBeenCalledWith(12_000, undefined)
     expect(stop).toHaveBeenCalledOnce()

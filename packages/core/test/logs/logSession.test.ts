@@ -879,8 +879,14 @@ describe('boot tagging', () => {
   const bootOut = (id: string) => ({ stdout: `${id}\n`, exitCode: 0 })
   const device = (s: Started) => s.delivered().filter((e) => e.ovd === undefined)
 
-  test('is off by default: no boot command, no tag', async () => {
-    const s = await startWith()
+  test('is on by default: the boot command runs once and the entries carry the boot', async () => {
+    const s = await startWith({}, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
+    expect(s.runner.count(BOOT)).toBe(1)
+    expect(device(s).every((e) => e.boot === bare(ID_A))).toBe(true)
+  })
+
+  test('with tagBoot false there is no boot command and no tag', async () => {
+    const s = await startWith({ tagBoot: false })
     expect(s.runner.count(BOOT)).toBe(0)
     expect(device(s).every((e) => e.boot === undefined)).toBe(true)
   })
@@ -1009,8 +1015,8 @@ describe('boot tagging', () => {
     await s.session.stop()
   })
 
-  test('setFilter with a boot filter on an untagged session reads the boot ID once, then tags', async () => {
-    const s = await startWith({}, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
+  test('setFilter with a boot filter on a session that opted out of tags reads the boot ID once, then tags', async () => {
+    const s = await startWith({ tagBoot: false }, FOLLOW, { script: { [BOOT]: bootOut(ID_A) } })
     expect(s.runner.count(BOOT)).toBe(0)
     s.session.setFilter({ boot: ['current'] })
     await waitFor(() => s.ovd().length > 0)

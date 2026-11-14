@@ -45,9 +45,10 @@ export interface LogStartOptions {
   // Entries the session keeps for `entries()` (default LOG_BUFFER_SIZE; 0 keeps none).
   capacity?: number
   // Read the device's boot ID at every stream start and tag the stream's entries with it
-  // (`LogEntry.boot`, the `--json` field `boot`). Off by default: it adds one fixed device
-  // command (`cat /proc/sys/kernel/random/boot_id`) per stream. A filter with `boot` values
-  // turns it on by itself. A failed read leaves the entries untagged and is no error.
+  // (`LogEntry.boot`, the `--json` field `boot`). On by default: it adds one fixed device
+  // command (`cat /proc/sys/kernel/random/boot_id`) per stream. `false` skips it, unless a
+  // filter with `boot` values needs it. A failed read leaves the entries untagged and is no
+  // error; a stream whose read failed is read again when a boot filter turns up.
   tagBoot?: boolean
   signal?: AbortSignal
   // Called for every parsed batch, with the entries that match (possibly none), the counts
@@ -139,8 +140,8 @@ export function createLogs(deps: LogsDeps): LogsApi {
       }
       // Usage errors and the target come first: they write no activity entry.
       const startFilter = compileLogFilter(opts.filter ?? {}, deps.now(), filterContext)
-      // Turned on later too, when a boot filter is set on a session that didn't ask for tags.
-      let tagBoot = (opts.tagBoot ?? false) || startFilter.usesBoot
+      // Turned on later too, when a boot filter is set on a session that opted out of tags.
+      let tagBoot = (opts.tagBoot ?? true) || startFilter.usesBoot
       const device = await onlineTarget(deps.devices, opts.device)
       const vdaSerial = device.vdaSerial
       if (vdaSerial === undefined) throw offline(device)

@@ -190,6 +190,34 @@ describe('what is read back is untrusted', () => {
     expect((await filters.list()).map((item) => item.name)).not.toContain('newer')
   })
 
+  test('the error never echoes zod’s message or the file’s keys', async () => {
+    await seed({ version: 1, filters: [{ name: 'a', filter: { '/Users/x/secret': 1 } }] })
+    const [item] = await filters.list()
+    const json = JSON.stringify(item)
+    expect(json).not.toContain('/Users/x/secret')
+    expect(item).toMatchObject({ valid: false, error: { code: 'INVALID_LOG_FILTER' } })
+  })
+
+  test('a name that fails the name rule is invalid, shown safe, and still removable raw', async () => {
+    const raw = `Bad\u001b[31m${'x'.repeat(60)}`
+    await seed({ version: 1, filters: [{ name: raw, filter: {} }] })
+    const [item] = await filters.list()
+    expect(item?.valid).toBe(false)
+    expect(item?.name).not.toContain('\u001b')
+    expect(Array.from(item?.name ?? '').length).toBeLessThanOrEqual(40)
+    expect(await filters.valid()).toEqual([])
+    await filters.remove(raw)
+    expect(await filters.list()).toEqual([])
+  })
+
+  test('a symlinked file is unreadable, not followed', async () => {
+    await mkdir(home, { recursive: true })
+    const target = join(home, 'real.json')
+    await writeFile(target, JSON.stringify({ version: 1, filters: [] }))
+    await symlink(target, file())
+    await expect(filters.list()).rejects.toMatchObject({ code: 'LOG_FILTERS_UNREADABLE' })
+  })
+
   test('a regex bomb on disk is listed valid: false and can’t be applied', async () => {
     await seed({
       version: 1,

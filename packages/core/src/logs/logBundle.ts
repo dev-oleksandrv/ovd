@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { basename } from 'node:path'
 import type { ActivityLog } from '../activity/activityLog.js'
+import { SURFACES } from '../activity/activityLog.js'
 import { createPreflight } from '../activity/logged.js'
 import { writeZip, ZipError } from '../archive/zipWriter.js'
 import type { Crashes } from '../crashes/types.js'
@@ -8,7 +9,7 @@ import { isAppId } from '../deviceApps/appId.js'
 import type { Devices } from '../devices/devices.js'
 import { onlineTarget } from '../devices/onlineTarget.js'
 import type { Device } from '../devices/types.js'
-import { OvdError, type ErrorCode } from '../errors/ovdError.js'
+import { ERROR_CODES, OvdError, type ErrorCode } from '../errors/ovdError.js'
 import type { SdkLocator } from '../sdk/sdkLocator.js'
 import { slug } from '../screenshot/captures.js'
 import {
@@ -25,6 +26,8 @@ import {
 } from '../screenshot/saveFile.js'
 import { bundlesDir, ensureBundlesDir } from './bundlesDir.js'
 import { compileLogFilter, type LogFilterInput } from './logFilter.js'
+import { levelLongName } from './logLevel.js'
+import { compileProcessRules } from './processRules.js'
 import { logJson } from './logExport.js'
 import { logText, ovdEventText } from './logText.js'
 import { assertFilterName } from './savedFilters.js'
@@ -66,8 +69,8 @@ logs.jsonl     The same lines, one JSON object per line, as "ovd logs --json" pr
 apps.json      The side-loaded apps on the device: package ID and version.
 crashes.json   The crash reports of those apps: metadata only, no report contents.
 
-Not in this bundle: serials, IP addresses, host paths, screenshots, crash report files and
-OVD's activity log.
+OVD adds no serials, IP addresses or host paths of its own, and no screenshots, crash report
+files or activity log. Lines copied from the device may contain such things.
 
 Made by OVD (Open Vega DevTools), an unofficial toolkit for Vega OS developers.
 `
@@ -128,45 +131,101 @@ export interface LogBundleDeps {
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>
 }
 
-// OVD's own lines without anything that names a host path. A build event keeps neither its
-// folder nor its file; an install event keeps the package ID only; app IDs must look like IDs.
+// OVD's own lines without anything that names a host path. Every event is rebuilt from an
+// allow-list of fields, each checked against a pattern or a list: the events of the desktop's
+// buffer come from the renderer, so none of them is trusted. A build event keeps neither its
+// folder nor its file.
 type BundleEvent = Exclude<OvdEvent, { kind: 'build' }> | { kind: 'build' }
+
+const SIGNAL = /^[A-Za-z0-9_+-]{1,16}$/
+const PROCESS = /^[A-Za-z0-9._-]{1,64}$/
+const SECOND = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/
+
+const appOf = (value: unknown): { app: string } | Record<string, never> =>
+  typeof value === 'string' && isAppId(value) ? { app: value } : {}
+const signalOf = (value: unknown): { signal: string } | Record<string, never> =>
+  typeof value === 'string' && SIGNAL.test(value) ? { signal: value } : {}
+const intOf = <K extends string>(
+  key: K,
+  value: unknown
+): { [P in K]: number } | Record<string, never> =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? ({ [key]: value } as { [P in K]: number })
+    : {}
+const errorCodeOf = (value: unknown): { errorCode: ErrorCode } | Record<string, never> =>
+  typeof value === 'string' && (ERROR_CODES as readonly string[]).includes(value)
+    ? { errorCode: value as ErrorCode }
+    : {}
+const surfaceOf = (value: unknown): (typeof SURFACES)[number] =>
+  SURFACES.find((surface) => surface === value) ?? 'cli'
 
 function sanitizeEvent(event: OvdEvent): { event: BundleEvent; text: string } {
   switch (event.kind) {
     case 'build':
       return { event: { kind: 'build' }, text: 'New build' }
     case 'install': {
-      const clean: BundleEvent = {
+      const clean: OvdEvent = {
         kind: 'install',
-        action: event.action,
-        surface: event.surface,
-        result: event.result,
-        ...(event.package !== undefined && isAppId(event.package)
+        action: event.action === 'app.reinstall' ? 'app.reinstall' : 'app.install',
+        surface: surfaceOf(event.surface),
+        result: event.result === 'ok' ? 'ok' : 'error',
+        ...(typeof event.package === 'string' && isAppId(event.package)
           ? { package: event.package }
           : {}),
-        ...(event.errorCode === undefined ? {} : { errorCode: event.errorCode })
+        ...appOf(event.app),
+        ...errorCodeOf(event.errorCode)
       }
       return { event: clean, text: ovdEventText(clean) }
     }
     case 'launch': {
-      const { app, ...rest } = event
-      const clean: BundleEvent = app !== undefined && isAppId(app) ? { ...rest, app } : rest
+      const results = ['verified', 'crashed', 'not-running', 'failed'] as const
+      const clean: OvdEvent = {
+        kind: 'launch',
+        action: event.action === 'app.restart' ? 'app.restart' : 'app.launch',
+        surface: surfaceOf(event.surface),
+        result: results.find((result) => result === event.result) ?? 'failed',
+        ...appOf(event.app),
+        ...intOf('pid', event.pid),
+        ...signalOf(event.signal),
+        ...errorCodeOf(event.errorCode)
+      }
       return { event: clean, text: ovdEventText(clean) }
     }
     case 'crash': {
-      const { app, ...rest } = event
-      const clean: BundleEvent = app !== undefined && isAppId(app) ? { ...rest, app } : rest
+      const clean: OvdEvent = {
+        kind: 'crash',
+        ...appOf(event.app),
+        ...intOf('pid', event.pid),
+        ...signalOf(event.signal),
+        ...intOf('index', event.index)
+      }
       return { event: clean, text: ovdEventText(clean) }
     }
-    case 'restarted':
+    case 'rate-limited': {
+      const clean: OvdEvent = {
+        kind: 'rate-limited',
+        process:
+          typeof event.process === 'string' && PROCESS.test(event.process)
+            ? event.process
+            : 'unknown',
+        hidden: Number.isSafeInteger(event.hidden) && event.hidden >= 0 ? event.hidden : 0,
+        second:
+          typeof event.second === 'string' && SECOND.test(event.second) ? event.second : 'unknown'
+      }
+      return { event: clean, text: ovdEventText(clean) }
+    }
+    case 'restarted': {
+      const clean: OvdEvent = { kind: 'restarted', reason: 'install' }
+      return { event: clean, text: ovdEventText(clean) }
+    }
     case 'disconnected':
     case 'reconnected':
-    case 'rate-limited':
     case 'boot-unknown':
     case 'boot-late':
-    case 'app-list-unavailable':
-      return { event, text: ovdEventText(event) }
+    case 'app-list-unavailable': {
+      const clean: OvdEvent = { kind: event.kind }
+      return { event: clean, text: ovdEventText(clean) }
+    }
     default:
       return assertNever(event)
   }
@@ -206,14 +265,57 @@ function clean(value: string, max = 80): string {
   return Array.from(value.replace(CONTROLS, '')).slice(0, max).join('')
 }
 
-// The device's OVD name. A name that holds the serial, the address or the ID (a rename, say)
-// would put them in every file name and the manifest, so it's replaced.
+// The device's OVD name. A name that holds the serial, the address or the ID (a rename, say),
+// or four or more characters of them (the default multi-stick name ends in the serial's last
+// four), would put them in every file name and the manifest, so it's replaced by the kind.
+const MIN_LEAK = 4
+
+function sharesPart(name: string, secret: string): boolean {
+  if (secret.length < MIN_LEAK) return name.includes(secret)
+  const lower = name.toLowerCase()
+  const chars = Array.from(secret.toLowerCase())
+  for (let i = 0; i + MIN_LEAK <= chars.length; i++) {
+    if (lower.includes(chars.slice(i, i + MIN_LEAK).join(''))) return true
+  }
+  return false
+}
+
 function deviceName(device: Device): string {
   const name = clean(device.name, 64)
   const secrets = [device.id, device.serial, device.vdaSerial, device.ip].filter(
     (value): value is string => typeof value === 'string' && value.length > 0
   )
-  return name === '' || secrets.some((secret) => name.includes(secret)) ? 'device' : name
+  if (name !== '' && !secrets.some((secret) => sharesPart(name, secret))) return name
+  return device.kind === 'vvd' ? 'Vega Virtual Device' : 'Fire TV stick'
+}
+
+// The manifest's filter: the compiled arguments, except the free-text ones (tag, identity, a
+// rule's identity), which can hold anything the user typed (S2). Those are recorded as counts;
+// the rule levels and rates stay, under the rule's number instead of its identity.
+function maskedFilter(
+  args: Record<string, string>,
+  input: LogFilterInput | undefined
+): Record<string, string> {
+  const { tag, identity, mute } = args
+  const out: Record<string, string> = { ...args }
+  for (const key of ['tag', 'identity', 'mute', 'process-level', 'process-rate']) delete out[key]
+  const count = (value: string | undefined, items: readonly string[] | undefined) => {
+    if (value === undefined) return
+    const n = new Set(items).size
+    return `${n === 0 ? 'some' : n} value${n === 1 ? '' : 's'}`
+  }
+  const tags = count(tag, input?.tag)
+  if (tags !== undefined) out.tag = tags
+  const identities = count(identity, input?.identity)
+  if (identities !== undefined) out.identity = identities
+  const rules = compileProcessRules(input?.processRules ?? [])
+  const levels = rules.flatMap((r, i) => (r.level ? [`#${i + 1}=${levelLongName(r.level)}`] : []))
+  const rates = rules.flatMap((r, i) => (r.rate === undefined ? [] : [`#${i + 1}=${r.rate}`]))
+  const muted = rules.filter((r) => r.mute).length
+  if (levels.length > 0) out['process-level'] = levels.join(',')
+  if (rates.length > 0) out['process-rate'] = rates.join(',')
+  if (mute !== undefined) out.mute = `${muted} value${muted === 1 ? '' : 's'}`
+  return out
 }
 
 function stamp(at: Date): string {
@@ -301,8 +403,6 @@ export function createLogBundle(deps: LogBundleDeps): LogBundle {
     const session = await deps.logs.start({
       device: device.id,
       filter: opts.filter ?? {},
-      // The boot is in the bundle's JSON lines: one fixed read per stream.
-      tagBoot: true,
       ...(opts.signal ? { signal: opts.signal } : {})
     })
     try {
@@ -366,7 +466,10 @@ export function createLogBundle(deps: LogBundleDeps): LogBundle {
       lines: entries.length,
       timeRange: times.length === 0 ? null : { from: times[0], to: times[times.length - 1] },
       // The search text is never recorded (it can hold anything the user typed, S2).
-      filter: { ...rest, ...(grep === undefined ? {} : { search: 'set' }) },
+      filter: {
+        ...maskedFilter(rest, opts.filter),
+        ...(grep === undefined ? {} : { search: 'set' })
+      },
       ...(opts.preset === undefined ? {} : { preset: opts.preset }),
       apps: apps.ok ? 'ok' : 'unavailable',
       ...(apps.ok ? {} : { appsError: apps.code }),
@@ -391,17 +494,25 @@ export function createLogBundle(deps: LogBundleDeps): LogBundle {
     // Metadata only: the one-line summary is the app's own text, so it stays out.
     const crashesJson = crashes.ok
       ? {
-          crashes: crashes.value.crashes.map((crash) => ({
-            id: crash.id,
-            package: crash.package,
-            kind: crash.kind,
-            signal: crash.signal,
-            ...(crash.signalName === undefined ? {} : { signalName: crash.signalName }),
-            pid: crash.pid,
-            time: crash.time,
-            ...(crash.version === undefined ? {} : { version: clean(crash.version, 64) }),
-            ...(crash.build === undefined ? {} : { build: clean(crash.build, 64) })
-          }))
+          crashes: crashes.value.crashes.flatMap((crash) =>
+            isAppId(crash.package)
+              ? [
+                  {
+                    id: crash.id,
+                    package: crash.package,
+                    kind: crash.kind === 'js' ? 'js' : 'native',
+                    signal: crash.signal,
+                    ...(crash.signalName === undefined
+                      ? {}
+                      : { signalName: clean(crash.signalName, 32) }),
+                    pid: crash.pid,
+                    time: clean(crash.time, 40),
+                    ...(crash.version === undefined ? {} : { version: clean(crash.version, 64) }),
+                    ...(crash.build === undefined ? {} : { build: clean(crash.build, 64) })
+                  }
+                ]
+              : []
+          )
         }
       : { unavailable: true, error: crashes.code }
     const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`

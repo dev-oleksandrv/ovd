@@ -1,4 +1,5 @@
-import { lstat, readFile } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { open } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { isOvdError, OvdError, toErrorJson, type ErrorJson } from '../errors/ovdError.js'
@@ -37,6 +38,26 @@ export function assertFilterName(name: unknown): string {
     )
   }
   return name
+}
+
+function validName(name: string): boolean {
+  return name.length >= 1 && name.length <= MAX_FILTER_NAME_CHARS && NAME.test(name)
+}
+
+// eslint-disable-next-line no-control-regex -- matching control characters is the point
+const UNSAFE_CHAR = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/
+
+// A stored name that fails the rule, made safe to print: controls escaped, bounded.
+function displayName(name: string): string {
+  const shown = Array.from(name)
+    .slice(0, MAX_FILTER_NAME_CHARS)
+    .map((char) =>
+      UNSAFE_CHAR.test(char)
+        ? `\\u${(char.codePointAt(0) ?? 0).toString(16).padStart(4, '0')}`
+        : char
+    )
+    .join('')
+  return Array.from(shown).slice(0, MAX_FILTER_NAME_CHARS).join('')
 }
 
 function badName(message: string, hint = 'Use 1–40 characters of a-z, 0-9 and -'): OvdError {
@@ -98,10 +119,9 @@ function checkFilter(raw: unknown, now: Date): LogFilterInput {
   }
   const parsed = filterSchema.safeParse(raw)
   if (!parsed.success) {
-    const issue = parsed.error.issues[0]
-    const where = issue?.path.join('.') || 'filter'
+    // A fixed message: zod's text and path can echo what the file holds (a key name, a value).
     throw invalidFilter(
-      `The saved filter isn’t valid (${where}: ${issue?.message ?? 'unexpected value'})`,
+      'The saved filter isn’t valid (unknown or invalid field)',
       'Re-save it with ovd logs filter save, or delete it'
     )
   }
@@ -158,19 +178,21 @@ export function createSavedFilters(opts: { home: string; now?: () => Date }): Sa
     )
 
   async function readRaw(): Promise<RawEntry[]> {
-    let info
-    try {
-      info = await lstat(file)
-    } catch (error) {
-      if (isNotFound(error)) return []
-      throw unreadable(codeOf(error))
-    }
-    if (!info.isFile()) throw unreadable('not a regular file')
-    if (info.size > MAX_FILE_BYTES) throw unreadable('too large')
+    // One handle for the checks and the read, and no symlink followed: nothing can swap the file
+    // between the check and the read.
     let body: string
     try {
-      body = await readFile(file, 'utf8')
+      const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW)
+      try {
+        const info = await handle.stat()
+        if (!info.isFile()) throw unreadable('not a regular file')
+        if (info.size > MAX_FILE_BYTES) throw unreadable('too large')
+        body = await handle.readFile('utf8')
+      } finally {
+        await handle.close()
+      }
     } catch (error) {
+      if (error instanceof OvdError) throw error
       if (isNotFound(error)) return []
       throw unreadable(codeOf(error))
     }
@@ -186,6 +208,19 @@ export function createSavedFilters(opts: { home: string; now?: () => Date }): Sa
   }
 
   function judge(entry: RawEntry): SavedFilterItem {
+    if (!validName(entry.name)) {
+      return {
+        name: displayName(entry.name),
+        filter: {},
+        valid: false,
+        error: toErrorJson(
+          invalidFilter(
+            'The saved filter has an invalid name',
+            'Delete it with ovd logs filter rm and save it again'
+          )
+        )
+      }
+    }
     try {
       return { name: entry.name, filter: checkFilter(entry.filter, now()), valid: true }
     } catch (error) {

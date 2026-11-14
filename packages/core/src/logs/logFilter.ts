@@ -40,7 +40,7 @@ export interface LogFilterInput {
   // A syslog facility from LOG_FACILITIES.
   facility?: string[]
   // A boot ID (32 hex characters, dashes accepted) or `current`: the boot of the stream now
-  // running. Needs the session to read the boot ID (`LogStartOptions.tagBoot`).
+  // running. Needs the boot ID the session reads at each stream start (`LogStartOptions.tagBoot`).
   boot?: string[]
   // Per-process level, rate limit and mute (F27), applied in order by `evaluator()`.
   processRules?: ProcessRuleInput[]

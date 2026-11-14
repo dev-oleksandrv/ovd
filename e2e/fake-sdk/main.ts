@@ -181,14 +181,18 @@ const PRESETS_RECORDING = 'loggingctl-log/virtual-device-presets.txt'
 // burst when the world asks for it (fixtures/0.24/README.md, Synthesized sequences). The burst
 // continues the recording's last line: same date and host, in the following device second.
 function streamText(w: World, recording: string): string {
-  const text = fixture(w.logStream.recording === 'presets' ? PRESETS_RECORDING : recording)
+  const used = w.logStream.recording === 'presets' ? PRESETS_RECORDING : recording
+  const text = fixture(used)
   if (!w.logStream.burst) return text
   const last = text.trimEnd().split('\n').at(-1) ?? ''
   const m = /^(\w{3} \d\d) (\d\d):(\d\d):(\d\d)\.\d+ (\S+) /.exec(last)
-  if (!m) return text
+  if (!m) throw new Error(`fake-sdk: cannot continue ${used}`)
   const [, day, hh, mm, ss, host] = m as unknown as [string, string, string, string, string, string]
   const at = (offset: number): string => {
-    const total = (Number(hh) * 3600 + Number(mm) * 60 + Number(ss) + offset) % 86_400
+    const total = Number(hh) * 3600 + Number(mm) * 60 + Number(ss) + offset
+    // The stamp has a day but no month rollover rule: a wrap past midnight would put the burst
+    // before the recording, so stop instead.
+    if (total >= 86_400) throw new Error(`fake-sdk: cannot continue ${used} past midnight`)
     const two = (n: number) => String(n).padStart(2, '0')
     return [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60]
       .map(two)
