@@ -22,6 +22,7 @@ import {
   stageFor,
   tempFor,
   writePart,
+  ZIP_KIND,
   type SaveFs,
   type SaveKind
 } from '../../src/index.js'
@@ -442,5 +443,29 @@ describe('link hardening', () => {
     await writeFile(part, 'new')
     expect(await commitFile(part, auto(), 'shot', noLinks)).toBe(join(dir, 'shot-2.png'))
     expect(await readFile(victim, 'utf8')).toBe('precious')
+  })
+})
+
+describe('ZIP_KIND', () => {
+  test('a log bundle is a .zip with its own failure code', async () => {
+    expect(ZIP_KIND).toEqual({ ext: 'zip', noun: 'log bundle', failure: 'LOG_BUNDLE_FAILED' })
+    const auto = { kind: 'auto' as const, dir, create: false }
+    const part = join(dir, '.b.part')
+    await writeFile(part, 'x')
+    expect(await commitFile(part, auto, 'ovd-logs-x', undefined, ZIP_KIND)).toBe(
+      join(dir, 'ovd-logs-x.zip')
+    )
+    await expect(
+      resolveDestination({
+        out: 'b.tar',
+        force: false,
+        cwd: dir,
+        capturesDir: join(dir, 'bundles'),
+        kind: ZIP_KIND
+      })
+    ).rejects.toMatchObject({
+      code: 'INVALID_PATH',
+      message: '--out must be a .zip file or a folder'
+    })
   })
 })

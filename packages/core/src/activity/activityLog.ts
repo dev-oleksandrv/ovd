@@ -26,6 +26,7 @@ export const ACTIVITY_ACTIONS = [
   'app.reinstall',
   'logs',
   'logs.restart',
+  'logs.bundle',
   'build.changed',
   'input.press',
   'input.text',
