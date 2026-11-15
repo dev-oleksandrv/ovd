@@ -15,6 +15,12 @@ describe('parseVlcmCrashHistory', () => {
     expect(parseVlcmCrashHistory(history(file)).map((e) => e.pid)).toEqual(pids)
   })
 
+  test('SDK 2.0: a Virtual Device with no crash since boot', () => {
+    expect(
+      parseVlcmCrashHistory(fixture('2.0/vlcm-crash-history/virtual-device-empty.txt'))
+    ).toEqual([])
+  })
+
   test('reads pid, package, uptime and the epoch ms of each entry', () => {
     expect(parseVlcmCrashHistory(history('virtual-device-after'))).toEqual([
       {

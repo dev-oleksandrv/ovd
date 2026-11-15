@@ -36,6 +36,19 @@ describe('parseDeviceInfo', () => {
     expect(parseDeviceInfo(fixture(`0.24/${file}`))).toMatchObject(expected)
   })
 
+  // SDK 2.0 on a Linux x86_64 host: `os` is `vega`, the OS version is in `buildDescription`.
+  test('2.0/vega-device-info/virtual-device.json', () => {
+    expect(parseDeviceInfo(fixture('2.0/vega-device-info/virtual-device.json'))).toMatchObject({
+      os: 'OS 2.0',
+      build: 'TV Ship/102815880',
+      architecture: 'x86_64',
+      profile: 'tv',
+      product: 'vvrp-tv-x64',
+      simulated: true,
+      developerMode: true
+    })
+  })
+
   test('keeps the raw document for the detail view', () => {
     const text = fixture('0.24/vega-device-info/stick-usb.json')
     expect(parseDeviceInfo(text).raw).toEqual(JSON.parse(text))

@@ -41,6 +41,11 @@ describe('parseInstallApp', () => {
     })
   })
 
+  test('2.0/vega-device-install-app/installed.txt', () => {
+    const stdout = fixture('2.0/vega-device-install-app/installed.txt')
+    expect(parseInstallApp({ stdout, stderr: '', exitCode: 0 })).toEqual({ installed: true })
+  })
+
   test('falls back to the last stderr line, then the exit code', () => {
     expect(
       parseInstallApp({ stdout: '', stderr: 'boom\nlast words\n', exitCode: 3 })

@@ -26,6 +26,19 @@ describe('parseVptInfo', () => {
     expect(info.unpackedSize).toBeGreaterThan(0)
   })
 
+  // SDK 2.0's template targets OS 2.0 and still lists 1.2.
+  test('2.0/vpt-info/hellovega-x86_64-debug.json', () => {
+    expect(parseVptInfo(fixture('2.0/vpt-info/hellovega-x86_64-debug.json'))).toMatchObject({
+      id: 'com.example.hellovega',
+      title: 'Basic UI React Native Application for project hellovega',
+      version: '0.1.0',
+      buildNumber: 1,
+      unpackedSize: 1127517,
+      osVersions: ['1.2', '2.0'],
+      contractPackageVersion: '1.0.4482.0'
+    })
+  })
+
   test('keeps the document as printed', () => {
     const out = fixture('0.24/vpt-info/player-armv7-release.json')
     expect(parseVptInfo(out).raw).toEqual(JSON.parse(out))

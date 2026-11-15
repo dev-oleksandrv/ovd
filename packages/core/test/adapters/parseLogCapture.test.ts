@@ -10,6 +10,13 @@ describe('parseLogCapture', () => {
     })
   })
 
+  test('SDK 2.0 on the Virtual Device', () => {
+    expect(parseLogCapture(fixture('2.0/log-capture/virtual-device-started.txt'))).toEqual({
+      file: '/tmp/tmp.XXXXegZvtD',
+      pid: 166
+    })
+  })
+
   test.each([
     ['a path outside mktemp’s', '/tmp/../etc 1'],
     ['shell characters', '/tmp/tmp.a;rm 1'],

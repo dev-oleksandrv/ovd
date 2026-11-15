@@ -6,12 +6,13 @@ const recorded = (path: string) => fixture(`0.24/${path}`)
 
 describe('parseDeviceAppCommand', () => {
   test.each([
-    ['launch', 'vega-device-launch-app/launched.txt'],
-    ['uninstall', 'vega-device-uninstall-app/uninstalled.txt']
+    ['launch', '0.24/vega-device-launch-app/launched.txt'],
+    ['uninstall', '0.24/vega-device-uninstall-app/uninstalled.txt'],
+    ['launch', '2.0/vega-device-launch-app/launched.txt']
   ] as const)('%s: %s is a success', (verb, file) => {
-    expect(
-      parseDeviceAppCommand({ stdout: recorded(file), stderr: '', exitCode: 0 }, verb)
-    ).toEqual({ ok: true })
+    expect(parseDeviceAppCommand({ stdout: fixture(file), stderr: '', exitCode: 0 }, verb)).toEqual(
+      { ok: true }
+    )
   })
 
   test.each([
