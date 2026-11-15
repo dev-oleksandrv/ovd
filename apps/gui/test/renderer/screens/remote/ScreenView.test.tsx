@@ -1,5 +1,5 @@
 import type { Device, RemoteKey } from '@ovd/core'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type {
   InputOutcome,
@@ -216,6 +216,15 @@ describe('ScreenView on the Virtual Device', () => {
     await waitFor(() => expect(stub.api.screen.start).toHaveBeenCalledTimes(2))
   })
 
+  test('no signal from main while the list still has it online: Retry starts it again', async () => {
+    const stub = renderScreen([onlineVvd])
+    await live(stub)
+    act(() => stub.pushScreen({ status: 'no-signal', target: LIVE }))
+    expect(await screen.findByText('No signal')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Retry' })[0] as HTMLElement)
+    expect(stub.api.screen.start).toHaveBeenCalledTimes(2)
+  })
+
   test('unmount stops the live view', async () => {
     const stub = renderScreen([onlineVvd])
     await live(stub)
@@ -299,6 +308,61 @@ describe('ScreenView on a stick', () => {
     ok = true
     fireEvent.click(screen.getByRole('button', { name: 'Down' }))
     expect(await screen.findByText('Out of date')).toBeTruthy()
+  })
+
+  test('out of date counts only sends to this stick, not to another target', async () => {
+    const other: Device = { ...stick, id: 'G070000000000002', name: 'Bedroom stick' }
+    const stub = renderScreen([stick, other], {
+      refresh: async () => refreshed,
+      press: async (key): Promise<InputOutcome> => {
+        const to = vi.mocked(stub.api.devices.setTarget).mock.calls.length > 0 ? other : stick
+        return {
+          ok: true,
+          sent: { time: TAKEN, kind: 'press', label: key, cli: `c ${key}`, ok: true },
+          result: { target: { id: to.id, name: to.name }, backend: 'inputd-cli', keys: [key] }
+        }
+      }
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+    await screen.findByRole('img')
+    // The other stick becomes the target and takes a key.
+    await act(async () => {
+      await stub.api.devices.setTarget(other.id)
+      stub.push(ready([stick, other], other.id))
+    })
+    await screen.findByText('No screenshot yet')
+    fireEvent.click(await screen.findByRole('button', { name: 'Down' }))
+    await waitFor(() => expect(stub.api.input.press).toHaveBeenCalledTimes(1))
+    // Back on the first stick: its screenshot isn't out of date.
+    act(() => stub.push(ready([stick, other], stick.id)))
+    expect(await screen.findByRole('img')).toBeTruthy()
+    expect(screen.queryByText('Out of date')).toBeNull()
+  })
+
+  test('a Refresh that answers after a switch to another stick doesn’t show there', async () => {
+    const other: Device = { ...stick, id: 'G070000000000002', name: 'Bedroom stick' }
+    let answer: (r: ScreenRefreshed) => void = () => undefined
+    const stub = renderScreen([stick, other], {
+      refresh: () => new Promise<ScreenRefreshed>((resolve) => (answer = resolve))
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+    await waitFor(() => expect(stub.api.screen.refresh).toHaveBeenCalledWith(stick.id))
+    act(() => stub.push(ready([stick, other], other.id)))
+    await act(async () => answer(refreshed))
+    expect(await screen.findByText('Saved fire-tv-stick-20261112-040506.png')).toBeTruthy()
+    expect(URL.createObjectURL).not.toHaveBeenCalled()
+  })
+
+  test('a Refresh that answers after the screen left makes no Blob URL', async () => {
+    let answer: (r: ScreenRefreshed) => void = () => undefined
+    const stub = renderScreen([stick], {
+      refresh: () => new Promise<ScreenRefreshed>((resolve) => (answer = resolve))
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+    await waitFor(() => expect(stub.api.screen.refresh).toHaveBeenCalled())
+    cleanup()
+    await act(async () => answer(refreshed))
+    expect(URL.createObjectURL).not.toHaveBeenCalled()
   })
 
   test('the header’s Screenshot shows there too', async () => {

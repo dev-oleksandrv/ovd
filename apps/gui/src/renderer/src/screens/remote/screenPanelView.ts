@@ -7,7 +7,9 @@ export const LIVE_LABEL = 'Live · emulator gRPC'
 // What the screen view shows for the target. The Virtual Device streams its screen; a stick
 // shows its latest screenshot, out of date once a key or text was sent after it.
 export type ScreenView =
-  | { kind: 'no-signal'; name: string; status: Device['status'] }
+  // `retry`: main saw the device go away, but the device list still has it online, so nothing
+  // would start the view again by itself.
+  | { kind: 'no-signal'; name: string; status: Device['status']; retry?: boolean }
   | { kind: 'waiting'; name: string }
   | { kind: 'connecting'; name: string }
   | { kind: 'live' }
@@ -32,7 +34,7 @@ export function screenView(target: Device, live: ScreenState, stick: StickShot):
   const forTarget = live.target?.id === target.id
   if (forTarget && live.status === 'live') return { kind: 'live' }
   if (forTarget && live.status === 'no-signal') {
-    return { kind: 'no-signal', name: target.name, status: 'offline' }
+    return { kind: 'no-signal', name: target.name, status: 'offline', retry: true }
   }
   if (forTarget && live.status === 'error' && live.error) {
     return { kind: 'error', error: live.error }

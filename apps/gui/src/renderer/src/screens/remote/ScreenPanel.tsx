@@ -60,7 +60,19 @@ export function ScreenPanel({
         ) : view.kind === 'waiting' ? (
           <LoadingState label={`Waiting for ${view.name}…`} />
         ) : view.kind === 'no-signal' ? (
-          <EmptyState title="No signal" body={noSignalText(view.name, view.status)} />
+          <EmptyState
+            title="No signal"
+            body={noSignalText(view.name, view.status)}
+            {...(view.retry
+              ? {
+                  actions: (
+                    <Button icon="restart_alt" onClick={onRetry}>
+                      Retry
+                    </Button>
+                  )
+                }
+              : {})}
+          />
         ) : view.kind === 'error' ? (
           <ErrorState
             title={view.error.message}
