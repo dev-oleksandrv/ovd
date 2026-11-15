@@ -6,6 +6,13 @@ test('reads the port', () => {
   expect(parseVdaTcpip(fixture('0.24/vda-tcpip/restarting.txt'))).toEqual({ port: 5555 })
 })
 
-test.each(['', fixture('0.24/vda-tcpip/device-not-found.stderr.txt')])('rejects %j', (out) => {
-  expect(() => parseVdaTcpip(out)).toThrow(expect.objectContaining({ code: 'UNEXPECTED_OUTPUT' }))
+test('nothing printed: switched, port unknown', () => {
+  expect(parseVdaTcpip(fixture('0.24/vda-tcpip/empty.txt'))).toEqual({ port: null })
 })
+
+test.each([fixture('0.24/vda-tcpip/device-not-found.stderr.txt'), 'restarting in USB mode'])(
+  'rejects %j',
+  (out) => {
+    expect(() => parseVdaTcpip(out)).toThrow(expect.objectContaining({ code: 'UNEXPECTED_OUTPUT' }))
+  }
+)

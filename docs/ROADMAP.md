@@ -257,13 +257,13 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 ## Stage 4 — Control it from the desktop
 
-**Goal:** test without reaching for the physical remote. **Hardware checks first:** `inputd-cli button_press` reaches apps on a stick; stick screenshot rate. Stage 4 was signed off on the Virtual Device with both checks still open (maintainer decision, 2026-11-12): the stick paths of 4.2–4.5 are built and tested against the fake SDK but unverified on hardware (#43, #44, #117).
+**Goal:** test without reaching for the physical remote. **Hardware checks first:** `inputd-cli button_press` reaches apps on a stick; stick screenshot rate. Stage 4 was signed off on the Virtual Device with both checks still open (maintainer decision, 2026-11-12); the stick checks ran on 2026-11-15 (#43, #44, #117; ARCHITECTURE §8): keys and text reach apps on a stick (it drops `*+<>^|~` and non-ASCII text, which OVD now refuses), a stick takes about one screenshot per second, and `ovd reboot` brings a stick back Online on USB and over Wi‑Fi.
 
 **Sidebar adds:** Debug → Remote & Screen.
 
 - **4.1 Virtual Device gRPC backend — done (PR #109):** enable the emulator gRPC endpoint on every Virtual Device start (a small client in core instead of vega-vvd-driver; ADR 0027). Doctor gets "Emulator gRPC" (On · :8554 / Not running / couldn't enable). _Expected:_ after `ovd vvd start`, gRPC is on and a key reaches the device.
-- **4.2 Remote and text input — done (PR #110; the stick backend is unverified on hardware, #43):** `ovd input press <key>`, `ovd input text "<text>"`. Remote pad (D-pad, OK, Back, Home, Menu, play/pause, rewind, fast-forward), keyboard hint, pressed-key flash, "Type into TV". Input session panel (backend, sent commands). Sticks via `inputd-cli`, Virtual Device via gRPC (ADR 0027); Home disabled on the Virtual Device; one persistent session; keys don't fire while typing; "Remote unavailable — <device> is offline". _Expected:_ navigate and type on both device types with immediate feedback.
-- **4.3 Screenshots — done (PR #111; the stick backend is unverified on hardware, #44):** `ovd screenshot [--out] [--clipboard]`; button and palette action; saved to `~/ovd/captures` and the clipboard; Captures list. _Expected:_ one click saves a PNG from either device type.
+- **4.2 Remote and text input — done (PR #110; stick backend verified on hardware 2026-11-15, #43):** `ovd input press <key>`, `ovd input text "<text>"`. Remote pad (D-pad, OK, Back, Home, Menu, play/pause, rewind, fast-forward), keyboard hint, pressed-key flash, "Type into TV". Input session panel (backend, sent commands). Sticks via `inputd-cli`, Virtual Device via gRPC (ADR 0027); Home disabled on the Virtual Device; one persistent session; keys don't fire while typing; "Remote unavailable — <device> is offline". _Expected:_ navigate and type on both device types with immediate feedback.
+- **4.3 Screenshots — done (PR #111; stick backend verified on hardware 2026-11-15, #44: about 1 shot per second on the device):** `ovd screenshot [--out] [--clipboard]`; button and palette action; saved to `~/ovd/captures` and the clipboard; Captures list. _Expected:_ one click saves a PNG from either device type.
 - **4.4 Screen view — done (PR #112):** Virtual Device live view ("Live · emulator gRPC", ~16+ fps); stick "Latest screenshot · <time>" with Refresh (marked out of date after a key press); "No signal" when offline.
 - **4.5 Reboot & wait — done (PR #113):** `ovd reboot` returns when the device is back; desktop shows "Rebooting…". _Expected:_ a stick returns to Online without manual reconnecting.
 - **4.6 Homebrew tap:** moved to Stage 5 (5.4).
@@ -427,17 +427,17 @@ Plugin API · error explainer (log patterns → fix hints) · device farm view �
 
 About an hour each, done just before the stage that needs them.
 
-| Check                                                                         | Before                                             |
-| ----------------------------------------------------------------------------- | -------------------------------------------------- |
-| `inputd-cli button_press` reaches apps on a real stick                        | Stage 4 (signed off without)                       |
-| Screenshot rate on a stick with `gwsi-tool-screenshooter`                     | Stage 4 (signed off without; stick live view in 9) |
-| `vda reboot` and the Wi‑Fi reconnect on a real stick                          | Stage 4 (signed off without)                       |
-| `vpt validate` output format (verified 2026-11-15: line numbers, on the host) | Stage 5.3                                          |
-| `perf record` category names                                                  | Stage 8                                            |
-| Uninstall removes app data (verified 2026-11-08: it does)                     | Stage 9                                            |
-| Virtual Device snapshots save and load                                        | Stage 9                                            |
-| `vda pull` / shell access to app data on a production stick                   | Stage 9                                            |
-| `network speed` / `network delay` throttle app traffic                        | Stage 10.1                                         |
+| Check                                                                                               | Before                                             |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `inputd-cli button_press` reaches apps on a real stick (verified 2026-11-15: it does)               | Stage 4 (signed off without)                       |
+| Screenshot rate on a stick with `gwsi-tool-screenshooter` (verified 2026-11-15: about 1 per second) | Stage 4 (signed off without; stick live view in 9) |
+| `vda reboot` and the Wi‑Fi reconnect on a real stick (verified 2026-11-15: back by itself)          | Stage 4 (signed off without)                       |
+| `vpt validate` output format (verified 2026-11-15: line numbers, on the host)                       | Stage 5.3                                          |
+| `perf record` category names                                                                        | Stage 8                                            |
+| Uninstall removes app data (verified 2026-11-08: it does)                                           | Stage 9                                            |
+| Virtual Device snapshots save and load                                                              | Stage 9                                            |
+| `vda pull` / shell access to app data on a production stick                                         | Stage 9                                            |
+| `network speed` / `network delay` throttle app traffic                                              | Stage 10.1                                         |
 
 ## Success metrics
 
@@ -450,3 +450,5 @@ Starting targets, revisited after Stage 3.
 | "Empty logs" after reinstall        | Count while dogfooding                               | Zero                               |
 | Outside adoption                    | Stars, npm downloads, outside issues                 | Tracked from first public release  |
 | Outside contributors                | Merged PRs from non-maintainers                      | At least one by the end of Stage 5 |
+
+**Measured so far (#116).** .vpkg to running app with live logs, on a stick (2026-11-15): `ovd run <armv7 .vpkg>` of a throwaway `com.example.player` that wasn't installed showed the app's first log line after 82 s (install 3.6 s, the log session 12 s, launch 22 s, launch verification 21 s, the rest finding the target). The host was overloaded at the time (load average about 77 on 8 cores; one `vega exec vda shell true` took 1.5–2.7 s against about 0.3 s idle), so this says nothing about the target yet. The raw-SDK baseline (`vega device install-app`, `vega device launch-app`, `vega exec vda shell loggingctl log -f`) wasn't timed before the stick dropped off. Both are still to be measured on an idle host, with the week of self-tracking and the dogfooding count.

@@ -21,7 +21,8 @@ export function isRemoteKey(value: string): value is RemoteKey {
 }
 
 // `inputd-cli button_press <name>` on a stick. The Virtual Device accepted every one of these
-// names (ARCHITECTURE §8); whether each reaches apps on a stick is unverified (#43).
+// names; on a stick they reach the foreground app, all but `KEY_UP`, `KEY_ENTER` and
+// `KEY_HOMEPAGE` checked inside an app (ARCHITECTURE §8, #43).
 export const INPUTD_KEYS: Record<RemoteKey, string> = {
   up: 'KEY_UP',
   down: 'KEY_DOWN',

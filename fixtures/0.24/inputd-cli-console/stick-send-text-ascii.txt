@@ -1,0 +1,195 @@
+Welcome to the Inputd command line!
+Type 'h' or any valid command to continue.
+inputd-cli > Injecting Text: START
+
+inputd-cli > Injecting Text: !x
+
+inputd-cli > Injecting Text: "x
+
+inputd-cli > Injecting Text: #x
+
+inputd-cli > Injecting Text: $x
+
+inputd-cli > Injecting Text: %x
+
+inputd-cli > Injecting Text: &x
+
+inputd-cli > Injecting Text: 'x
+
+inputd-cli > Injecting Text: (x
+
+inputd-cli > Injecting Text: )x
+
+inputd-cli > Injecting Text: *x
+
+inputd-cli > Injecting Text: +x
+
+inputd-cli > Injecting Text: ,x
+
+inputd-cli > Injecting Text: -x
+
+inputd-cli > Injecting Text: .x
+
+inputd-cli > Injecting Text: /x
+
+inputd-cli > Injecting Text: :x
+
+inputd-cli > Injecting Text: ;x
+
+inputd-cli > Injecting Text: <x
+
+inputd-cli > Injecting Text: =x
+
+inputd-cli > Injecting Text: >x
+
+inputd-cli > Injecting Text: ?x
+
+inputd-cli > Injecting Text: @x
+
+inputd-cli > Injecting Text: [x
+
+inputd-cli > Injecting Text: \x
+
+inputd-cli > Injecting Text: ]x
+
+inputd-cli > Injecting Text: ^x
+
+inputd-cli > Injecting Text: _x
+
+inputd-cli > Injecting Text: `x
+
+inputd-cli > Injecting Text: {x
+
+inputd-cli > Injecting Text: |x
+
+inputd-cli > Injecting Text: }x
+
+inputd-cli > Injecting Text: ~x
+
+inputd-cli > Injecting Text: 0x
+
+inputd-cli > Injecting Text: 1x
+
+inputd-cli > Injecting Text: 2x
+
+inputd-cli > Injecting Text: 3x
+
+inputd-cli > Injecting Text: 4x
+
+inputd-cli > Injecting Text: 5x
+
+inputd-cli > Injecting Text: 6x
+
+inputd-cli > Injecting Text: 7x
+
+inputd-cli > Injecting Text: 8x
+
+inputd-cli > Injecting Text: 9x
+
+inputd-cli > Injecting Text: ax
+
+inputd-cli > Injecting Text: bx
+
+inputd-cli > Injecting Text: cx
+
+inputd-cli > Injecting Text: dx
+
+inputd-cli > Injecting Text: ex
+
+inputd-cli > Injecting Text: fx
+
+inputd-cli > Injecting Text: gx
+
+inputd-cli > Injecting Text: hx
+
+inputd-cli > Injecting Text: ix
+
+inputd-cli > Injecting Text: jx
+
+inputd-cli > Injecting Text: kx
+
+inputd-cli > Injecting Text: lx
+
+inputd-cli > Injecting Text: mx
+
+inputd-cli > Injecting Text: nx
+
+inputd-cli > Injecting Text: ox
+
+inputd-cli > Injecting Text: px
+
+inputd-cli > Injecting Text: qx
+
+inputd-cli > Injecting Text: rx
+
+inputd-cli > Injecting Text: sx
+
+inputd-cli > Injecting Text: tx
+
+inputd-cli > Injecting Text: ux
+
+inputd-cli > Injecting Text: vx
+
+inputd-cli > Injecting Text: wx
+
+inputd-cli > Injecting Text: xx
+
+inputd-cli > Injecting Text: yx
+
+inputd-cli > Injecting Text: zx
+
+inputd-cli > Injecting Text: Ax
+
+inputd-cli > Injecting Text: Bx
+
+inputd-cli > Injecting Text: Cx
+
+inputd-cli > Injecting Text: Dx
+
+inputd-cli > Injecting Text: Ex
+
+inputd-cli > Injecting Text: Fx
+
+inputd-cli > Injecting Text: Gx
+
+inputd-cli > Injecting Text: Hx
+
+inputd-cli > Injecting Text: Ix
+
+inputd-cli > Injecting Text: Jx
+
+inputd-cli > Injecting Text: Kx
+
+inputd-cli > Injecting Text: Lx
+
+inputd-cli > Injecting Text: Mx
+
+inputd-cli > Injecting Text: Nx
+
+inputd-cli > Injecting Text: Ox
+
+inputd-cli > Injecting Text: Px
+
+inputd-cli > Injecting Text: Qx
+
+inputd-cli > Injecting Text: Rx
+
+inputd-cli > Injecting Text: Sx
+
+inputd-cli > Injecting Text: Tx
+
+inputd-cli > Injecting Text: Ux
+
+inputd-cli > Injecting Text: Vx
+
+inputd-cli > Injecting Text: Wx
+
+inputd-cli > Injecting Text: Xx
+
+inputd-cli > Injecting Text: Yx
+
+inputd-cli > Injecting Text: Zx
+
+inputd-cli > Injecting Text: END
+
+inputd-cli > exiting...

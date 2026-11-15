@@ -138,6 +138,24 @@ describe('pairUsb', () => {
     expect(sleeps).toEqual([1000, 1000])
   })
 
+  // On a stick `vda tcpip` sometimes printed nothing and had switched; once a connect right
+  // after it printed something core couldn't read, not kept (ARCHITECTURE §8), so the first
+  // answer here is a placeholder, not SDK output.
+  test('a tcpip that prints nothing still connects, and an unreadable connect is retried', async () => {
+    const { pairing, runner } = setup({
+      [VDA]: [lists.usb, lists.wifi],
+      [FIB]: out('vda-shell-fib-trie/stick.txt'),
+      [TCPIP]: out('vda-tcpip/empty.txt'),
+      [CONNECT]: [{ stdout: 'unreadable placeholder\n' }, connect.refused, connect.ok]
+    })
+    await expect(pairing.pairUsb()).resolves.toMatchObject({ id: WIFI, saved: true })
+    expect(runner.count(CONNECT)).toBe(3)
+    expect(await activity()).toEqual([
+      expect.objectContaining({ action: 'pair.tcpip', result: 'ok' }),
+      expect.objectContaining({ action: 'pair.connect', result: 'ok' })
+    ])
+  })
+
   test('uses the port asked for', async () => {
     const { pairing, runner } = setup({
       [VDA]: [lists.usb, out('vda-devices/none.txt')],
@@ -332,6 +350,19 @@ describe('forget', () => {
     expect(await activity()).toEqual([
       expect.objectContaining({ action: 'forget', target: WIFI, result: 'ok' })
     ])
+  })
+
+  test('a vda usb that prints nothing is the switch back too', async () => {
+    const { pairing, ready } = setup(
+      {
+        [VDA]: lists.wifi,
+        [USB]: out('vda-usb/empty.txt'),
+        [DISCONNECT]: out('vda-disconnect/disconnected.txt')
+      },
+      { state: savedByUsb }
+    )
+    await ready
+    await expect(pairing.forget(WIFI)).resolves.toEqual({ id: WIFI, switchedToUsb: true })
   })
 
   test('an offline stick is forgotten but stays in TCP/IP mode', async () => {

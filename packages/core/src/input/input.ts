@@ -80,6 +80,10 @@ const VVD_VDA_SERIAL = 'emulator-5554'
 const CHECK_DEVICE = 'Check the device with ovd devices, then retry'
 const CONTROL = /\p{Cc}/u
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/
+// On a stick, `send_text` answers `Injecting Text: …` for these and still types nothing:
+// printable ASCII arrives except `*+<>^|~`, and one character outside ASCII drops the whole
+// line (ARCHITECTURE §8). They are refused before anything is sent, so a success is real.
+const STICK_DROPPED = /[*+<>^|~]/
 
 export function backendOf(device: Device): InputBackend {
   return device.kind === 'vvd' ? 'grpc' : 'inputd-cli'
@@ -115,8 +119,9 @@ function keysFor(keys: string[], backend: InputBackend): RemoteKey[] {
   return known
 }
 
-// Messages never carry the text: it may be a password.
-function textFor(text: string, backend: InputBackend): number {
+// Messages never carry the text: it may be a password. Without a backend, only what no device
+// takes is refused.
+function textFor(text: string, backend?: InputBackend): number {
   const length = [...text].length
   const invalid = (message: string, hint: string) => new OvdError('INVALID_TEXT', message, hint)
   if (length === 0)
@@ -134,6 +139,18 @@ function textFor(text: string, backend: InputBackend): number {
     throw invalid(
       'The Virtual Device only types printable ASCII',
       'Leave out accents, emoji and other non-ASCII characters'
+    )
+  }
+  if (backend === 'inputd-cli' && !PRINTABLE_ASCII.test(text)) {
+    throw invalid(
+      'A Fire TV stick only types ASCII',
+      'Leave out accents, emoji and other non-ASCII characters'
+    )
+  }
+  if (backend === 'inputd-cli' && STICK_DROPPED.test(text)) {
+    throw invalid(
+      'A Fire TV stick doesn’t type * + < > ^ | ~',
+      'Leave those characters out of the text'
     )
   }
   return length
@@ -383,7 +400,7 @@ export function createInput(deps: InputDeps): Input {
       return oneShot(
         'input.text',
         args,
-        () => textFor(text, 'inputd-cli'),
+        () => textFor(text),
         opts,
         (s) => s.text(text)
       )
