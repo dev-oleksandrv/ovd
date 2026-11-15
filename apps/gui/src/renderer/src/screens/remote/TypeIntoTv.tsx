@@ -16,8 +16,13 @@ export function TypeIntoTv({ asciiOnly, onSend }: TypeIntoTvProps) {
   const send = async () => {
     if (text === '' || sending) return
     setSending(true)
-    const ok = await onSend(text)
-    setSending(false)
+    let ok = false
+    try {
+      ok = await onSend(text)
+    } finally {
+      // Also when the send rejects: the spinner never sticks.
+      setSending(false)
+    }
     if (ok) setText('')
   }
   return (
