@@ -1,0 +1,2 @@
+application                             type      pid     id      state       lifespan       timeout container                               launch args                   
+com.example.hellovega.main              I         4097    41      VISIBLE     PERMANENT      n/a     framework.slice/essential/4097          <none>                        

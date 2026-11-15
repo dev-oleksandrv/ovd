@@ -1,0 +1,14 @@
+{
+  "title": "Basic UI React Native Application for project hellovega",
+  "id": "com.example.hellovega",
+  "version": "0.1.0",
+  "build_number": 1,
+  "size": 1127517,
+  "os_version_registry": {
+    "contract_package_version": "1.0.4482.0",
+    "os_versions": [
+      "1.2",
+      "2.0"
+    ]
+  }
+}

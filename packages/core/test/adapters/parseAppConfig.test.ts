@@ -4,10 +4,11 @@ import { fixture } from '../support/fixtures.js'
 
 describe('parseAppConfig', () => {
   test.each([
-    ['vpt-dump-app-config/debug.json', 'debug'],
-    ['vpt-dump-app-config/release.json', 'release']
+    ['0.24/vpt-dump-app-config/debug.json', 'debug'],
+    ['0.24/vpt-dump-app-config/release.json', 'release'],
+    ['2.0/vpt-dump-app-config/hellovega-debug.json', 'debug']
   ])('%s', (file, buildType) => {
-    expect(parseAppConfig(fixture(`0.24/${file}`))).toEqual({ buildType })
+    expect(parseAppConfig(fixture(file))).toEqual({ buildType })
   })
 
   test.each(['', '{"mainBundle":"index.hermes.bundle"}'])('rejects %j', (out) => {
