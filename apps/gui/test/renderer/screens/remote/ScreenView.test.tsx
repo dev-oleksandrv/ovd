@@ -367,7 +367,10 @@ describe('ScreenView on a stick', () => {
 
   test('the header’s Screenshot shows there too', async () => {
     const stub = stubAndTake()
-    fireEvent.click(await screen.findByRole('button', { name: 'Screenshot' }))
+    // Disabled until the device list has the stick: a click before that sends nothing.
+    const button = await screen.findByRole('button', { name: 'Screenshot' })
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(button)
     await waitFor(() => expect(stub.api.screen.image).toHaveBeenCalledWith(shot.path))
     expect(await screen.findByRole('img', { name: 'Latest screenshot · 04:05:06' })).toBeTruthy()
   })
