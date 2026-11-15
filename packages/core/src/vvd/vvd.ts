@@ -49,7 +49,7 @@ export type VvdGrpcProbe =
 
 export interface Vvd {
   status(): Promise<VvdState>
-  // Returns once VDA lists the Virtual Device online, with emulator gRPC turned on (ADR 0010).
+  // Returns once VDA lists the Virtual Device online, with emulator gRPC turned on (ADR 0027).
   start(opts?: { signal?: AbortSignal }): Promise<VvdStartResult>
   stop(): Promise<VvdState>
   developerMode(): Promise<{ developerMode: boolean; command: string }>

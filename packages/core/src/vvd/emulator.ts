@@ -18,7 +18,7 @@ import type { ImageFormat } from './grpcWire.js'
 export type EmulatorGrpcState = { status: 'on'; port: number } | { status: 'off' }
 
 // The Virtual Device's emulator endpoints: the console that turns gRPC on, and gRPC itself
-// (ADR 0010). Ports come from VDA's serial (`emulator-5554` → console 5554) unless the env
+// (ADR 0027). Ports come from VDA's serial (`emulator-5554` → console 5554) unless the env
 // overrides them, which lets e2e sandboxes run side by side.
 export interface Emulator {
   // The port `enableGrpc` asks for.

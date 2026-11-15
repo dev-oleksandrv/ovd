@@ -35,7 +35,7 @@ export const WELCOME_TIMEOUT_MS = 10_000
 // How long `exit` gets before the group is stopped.
 export const CLOSE_GRACE_MS = 2_000
 
-// One persistent `inputd-cli start` (ADR 0010: one console session for low latency). It runs as
+// One persistent `inputd-cli start` (ADR 0027: one console session for low latency). It runs as
 // a stream with stdin through the runner, in its own process group, so it never outlives OVD.
 export async function openInputdConsole(opts: {
   runner: Runner

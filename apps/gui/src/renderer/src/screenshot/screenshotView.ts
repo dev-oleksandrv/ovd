@@ -1,7 +1,7 @@
 import type { Device } from '@ovd/core'
 import type { ScreenshotTaken } from '../../../preload/api'
 
-// `ovd screenshot --clipboard --device <id>`: what the desktop's Screenshot runs (ADR 0005).
+// `ovd screenshot --clipboard --device <id>`: what the desktop's Screenshot runs (ADR 0029).
 export function screenshotCli(device: string): string {
   return `ovd screenshot --clipboard --device ${device}`
 }
