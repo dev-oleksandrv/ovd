@@ -59,6 +59,8 @@ interface Setup {
   // The target and the device list; `get` answers from `now` once set.
   target?: Device | null
   now?: Device | OvdError
+  // `get` throws this instead (an error that isn't an OvdError).
+  nowFails?: Error
   consoles?: (InputdStream | FakeStream)[]
   console?: InputdStreamOptions
   // What the emulator does with each `sendKeys`, in order; the last repeats. Default: accepts.
@@ -86,6 +88,7 @@ function setup(opts: Setup = {}) {
       return target ? { device: target, source: 'remembered' } : null
     },
     get: async () => {
+      if (opts.nowFails) throw opts.nowFails
       const now = opts.now ?? target
       if (now instanceof OvdError) throw now
       if (!now) throw new Error('no device')
@@ -199,6 +202,18 @@ describe('Input.press on a stick (inputd-cli)', () => {
     await expect(pressed).rejects.toMatchObject({
       code: 'TARGET_OFFLINE',
       message: 'Living room stick is offline'
+    })
+  })
+
+  test('re-reading the device fails with a non-OVD error: the original error stands', async () => {
+    const { input } = setup({
+      target: vvd,
+      sends: [broken],
+      nowFails: new TypeError('the device list broke')
+    })
+    await expect(input.press(['up'])).rejects.toMatchObject({
+      code: 'VVD_GRPC_FAILED',
+      message: 'Emulator gRPC sendKey failed'
     })
   })
 

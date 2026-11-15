@@ -155,13 +155,15 @@ export function createInput(deps: InputDeps): Input {
   const logged = createLogged(deps.activity)
   const preflight = createPreflight(deps.activity)
 
-  // The device as VDA lists it now; null when that can't be read.
+  // The device as VDA lists it now; null when that can't be read, whatever the reason, so the
+  // caller keeps the error it already has.
   async function reread(device: Device): Promise<Device | null> {
     try {
       return await deps.devices.get(device.id)
     } catch (error) {
-      if (!(error instanceof OvdError)) throw error
-      return error.code === 'DEVICE_NOT_FOUND' ? { ...device, status: 'offline' } : null
+      return error instanceof OvdError && error.code === 'DEVICE_NOT_FOUND'
+        ? { ...device, status: 'offline' }
+        : null
     }
   }
 

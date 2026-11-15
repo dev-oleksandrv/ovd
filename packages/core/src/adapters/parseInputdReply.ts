@@ -24,7 +24,8 @@ export function inputdReplyBody(buffer: string): string {
 export type InputdReply = { ok: true } | { ok: false; message: string }
 
 const PRESSED = /^Injecting Button Press As Driver: (\S+) State: short$/
-const TYPED = /^Injecting Text: /
+// The line is trimmed first, so a text of only spaces leaves `Injecting Text:` alone.
+const TYPED = /^Injecting Text:(\s|$)/
 const BAD_ARGUMENTS = /^send_text provided with an invalid number of arguments\.?$/
 
 // `button_press <name>`: ok when inputd-cli says it injected that key.
