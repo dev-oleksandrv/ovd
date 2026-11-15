@@ -1,22 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import { assertSafeRegex, MAX_REGEX_CHARS } from '../../src/logs/safeRegex.js'
+import { costVsBaseline, MAX_COST_VS_BASELINE } from '../support/regexCost.js'
 
 const rejects = (pattern: string) =>
   expect(() => assertSafeRegex(pattern)).toThrow(
     expect.objectContaining({ code: 'INVALID_LOG_FILTER' })
   )
-
-// The best of three runs: a loaded CI worker can slow one run, and a backtracking bomb is slow
-// in all of them.
-function fastest(regex: RegExp, text: string): number {
-  let best = Number.POSITIVE_INFINITY
-  for (let run = 0; run < 3; run++) {
-    const started = performance.now()
-    regex.test(text)
-    best = Math.min(best, performance.now() - started)
-  }
-  return best
-}
 
 describe('assertSafeRegex: refused', () => {
   test.each([
@@ -74,7 +63,7 @@ describe('assertSafeRegex: refused', () => {
   })
 })
 
-// Shared with the timing check below: every accepted pattern must also be fast.
+// Shared with the cost check below: every accepted pattern must also be cheap to run.
 const ACCEPTED = [
   'error',
   'a+b',
@@ -119,19 +108,32 @@ describe('assertSafeRegex: accepted', () => {
   })
 })
 
-describe('assertSafeRegex: the safe neighbours of the refused patterns finish fast', () => {
+describe('assertSafeRegex: the safe neighbours of the refused patterns cost about one open-ended repeat', () => {
   // The same line hurts `(a+)+$` for minutes: it ends with a char that fails every attempt.
   const hostile = `${'a'.repeat(4_095)}!`
 
   test.each(['(ab)+$', 'a+b', '(?:aa)+b', '(a|b)?c', '^(a+)?b', '(abc){2,3}$'])('%s', (pattern) => {
     assertSafeRegex(pattern)
-    expect(fastest(new RegExp(pattern, 'i'), hostile)).toBeLessThan(50)
+    const regex = new RegExp(pattern, 'i')
+    expect(costVsBaseline(hostile, () => regex.test(hostile))).toBeLessThan(MAX_COST_VS_BASELINE)
   })
 })
 
-describe('assertSafeRegex: every accepted pattern is fast on a hostile line', () => {
+describe('assertSafeRegex: every accepted pattern costs about one open-ended repeat on a hostile line', () => {
   const hostile = `${'a'.repeat(4_095)}!`
   test.each(ACCEPTED.filter((pattern) => pattern.length < 400))('%s', (pattern) => {
-    expect(fastest(new RegExp(pattern, 'i'), hostile)).toBeLessThan(50)
+    const regex = new RegExp(pattern, 'i')
+    expect(costVsBaseline(hostile, () => regex.test(hostile))).toBeLessThan(MAX_COST_VS_BASELINE)
+  })
+})
+
+describe('assertSafeRegex: the cost check catches what the guard refuses', () => {
+  // Cubic, so on the 4096-character line it runs for minutes; a short line keeps the test fast
+  // and still puts it far past the bound.
+  const short = `${'a'.repeat(255)}!`
+
+  test('.*a.*b', () => {
+    rejects('.*a.*b')
+    expect(costVsBaseline(short, () => /.*a.*b/i.test(short))).toBeGreaterThan(MAX_COST_VS_BASELINE)
   })
 })

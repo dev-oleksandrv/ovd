@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { compileLogFilter, LOG_FACILITIES, type LogFilterInput } from '../../src/logs/logFilter.js'
 import { FILTER_TEXT_MAX } from '../../src/logs/processRules.js'
 import type { LogEntry } from '../../src/logs/types.js'
+import { costVsBaseline, MAX_COST_VS_BASELINE } from '../support/regexCost.js'
 import { logLine, parseLines } from './logLines.js'
 
 const NOW = new Date('2026-11-08T12:00:00Z')
@@ -264,19 +265,14 @@ describe('regex safety', () => {
     )
   })
 
-  test('safe neighbours finish quickly on a hostile 4096-character message', () => {
+  test('safe neighbours cost about one open-ended repeat on a hostile 4096-character message', () => {
     const hostile = `${'a'.repeat(4_095)}!`
     const entry = { ...(ENTRIES[0] as LogEntry), message: hostile, tag: 't' }
     for (const pattern of ['(ab)+$', 'a+b', '(?:aa)+b', '^(a+)?b']) {
       const filter = compileLogFilter({ search: pattern, regex: true }, NOW)
-      // The best of three runs: a loaded CI worker slows one run, a backtracking bomb all.
-      let best = Number.POSITIVE_INFINITY
-      for (let run = 0; run < 3; run++) {
-        const started = performance.now()
-        filter.matches(entry)
-        best = Math.min(best, performance.now() - started)
-      }
-      expect(best).toBeLessThan(50)
+      expect(costVsBaseline(hostile, () => filter.matches(entry))).toBeLessThan(
+        MAX_COST_VS_BASELINE
+      )
     }
   })
 })
