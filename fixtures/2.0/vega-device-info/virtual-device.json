@@ -1,0 +1,14 @@
+{
+  "idme": "A000000000000",
+  "os": "vega",
+  "hostname": "amazon-0000000000000000",
+  "architecture": "x86_64",
+  "profile": "tv",
+  "product": "vvrp-tv-x64",
+  "buildDescription": "OS 2.0 (TV Ship/102815880)",
+  "deviceName": "VirtualDevice",
+  "kvdVersion": "",
+  "simulated": true,
+  "inDeveloperMode": true,
+  "user": "app_user"
+}
