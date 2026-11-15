@@ -56,3 +56,6 @@ An ADR records one significant decision: the context, what was decided, and what
 - [0024 Optional host tools](0024-optional-host-tools.md)
 - [0025 Licensing, distribution and no telemetry, without Homebrew](0025-licensing-distribution-without-homebrew.md)
 - [0026 Saved log filters and log bundles](0026-saved-log-filters-and-bundles.md)
+- [0027 Two backends for screen and input, with core's own emulator client](0027-screen-and-input-with-own-emulator-client.md)
+- [0028 End-to-end tests against a fake SDK, with open stick checks](0028-e2e-fake-sdk-with-open-stick-checks.md)
+- [0029 CLI and desktop ship together, except view-only actions](0029-cli-and-desktop-with-view-only-actions.md)
