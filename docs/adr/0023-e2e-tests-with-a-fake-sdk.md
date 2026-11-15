@@ -1,6 +1,6 @@
 # 0023. End-to-end tests against a fake SDK
 
-- Status: Accepted
+- Status: Superseded by 0028
 - Date: 2026-10-31
 
 ## Context
@@ -23,8 +23,3 @@ Unit tests cover parsers against fixtures, core actions with a fake runner, CLI 
 - A new SDK command needs a recorded fixture before its flow can be e2e-tested; the fake SDK learns it from that fixture.
 - The fake SDK models timing loosely: a stick reboots in one poll, not 41 s. Flows that depend on real timing, and SDK behavior itself, stay with the hardware checks and the nightly SDK check (Stage 3.7).
 - E2E runs are slower than unit tests (seconds per flow), so they run as their own CI job.
-
-## Amendments
-
-- 2026-11-12 (Stage 4 sign-off, maintainer decision): one narrow exception to "it never makes up output". A stick path whose hardware check is still open may be answered with hand-written output, so its flow is covered before a stick is available. Each such answer is listed in `fixtures/<sdk-version>/README.md` under "Synthesized sequences" and marked in the fake SDK's source, names its `[HW]` issue, and is replaced by a recording when that check runs. Today: the stick's `inputd-cli` console, answered with the Virtual Device's recordings (#43); the stick's `gwsi-tool-screenshooter` answer and pulled PNG (#44); and the stick's `vda reboot` answer (#117).
-- 2026-11-15 (hardware checks #43, #44, #117): the three hand-written stick answers above are replaced by stick recordings (`fixtures/0.24/README.md`): the console was recorded on a stick and matches the Virtual Device's recordings the fake already used; the screenshooter, `pull` and `rm -f` answers and `vda reboot` on USB and over Wi‑Fi are stick recordings. Only the screenshot PNG the fake's `pull` copies stays synthetic, a picture rather than SDK output.

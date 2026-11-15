@@ -16,7 +16,7 @@ export interface ScreenDeps {
   vvd: Pick<Vvd, 'ensureGrpc'>
 }
 
-// Only the Virtual Device streams its screen (emulator gRPC `streamScreenshot`, ADR 0010); a
+// Only the Virtual Device streams its screen (emulator gRPC `streamScreenshot`, ADR 0027); a
 // stick has screenshots only.
 export type ScreenBackend = 'grpc'
 

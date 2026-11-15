@@ -14,7 +14,10 @@ import type {
   LaunchResult,
   LoginPrompt,
   PackageBuild,
+  PackageFiles,
   PackageInfo,
+  PackageManifestFile,
+  PackageValidation,
   ProjectMode,
   RebootResult,
   ReinstallResult,
@@ -262,7 +265,17 @@ export function stubOvd(opts: {
         opts.packages?.builds ??
           (async (): Promise<IpcResult<PackageBuild[]>> => ({ ok: true, data: [] }))
       ),
-      pick: vi.fn(opts.packages?.pick ?? (async () => unexpected<string | null>('packages.pick')))
+      pick: vi.fn(opts.packages?.pick ?? (async () => unexpected<string | null>('packages.pick'))),
+      manifest: vi.fn(
+        opts.packages?.manifest ??
+          (async () => unexpected<PackageManifestFile>('packages.manifest'))
+      ),
+      files: vi.fn(
+        opts.packages?.files ?? (async () => unexpected<PackageFiles>('packages.files'))
+      ),
+      validate: vi.fn(
+        opts.packages?.validate ?? (async () => unexpected<PackageValidation>('packages.validate'))
+      )
     },
     install: {
       check: vi.fn(opts.install?.check ?? (async () => unexpected<ArchCheck>('install.check'))),

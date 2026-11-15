@@ -1,0 +1,1 @@
+warning: found 'meta-info/' directory in the sources, skipping as it will be regenerated.

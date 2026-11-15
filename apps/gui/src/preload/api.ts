@@ -25,7 +25,10 @@ import type {
   RebootResult,
   LoginPrompt,
   PackageBuild,
+  PackageFiles,
   PackageInfo,
+  PackageManifestFile,
+  PackageValidation,
   PressResult,
   ProjectMode,
   ReinstallResult,
@@ -237,7 +240,7 @@ export interface InputSent {
   error?: ErrorJson
 }
 
-// The input session main keeps for the target (one at a time, ADR 0010). `opening` while a
+// The input session main keeps for the target (one at a time, ADR 0027). `opening` while a
 // stick's `inputd-cli` console starts; `error` when it couldn't open (Retry opens it again).
 // `sent` is the last 50, newest first.
 export interface InputState {
@@ -340,6 +343,12 @@ export interface OvdApi {
     builds(): Promise<IpcResult<PackageBuild[]>>
     // The native picker; resolves with the chosen path, null when the user cancels.
     pick(): Promise<IpcResult<string | null>>
+    // Packages → Manifest, Files, Validate (Stage 5.3): `vpt dump <path> manifest.toml`,
+    // `vpt show-contents` and `vpt validate`; together, what `ovd pkg manifest | files | validate`
+    // run.
+    manifest(path: string): Promise<IpcResult<PackageManifestFile>>
+    files(path: string): Promise<IpcResult<PackageFiles>>
+    validate(path: string): Promise<IpcResult<PackageValidation>>
   }
   install: {
     // The architecture guard for a package on a device, with the matching recent build.
@@ -502,6 +511,9 @@ export const channels = {
   packagesInfo: 'ovd:packages:info',
   packagesBuilds: 'ovd:packages:builds',
   packagesPick: 'ovd:packages:pick',
+  packagesManifest: 'ovd:packages:manifest',
+  packagesFiles: 'ovd:packages:files',
+  packagesValidate: 'ovd:packages:validate',
   installCheck: 'ovd:install:check',
   install: 'ovd:install',
   installResolve: 'ovd:install:resolve',

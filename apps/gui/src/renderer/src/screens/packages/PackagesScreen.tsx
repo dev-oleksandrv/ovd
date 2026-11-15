@@ -10,7 +10,9 @@ import { LoadingState } from '../../ui/LoadingState'
 import { BuildRow } from './BuildRow'
 import { DropZone } from './DropZone'
 import { PackageDetail } from './PackageDetail'
+import { tabCli, type PackageTab } from './packageTabsView'
 import { infoCli, inspectedBuild, installBlocker, installCli } from './packagesView'
+import { usePackageTabs } from './usePackageTabs'
 
 type Builds =
   | { status: 'loading' }
@@ -26,8 +28,9 @@ interface PackagesScreenProps {
   onSwitchTarget: () => void
 }
 
-// Packages → Overview (Stage 2.2) and Install on target behind the architecture guard (2.3).
-// Builds are listed when the screen opens or the project changes; nothing watches build/ yet.
+// Packages → Overview (Stage 2.2), Install on target behind the architecture guard (2.3), and
+// Manifest, Files, Validate (5.3). Builds are listed when the screen opens or the project
+// changes; nothing watches build/ yet. A tab stays selected when another package is picked.
 export function PackagesScreen({ projectPath, onOpenFolder, onSwitchTarget }: PackagesScreenProps) {
   const { notify, echo } = useFeedback()
   const { state: devices } = useDevicesContext()
@@ -39,6 +42,11 @@ export function PackagesScreen({ projectPath, onOpenFolder, onSwitchTarget }: Pa
   const [selected, setSelected] = useState<string | null>(null)
   // Paths already asked for; a path without a result yet shows as loading.
   const requested = useRef(new Set<string>())
+  const tabs = usePackageTabs()
+  const [tab, setTab] = useState<PackageTab>('overview')
+  // The manifest line to show, for the package it belongs to.
+  const [focus, setFocus] = useState<{ path: string; line: number | null } | null>(null)
+  const [revalidating, setRevalidating] = useState<string | null>(null)
 
   useEffect(() => {
     let live = true
@@ -102,6 +110,45 @@ export function PackagesScreen({ projectPath, onOpenFolder, onSwitchTarget }: Pa
     if (current && !requested.current.has(current.path)) void read(current.path)
   }, [current, read])
 
+  // A tab reads what it shows the first time it opens for a package, including when another
+  // package is picked while it is open.
+  const readyPath = currentRead?.status === 'ready' ? currentRead.info.path : null
+  const { open } = tabs
+  useEffect(() => {
+    if (readyPath !== null) open(tab, readyPath)
+  }, [open, tab, readyPath])
+
+  const selectTab = (next: PackageTab, displayPath: string): void => {
+    setTab(next)
+    echo(tabCli(next, displayPath))
+  }
+
+  const openLine = (info: PackageInfo, line: number | null): void => {
+    setFocus({ path: info.path, line })
+    selectTab('manifest', info.displayPath)
+  }
+
+  const revalidate = async (info: PackageInfo): Promise<void> => {
+    const cli = tabCli('validate', info.displayPath)
+    setRevalidating(info.path)
+    const result = await tabs.revalidate(info.path)
+    setRevalidating(null)
+    if (!result.ok) {
+      notify({ tone: 'error', text: result.error.message, cli })
+      return
+    }
+    const v = result.data
+    notify(
+      v.valid
+        ? { tone: 'ok', text: `${v.file} is valid`, cli }
+        : {
+            tone: 'error',
+            text: `${v.file} has ${v.errors} ${v.errors === 1 ? 'error' : 'errors'}`,
+            cli
+          }
+    )
+  }
+
   const inspect = async (path: string): Promise<void> => {
     setSelected(path)
     const result = await read(path)
@@ -126,7 +173,7 @@ export function PackagesScreen({ projectPath, onOpenFolder, onSwitchTarget }: Pa
 
   const select = (build: PackageBuild): void => {
     setSelected(build.path)
-    echo(infoCli(build.displayPath))
+    echo(tabCli(tab, build.displayPath))
   }
 
   const install = async (info: PackageInfo): Promise<void> => {
@@ -225,6 +272,16 @@ export function PackagesScreen({ projectPath, onOpenFolder, onSwitchTarget }: Pa
             disabledReason: blocker,
             ...(check ? { check } : {}),
             onFix: fix
+          }}
+          tabs={{
+            tab,
+            onTab: (next) => selectTab(next, currentRead.info.displayPath),
+            data: tabs.data(currentRead.info.path),
+            focusLine: focus?.path === currentRead.info.path ? focus.line : null,
+            onOpenLine: (line) => openLine(currentRead.info, line),
+            onRetry: (part) => tabs.retry(part, currentRead.info.path),
+            onRevalidate: () => void revalidate(currentRead.info),
+            revalidating: revalidating === currentRead.info.path
           }}
         />
       )}

@@ -16,6 +16,9 @@ export interface Render<T> {
   failure?(value: T): OvdError | undefined
   // Its human text on stderr; by default the error's message and hint.
   failureHuman?(value: T): string
+  // Human text a failure still prints on stdout, before the error on stderr (the
+  // `ovd pkg validate` table), so it can be piped like a success.
+  failureStdout?(value: T): string
 }
 
 // Runs one command's core call and prints the result or the error (ADR 0006): in JSON mode
@@ -38,6 +41,8 @@ export async function report<T>(
       const doc = { ok: false, error: toErrorJson(failed), ...render.json(value) }
       ctx.output.stdout(`${JSON.stringify(doc)}\n`)
     } else {
+      const out = render.failureStdout?.(value)
+      if (out) ctx.output.stdout(out)
       ctx.output.stderr(
         render.failureHuman?.(value) ?? `Error: ${failed.message}\n${failed.hint}\n`
       )

@@ -6,7 +6,8 @@ import {
   createPackages,
   createProject,
   createSdkLocator,
-  createStateStore
+  createStateStore,
+  packageInvalid
 } from '../../src/index.js'
 import { FakeRunner } from '../support/fakeRunner.js'
 import { fixture } from '../support/fixtures.js'
@@ -305,5 +306,189 @@ describe('Packages.builds', () => {
     await mkdir(join(home, 'dev', 'empty'), { recursive: true })
     const { packages } = setup()
     expect(await packages.builds(join(home, 'dev', 'empty'))).toEqual([])
+  })
+})
+
+// Packages → Manifest, Files, Validate (Stage 5.3), on the recorded sample packages.
+const both = (path: string, exitCode = 0) => ({
+  stdout: fixture(`0.24/vpt-validate/${path}.txt`),
+  stderr: fixture(`0.24/vpt-validate/${path}.stderr.txt`),
+  exitCode
+})
+
+describe('Packages.validate', () => {
+  test('a valid package: no errors, its info notes', async () => {
+    const path = await makeFile('dev/player/build/aarch64-release/player_aarch64.vpkg')
+    const { packages, runner } = setup({
+      [`vega exec vpt validate --no-color ${path}`]: both('player-aarch64-release')
+    })
+    const validation = await packages.validate(path)
+    expect(validation).toMatchObject({
+      path,
+      displayPath: '~/dev/player/build/aarch64-release/player_aarch64.vpkg',
+      file: 'player_aarch64.vpkg',
+      valid: true,
+      errors: 0,
+      warnings: 0,
+      infos: 5
+    })
+    expect(runner.calls.map((c) => c.args)).toEqual([
+      ['exec', 'vpt', 'validate', '--no-color', path]
+    ])
+  })
+
+  test('a broken package: three errors, two of them with a line', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt validate --no-color ${path}`]: both('player-aarch64-broken', 1)
+    })
+    const validation = await packages.validate(path)
+    expect(validation).toMatchObject({ valid: false, errors: 3, warnings: 0, infos: 5 })
+    expect(
+      validation.issues.filter((i) => i.severity === 'error').map((i) => [i.key, i.line ?? null])
+    ).toEqual([
+      ['package.build-number', 7],
+      ['components.interactive.launch-type', 33],
+      ['os.version', null]
+    ])
+  })
+
+  test('a file vpt doesn’t take as a package is not a .vpkg', async () => {
+    const path = await makeFile('Downloads/notes.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt validate --no-color ${path}`]: both('not-a-vpkg', 1)
+    })
+    await expect(packages.validate(path)).rejects.toMatchObject({
+      code: 'NOT_A_VPKG',
+      message: 'Not a .vpkg file: notes.vpkg'
+    })
+  })
+
+  test('any other failure names the command', async () => {
+    const path = await makeFile('Downloads/player.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt validate --no-color ${path}`]: both('missing', 1)
+    })
+    await expect(packages.validate(path)).rejects.toMatchObject({
+      code: 'COMMAND_FAILED',
+      message: expect.stringContaining('Provided path does not exist')
+    })
+  })
+
+  test('checks the path before any vpt call', async () => {
+    const { packages, runner } = setup()
+    await expect(packages.validate('nope.vpkg')).rejects.toMatchObject({ code: 'PATH_NOT_FOUND' })
+    await makeFile('notes.txt')
+    await expect(packages.validate('notes.txt')).rejects.toMatchObject({ code: 'NOT_A_VPKG' })
+    await expect(packages.validate()).rejects.toMatchObject({ code: 'NO_PACKAGE' })
+    expect(runner.calls).toEqual([])
+  })
+
+  test('packageInvalid names the file and the count', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt validate --no-color ${path}`]: both('player-aarch64-broken', 1)
+    })
+    const error = packageInvalid(await packages.validate(path))
+    expect(error).toMatchObject({
+      code: 'PACKAGE_INVALID',
+      message: 'player_aarch64.vpkg has 3 errors',
+      hint: 'Fix the manifest, build again, and run ovd pkg validate'
+    })
+  })
+})
+
+describe('Packages.manifest', () => {
+  test('the packaged manifest line by line, then its validation', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages, runner } = setup({
+      [`vega exec vpt dump ${path} manifest.toml`]: out(
+        'vpt-dump-manifest/player-aarch64-broken.toml'
+      ),
+      [`vega exec vpt validate --no-color ${path}`]: both('player-aarch64-broken', 1)
+    })
+    const manifest = await packages.manifest(path)
+    expect(manifest.entry).toBe('manifest.toml')
+    expect(manifest.lines).toHaveLength(35)
+    expect(manifest.lines[6]).toBe('build-number = 0')
+    expect(manifest.lines[32]).toBe('launch-type = "sometimes"')
+    expect(manifest.validation).toMatchObject({ valid: false, errors: 3 })
+    expect(runner.calls.map((c) => c.args.slice(2, 3))).toEqual([['dump'], ['validate']])
+  })
+
+  test('manifestFile: only the dump', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages, runner } = setup({
+      [`vega exec vpt dump ${path} manifest.toml`]: out(
+        'vpt-dump-manifest/player-aarch64-release.toml'
+      )
+    })
+    const file = await packages.manifestFile(path)
+    expect(file).toMatchObject({ file: 'player_aarch64.vpkg', entry: 'manifest.toml' })
+    expect(file.lines[3]).toBe('title = "Sample Player"')
+    expect('validation' in file).toBe(false)
+    expect(runner.calls).toHaveLength(1)
+  })
+
+  test('a file that isn’t a package', async () => {
+    const path = await makeFile('Downloads/notes.vpkg')
+    const { packages, runner } = setup({
+      [`vega exec vpt dump ${path} manifest.toml`]: err(
+        'vpt-dump-manifest/not-a-vpkg.stderr.txt',
+        1
+      )
+    })
+    await expect(packages.manifest(path)).rejects.toMatchObject({ code: 'NOT_A_VPKG' })
+    expect(runner.calls).toHaveLength(1)
+  })
+
+  test('control characters in the manifest are removed', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt dump ${path} manifest.toml`]: {
+        stdout: 'title = "a\u001b[2Jb"\r\nid = "x"\n'
+      },
+      [`vega exec vpt validate --no-color ${path}`]: both('player-aarch64-release')
+    })
+    expect((await packages.manifest(path)).lines).toEqual(['title = "a[2Jb"', 'id = "x"'])
+  })
+})
+
+describe('Packages.files', () => {
+  test('the list as printed and its tree', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt show-contents ${path}`]: out('vpt-show-contents/player-aarch64-release.txt')
+    })
+    const files = await packages.files(path)
+    expect(files.entries).toHaveLength(18)
+    expect(files.entries[0]).toBe('assets/kepler-sdk-version')
+    expect(files.tree.map((n) => n.name)).toEqual([
+      'assets',
+      'bundle',
+      'meta-info',
+      'manifest.toml'
+    ])
+  })
+
+  test('names keep their spaces; only line endings and blank lines go', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt show-contents ${path}`]: {
+        stdout: 'assets/a.txt\r\nassets/a.txt \n manifest.toml\n\n'
+      }
+    })
+    const files = await packages.files(path)
+    expect(files.entries).toEqual(['assets/a.txt', 'assets/a.txt ', ' manifest.toml'])
+    expect(files.tree.map((n) => n.name)).toEqual(['assets', ' manifest.toml'])
+    expect(files.tree[0]?.children?.map((n) => n.name)).toEqual(['a.txt', 'a.txt '])
+  })
+
+  test('a file that isn’t a package', async () => {
+    const path = await makeFile('Downloads/notes.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt show-contents ${path}`]: err('vpt-info/not-a-vpkg.stderr.txt', 1)
+    })
+    await expect(packages.files(path)).rejects.toMatchObject({ code: 'NOT_A_VPKG' })
   })
 })

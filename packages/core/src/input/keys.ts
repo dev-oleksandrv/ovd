@@ -1,5 +1,5 @@
 // The remote's keys, as `ovd input press` takes them and the desktop pad sends them. One map per
-// backend (ADR 0010), so a hardware check changes one file.
+// backend (ADR 0027), so a hardware check changes one file.
 export const REMOTE_KEYS = [
   'up',
   'down',
@@ -38,7 +38,7 @@ export const INPUTD_KEYS: Record<RemoteKey, string> = {
 }
 
 // Evdev key codes for emulator gRPC `sendKey` on the Virtual Device. OK arrives as `kpenter`
-// (KEY_KPENTER), and Home can't be sent at all (ADR 0010), so it has no code.
+// (KEY_KPENTER), and Home can't be sent at all (ADR 0027), so it has no code.
 export const GRPC_KEYS: Partial<Record<RemoteKey, number>> = {
   up: 103,
   down: 108,

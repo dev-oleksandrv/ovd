@@ -1,0 +1,35 @@
+schema-version = 1
+
+[package]
+title = "Sample Player"
+version = "1.4.2"
+# Floor so local builds pass vpt validate; pass an increasing --build-number for every Appstore upload.
+build-number = 142
+id = "com.example.player"
+
+[os.version]
+min = "1.2"
+target = "1.2"
+
+[needs]
+[[needs.module]]
+id = "/com.amazon.vega.os@IVega_1_2"
+
+[[needs.module]]
+id = "/com.amazon.kepler.keplerscript_4@IKeplerScript_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
+
+
+[wants]
+[[wants.module]]
+id = "/com.amazon.kepler.net.net_manager@INetManager"
+
+[components]
+[[components.interactive]]
+id = "com.example.player.main"
+runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
+launch-type = "singleton"
+categories = ["com.amazon.category.main"]
+

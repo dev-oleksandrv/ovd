@@ -1,0 +1,17 @@
+found issues in manifest.toml ...
+manifest validation found 1 error
+manifest.toml:3:1 info: [package.icon] Icon is not defined in the manifest. System default will be used.
+  help: Define icon to help users recognize your application
+manifest.toml:24:6 error: [components.interactive.id] Component ID 'com.example.other.main' doesn't have package ID prefix 'com.example.player'
+  help: Component ID should follow the format: package_id.component_name
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.network.privilege.net-info' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to access network connection information. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.wifi.privilege.read-wifi-credential' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to read wifi credential. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.wifi.privilege.wifi-scan' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to scan wifi and get scan results. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:20:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.network.privilege.net-admin' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to configure network/wifi. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+
+Error: Validation failed with the following errors:
+Error 1: manifest validation failed!

@@ -27,7 +27,7 @@ interface EnvironmentScreenProps {
   onOpenFolder: () => void
 }
 
-// Re-check runs every check, so every Re-check echoes the whole doctor (ADR 0005).
+// Re-check runs every check, so every Re-check echoes the whole doctor (ADR 0029).
 const DOCTOR_CLI = 'ovd doctor --json'
 
 // Environment (Stage 1.2): only the Doctor tab ships in the first release (ADR 0018).
