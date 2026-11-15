@@ -6,7 +6,7 @@ import type { RunRowStatus, RunState } from '../run/runView'
 
 interface RunStepsProps {
   state: Exclude<RunState, { phase: 'idle' }>
-  // The run's CLI equivalent (ADR 0005), shown as the panel's last line.
+  // The run's CLI equivalent (ADR 0029), shown as the panel's last line.
   cli: string
   onOpenLogs: () => void
 }

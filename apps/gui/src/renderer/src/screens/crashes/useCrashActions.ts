@@ -15,7 +15,7 @@ export interface CrashActions {
   reveal(): void
 }
 
-// The actions on one crash. Each echoes `ovd crash pull <id> --device <id>` (ADR 0005): the
+// The actions on one crash. Each echoes `ovd crash pull <id> --device <id>` (ADR 0029): the
 // copies pull first when the report isn't on disk yet. The renderer sends `{device, id}` only.
 export function useCrashActions(device: string, id: number): CrashActions {
   const { notify } = useFeedback()
