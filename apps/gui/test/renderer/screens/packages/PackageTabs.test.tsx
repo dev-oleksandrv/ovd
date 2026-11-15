@@ -135,6 +135,21 @@ describe('Packages → Manifest, Files, Validate', () => {
     expect(validate).toHaveBeenCalledTimes(2)
   })
 
+  test('Validate again reads the manifest again too, for a package rebuilt at the same path', async () => {
+    const api = stub()
+    renderScreen()
+    await openTab('Manifest')
+    await screen.findByRole('listitem', { name: 'Line 7' })
+    await openTab('Validate')
+    await act(async () =>
+      fireEvent.click(await screen.findByRole('button', { name: 'Validate again' }))
+    )
+    await vi.waitFor(() => expect(api.packages.manifest).toHaveBeenCalledTimes(2))
+    expect(api.packages.validate).toHaveBeenCalledTimes(2)
+    // Files was never opened, so it isn't read.
+    expect(api.packages.files).not.toHaveBeenCalled()
+  })
+
   test('errors show the message, the hint and Retry', async () => {
     let calls = 0
     stub({

@@ -18,7 +18,7 @@ export interface PackageTabs {
   open(tab: PackageTab, path: string): void
   // A failed read, again.
   retry(part: Part, path: string): void
-  // "Validate again".
+  // "Validate again", which reads the manifest and files again too when they were read.
   revalidate(path: string): Promise<IpcResult<PackageValidation>>
 }
 
@@ -72,6 +72,13 @@ export function usePackageTabs(): PackageTabs {
     data: (path) => all[path] ?? {},
     open,
     retry: (part, path) => void load(part, path),
-    revalidate: (path) => load('validation', path) as Promise<IpcResult<PackageValidation>>
+    // The package may have been rebuilt at the same path: the manifest and files read so far
+    // are read again with it, so the lines the new validation points at are the new ones.
+    revalidate: (path) => {
+      for (const part of ['manifest', 'files'] as const) {
+        if (requested.current.has(`${part}\n${path}`)) void load(part, path)
+      }
+      return load('validation', path) as Promise<IpcResult<PackageValidation>>
+    }
   }
 }
