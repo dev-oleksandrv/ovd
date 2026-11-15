@@ -21,6 +21,7 @@ export function locationText(issue: ValidationIssue): string {
   return `${text(issue.file)}:${issue.line}${issue.column === undefined ? '' : `:${issue.column}`}`
 }
 
+// The file name is the user's too, so it is escaped like the rest.
 export function summaryText(v: PackageValidation): string {
   const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
   const notes = v.warnings + v.infos
@@ -31,10 +32,10 @@ export function summaryText(v: PackageValidation): string {
   ]
   if (v.valid) {
     return notes === 0
-      ? `${v.file}: no problems found\n`
-      : `${v.file} is valid: ${parts.slice(1).join(', ')}\n`
+      ? `${text(v.file)}: no problems found\n`
+      : `${text(v.file)} is valid: ${parts.slice(1).join(', ')}\n`
   }
-  return `${v.file} is invalid: ${parts.join(', ')}\n`
+  return `${text(v.file)} is invalid: ${parts.join(', ')}\n`
 }
 
 // `ovd pkg validate`: a summary line, then one row per issue (severity, location, message) with
@@ -113,4 +114,9 @@ export function filesText(f: PackageFiles): string {
   walk(f.tree, 0)
   const n = f.entries.length
   return `${lines.join('\n')}${lines.length ? '\n' : ''}${n} ${n === 1 ? 'file' : 'files'}\n`
+}
+
+// `PACKAGE_INVALID` on stderr, the file name escaped.
+export function invalidText(error: { message: string; hint: string }): string {
+  return `Error: ${text(error.message)}\n${error.hint}\n`
 }

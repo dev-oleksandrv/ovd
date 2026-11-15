@@ -218,6 +218,18 @@ describe('ovd pkg validate', () => {
     expect(stdout).toContain('a\\x1b[2Jb')
   })
 
+  test('human: a control character in the file name is escaped on stdout and stderr', async () => {
+    const named = { ...broken, file: 'p\u001b[2J.vpkg' }
+    const { stdout, stderr } = await cli(['pkg', 'validate', 'p.vpkg'], {
+      ovd: stubPackages({ validate: async () => named })
+    })
+    expect(stdout).toContain('p\\x1b[2J.vpkg is invalid')
+    expect(stderr).toBe(
+      'Error: p\\x1b[2J.vpkg has 2 errors\nFix the manifest, build again, and run ovd pkg validate\n'
+    )
+    expect(stdout + stderr).not.toContain('\u001b')
+  })
+
   test.each(['NOT_A_VPKG', 'PATH_NOT_FOUND', 'NO_PACKAGE'] as const)('%s exits 2', async (code) => {
     const { stdout, exitCode } = await cli(['pkg', 'validate', '--json'], {
       ovd: stubPackages({ validate: fail(code) })

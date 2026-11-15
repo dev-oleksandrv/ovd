@@ -1,7 +1,7 @@
 import { packageInvalid } from '@ovd/core'
 import type { Command } from 'commander'
 import type { CliDeps } from '../program.js'
-import { filesText, manifestText, validationText } from '../format/packageTabs.js'
+import { filesText, invalidText, manifestText, validationText } from '../format/packageTabs.js'
 import { buildsTable, packageRows } from '../format/packages.js'
 import { report } from '../report.js'
 import { reportContext } from './context.js'
@@ -61,7 +61,8 @@ export function registerPkg(
           json: (validation) => ({ validation }),
           human: validationText,
           failure: (validation) => (validation.valid ? undefined : packageInvalid(validation)),
-          failureStdout: validationText
+          failureStdout: validationText,
+          failureHuman: (validation) => invalidText(packageInvalid(validation))
         }
       )
     })
