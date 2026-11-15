@@ -39,7 +39,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
         run: pnpm exec changeset status --since origin/main
 
-  # The built CLI and desktop app against a fake Vega SDK that replays fixtures/0.24 (ADR 0023).
+  # The built CLI and desktop app against a fake Vega SDK that replays fixtures/0.24 (ADR 0030).
   # Required on PRs.
   e2e:
     runs-on: ubuntu-latest
