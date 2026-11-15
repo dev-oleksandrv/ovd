@@ -275,18 +275,10 @@ test.describe('Watch', () => {
     sandbox,
     launch
   }) => {
-    // Two full runs (the first Run, then the redeploy after the rebuild), each pick, install, log
-    // session, launch and verification; click to result measured about 26 s on a loaded host, so
-    // the pair can pass the 60 s test timeout; slow() gives 3 × 60 s.
-    test.slow()
     sandbox.installSdk()
     await openPlayerProject(sandbox)
     const { page } = await launch()
     await doctorDone(sandbox, PROJECT_DOCTOR)
-    await page.getByRole('button', { name: 'Run ▸ player' }).click()
-    await expect(steps(page).getByRole('listitem', { name: 'Following logs: done' })).toBeVisible({
-      timeout: 30_000
-    })
 
     const watch = page.getByRole('button', { name: 'Watch off' })
     await expect(watch).toBeEnabled()
@@ -297,6 +289,8 @@ test.describe('Watch', () => {
     )
     await expect(echo(page)).toContainText(`$ ${WATCH_CLI}`)
     await expect(toast(page, 'Watching build/ for new builds')).toContainText(`$ ${WATCH_CLI}`)
+    // Turning Watch on started a log session on the target, for the OVD line to reach Logs.
+    await expect.poll(() => sandbox.calls()).toContain(LOG)
 
     // "Watching" is pushed once the watch has its baseline: the next write is a rebuild.
     makeRecordedVpkg(sandbox.home, AARCH64, 'player-aarch64-debug', new Date())
@@ -308,6 +302,10 @@ test.describe('Watch', () => {
 
     // In Logs, the OVD line and, after it, a line only the restarted stream prints. A search
     // keeps that line and the OVD lines (they match every filter).
+    await page
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('button', { name: 'Logs' })
+      .click()
     await expect(page.getByRole('heading', { name: 'Logs', level: 1 })).toBeVisible()
     await page.getByRole('textbox', { name: 'Search logs' }).fill(AFTER_RESTART)
     const built = rows(page).filter({
@@ -319,12 +317,13 @@ test.describe('Watch', () => {
     const at = (text: string) => texts.findIndex((t) => t.includes(text))
     expect(at(AFTER_RESTART)).toBeGreaterThan(at('Build folder changed'))
 
-    // Two installs and two launches; Run's session followed both, restarted after the second
+    // One install and one launch; the session Watch started followed them, restarted after the
     // install (ADR 0014): one stream per install, never a second session.
     const calls = sandbox.calls()
-    expect(calls.filter((c) => c === installOf(sandbox, AARCH64))).toHaveLength(2)
-    expect(calls.filter((c) => c === LAUNCH)).toHaveLength(2)
+    expect(calls.filter((c) => c === installOf(sandbox, AARCH64))).toHaveLength(1)
+    expect(calls.filter((c) => c === LAUNCH)).toHaveLength(1)
     expect(calls.filter((c) => c === LOG)).toHaveLength(2)
+    expect(calls.indexOf(installOf(sandbox, AARCH64))).toBeGreaterThan(calls.indexOf(LOG))
     const pids = sandbox.logStreamPids()
     expect(pids).toHaveLength(2)
     expect(() => process.kill(pids[0] ?? -1, 0)).toThrow()
@@ -341,10 +340,33 @@ test.describe('Watch', () => {
       ]
     ])
     expect(sandbox.activity().filter((a) => a.action === 'logs')).toHaveLength(1)
+  })
 
-    await page.getByRole('button', { name: 'Watching build/' }).click()
+  test('turned on after a Run, it keeps the run’s log session; turned off, it says so', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    await openPlayerProject(sandbox)
+    const { page } = await launch()
+    await doctorDone(sandbox, PROJECT_DOCTOR)
+    await page.getByRole('button', { name: 'Run ▸ player' }).click()
+    await expect(steps(page).getByRole('listitem', { name: 'Following logs: done' })).toBeVisible({
+      timeout: 30_000
+    })
+
+    await page.getByRole('button', { name: 'Watch off' }).click()
+    const watching = page.getByRole('button', { name: 'Watching build/' })
+    await expect(watching).toHaveAttribute('aria-pressed', 'true')
+    await expect(toast(page, 'Watching build/ for new builds')).toContainText(`$ ${WATCH_CLI}`)
+    // The run's session already follows the target: no second one.
+    expect(sandbox.calls().filter((c) => c === LOG)).toHaveLength(1)
+    expect(sandbox.activity().filter((a) => a.action === 'logs')).toHaveLength(1)
+
+    await watching.click()
     await expect(page.getByRole('button', { name: 'Watch off' })).toBeVisible()
     await expect(toast(page, 'Watch off')).toBeVisible()
+    expect(sandbox.activity().filter((a) => a.action === 'build.changed')).toEqual([])
   })
 
   test('hidden with a .vpkg open: only a project folder has a build folder', async ({
