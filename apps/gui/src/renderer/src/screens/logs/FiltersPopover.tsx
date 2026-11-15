@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { LogsFilter } from '../../../../preload/api'
 import { Button } from '../../ui/Button'
 import { Select } from '../../ui/Select'
@@ -23,6 +23,9 @@ function added<T extends string | number>(list: T[] | undefined, value: T): T[] 
   return list?.includes(value) ? list : [...(list ?? []), value]
 }
 
+// Space kept between the popover and the window's edge.
+const EDGE = 8
+
 const FACILITY_OPTIONS = [
   { value: '', label: 'Facility…' },
   ...LOG_FACILITIES.map((facility) => ({ value: facility, label: facility }))
@@ -41,6 +44,29 @@ export function FiltersPopover({ filter, onChange }: FiltersPopoverProps) {
     boot: ''
   })
   const [error, setError] = useState<string | null>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  // Where the popover starts, from the button's left edge: 0, or less to stay in the window.
+  const [left, setLeft] = useState(0)
+
+  // The popover opens in line with the button but must stay in the window. In a window narrower
+  // than the default it ran past the right edge: its Add buttons were out of reach, typing in a
+  // field scrolled the screen sideways, and the next click outside was lost, because the screen
+  // jumped back as the popover closed. Measured before paint after every render while it is
+  // open (the button moves when the toolbar wraps: a longer package list, the regex error) and
+  // when the window is resized.
+  useLayoutEffect(() => {
+    if (!open) return
+    const place = (): void => {
+      const anchor = root.current?.getBoundingClientRect()
+      const box = panel.current?.getBoundingClientRect()
+      if (!anchor || !box) return
+      const fit = Math.max(EDGE, Math.min(anchor.left, window.innerWidth - box.width - EDGE))
+      setLeft(fit - anchor.left)
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  })
 
   useEffect(() => {
     if (!open) return
@@ -119,9 +145,11 @@ export function FiltersPopover({ filter, onChange }: FiltersPopoverProps) {
       </Button>
       {open && (
         <div
+          ref={panel}
           role="group"
           aria-label="Filter by process, thread, tag, identity, facility or boot"
-          className="absolute top-full left-0 z-10 mt-1 flex w-[460px] animate-enter flex-col gap-2 rounded-card border border-line-strong bg-raised p-3 shadow-popover"
+          style={{ left }}
+          className="absolute top-full z-10 mt-1 flex w-[460px] animate-enter flex-col gap-2 rounded-card border border-line-strong bg-raised p-3 shadow-popover"
         >
           {row('pid', 'PID')}
           {row('tid', 'TID')}
