@@ -8,7 +8,7 @@ export { parseVdaDevices } from './adapters/parseVdaDevices.js'
 export type { VdaEntry } from './adapters/parseVdaDevices.js'
 export { parseDeviceInfo } from './adapters/parseDeviceInfo.js'
 export type { DeviceInfo } from './adapters/parseDeviceInfo.js'
-export { parseVvdStatus } from './adapters/parseVvdStatus.js'
+export { isVvdNoInstance, parseVvdStatus } from './adapters/parseVvdStatus.js'
 export { parseSdkConfigDoctor } from './adapters/parseSdkConfigDoctor.js'
 export type { SdkConfigDoctor } from './adapters/parseSdkConfigDoctor.js'
 export { parseVdaVersion } from './adapters/parseVdaVersion.js'
@@ -320,7 +320,7 @@ export type {
 } from './screenshot/screenshot.js'
 export { captureBase, captureName, capturesDir, listCaptures, slug } from './screenshot/captures.js'
 export type { Capture, CapturesList } from './screenshot/captures.js'
-export { pngSize } from './screenshot/png.js'
+export { completePngSize, pngSize } from './screenshot/png.js'
 export { clipboardCommand, createClipboard } from './screenshot/clipboard.js'
 export type {
   Clipboard,

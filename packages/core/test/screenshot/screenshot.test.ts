@@ -259,6 +259,15 @@ describe('Screenshot.take on the Virtual Device (gRPC)', () => {
     ])
   })
 
+  test('a PNG cut short (its header alone passes) is SCREENSHOT_FAILED and saves nothing', async () => {
+    const { screenshot } = setup({
+      target: vvd,
+      shots: [async () => GRPC_PNG.subarray(0, GRPC_PNG.length - 100)]
+    })
+    await expect(screenshot.take()).rejects.toMatchObject({ code: 'SCREENSHOT_FAILED' })
+    expect(await files()).toEqual([])
+  })
+
   test('Ctrl+C during getScreenshot: an AbortError, no file, no activity entry', async () => {
     const controller = new AbortController()
     let started = (): void => undefined

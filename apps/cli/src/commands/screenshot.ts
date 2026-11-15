@@ -42,10 +42,22 @@ export function registerScreenshot(
             })
           )
           if (!flags.clipboard) return { ...result, copied: false }
+          // Ctrl+C during the copy stops the clipboard tool; the file is already saved, so the
+          // document still carries it.
+          const controller = new AbortController()
+          const dispose = deps.onInterrupt(() => controller.abort())
           try {
-            await ovd.screenshot.copy(result.path)
+            await ovd.screenshot.copy(result.path, { signal: controller.signal })
             return { ...result, copied: true }
           } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+              copyError = new OvdError(
+                'COMMAND_FAILED',
+                `Saved ${result.path}, but the copy to the clipboard was cancelled`,
+                'Copy the file from its folder instead'
+              )
+              return { ...result, copied: false }
+            }
             if (!isOvdError(error)) throw error
             copyError = new OvdError(
               error.code,
@@ -53,6 +65,8 @@ export function registerScreenshot(
               error.hint
             )
             return { ...result, copied: false }
+          } finally {
+            dispose()
           }
         },
         {

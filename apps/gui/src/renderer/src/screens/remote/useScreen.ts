@@ -127,9 +127,23 @@ export function useScreen(
   useEffect(() => {
     sent.current = sentCount
   }, [sentCount])
+  // The stick shown now: a Refresh that answers after a switch to another one shows nothing.
+  const currentStick = useRef(stick)
+  useEffect(() => {
+    currentStick.current = stick
+  }, [stick])
+  // A Refresh that answers after the screen left makes no Blob URL nobody would revoke.
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   // The previous URL is revoked as the next one shows.
   const display = useCallback((shot: ScreenshotResult, png: Uint8Array) => {
+    if (!mounted.current) return
     const url = URL.createObjectURL(new Blob([new Uint8Array(png)], { type: 'image/png' }))
     if (last.current) URL.revokeObjectURL(last.current.url)
     const next = { shot, url, sentAt: sent.current }
@@ -166,7 +180,7 @@ export function useScreen(
     try {
       const result = await window.ovd.screen.refresh(stick)
       if (result.ok) {
-        display(result.data.shot, result.data.png)
+        if (currentStick.current === stick) display(result.data.shot, result.data.png)
         notify({ tone: 'ok', text: `Saved ${fileName(result.data.shot.path)}`, cli })
       } else notify({ tone: 'error', text: result.error.message, cli })
     } finally {

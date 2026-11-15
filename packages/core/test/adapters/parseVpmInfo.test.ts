@@ -18,6 +18,21 @@ describe('parseVpmPackages', () => {
     ])
   })
 
+  test('SDK 2.0: one package', () => {
+    expect(parseVpmPackages(fixture('2.0/vpm-info-package/hellovega.txt'))).toEqual([
+      {
+        id: 'com.example.hellovega',
+        title: 'Basic UI React Native Application for project hellovega',
+        version: '0.1.0',
+        buildNumber: 1,
+        installedAt: '2026-11-15T10:54:41.000Z',
+        updatedAt: '2026-11-15T10:54:41.000Z',
+        installerId: 'com.amazon.package-manager.cli',
+        componentIds: ['com.example.hellovega.main']
+      }
+    ])
+  })
+
   test('every package on the Virtual Device, back to back', () => {
     const all = parseVpmPackages(fixture('0.24/vpm-info-package-all/virtual-device-player.txt'))
     expect(all).toHaveLength(40)

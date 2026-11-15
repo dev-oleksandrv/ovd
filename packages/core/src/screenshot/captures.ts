@@ -19,6 +19,9 @@ export interface CapturesList {
 }
 
 const SLUG_MAX = 40
+// Files open at once while listing: a folder of thousands of PNGs must not run out of file
+// descriptors (EMFILE).
+const READ_CONCURRENCY = 16
 
 // Where screenshots go: `OVD_CAPTURES` if set, else `~/ovd/captures`. The user's own files, not
 // host state (ADR 0022, Amendments), so it isn't under `OVD_HOME`.
@@ -60,10 +63,10 @@ export async function listCaptures(dir: string, limit: number): Promise<Capture[
     if (isErrno(error, 'ENOENT') || isErrno(error, 'ENOTDIR')) return []
     throw error
   }
-  const found = await Promise.all(
-    names
-      .filter((name) => !name.startsWith('.') && name.toLowerCase().endsWith('.png'))
-      .map((name) => readCapture(join(dir, name), name))
+  const found = await mapLimit(
+    names.filter((name) => !name.startsWith('.') && name.toLowerCase().endsWith('.png')),
+    READ_CONCURRENCY,
+    (name) => readCapture(join(dir, name), name)
   )
   return found
     .filter((capture): capture is Capture => capture !== null)
@@ -90,6 +93,25 @@ async function readCapture(path: string, name: string): Promise<Capture | null> 
     // Removed or unreadable between the listing and the read: not a capture to show.
     return null
   }
+}
+
+// `items.map(run)`, in order, with at most `limit` of them running at once.
+export async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  run: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++
+      // `i` is below the length, so the item exists.
+      results[i] = await run(items[i] as T)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
 }
 
 export function isErrno(error: unknown, code: string): boolean {

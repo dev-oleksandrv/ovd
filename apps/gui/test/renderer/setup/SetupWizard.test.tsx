@@ -42,21 +42,28 @@ function renderWith(
   return stub
 }
 
+// A role query over the whole App computes the accessible name and visibility of every button
+// on every screen: 50–400 ms each in jsdom, several times that on a loaded host, enough to
+// push a flow past the test timeout (#137). Inside the dialog the same query takes ~2 ms, so
+// the wizard is driven through its dialog, and its entry point found by text.
 async function openWizard(): Promise<HTMLElement> {
-  fireEvent.click(await screen.findByRole('button', { name: /Set up Developer Mode/ }))
+  const label = await screen.findByText(/Set up Developer Mode/)
+  const button = label.closest('button')
+  expect(button).not.toBeNull()
+  if (button) fireEvent.click(button)
   return screen.getByRole('dialog', { name: 'Set up a new stick' })
 }
 
-const click = (name: string): void => {
-  fireEvent.click(screen.getByRole('button', { name }))
+const click = (dialog: HTMLElement, name: string): void => {
+  fireEvent.click(within(dialog).getByRole('button', { name }))
 }
 
 // Steps 1–2 for an account that is already signed in.
 async function toCodeStep(): Promise<HTMLElement> {
   const dialog = await openWizard()
-  click('I see the code')
+  click(dialog, 'I see the code')
   expect(await within(dialog).findByText('Signed in to Amazon Developer Services')).toBeTruthy()
-  click('Continue')
+  click(dialog, 'Continue')
   return dialog
 }
 
@@ -79,9 +86,9 @@ describe('Setup wizard', () => {
     expect(within(dialog).getByText(/Select the device name 7 times/)).toBeTruthy()
     expect(screen.getByText('$ ovd setup-stick')).toBeTruthy()
 
-    click('I see the code')
+    click(dialog, 'I see the code')
     expect(await within(dialog).findByText('vega devmode login')).toBeTruthy()
-    click('Sign in')
+    click(dialog, 'Sign in')
     expect(api.setup.login).toHaveBeenCalledTimes(1)
     act(() => showPrompt(prompt))
     expect(within(dialog).getByText(prompt.verificationUri)).toBeTruthy()
@@ -89,20 +96,20 @@ describe('Setup wizard', () => {
     expect(within(dialog).getByText('Waiting for sign-in in your browser…')).toBeTruthy()
     await act(async () => login.resolve({ ok: true, data: { signedIn: true } }))
     expect(within(dialog).getByText('Signed in to Amazon Developer Services')).toBeTruthy()
-    click('Continue')
+    click(dialog, 'Continue')
 
     expect(within(dialog).getByText('Enter the code from the TV')).toBeTruthy()
     // An incomplete code can't be sent.
     typeCode(dialog, 'ab1')
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     expect(api.setup.enable).not.toHaveBeenCalled()
     typeCode(dialog, 'abc-123')
     expect(within(dialog).getByDisplayValue('ABC123')).toBeTruthy()
     expect(within(dialog).getByText('vega devmode enable-device --code ABC123')).toBeTruthy()
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     expect(api.setup.enable).toHaveBeenCalledWith('ABC123', undefined)
     expect(await within(dialog).findByText('The device is rebooting')).toBeTruthy()
-    click('Continue')
+    click(dialog, 'Continue')
 
     expect(within(dialog).getByText('Connect the stick')).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('radio', { name: /USB/ }))
@@ -112,7 +119,7 @@ describe('Setup wizard', () => {
     expect(
       within(dialog).getByText('Fire TV stick · G070000000000001 · USB · armv7 — now in Devices')
     ).toBeTruthy()
-    click('Done')
+    click(dialog, 'Done')
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText('Fire TV stick is ready')).toBeTruthy()
   })
@@ -124,10 +131,10 @@ describe('Setup wizard', () => {
     })
     const dialog = await toCodeStep()
     typeCode(dialog, 'ABC123')
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     const alert = await within(dialog).findByRole('alert')
     expect(within(alert).getByText('Code is wrong or expired')).toBeTruthy()
-    click('Enter a new code')
+    click(dialog, 'Enter a new code')
     expect(within(dialog).getByLabelText<HTMLInputElement>('Code from the TV').value).toBe('')
     expect(within(dialog).queryByRole('alert')).toBeNull()
     expect(api.setup.enable).toHaveBeenCalledTimes(1)
@@ -143,12 +150,12 @@ describe('Setup wizard', () => {
     const dialog = await toCodeStep()
     expect(within(dialog).queryByLabelText('Vendor ID')).toBeNull()
     typeCode(dialog, 'ABC123')
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     expect(await within(dialog).findByText('This account has several vendors')).toBeTruthy()
     fireEvent.change(within(dialog).getByLabelText('Vendor ID'), {
       target: { value: 'M0000000000001' }
     })
-    click('Retry')
+    click(dialog, 'Retry')
     expect(api.setup.enable).toHaveBeenLastCalledWith('ABC123', 'M0000000000001')
     expect(await within(dialog).findByText('The device is rebooting')).toBeTruthy()
   })
@@ -161,9 +168,9 @@ describe('Setup wizard', () => {
     })
     const dialog = await toCodeStep()
     typeCode(dialog, 'ABC123')
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     expect(await within(dialog).findByText('Not signed in')).toBeTruthy()
-    click('Sign in again')
+    click(dialog, 'Sign in again')
     expect(within(dialog).getByText('Step 2 of 4')).toBeTruthy()
     expect(api.setup.login).toHaveBeenCalledTimes(1)
     expect(await within(dialog).findByText('Signed in to Amazon Developer Services')).toBeTruthy()
@@ -181,12 +188,12 @@ describe('Setup wizard', () => {
     })
     const dialog = await toCodeStep()
     typeCode(dialog, 'ABC123')
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     await within(dialog).findByText('The device is rebooting')
-    click('Continue')
+    click(dialog, 'Continue')
     fireEvent.click(within(dialog).getByRole('radio', { name: /USB/ }))
     expect(await within(dialog).findByText('No new stick appeared on USB')).toBeTruthy()
-    click('Retry')
+    click(dialog, 'Retry')
     expect(api.setup.waitForStick).toHaveBeenCalledTimes(2)
     expect(await within(dialog).findByText(/now in Devices/)).toBeTruthy()
   })
@@ -199,11 +206,11 @@ describe('Setup wizard', () => {
     })
     const dialog = await toCodeStep()
     typeCode(dialog, 'ABC123')
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     await within(dialog).findByText('The device is rebooting')
-    click('Continue')
+    click(dialog, 'Continue')
     fireEvent.click(within(dialog).getByRole('radio', { name: /USB/ }))
-    click('Cancel')
+    click(dialog, 'Cancel')
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(api.setup.cancel).toHaveBeenCalledTimes(1)
   })
@@ -212,9 +219,9 @@ describe('Setup wizard', () => {
     renderWith({ signedIn: async () => ({ ok: true, data: true }), enable: async () => enabled })
     const dialog = await toCodeStep()
     typeCode(dialog, 'ABC123')
-    click('Enable Developer Mode')
+    click(dialog, 'Enable Developer Mode')
     await within(dialog).findByText('The device is rebooting')
-    click('Continue')
+    click(dialog, 'Continue')
     fireEvent.click(within(dialog).getByRole('radio', { name: /Wi-Fi/ }))
     expect(screen.queryByRole('dialog', { name: 'Set up a new stick' })).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Pair a device over Wi-Fi' })).toBeTruthy()
@@ -240,7 +247,7 @@ describe('Setup wizard entry points', () => {
   test('the pairing wizard', async () => {
     renderWith({})
     fireEvent.click(await screen.findByRole('button', { name: 'Pair over Wi‑Fi' }))
-    click('Set it up →')
+    click(screen.getByRole('dialog', { name: 'Pair a device over Wi-Fi' }), 'Set it up →')
     expect(opened()).toBeTruthy()
     expect(screen.queryByRole('dialog', { name: 'Pair a device over Wi-Fi' })).toBeNull()
   })

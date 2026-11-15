@@ -4,12 +4,13 @@ import { fixture } from '../support/fixtures.js'
 
 describe('parseVptContents', () => {
   test.each([
-    ['vpt-show-contents/player-armv7.txt', 'armv7'],
-    ['vpt-show-contents/player-aarch64.txt', 'aarch64'],
+    ['0.24/vpt-show-contents/player-armv7.txt', 'armv7'],
+    ['0.24/vpt-show-contents/player-aarch64.txt', 'aarch64'],
     // Pure JS: no native libraries, so no architecture of its own.
-    ['vpt-show-contents/hellovega.txt', 'any']
+    ['0.24/vpt-show-contents/hellovega.txt', 'any'],
+    ['2.0/vpt-show-contents/hellovega.txt', 'any']
   ])('%s', (file, architecture) => {
-    expect(parseVptContents(fixture(`0.24/${file}`))).toEqual({ architecture })
+    expect(parseVptContents(fixture(file))).toEqual({ architecture })
   })
 
   test.each([

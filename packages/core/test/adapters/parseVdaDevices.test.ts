@@ -10,14 +10,25 @@ const stick = {
 
 describe('parseVdaDevices', () => {
   test.each([
-    ['vda-devices/none.txt', []],
-    ['vda-devices/stick-usb.txt', [stick]],
+    ['0.24/vda-devices/none.txt', []],
+    ['0.24/vda-devices/stick-usb.txt', [stick]],
     [
-      'vda-devices/stick-usb-and-virtual-device.txt',
+      '0.24/vda-devices/stick-usb-and-virtual-device.txt',
       [stick, { vdaSerial: 'emulator-5554', state: 'device', props: { transport_id: '9' } }]
+    ],
+    // SDK 2.0 lists the Virtual Device with its `vda:` version too.
+    [
+      '2.0/vda-devices/virtual-device.txt',
+      [
+        {
+          vdaSerial: 'emulator-5554',
+          state: 'device',
+          props: { vda: '2_13_eb3ab1a5', transport_id: '2' }
+        }
+      ]
     ]
   ])('%s', (file, expected) => {
-    expect(parseVdaDevices(fixture(`0.24/${file}`))).toEqual(expected)
+    expect(parseVdaDevices(fixture(file))).toEqual(expected)
   })
 
   test.each(['', 'garbage', fixture('0.24/vda-devices/vda-missing-errno.txt')])(

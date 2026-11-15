@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, test } from 'vitest'
 import { captureBase, captureName, capturesDir, listCaptures, slug } from '../../src/index.js'
+import { mapLimit } from '../../src/screenshot/captures.js'
 
 const PNG = new URL('../../../../fixtures/0.24/vda-pull/synthetic-screenshot.png', import.meta.url)
 
@@ -97,5 +98,30 @@ describe('listCaptures', () => {
   test('at most `limit`', async () => {
     for (let i = 0; i < 5; i++) await put(`shot-${i}.png`, 1_700_000_000 + i)
     expect((await listCaptures(dir, 2)).map((c) => c.name)).toEqual(['shot-4.png', 'shot-3.png'])
+  })
+})
+
+describe('mapLimit', () => {
+  test('keeps the order and never runs more than the limit at once', async () => {
+    let running = 0
+    let most = 0
+    const results = await mapLimit(
+      Array.from({ length: 50 }, (_, i) => i),
+      4,
+      async (n) => {
+        running++
+        most = Math.max(most, running)
+        await Promise.resolve()
+        await Promise.resolve()
+        running--
+        return n * 2
+      }
+    )
+    expect(results).toEqual(Array.from({ length: 50 }, (_, i) => i * 2))
+    expect(most).toBe(4)
+  })
+
+  test('an empty list', async () => {
+    expect(await mapLimit([], 4, async () => 1)).toEqual([])
   })
 })

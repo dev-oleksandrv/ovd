@@ -1,0 +1,7 @@
+OS Version: target=2.0, min=2.0 (template defaults)
+Success! Here are some common commands to try:
+* to build Native artifacts, run "vega build"
+* to build React Native for Vega app, run "npm install && npx react-native build-vega" or similar commands depending on your Package Manager of choice
+* to install and launch app, run "vega run-app <packageFile e.g. sampleapp.vpkg>"
+* to see more commands, run "vega --help"
+* to see more projects you can generate by template, run "vega project list-templates"

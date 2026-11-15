@@ -76,11 +76,16 @@ describe('ovd reboot', () => {
     expect(JSON.parse(stdout)).toMatchObject({ ok: false, error: { code } })
   })
 
-  test('Ctrl+C cancels the wait: exit 1, the device may still be rebooting', async () => {
+  test.each([
+    [['rebooting', 'waiting'], 'The device may still be rebooting'],
+    [['rebooting'], 'The device may still be rebooting'],
+    [[], 'Nothing was sent to the device']
+  ] as const)('Ctrl+C after %j: exit 1, %s', async (steps, hint) => {
     let interrupt = () => undefined as void
     const reboot = vi.fn(
       (opts?: RebootOptions) =>
         new Promise<RebootResult>((_resolve, reject) => {
+          for (const step of steps) opts?.onProgress?.(step, result.target)
           opts?.signal?.addEventListener('abort', () => {
             const error = new Error('aborted')
             error.name = 'AbortError'
@@ -96,11 +101,7 @@ describe('ovd reboot', () => {
     expect(exitCode).toBe(1)
     expect(JSON.parse(stdout)).toEqual({
       ok: false,
-      error: {
-        code: 'COMMAND_FAILED',
-        message: 'Cancelled',
-        hint: 'The device may still be rebooting'
-      }
+      error: { code: 'COMMAND_FAILED', message: 'Cancelled', hint }
     })
   })
 })

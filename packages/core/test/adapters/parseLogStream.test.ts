@@ -15,6 +15,7 @@ const FOLLOW = fixture('0.24/loggingctl-log/stick-follow.txt')
 const DEBUG_STACK = fixture('0.24/loggingctl-log/stick-follow-debug-stack.txt')
 const RATE_LIMIT = fixture('0.24/loggingctl-log/stick-follow-rate-limit.txt')
 const REBOOT = fixture('0.24/loggingctl-log/stick-follow-reboot.txt')
+const VVD_20 = fixture('2.0/loggingctl-log/virtual-device-follow.txt')
 
 function parseAll(chunks: string[]): LogEntry[] {
   const parser = createLogStreamParser({ now })
@@ -41,6 +42,25 @@ describe('createLogStreamParser', () => {
     expect(entries).toHaveLength(count)
     expect(entries.every((e) => e.parsed)).toBe(true)
     expect(entries.map((e) => e.seq)).toEqual(entries.map((_, i) => i))
+  })
+
+  test('SDK 2.0 on the Virtual Device: every line parsed, notice is info', () => {
+    const entries = parseAll([VVD_20])
+    expect(entries).toHaveLength(2904)
+    expect(entries.every((e) => e.parsed)).toBe(true)
+    expect(entries.find((e) => e.priority === 'notice')).toMatchObject({
+      level: 'I',
+      facility: 'daemon',
+      process: 'systemd',
+      pid: 1
+    })
+  })
+
+  // SDK 0.24 showed the template app's native lines as `ample.hellovega` (ARCHITECTURE §8).
+  test('SDK 2.0: the template app’s native lines carry its full package ID', () => {
+    const app = parseAll([VVD_20]).filter((e) => e.process === 'com.example.hellovega')
+    expect(app).toHaveLength(6)
+    expect(app[0]).toMatchObject({ pid: 4097, tid: 140597792843328, tag: 'Volta' })
   })
 
   test('a multi-line message keeps its continuation lines', () => {

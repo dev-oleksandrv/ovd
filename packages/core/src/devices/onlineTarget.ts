@@ -3,8 +3,13 @@ import type { Devices } from './devices.js'
 import type { Device } from './types.js'
 
 // The target a device action runs on (`--device`, `VEGA_SERIAL` or the remembered one), which
-// must be online: actions on apps and packages need a device that answers.
-export async function onlineTarget(devices: Devices, override?: string): Promise<Device> {
+// must be online: actions on apps and packages need a device that answers. `check` runs before
+// the online check, for what no device of that kind can do whatever its status.
+export async function onlineTarget(
+  devices: Devices,
+  override?: string,
+  check?: (device: Device) => void
+): Promise<Device> {
   const resolved = await devices.currentTarget(override)
   if (!resolved) {
     throw new OvdError(
@@ -13,6 +18,7 @@ export async function onlineTarget(devices: Devices, override?: string): Promise
       'Set one with ovd target set <id>, or pass --device <id>'
     )
   }
+  check?.(resolved.device)
   if (resolved.device.status !== 'online') throw offline(resolved.device)
   return resolved.device
 }

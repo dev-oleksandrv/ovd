@@ -4,10 +4,11 @@ import { fixture } from '../support/fixtures.js'
 
 describe('parseDevmodeLogin', () => {
   test.each([
-    ['vega-devmode-login/signed-in.json', { signedIn: true }],
-    ['vega-devmode-login/signed-out.json', { signedIn: false, pending: true }]
+    ['0.24/vega-devmode-login/signed-in.json', { signedIn: true }],
+    ['0.24/vega-devmode-login/signed-out.json', { signedIn: false, pending: true }],
+    ['2.0/vega-devmode-login/signed-out.json', { signedIn: false, pending: true }]
   ])('%s', (file, expected) => {
-    expect(parseDevmodeLogin(fixture(`0.24/${file}`))).toEqual(expected)
+    expect(parseDevmodeLogin(fixture(file))).toEqual(expected)
   })
 
   test('reads the first JSON object when a stopped process left trailing text', () => {
@@ -24,10 +25,11 @@ describe('parseDevmodeLogin', () => {
 
 describe('parseDevmodeLoginPrompt', () => {
   test.each([
-    'vega-devmode-login/signed-out.json',
-    'vega-devmode-login/signed-in-after-browser.json'
+    '0.24/vega-devmode-login/signed-out.json',
+    '0.24/vega-devmode-login/signed-in-after-browser.json',
+    '2.0/vega-devmode-login/signed-out.json'
   ])('%s has the URL and code', (file) => {
-    expect(parseDevmodeLoginPrompt(fixture(`0.24/${file}`))).toEqual({
+    expect(parseDevmodeLoginPrompt(fixture(file))).toEqual({
       verificationUri: 'https://amazon.com/us/code?cbl-code=ABC123',
       userCode: 'ABC123'
     })

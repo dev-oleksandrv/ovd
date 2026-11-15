@@ -1,0 +1,1 @@
+Installing/Updating '/tmp/hellovega_x86_64.vpkg' ...success

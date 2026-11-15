@@ -10,6 +10,13 @@ describe('parseVptChecksum', () => {
     })
   })
 
+  test('2.0/vpt-checksum/hellovega-x86_64-debug.txt', () => {
+    expect(parseVptChecksum(fixture('2.0/vpt-checksum/hellovega-x86_64-debug.txt'))).toEqual({
+      sha384:
+        '29d2e469122de33419d7b6bedf38de83a6323ca1d13bbf7b85d04044430e4e995868c0667796e1ab18847aac020ee837'
+    })
+  })
+
   test.each(['', 'sha256: 752e4637', 'sha384: nothex'])('rejects %j', (out) => {
     expect(() => parseVptChecksum(out)).toThrow(
       expect.objectContaining({ code: 'UNEXPECTED_OUTPUT' })
