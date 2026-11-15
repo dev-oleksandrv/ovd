@@ -120,11 +120,12 @@ function vdaDevices(w: World): string {
   if (stickOnUsb(w)) lines.push(line('vda-devices/stick-usb.txt', 1))
   for (const address of w.vdaConnected) {
     if (address !== STICK_ADDRESS) continue
-    lines.push(
-      stickOnWifi(w)
-        ? line('vda-devices/stick-wifi.txt', 1)
-        : line('vda-devices/stick-wifi-offline.txt', 1)
-    )
+    // Offline while it reboots (recorded) or is unreachable, e.g. powered off (recorded).
+    const away =
+      w.stick && rebooting(w.stick)
+        ? 'vda-devices/stick-wifi-rebooting.txt'
+        : 'vda-devices/stick-wifi-offline.txt'
+    lines.push(stickOnWifi(w) ? line('vda-devices/stick-wifi.txt', 1) : line(away, 1))
   }
   if (vvdRebooting(w)) lines.push(line('vda-devices/virtual-device-offline.txt', 1))
   else if (w.vvd.running) lines.push(line('vda-devices/stick-usb-and-virtual-device.txt', 2))
@@ -294,10 +295,12 @@ async function vvdLogStream(w: World): Promise<Reply> {
   return endsOnReboot(vvdRebooting)
 }
 
-// `inputd-cli start` on the stick (fixtures/0.24/inputd-cli-console, recorded on the Virtual
-// Device): the welcome, then one recorded answer per stdin line, with the key or text asked for
-// put where the recording has its own (fixtures/0.24/README.md). `exit` prints `exiting...` and
-// exits 0; so do stdin's end and SIGTERM (default handling) to its group.
+// `inputd-cli start` on the stick (fixtures/0.24/inputd-cli-console): the welcome, then one
+// recorded answer per stdin line, with the key or text asked for put where the recording has its
+// own (fixtures/0.24/README.md). The recordings were made on the Virtual Device; the stick's
+// console (`stick-send-text-ascii.txt`, #43) printed the welcome, the `send_text` replies and
+// `exiting...` byte for byte the same, and the same `button_press` reply line. `exit` prints
+// `exiting...` and exits 0; so do stdin's end and SIGTERM (default handling) to its group.
 function inputdAnswer(line: string): string {
   const press = /^button_press (\S+)$/.exec(line)
   if (press?.[1] && /^KEY_[A-Z]+$/.test(press[1]) && press[1] !== 'KEY_NOPE') {
@@ -412,8 +415,9 @@ function bootId(w: World, sub: string): Reply | null {
 }
 
 // `vda -s <serial> reboot` (fixtures/0.24/vda-reboot): exit 0, no output, and the device is
-// away for `rebootMs`. Recorded on the Virtual Device; the stick answers the same, unverified on
-// hardware (fixtures/0.24/README.md, Synthesized sequences).
+// away for `rebootMs`. Recorded on the Virtual Device and on a stick, on USB and over Wi‑Fi
+// (#117): a stick on USB leaves the list, one over Wi‑Fi is listed `offline` and VDA reconnects
+// it by itself (fixtures/0.24/README.md).
 function reboot(w: World, serial: string): Reply {
   const until = Date.now() + w.rebootMs
   if (serial === VVD_VDA_SERIAL && vvdUp(w)) {
@@ -427,7 +431,11 @@ function reboot(w: World, serial: string): Reply {
   if (stickUp && w.stick) {
     w.stick.rebootingUntil = until
     w.boot.reboots += 1
-    return { stdout: fixture('vda-reboot/virtual-device.txt') }
+    return {
+      stdout: fixture(
+        serial === STICK_SERIAL ? 'vda-reboot/stick-usb.txt' : 'vda-reboot/stick-wifi.txt'
+      )
+    }
   }
   // The Virtual Device's own serial not found: recorded right after a start.
   if (serial === VVD_VDA_SERIAL) {
@@ -510,10 +518,12 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
 }
 
 // A screenshot on the stick: `gwsi-tool-screenshooter <remote>.png` into a device temp file,
-// `vda pull` of it, then `rm -f`. NOT recorded on a stick (#44): the screenshooter's answer
-// (exit 0, no output) is synthesized, the PNG `pull` delivers is the synthetic
-// `vda-pull/synthetic-screenshot.png`, and the pull prints the Virtual Device's recordings with
-// the remote path put in (fixtures/0.24/README.md, Synthesized sequences).
+// `vda pull` of it, then `rm -f`. Recorded on a stick (#44): the screenshooter's answer
+// (`gwsi-tool-screenshooter/stick.txt`, exit 0, no output), the pull's line
+// (`vda-pull/stick-screenshot.txt`, with the remote path and the size of the file copied put in)
+// and the `rm -f` (`vda-shell/stick-rm-f-screenshot.txt`). Only the PNG `pull` copies is
+// synthetic, `vda-pull/synthetic-screenshot.png`, not a real screen (fixtures/0.24/README.md).
+const RECORDED_SHOT = { remote: '/tmp/ovd-screenshot-0a1b2c3d.png', size: '358228' }
 const REMOTE_SHOT = /^\/tmp\/ovd-screenshot-[0-9a-f]{8}\.png$/
 
 function stickScreenshot(w: World, rest: string[]): Reply | null {
@@ -522,7 +532,7 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
     const remote = args[1] as string
     if (!REMOTE_SHOT.test(remote)) return null
     w.stickFiles = [...w.stickFiles.filter((f) => f !== remote), remote]
-    return {}
+    return { stdout: fixture('gwsi-tool-screenshooter/stick.txt') }
   }
   if (verb === 'pull' && args.length === 2) {
     const [remote, local] = args as [string, string]
@@ -535,14 +545,16 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
     if (w.stickScreenshot === 'empty') writeFileSync(local, '')
     else copyFileSync(join(FIXTURES, 'vda-pull/synthetic-screenshot.png'), local)
     return {
-      stdout: fixture('vda-pull/pulled.txt').replace('/tmp/ovd-probe-synth.png', () => remote)
+      stdout: fixture('vda-pull/stick-screenshot.txt')
+        .replace(RECORDED_SHOT.remote, () => remote)
+        .replace(RECORDED_SHOT.size, () => String(statSync(local).size))
     }
   }
   if (verb === 'shell' && args.length === 3 && args[0] === 'rm' && args[1] === '-f') {
     const remote = args[2] as string
     if (!REMOTE_SHOT.test(remote)) return null
     w.stickFiles = w.stickFiles.filter((f) => f !== remote)
-    return {}
+    return { stdout: fixture('vda-shell/stick-rm-f-screenshot.txt') }
   }
   return null
 }
@@ -678,14 +690,31 @@ function notFound(sub: string, recording: string): Reply | null {
   return sub.startsWith('shell ') ? { stderr: fixture(recording), exitCode: 1 } : null
 }
 
-// The stick is recorded with no side-loaded app (fixtures/0.24/vpm-info-package-all/stick.txt,
-// vlcm-list/stick.txt); with one installed or running there is no recording to answer with.
+// The stick is recorded with no side-loaded app (vpm-info-package-all/stick.txt,
+// vlcm-list/stick.txt) and with the player side-loaded, from either player package
+// (vpm-info-package-all/stick-player.txt; vlcm-list/stick-player-stopped.txt, and
+// stick-player-running.txt while it runs, #127). Anything else installed has no recording.
 function stickApps(w: World, id: string, sub: string): Reply | null {
-  if (w.installed.some((i) => i.device === id) || w.running.some((r) => r.device === id)) {
-    return null
+  const installed = w.installed.filter((i) => i.device === id)
+  const player = installed.length > 0 && installed.every((i) => i.package.startsWith('player-'))
+  if (installed.length > 0 && !player) return null
+  const running = w.running.filter((r) => r.device === id)
+  if (running.some((r) => r.app !== PLAYER) || (running.length > 0 && !player)) return null
+  if (sub === `shell ${ALL_PACKAGES}`) {
+    return {
+      stdout: fixture(
+        player ? 'vpm-info-package-all/stick-player.txt' : 'vpm-info-package-all/stick.txt'
+      )
+    }
   }
-  if (sub === `shell ${ALL_PACKAGES}`) return { stdout: fixture('vpm-info-package-all/stick.txt') }
-  if (sub === 'shell vlcm list') return { stdout: fixture('vlcm-list/stick.txt') }
+  if (sub === 'shell vlcm list') {
+    const recording = !player
+      ? 'vlcm-list/stick.txt'
+      : running.length > 0
+        ? 'vlcm-list/stick-player-running.txt'
+        : 'vlcm-list/stick-player-stopped.txt'
+    return { stdout: fixture(recording) }
+  }
   return null
 }
 

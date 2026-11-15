@@ -28,7 +28,8 @@ export interface World {
   // Packages `vega device install-app` put on a device, by device ID and recorded package.
   installed: { device: string; package: string }[]
   // Apps running on a device, by device ID and package ID (`com.example.player`). Recordings
-  // exist for the player on the Virtual Device; the stick is recorded with nothing side-loaded.
+  // exist for the player on the Virtual Device, and on the stick for the app lists with the player
+  // installed, running or not (`vlcm-list/stick-player-*.txt`).
   // `launch-app` adds the player, `vlcm terminate-app` and `uninstall-app` remove it.
   running: { device: string; app: string }[]
   // The Virtual Device player crashes right after `launch-app`, which still reports success
@@ -124,8 +125,8 @@ export interface World {
   // Device temp files `gwsi-tool-screenshooter` wrote on the stick, until `rm -f` removes them.
   stickFiles: string[]
   // What the stick's screenshot holds: the synthetic PNG, or nothing (as verified on the
-  // Virtual Device, an empty remote pulls an empty file with exit 0). Synthesized: the stick
-  // backend is unverified on hardware (#44; fixtures/0.24/README.md, Synthesized sequences).
+  // Virtual Device, an empty remote pulls an empty file with exit 0). The screenshooter's and the
+  // pull's answers are stick recordings (#44); the PNG itself is synthetic (fixtures/0.24/README.md).
   stickScreenshot: 'image' | 'empty'
 }
 

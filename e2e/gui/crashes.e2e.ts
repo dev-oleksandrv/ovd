@@ -17,6 +17,12 @@ const PULL_SCRIPT = /loggingctl vault --cat SYSTEM_TOMBSTONE (\d+) > "\$f"/
 const REMOTE_PULL =
   /^vega exec vda -s emulator-5554 pull (\/tmp\/ovd-acr\.[A-Za-z0-9]{6}\/report\.acr) /
 const RM_RF = /^vega exec vda -s emulator-5554 shell rm -rf (\/tmp\/ovd-acr\.[A-Za-z0-9]{6})$/
+const STICK_PULL = new RegExp(
+  `^vega exec vda -s ${STICK_SERIAL} pull (/tmp/ovd-acr\\.[A-Za-z0-9]{6}/report\\.acr) `
+)
+const STICK_RM_RF = new RegExp(
+  `^vega exec vda -s ${STICK_SERIAL} shell rm -rf /tmp/ovd-acr\\.[A-Za-z0-9]{6}$`
+)
 
 function nav(page: Page) {
   return page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Crashes' })
@@ -299,6 +305,66 @@ test.describe('Crashes on the stick', () => {
     await page.getByRole('button', { name: 'Switch target' }).click()
     await expect(page.getByRole('menu', { name: 'Target device' })).toBeVisible()
     expect(sandbox.calls().filter((c) => c.includes('vault'))).toEqual([])
+  })
+
+  // The stick's recorded crash (index 2100, pid 5410) of the player, side-loaded on it: the
+  // package list recorded with the player installed puts it in scope (#127).
+  test('with the player side-loaded, its crash toasts, opens and its ACR downloads; the lrk report never shows', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.installed.push({ device: STICK_SERIAL, package: 'player-armv7-release' })
+    })
+    expect((await ovd(sandbox, ['target', 'set', STICK_SERIAL])).exitCode).toBe(0)
+    const { page } = await launch()
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible()
+    await watching(sandbox)
+    await expect(toast(page, 'crashed ·')).toHaveCount(0)
+
+    injectPlayerCrash(sandbox, 'stick')
+
+    const stickToast = toast(page, `${PLAYER} crashed ·`)
+    await expect(stickToast).toBeVisible()
+    await expect(nav(page)).toContainText('1 new')
+    await stickToast.getByRole('button', { name: 'Open' }).click()
+
+    const stickDetail = page.getByRole('complementary', { name: 'Crash 2100 details' })
+    await expect(page.getByRole('heading', { name: 'Crashes', level: 1 })).toBeVisible()
+    await expect(echo(page)).toContainText(`$ ovd crashes --device ${STICK_SERIAL}`)
+    await expect(stickDetail).toBeVisible()
+    // Only the player's report: the third-party `lrk` entry next to it is never listed.
+    await expect(page.getByRole('row').filter({ hasText: 'pid 5410' })).toHaveCount(1)
+    await expect(page.getByRole('row').filter({ hasText: 'hellovega' })).toHaveCount(0)
+    await expect(stickDetail.getByLabel('Crash stack')).toContainText('rn-bundles/Release')
+
+    await stickDetail.getByRole('button', { name: 'Download ACR' }).click()
+
+    await expect(toast(page, 'Saved crash report to')).toBeVisible()
+    await expect(echo(page)).toContainText(`$ ovd crash pull 2100 --device ${STICK_SERIAL}`)
+    const dir = crashesDir(sandbox)
+    const [name] = files(dir)
+    expect(files(dir)).toHaveLength(1)
+    expect(name).toMatch(/^com\.example\.player-\d+-5410\.acr$/)
+    expect(readFileSync(join(dir, name ?? '')).equals(SYNTHETIC)).toBe(true)
+    expect(pullScripts(sandbox)).toEqual(['2100'])
+    const calls = sandbox.calls()
+    const pulled = calls.findIndex((c) => STICK_PULL.test(c))
+    const removed = calls.findIndex((c) => STICK_RM_RF.test(c))
+    expect(pulled).toBeGreaterThan(-1)
+    expect(removed).toBeGreaterThan(pulled)
+    expect(sandbox.world().acrFiles).toEqual([])
+    expect(activity(sandbox, 'crash.detected')).toEqual([
+      expect.objectContaining({
+        surface: 'desktop',
+        result: 'ok',
+        args: expect.objectContaining({ package: PLAYER, index: 2100, pid: 5410 })
+      })
+    ])
+    expect(activity(sandbox, 'crash.pull')).toEqual([
+      expect.objectContaining({ result: 'ok', args: expect.objectContaining({ index: 2100 }) })
+    ])
   })
 
   test('the third-party lrk report never shows, and no crash is listed for a stick with no side-loaded app', async ({
