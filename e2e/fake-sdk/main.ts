@@ -914,7 +914,17 @@ function projectDoctor(): Reply {
 // the answer follows its contents rather than the world. Anything else is a file vpt rejects.
 const PACKAGES: Record<
   string,
-  { info: string; contents: string; config: string; checksum: string; arch: string }
+  {
+    info: string
+    contents: string
+    config: string
+    checksum: string
+    arch: string
+    // Stage 5.3: `vpt dump <pkg> manifest.toml` and `vpt validate --no-color <pkg>` (stdout
+    // `<name>.txt`, stderr `<name>.stderr.txt`), recorded only for the 2026-11-15 samples.
+    manifest?: string
+    validate?: { name: string; exitCode: number }
+  }
 > = {
   'player-armv7-release': {
     arch: 'armv7',
@@ -937,18 +947,55 @@ const PACKAGES: Record<
     contents: 'vpt-show-contents/hellovega.txt',
     config: 'vpt-dump-app-config/hellovega-release.json',
     checksum: 'vpt-checksum/hellovega-armv7-release.txt'
+  },
+  'player-aarch64-release': {
+    arch: 'any',
+    info: 'vpt-info/player-aarch64-release.json',
+    contents: 'vpt-show-contents/player-aarch64-release.txt',
+    config: 'vpt-dump-app-config/player-aarch64-release.json',
+    checksum: 'vpt-checksum/player-aarch64-release.txt',
+    manifest: 'vpt-dump-manifest/player-aarch64-release.toml',
+    validate: { name: 'vpt-validate/player-aarch64-release', exitCode: 0 }
+  },
+  // The same package with a broken manifest; it prints the same contents and app config.
+  'player-aarch64-broken': {
+    arch: 'any',
+    info: 'vpt-info/player-aarch64-broken.json',
+    contents: 'vpt-show-contents/player-aarch64-release.txt',
+    config: 'vpt-dump-app-config/player-aarch64-release.json',
+    checksum: 'vpt-checksum/player-aarch64-broken.txt',
+    manifest: 'vpt-dump-manifest/player-aarch64-broken.toml',
+    validate: { name: 'vpt-validate/player-aarch64-broken', exitCode: 1 }
   }
 }
 const APP_CONFIG = 'assets/raw/keplerscript-app-config.json'
+const MANIFEST_ENTRY = 'manifest.toml'
+
+// `vpt validate` prints on both streams: diagnostics on stdout when valid, on stderr when not.
+function validateReply(name: string, exitCode: number): Reply {
+  return { stdout: fixture(`${name}.txt`), stderr: fixture(`${name}.stderr.txt`), exitCode }
+}
 
 function vpt(rest: string[]): Reply | null {
   const [sub, ...more] = rest
-  const path = sub === 'info' && more[0] === '--json' ? more[1] : more[0]
+  const flagged =
+    (sub === 'info' && more[0] === '--json') || (sub === 'validate' && more[0] === '--no-color')
+  const path = flagged ? more[1] : more[0]
   if (path === undefined) return null
   const text = existsSync(path) ? readFileSync(path, 'utf8') : ''
   const recorded = PACKAGES[text.replace(/^fake-vpkg:/, '').trim()]
   if (!recorded || !text.startsWith('fake-vpkg:')) {
+    if (sub === 'validate' && more.length === 2) return validateReply('vpt-validate/not-a-vpkg', 1)
+    if (sub === 'dump' && more[1] === MANIFEST_ENTRY) {
+      return { stderr: fixture('vpt-dump-manifest/not-a-vpkg.stderr.txt'), exitCode: 1 }
+    }
     return { stderr: fixture('vpt-info/not-a-vpkg.stderr.txt'), exitCode: 1 }
+  }
+  if (sub === 'dump' && more.length === 2 && more[1] === MANIFEST_ENTRY && recorded.manifest) {
+    return { stdout: fixture(recorded.manifest) }
+  }
+  if (sub === 'validate' && more.length === 2 && recorded.validate) {
+    return validateReply(recorded.validate.name, recorded.validate.exitCode)
   }
   if (sub === 'info' && more.length === 2) return { stdout: fixture(recorded.info) }
   if (sub === 'show-contents' && more.length === 1) return { stdout: fixture(recorded.contents) }
