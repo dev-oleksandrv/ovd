@@ -1,5 +1,30 @@
 # @ovd/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- 2f94c85: - `ovd pkg validate [file]` checks a .vpkg with `vpt validate` and lists each problem with its severity, message and line in `manifest.toml`. It exits 1 (`PACKAGE_INVALID`) when the package has errors, so scripts and CI can gate on it.
+  - `ovd pkg manifest [file]` prints the package's `manifest.toml` with line numbers and the validation notes under their lines. `ovd pkg files [file]` lists the files in the package as a tree.
+  - The Packages screen of the desktop app gets the Manifest, Files and Validate tabs. Validate shows an error badge, and a click on a line opens it in Manifest.
+- fadf9bd: - `ovd doctor` and the desktop Doctor get a Shell PATH row. It warns when your terminal runs another `vega` before the Vega CLI, such as the one in the SDK's own `bin` folder, and says how to reorder your PATH. With both on PATH in that order, `react-native build-vega` failed every time while OVD was open, because the SDK rebuilds part of itself whenever it is called through the other path.
+
+### Patch Changes
+
+- 27bdf2b: - With Vega SDK 2.0, the Virtual Device is listed as stopped before you start it for the first time, and `ovd vvd start` (or Start in the desktop app) starts it. Before, OVD said the SDK had no Virtual Device until it had been started once with `vega virtual-device start`.
+- a9b8eea: Fixes for the Remote & Screen, screenshots, reboot and Virtual Device flows:
+  
+  - Desktop: the "Type into TV" Send button no longer spins forever, and failed key presses, screenshots and captures reads now show an error instead of failing silently.
+  - Desktop: "No signal" on the Virtual Device's live view now has Retry, a stick's screenshot is marked "Out of date" only for keys sent to that stick, and a Refresh that finishes after you switch sticks no longer shows on the other one.
+  - Desktop: Start and Doctor's "Turn on" for the Virtual Device no longer run at the same time, and quitting while a stick's remote is still connecting closes it cleanly.
+  - Doctor shows "Waiting for the Virtual Device" instead of a gRPC warning while OVD is still starting it.
+  - `ovd vvd start`: turning on emulator gRPC gives up after about 11 s instead of up to a minute when the console doesn't answer, and Ctrl+C once the Virtual Device is online reports it started (with a gRPC warning) instead of "Cancelled".
+  - `ovd input text` on a stick accepts a text of only spaces.
+  - `ovd screenshot` refuses a PNG that was cut short, and Ctrl+C during `--clipboard` keeps the saved file and says so.
+  - `ovd reboot`: Ctrl+C before anything was sent says "Nothing was sent to the device", and a Ctrl+C while the reboot command runs is now in the activity log.
+- 4da3e09: - Typing into a Fire TV stick (`ovd input text`, desktop "Type into TV") now refuses text the stick would silently drop: accents, emoji and other non-ASCII characters, and `* + < > ^ | ~`. Before, the stick reported success and typed nothing of them.
+  - Pairing a stick over Wi‑Fi (`ovd pair --usb`) and switching it back (`ovd forget`) no longer fail when the SDK switches the stick but prints nothing, which could leave the stick in TCP/IP mode and invisible.
+
 ## 0.4.0
 
 ### Minor Changes
