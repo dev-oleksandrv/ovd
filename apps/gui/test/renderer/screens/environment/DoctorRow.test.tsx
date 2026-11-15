@@ -61,3 +61,29 @@ describe('DoctorRow: Emulator gRPC', () => {
     expect(screen.queryByRole('button', { name: 'Turn on' })).toBeNull()
   })
 })
+
+// Issue #30: the row names the folder that shadows the Vega CLI and the command it ran.
+describe('DoctorRow: Shell PATH', () => {
+  const shadowed: Check = {
+    id: 'path',
+    name: 'Shell PATH',
+    status: 'warn',
+    detail: '~/vega/sdk/0.24.12112/bin comes before ~/vega/bin — builds fail while OVD runs',
+    command: 'command -v vega',
+    hint: 'Put ~/vega/bin before ~/vega/sdk/0.24.12112/bin on your PATH, or remove ~/vega/sdk/0.24.12112/bin, then open a new terminal'
+  }
+  const ok: Check = { ...shadowed, status: 'ok', detail: 'vega is ~/vega/bin/vega' }
+
+  test('checking', () => {
+    row(shadowed, { checking: true })
+    expect(screen.getByText('Shell PATH')).toBeTruthy()
+    expect(screen.getByText('Checking…')).toBeTruthy()
+  })
+
+  test.each([ok, shadowed])('$status: the detail and the command, no button', (check) => {
+    row(check)
+    expect(screen.getByText(check.detail)).toBeTruthy()
+    expect(screen.getByText('command -v vega')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+})

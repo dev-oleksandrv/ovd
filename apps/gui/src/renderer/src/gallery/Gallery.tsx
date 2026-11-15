@@ -172,7 +172,14 @@ const DOCTOR_ROWS: Check[] = [
     command: 'vega exec vda version'
   },
   { id: 'devmode', name: 'Developer Mode', status: 'skipped', detail: 'Waiting for the Vega SDK' },
-  { id: 'grpc', name: 'Emulator gRPC', status: 'ok', detail: 'On · :8554' }
+  { id: 'grpc', name: 'Emulator gRPC', status: 'ok', detail: 'On · :8554' },
+  {
+    id: 'path',
+    name: 'Shell PATH',
+    status: 'warn',
+    detail: '~/vega/sdk/0.24.12112/bin comes before ~/vega/bin — builds fail while OVD runs',
+    command: 'command -v vega'
+  }
 ]
 
 interface SampleApp {

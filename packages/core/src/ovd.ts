@@ -1,3 +1,4 @@
+import { realpath } from 'node:fs/promises'
 import { homedir as osHomedir } from 'node:os'
 import { createActivityFeed } from './activity/activityFeed.js'
 import { createActivityLog, type ActivityLog, type Surface } from './activity/activityLog.js'
@@ -132,7 +133,8 @@ export function createOvd(opts: OvdOptions): Ovd {
     homedir,
     shell: env.SHELL ?? '/bin/sh',
     host: hostInfo,
-    portInUse
+    portInUse,
+    realpath: (path) => realpath(path)
   })
   const pairing = createPairing({ runner, sdk, devices, state, activity })
   const devmode = createDevmode({ runner, sdk, devices, activity })

@@ -1,3 +1,5 @@
+import { dirname } from 'node:path'
+import { parseCommandPath } from '../adapters/parseCommandPath.js'
 import { parseDevmodeLogin } from '../adapters/parseDevmodeLogin.js'
 import { parseNodeVersion } from '../adapters/parseNodeVersion.js'
 import { parseProjectDoctor } from '../adapters/parseProjectDoctor.js'
@@ -27,6 +29,8 @@ export interface DoctorDeps {
   shell: string
   host: () => Promise<Omit<HostInfo, 'node'>>
   portInUse: (port: number) => Promise<boolean>
+  // Resolves symlinks, so a link to the Vega CLI counts as the Vega CLI (fs.realpath).
+  realpath: (path: string) => Promise<string>
 }
 
 // Doctor only reports (spec C9): it never writes state or the activity log. `signal` ends the
@@ -43,7 +47,8 @@ const NAMES: Record<CheckId, string> = {
   devmode: 'Developer Mode',
   metro: 'Metro',
   grpc: 'Emulator gRPC',
-  node: 'Node'
+  node: 'Node',
+  path: 'Shell PATH'
 }
 // Row labels: the main command each check runs. Metro runs it per port with `--port`,
 // `--forward false` and `--device`; Devices also reads Virtual Device status and device info.
@@ -54,12 +59,14 @@ const COMMANDS: Partial<Record<CheckId, string>> = {
   devices: 'vega exec vda devices -l',
   devmode: 'vega devmode login --json',
   metro: 'vega device is-port-forwarded',
-  node: 'node --version'
+  node: 'node --version',
+  path: 'command -v vega'
 }
 const METRO_PORTS: readonly number[] = [8081, 8097]
 const NODE_MAJOR = 22
 // An interactive login shell loads the user's rc files (nvm and the like) first.
 const NODE_TIMEOUT_MS = 5_000
+const PATH_TIMEOUT_MS = 5_000
 // Signed in answers in 0.2 s; signed out prints `pending` at once and then waits for sign-in.
 const DEVMODE_TIMEOUT_MS = 5_000
 // Takes about 2 s on the template project; it validates the manifest with vpt.
@@ -397,6 +404,64 @@ export function createDoctor(deps: DoctorDeps): Doctor {
     return { node, result: ran('node', result) }
   }
 
+  // Issue #30: one SDK reached by two paths (the Vega CLI runs it through a symlink, the SDK's
+  // own bin directly) rebuilds its workspace on every switch, so a terminal build through the
+  // SDK's bin fails while OVD polls through the Vega CLI. Terminals run the first `vega` on the
+  // login shell's PATH; it must be the one OVD runs.
+  async function pathCheck(
+    sdk: SdkInfo | undefined,
+    signal: AbortSignal | undefined
+  ): Promise<Result> {
+    if (!sdk) return skipped('Waiting for the Vega SDK')
+    if (sdk.cli !== 'manager') return skipped('Needs the Vega CLI (SDK Manager)')
+    const cliDir = tilde(dirname(sdk.vegaPath))
+    const found = await deps.runner
+      .run({
+        file: deps.shell,
+        args: ['-ilc', 'command -v vega'],
+        display: 'command -v vega',
+        timeoutMs: PATH_TIMEOUT_MS,
+        ...withSignal(signal)
+      })
+      .then((run) => ({ path: parseCommandPath(run.stdout), exitCode: run.exitCode }))
+      .catch((error: unknown) => {
+        if (!(error instanceof OvdError)) throw error
+        return undefined
+      })
+    if (found === undefined) {
+      return ran('path', { status: 'info', detail: 'Couldn’t read your shell’s PATH' })
+    }
+    if (found.path === undefined) {
+      return ran(
+        'path',
+        found.exitCode === 0
+          ? { status: 'info', detail: 'Couldn’t tell which vega your shell runs' }
+          : {
+              status: 'info',
+              detail: 'vega isn’t on your shell’s PATH',
+              hint: `Add ${cliDir} to your PATH to run vega in a terminal`
+            }
+      )
+    }
+    const [first, cli] = await Promise.all([found.path, sdk.vegaPath].map(resolved))
+    if (first === cli) return ran('path', { status: 'ok', detail: `vega is ${tilde(found.path)}` })
+    const shadowing = tilde(dirname(found.path))
+    return ran('path', {
+      status: 'warn',
+      detail: `${shadowing} comes before ${cliDir} — builds fail while OVD runs`,
+      hint: `Put ${cliDir} before ${shadowing} on your PATH, or remove ${shadowing}, then open a new terminal`
+    })
+  }
+
+  // A path that doesn't resolve (a broken link) is compared as it is.
+  async function resolved(path: string): Promise<string> {
+    try {
+      return await deps.realpath(path)
+    } catch {
+      return path
+    }
+  }
+
   return {
     async run(opts = {}) {
       const { signal } = opts
@@ -454,6 +519,8 @@ export function createDoctor(deps: DoctorDeps): Doctor {
       const { result: nodeResult, node } = await nodeCheck(signal)
       signal?.throwIfAborted()
       results.node = nodeResult
+      results.path = await pathCheck(sdk, signal)
+      signal?.throwIfAborted()
       const order: CheckId[] = [
         'sdk',
         'vda',
@@ -462,7 +529,8 @@ export function createDoctor(deps: DoctorDeps): Doctor {
         'devmode',
         'metro',
         'grpc',
-        'node'
+        'node',
+        'path'
       ]
       return {
         host: node === undefined ? host : { ...host, node },

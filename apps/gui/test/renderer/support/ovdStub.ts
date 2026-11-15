@@ -126,7 +126,14 @@ export function doctorReport(
       command: 'vega device is-port-forwarded'
     },
     { id: 'grpc', name: 'Emulator gRPC', status: 'ok', detail: 'On · :8554' },
-    { id: 'node', name: 'Node', status: 'ok', detail: 'v24.2.0 (requires ≥ 22)' }
+    { id: 'node', name: 'Node', status: 'ok', detail: 'v24.2.0 (requires ≥ 22)' },
+    {
+      id: 'path',
+      name: 'Shell PATH',
+      status: 'ok',
+      detail: 'vega is ~/vega/bin/vega',
+      command: 'command -v vega'
+    }
   ]
   return { host, checks: rows.map((row) => ({ ...row, ...overrides[row.id] })) }
 }

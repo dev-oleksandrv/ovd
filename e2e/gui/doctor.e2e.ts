@@ -72,6 +72,33 @@ test.describe('Doctor after setup', () => {
     })
   })
 
+  // Issue #30: the SDK's own bin before the Vega CLI on PATH breaks terminal builds while the
+  // desktop polls through the Vega CLI.
+  test('the SDK’s own bin first on PATH warns in the Shell PATH row', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.vegaOnPath(['sdk-bin', 'cli'])
+    const { page } = await launch()
+    await nav(page, 'Doctor').click()
+
+    await expect(page.getByText('0 failing · 2 warnings')).toBeVisible()
+    const path = row(page, 'Shell PATH')
+    await expect(path).toContainText(
+      '~/vega/sdk/0.24.12112/bin comes before ~/vega/bin — builds fail while OVD runs'
+    )
+    await expect(path).toContainText('command -v vega')
+    // The desktop itself still runs the Vega CLI.
+    await expect(row(page, 'Vega SDK')).toContainText('~/vega/bin/vega')
+
+    await page.getByRole('button', { name: 'Run ovd doctor' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'ovd doctor finished' })).toContainText(
+      '$ ovd doctor --json'
+    )
+    await expect(path).toContainText('comes before ~/vega/bin')
+  })
+
   test('the Developer Mode row opens the new-stick wizard', async ({ sandbox, launch }) => {
     sandbox.installSdk()
     const { page } = await launch()

@@ -144,6 +144,56 @@ describe('ovd doctor', () => {
     expect(after.devmode?.status).toBe('ok')
   })
 
+  // Issue #30: a terminal that runs the SDK's own `vega` reaches the SDK by a second path, and
+  // the SDK rebuilds its workspace every time the path switches, failing builds while OVD runs.
+  describe('Shell PATH', () => {
+    test('the SDK’s own bin first warns how to fix it, and the fixed PATH passes', async () => {
+      const sandbox = createSandbox()
+      sandbox.installSdk()
+      sandbox.vegaOnPath(['sdk-bin', 'cli'])
+
+      const run = await ovd(sandbox, ['doctor'])
+
+      // A warning only: the report succeeds, and OVD itself still runs the Vega CLI.
+      expect(run.exitCode).toBe(0)
+      expect(run.stdout).toMatch(
+        /✓ Vega SDK\s+0\.24\.12112 · Vega CLI 1\.4\.5 · ~\/vega\/bin\/vega/
+      )
+      expect(run.stdout).toMatch(
+        /! Shell PATH\s+~\/vega\/sdk\/0\.24\.12112\/bin comes before ~\/vega\/bin — builds fail while OVD runs/
+      )
+      expect(run.stdout).toContain(
+        '→ Put ~/vega/bin before ~/vega/sdk/0.24.12112/bin on your PATH, or remove ~/vega/sdk/0.24.12112/bin, then open a new terminal'
+      )
+
+      // The user puts ~/vega/bin first, as the hint says.
+      sandbox.vegaOnPath(['cli', 'sdk-bin'])
+      const fixed = await ovd(sandbox, ['doctor', '--json'])
+
+      expect(fixed.exitCode).toBe(0)
+      expect(byId(fixed.json<Report>()).path).toEqual({
+        id: 'path',
+        name: 'Shell PATH',
+        status: 'ok',
+        detail: 'vega is ~/vega/bin/vega',
+        command: 'command -v vega'
+      })
+    })
+
+    test('no vega on the shell’s PATH is info, with where the Vega CLI is', async () => {
+      const sandbox = createSandbox()
+      sandbox.installSdk()
+
+      const checks = byId((await ovd(sandbox, ['doctor', '--json'])).json<Report>())
+
+      expect(checks.path).toMatchObject({
+        status: 'info',
+        detail: 'vega isn’t on your shell’s PATH',
+        hint: 'Add ~/vega/bin to your PATH to run vega in a terminal'
+      })
+    })
+  })
+
   describe('Metro ports', () => {
     let server: Server | undefined
     afterEach(() => new Promise<void>((done) => (server ? server.close(() => done()) : done())))

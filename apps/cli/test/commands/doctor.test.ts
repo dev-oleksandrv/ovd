@@ -101,6 +101,30 @@ describe('ovd doctor', () => {
     )
   })
 
+  // Issue #30: the SDK's own bin first on PATH breaks builds while OVD runs; a warning only.
+  test('the Shell PATH row: a warning keeps exit 0 and prints how to reorder PATH', async () => {
+    const shadowed: DoctorReport = {
+      host,
+      checks: [
+        {
+          id: 'path',
+          name: 'Shell PATH',
+          status: 'warn',
+          detail: '~/vega/sdk/0.24.12112/bin comes before ~/vega/bin — builds fail while OVD runs',
+          command: 'command -v vega',
+          hint: 'Put ~/vega/bin before ~/vega/sdk/0.24.12112/bin on your PATH, or remove ~/vega/sdk/0.24.12112/bin, then open a new terminal'
+        }
+      ]
+    }
+    const json = await cli(['doctor', '--json'], { ovd: withReport(async () => shadowed) })
+    expect(JSON.parse(json.stdout)).toEqual({ ok: true, ...shadowed })
+    expect(json.exitCode).toBe(0)
+    const human = await cli(['doctor'], { ovd: withReport(async () => shadowed) })
+    expect(human.stdout).toContain(
+      '! Shell PATH  ~/vega/sdk/0.24.12112/bin comes before ~/vega/bin — builds fail while OVD runs\n  → Put ~/vega/bin before ~/vega/sdk/0.24.12112/bin on your PATH'
+    )
+  })
+
   test('doctor.run gets an abort signal', async () => {
     const run = vi.fn(async (_opts?: { signal?: AbortSignal }) => healthy)
     await cli(['doctor', '--json'], { ovd: withReport(run) })
