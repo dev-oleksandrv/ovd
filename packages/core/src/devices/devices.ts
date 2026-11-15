@@ -2,7 +2,7 @@ import type { ActivityLog } from '../activity/activityLog.js'
 import { createLogged } from '../activity/logged.js'
 import { parseDeviceInfo, type DeviceInfo } from '../adapters/parseDeviceInfo.js'
 import { parseVdaDevices } from '../adapters/parseVdaDevices.js'
-import { parseVvdStatus } from '../adapters/parseVvdStatus.js'
+import { isVvdNoInstance, parseVvdStatus } from '../adapters/parseVvdStatus.js'
 import { OvdError } from '../errors/ovdError.js'
 import { vdaCmd, vegaCmd, vegaDeviceCmd } from '../sdk/commands.js'
 import type { Runner, RunResult } from '../sdk/runner.js'
@@ -104,9 +104,11 @@ export function createDevices(deps: DevicesDeps): Devices {
       }
     })
 
-    // A non-zero status means the active SDK has no Virtual Device (spec C3).
-    if (vvd.exitCode === 0 && !found.some((d) => d.id === VVD_ID)) {
-      const { running } = parseVvdStatus(vvd.stdout)
+    // A non-zero status means the active SDK has no Virtual Device (spec C3), except SDK 2.0's
+    // answer before the first start: no instance yet, so it is stopped (ARCHITECTURE §8).
+    const noInstance = isVvdNoInstance(vvd)
+    if ((vvd.exitCode === 0 || noInstance) && !found.some((d) => d.id === VVD_ID)) {
+      const { running } = noInstance ? { running: false } : parseVvdStatus(vvd.stdout)
       found.push({
         id: VVD_ID,
         serial: VVD_ID,

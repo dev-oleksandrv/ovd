@@ -22,3 +22,16 @@ export function parseVvdStatus(stdout: string): { running: boolean } {
   }
   return { running: parsed.data.running }
 }
+
+const NO_INSTANCE = /cannot find virtual device instance/
+
+// SDK 2.0 before the first `virtual-device start`: `status` exits 1 because the default
+// instance doesn't exist yet (fixtures/2.0/vega-virtual-device-status/no-instance.txt). The
+// Virtual Device is installed and stopped; `start` creates the instance (ARCHITECTURE §8).
+export function isVvdNoInstance(result: {
+  stdout: string
+  stderr: string
+  exitCode: number
+}): boolean {
+  return result.exitCode !== 0 && NO_INSTANCE.test(`${result.stdout}\n${result.stderr}`)
+}

@@ -182,6 +182,36 @@ describe('Vvd.start', () => {
     ])
   })
 
+  test('SDK 2.0 before the first start: starts it, which creates the instance', async () => {
+    const noInstance = {
+      vda: { stdout: fixture('2.0/vda-devices/virtual-device.txt').split('\n')[0] ?? '' },
+      status: {
+        stdout: fixture('2.0/vega-virtual-device-status/no-instance.txt'),
+        stderr: fixture('2.0/vega-virtual-device-status/no-instance.stderr.txt'),
+        exitCode: 1
+      }
+    }
+    const online20 = {
+      vda: { stdout: fixture('2.0/vda-devices/virtual-device.txt') },
+      status: { stdout: fixture('2.0/vega-virtual-device-status/running.json') }
+    }
+    const { vvd, runner } = setup({
+      [VDA]: [noInstance.vda, online20.vda],
+      [STATUS]: [noInstance.status, online20.status],
+      [VVD_INFO]: { stdout: fixture('2.0/vega-device-info/virtual-device.json') },
+      [START]: {
+        stdout: fixture('2.0/vega-virtual-device-start/started.txt'),
+        stderr: fixture('2.0/vega-virtual-device-start/started.stderr.txt')
+      }
+    })
+    expect(await vvd.start()).toMatchObject({
+      status: 'online',
+      device: { id: 'VirtualDevice', info: { architecture: 'x86_64' } },
+      grpc: { status: 'on' }
+    })
+    expect(runner.count(START)).toBe(1)
+  })
+
   test('already online: nothing starts, gRPC is still turned on', async () => {
     const { vvd, runner, attempts } = setup(phases(online))
     expect(await vvd.start()).toMatchObject({ status: 'online', grpc: { status: 'on' } })
