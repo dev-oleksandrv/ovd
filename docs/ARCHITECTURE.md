@@ -64,7 +64,7 @@ apps/
     src/preload/           # typed contextBridge API
     src/renderer/          # React UI, tokens, base components, screens
   mcp/                     # stdio MCP server (Stage 7)
-e2e/                       # end-to-end tests of the built surfaces (ADR 0028)
+e2e/                       # end-to-end tests of the built surfaces (ADR 0030)
   fake-sdk/                # a `vega` that replays fixtures and keeps a world state
   harness/                 # sandbox (temp home, OVD_HOME, fake SDK) and surface runners
   cli/                     # CLI flows (Vitest)
@@ -306,7 +306,7 @@ OVD designs around these. This list is the one home for SDK behavior: add new fi
 - No hardware, SDK, network or real timers in tests. Core uses a fake runner that replays fixtures from `fixtures/<sdk-version>/`.
 - Fixtures are sanitized with the neutral sample data (ADR 0016).
 - CLI tests assert `--json` output and exit codes. No snapshot tests.
-- End-to-end tests (`e2e/`, `pnpm run test:e2e`) run the built CLI and desktop app against a fake SDK that answers only with recorded fixtures (ADR 0028; the few synthesized answers `docs/conventions/testing.md` allows are listed in the fixtures README). They check user flows, the SDK commands run and the state left behind. CI runs them as the required `e2e` job.
+- End-to-end tests (`e2e/`, `pnpm run test:e2e`) run the built CLI and desktop app against a fake SDK that answers only with recorded fixtures (ADR 0030; the few synthesized answers `docs/conventions/testing.md` allows are listed in the fixtures README). They check user flows, the SDK commands run and the state left behind. CI runs them as the required `e2e` job.
 - The log power tools (Stage 5.2) are covered end to end by `e2e/cli/logsFilter.e2e.test.ts`, `e2e/cli/logsBundle.e2e.test.ts` and, on the desktop, `e2e/gui/logsPowerTools.e2e.ts` (the presets, saved filters across a restart, the Filters popover, This boot, the process menu rules, and Bundle with checks of the zip's files) and the Logs at crash time button in `e2e/gui/crashes.e2e.ts`: the fake SDK answers `loggingctl log` with the preset fixture and `shell cat /proc/sys/kernel/random/boot_id` with the boot ID fixture, and the tests read the saved filters file and the bundle's files.
 - Real-device behavior is checked manually. The nightly SDK check (Stage 3.7, ADR 0007) covers the Virtual Device: `.github/workflows/nightly-sdk-check.yml` installs the latest SDK on `ubuntu-latest` and runs `scripts/nightly-sdk-check.mjs`. The script starts a headless Virtual Device, builds a throwaway `com.example.hellovega`, and runs `doctor`, `devices`, `pkg info`, `install`, `apps launch` and `logs` from the built CLI with `--json`. A recording `vega` shim at `OVD_VEGA` (core checks it before PATH) records every SDK call. The output is sanitized and leak-checked, and laid out as fixtures when the SDK's major.minor has no folder yet. A failed scheduled run opens or comments on the issue "Nightly SDK check failed".
 
