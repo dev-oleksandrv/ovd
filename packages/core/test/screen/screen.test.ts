@@ -161,6 +161,21 @@ describe('Screen.live', () => {
     ])
   })
 
+  test.each([false, true])(
+    'an offline stick is LIVE_UNSUPPORTED too, not TARGET_OFFLINE (quiet: %s)',
+    async (quiet) => {
+      const { screen, calls } = setup({ target: { ...stick, status: 'offline' } })
+      await expect(screen.live({ quiet })).rejects.toMatchObject({ code: 'LIVE_UNSUPPORTED' })
+      expect(calls).toEqual([])
+    }
+  )
+
+  test('an offline Virtual Device is still TARGET_OFFLINE, logged without a target', async () => {
+    const { screen } = setup({ target: { ...vvd, status: 'offline' } })
+    await expect(screen.live()).rejects.toMatchObject({ code: 'TARGET_OFFLINE' })
+    expect(await activity()).toMatchObject([{ target: null, errorCode: 'TARGET_OFFLINE' }])
+  })
+
   test('no target is NO_TARGET, logged without a target', async () => {
     const { screen } = setup({ target: null })
     await expect(screen.live()).rejects.toMatchObject({ code: 'NO_TARGET' })

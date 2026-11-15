@@ -119,10 +119,15 @@ export function createScreen(deps: ScreenDeps): Screen {
     }
   }
 
+  // A stick is LIVE_UNSUPPORTED even when offline: it never has a live view, so a view that
+  // comes back (after a reboot) never waits for one.
   async function target(override: string | undefined, known?: { target: string | null }) {
-    const device = await onlineTarget(deps.devices, override)
+    const device = await onlineTarget(deps.devices, override, (found) => {
+      if (found.kind === 'vvd') return
+      if (known) known.target = found.id
+      throw liveUnsupported(found)
+    })
     if (known) known.target = device.id
-    if (device.kind !== 'vvd') throw liveUnsupported(device)
     return device
   }
 
