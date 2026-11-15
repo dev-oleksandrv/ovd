@@ -1,4 +1,10 @@
-import type { PackageBuild, PackageInfo } from '@ovd/core'
+import type {
+  PackageBuild,
+  PackageFiles,
+  PackageInfo,
+  PackageManifest,
+  PackageValidation
+} from '@ovd/core'
 import { describe, expect, test } from 'vitest'
 import { ovd } from '../harness/cli.ts'
 import { makeProject, makeRecordedVpkg, makeVpkg } from '../harness/project.ts'
@@ -150,5 +156,129 @@ describe('ovd pkg list', () => {
     expect(run.exitCode).toBe(0)
     expect(run.stdout).toBe('No project open.\n')
     expect(run.stderr).toContain('ovd open <folder|file.vpkg>')
+  })
+})
+
+// Stage 5.3: the broken sample (`build-number = 0`, `launch-type = "sometimes"`, `min = "9.9"`)
+// and the valid one, recorded with vpt dump and validate (fixtures/0.24/README.md).
+describe('ovd pkg validate | manifest | files', () => {
+  function brokenPackage() {
+    const sandbox = createSandbox()
+    sandbox.installSdk()
+    const path = makeRecordedVpkg(
+      sandbox.home,
+      'Downloads/player_aarch64.vpkg',
+      'player-aarch64-broken'
+    )
+    return { sandbox, path }
+  }
+
+  test('validate: a broken manifest exits 1 with its exact errors and lines', async () => {
+    const { sandbox, path } = brokenPackage()
+
+    const run = await ovd(sandbox, ['pkg', 'validate', path, '--json'])
+
+    expect(run.exitCode).toBe(1)
+    const doc = run.json<{ ok: false; error: { code: string }; validation: PackageValidation }>()
+    expect(doc.ok).toBe(false)
+    expect(doc.error.code).toBe('PACKAGE_INVALID')
+    expect(doc.validation).toMatchObject({ valid: false, errors: 3, infos: 5 })
+    expect(
+      doc.validation.issues
+        .filter((i) => i.severity === 'error')
+        .map((i) => [i.key, i.file ?? null, i.line ?? null, i.column ?? null])
+    ).toEqual([
+      ['package.build-number', 'manifest.toml', 7, 16],
+      ['components.interactive.launch-type', 'manifest.toml', 33, 15],
+      ['os.version', null, null, null]
+    ])
+    expect(sandbox.calls()).toEqual(['vega --version', `vega exec vpt validate --no-color ${path}`])
+    expect(sandbox.activity()).toEqual([])
+  })
+
+  test('validate: the human table goes to stdout, the error to stderr', async () => {
+    const { sandbox } = brokenPackage()
+
+    const run = await ovd(sandbox, ['pkg', 'validate', '~/Downloads/player_aarch64.vpkg'])
+
+    expect(run.exitCode).toBe(1)
+    expect(run.stdout).toContain('player_aarch64.vpkg is invalid: 3 errors, 5 notes\n')
+    expect(run.stdout).toMatch(
+      /error +manifest\.toml:33:15 +\[components\.interactive\.launch-type\] 'sometimes' launch type/
+    )
+    expect(run.stderr).toContain('Error: player_aarch64.vpkg has 3 errors\n')
+  })
+
+  test('validate: a valid package exits 0 with no errors', async () => {
+    const sandbox = createSandbox()
+    sandbox.installSdk()
+    const path = makeRecordedVpkg(sandbox.home, 'p.vpkg', 'player-aarch64-release')
+
+    const run = await ovd(sandbox, ['pkg', 'validate', path, '--json'])
+
+    expect(run.exitCode).toBe(0)
+    expect(run.json<{ ok: true; validation: PackageValidation }>()).toMatchObject({
+      ok: true,
+      validation: { valid: true, errors: 0, infos: 5 }
+    })
+  })
+
+  test('manifest: the packaged manifest with the errors under their lines, exit 0', async () => {
+    const { sandbox, path } = brokenPackage()
+
+    const run = await ovd(sandbox, ['pkg', 'manifest', path, '--json'])
+
+    expect(run.exitCode).toBe(0)
+    const { manifest } = run.json<{ manifest: PackageManifest }>()
+    expect(manifest.lines[6]).toBe('build-number = 0')
+    expect(manifest.lines[32]).toBe('launch-type = "sometimes"')
+    expect(manifest.validation.errors).toBe(3)
+    expect(sandbox.calls()).toEqual([
+      'vega --version',
+      `vega exec vpt dump ${path} manifest.toml`,
+      `vega exec vpt validate --no-color ${path}`
+    ])
+
+    const human = await ovd(sandbox, ['pkg', 'manifest', path])
+    expect(human.stdout).toContain(
+      '33 | launch-type = "sometimes"\n   |               ^ error: [components.interactive.launch-type]'
+    )
+    expect(human.stdout).toMatch(/^error: \[os\.version\] contains value\(s\)/)
+  })
+
+  test('files: the tree of the package, manifest.toml at the top level', async () => {
+    const { sandbox, path } = brokenPackage()
+
+    const run = await ovd(sandbox, ['pkg', 'files', path, '--json'])
+
+    expect(run.exitCode).toBe(0)
+    const { files } = run.json<{ files: PackageFiles }>()
+    expect(files.entries).toHaveLength(18)
+    expect(files.tree.map((n) => n.name)).toEqual([
+      'assets',
+      'bundle',
+      'meta-info',
+      'manifest.toml'
+    ])
+    expect(sandbox.calls()).toEqual(['vega --version', `vega exec vpt show-contents ${path}`])
+
+    const human = await ovd(sandbox, ['pkg', 'files', path])
+    expect(human.stdout).toContain('assets/\n  raw/\n    keplerscript-app-config.json\n')
+    expect(human.stdout).toContain('\nmanifest.toml\n18 files\n')
+  })
+
+  test.each([
+    ['validate', 'vega exec vpt validate --no-color'],
+    ['manifest', 'vega exec vpt dump']
+  ])('%s: a file vpt rejects is not a .vpkg (exit 2)', async (sub, call) => {
+    const sandbox = createSandbox()
+    sandbox.installSdk()
+    const path = makeVpkg(sandbox.home)
+
+    const run = await ovd(sandbox, ['pkg', sub, path, '--json'])
+
+    expect(run.exitCode).toBe(2)
+    expect(run.json()).toMatchObject({ ok: false, error: { code: 'NOT_A_VPKG' } })
+    expect(sandbox.calls()).toEqual(['vega --version', expect.stringContaining(call)])
   })
 })
