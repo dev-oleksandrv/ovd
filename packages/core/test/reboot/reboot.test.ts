@@ -58,6 +58,8 @@ interface Setup {
   reconnect?: (id: string) => Promise<boolean>
   // Aborts the signal once fake time reaches this.
   abortAt?: number
+  // Ctrl+C while `vda reboot` itself runs: the runner stops it with an AbortError.
+  abortDuringReboot?: boolean
 }
 
 let home: string
@@ -94,6 +96,10 @@ function setup(opts: Setup = {}) {
       switch (spec.display) {
         case VVD_REBOOT:
         case WIFI_REBOOT: {
+          if (opts.abortDuringReboot) {
+            controller.abort()
+            throw Object.assign(new Error('The operation was aborted'), { name: 'AbortError' })
+          }
           const result = opts.reboots?.[sends++] ??
             opts.reboot ?? { stdout: recorded('vda-reboot/virtual-device.txt') }
           if ((result.exitCode ?? 0) === 0) rebootedAt = clock
@@ -507,6 +513,20 @@ describe('reboot', () => {
     await expect(run()).rejects.toMatchObject({ name: 'AbortError' })
     expect(calls).not.toContain(VVD_REBOOT)
     expect(await activity()).toEqual([])
+  })
+
+  test('an abort while vda reboot runs is logged: it may have reached the device', async () => {
+    const { run, calls } = setup({ timeline: RECORDED, abortDuringReboot: true })
+    await expect(run()).rejects.toMatchObject({ name: 'AbortError' })
+    expect(calls.filter((c) => c === VVD_REBOOT)).toHaveLength(1)
+    expect(await activity()).toEqual([
+      {
+        action: 'reboot',
+        target: 'VirtualDevice',
+        args: { timeout: '120', wait: 'cancelled' },
+        result: 'ok'
+      }
+    ])
   })
 
   test('an abort after vda reboot is logged: the device reboots anyway', async () => {
