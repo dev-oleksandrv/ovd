@@ -17,7 +17,7 @@ export interface World {
   stick: Stick | null
   // `rebootingUntil` (epoch ms, absent is 0): after `vda reboot` the Virtual Device is listed
   // `offline` until then, `vega device info` prints empty fields and shell commands fail
-  // (fixtures/0.24/README.md, Synthesized sequences). qemu, its discovery file and emulator gRPC
+  // (fixtures/0.24/README.md, Assembled sequences). qemu, its discovery file and emulator gRPC
   // stay up, as on the real one.
   vvd: { running: boolean; developerMode: boolean; rebootingUntil?: number }
   // How long a device is away after it reboots (`vda reboot`, `enable-device`, `logStream.reboot`;
@@ -40,8 +40,8 @@ export interface World {
   // The Virtual Device player neither runs nor crashes after `launch-app`, which still reports
   // success (`vega-device-launch-app/launched.txt`): it never joins `running`, so
   // `vlcm list --app-id` answers `vlcm-list/app-missing.txt`, and the crash history keeps
-  // `vlcm-crash-history/virtual-device-js-before.txt`. A sequence synthesized from recordings
-  // (fixtures/0.24/README.md, Synthesized sequences). Not combined with `playerCrashesOnLaunch`.
+  // `vlcm-crash-history/virtual-device-js-before.txt`. A sequence assembled from recordings
+  // (fixtures/0.24/README.md, Assembled sequences). Not combined with `playerCrashesOnLaunch`.
   playerStopsOnLaunch: boolean
   // The player crashed with a launch (set by `launch-app` when `playerCrashesOnLaunch`): the
   // crash history, the vault and the capture answer with the recording of the first crash
@@ -52,7 +52,7 @@ export interface World {
   // from the same recorded sequence: the first crash when it is the only one, the second
   // (`virtual-device-js-after-second.*`, index 106) when `playerCrashed` is set too. Every
   // in-scope report of every listing has a recorded bounded read (fixtures/0.24/README.md,
-  // Synthesized sequences).
+  // Assembled sequences).
   playerCrashInjected: boolean
   // The stick's player crashed (the recorded sequence `loggingctl-vault-ls/stick-before.json` →
   // `stick-after.json`, index 2100): `loggingctl vault --ls` lists it, the bounded read, pull and
@@ -80,7 +80,7 @@ export interface World {
   // `reboot` (absent is false): the next stream prints `stick-follow-reboot.txt` and ends with
   // exit 0, the stick is away for `rebootMs` (not listed by `vda devices -l`), and the flag goes
   // back to false, so the stream after it prints `stick-follow.txt` (fixtures/0.24/README.md,
-  // Synthesized sequences).
+  // Assembled sequences).
   logStream: {
     ends: boolean
     holdAfterLine: number | null
@@ -93,20 +93,22 @@ export interface World {
     recording?: 'presets'
     // `burst` (absent is false): after the recording, every stream prints BURST_LINES lines of
     // `com.example.player` inside one device second, then one line of another process in the
-    // next second, for the rate-limit rule. Synthesized (fixtures/0.24/README.md).
+    // next second, for the rate-limit rule. Synthesized: no recording has such a burst
+    // (fixtures/0.24/README.md, Synthesized sequences).
     burst?: boolean
   }
   // The device's boot ID (`vda shell cat /proc/sys/kernel/random/boot_id`, from
   // `vda-shell/boot-id.txt`). `reboots` counts the reboots the fake saw (`vda reboot`,
   // `enable-device`, `logStream.reboot`): the first reboot changes the ID to the second fake
   // UUID (`…0002`), the next to `…0003` (`bootIdAfter`). `readFails`: the read exits 1, as on a
-  // device whose `/proc` file can't be read. Synthesized (fixtures/0.24/README.md).
+  // device whose `/proc` file can't be read. The IDs after a reboot and the failed read's stderr
+  // are synthesized (fixtures/0.24/README.md, Synthesized sequences).
   boot: { reboots: number; readFails: boolean }
   // How many `loggingctl log -f` streams the Virtual Device has started. The first prints
   // `loggingctl-log/virtual-device-restart-before.txt`, every later one
   // `virtual-device-restart-after.txt` (as recorded: a stream started right after another was
   // stopped), then each follows until its process group is signalled (fixtures/0.24/README.md,
-  // Synthesized sequences).
+  // Assembled sequences).
   vvdLogStreams: number
   // When signed out, `vega devmode login --json` waits before it prints anything until it is
   // stopped, so a test can stop OVD while a probe runs. Doctor's own 5 s probe timeout still
@@ -126,7 +128,8 @@ export interface World {
   stickFiles: string[]
   // What the stick's screenshot holds: the synthetic PNG, or nothing (as verified on the
   // Virtual Device, an empty remote pulls an empty file with exit 0). The screenshooter's and the
-  // pull's answers are stick recordings (#44); the PNG itself is synthetic (fixtures/0.24/README.md).
+  // pull's answers are stick recordings (#44); the PNG itself is synthetic (fixtures/0.24/README.md,
+  // Synthesized sequences).
   stickScreenshot: 'image' | 'empty'
 }
 
@@ -151,7 +154,8 @@ export const VVD_VDA_SERIAL = 'emulator-5554'
 // How many lines `logStream.burst` prints in one device second.
 export const BURST_LINES = 50
 // The boot ID the fake reports after `reboots` reboots: the recorded fake UUID
-// (`vda-shell/boot-id.txt`) with its last group counting up (`…0001`, `…0002`, …).
+// (`vda-shell/boot-id.txt`) with its last group counting up (`…0001`, `…0002`, …). Synthesized
+// after the first reboot (fixtures/0.24/README.md, Synthesized sequences).
 export function bootIdAfter(reboots: number): string {
   return `00000000-0000-4000-8000-${String(reboots + 1).padStart(12, '0')}`
 }
