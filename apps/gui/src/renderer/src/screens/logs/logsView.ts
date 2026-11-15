@@ -38,7 +38,7 @@ export function levelName(level: string | undefined): string | null {
   return LONG[levelLetter(level)]
 }
 
-// The `ovd logs …` that shows what the screen shows (ADR 0005), in the CLI's flag order. `base`
+// The `ovd logs …` that shows what the screen shows (ADR 0029), in the CLI's flag order. `base`
 // is the built-in preset or saved filter the filter equals, if any (`presetMatch`): the echo is
 // then `--preset <base>`.
 export function logsCli(

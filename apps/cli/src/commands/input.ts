@@ -6,7 +6,7 @@ import { report } from '../report.js'
 import { reportContext } from './context.js'
 
 // `ovd input press <key...>` and `ovd input text <text>` (Stage 4.2): sticks through
-// `inputd-cli`, the Virtual Device through emulator gRPC (ADR 0010). Each call is one device
+// `inputd-cli`, the Virtual Device through emulator gRPC (ADR 0027). Each call is one device
 // action, logged by core (ADR 0011). Ctrl+C closes the session instead of leaving the console.
 export function registerInput(
   program: Command,

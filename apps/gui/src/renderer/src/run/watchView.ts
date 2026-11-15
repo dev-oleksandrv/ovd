@@ -25,7 +25,7 @@ export function watchDisabledReason(target: Device | undefined, watching: boolea
   return null
 }
 
-// The CLI equivalent (ADR 0005): the CLI's `--watch` watches the open project the same way,
+// The CLI equivalent (ADR 0029): the CLI's `--watch` watches the open project the same way,
 // on the target the desktop shows.
 export function watchCli(device: string): string {
   return `ovd run --watch --device ${device}`

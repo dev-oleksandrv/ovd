@@ -47,7 +47,7 @@ export interface ScreenshotDeps {
   isExecutable?: ClipboardDeps['isExecutable']
 }
 
-// The Virtual Device through emulator gRPC `getScreenshot` (ADR 0010), sticks through
+// The Virtual Device through emulator gRPC `getScreenshot` (ADR 0027), sticks through
 // `gwsi-tool-screenshooter` and `vda pull`.
 export type ScreenshotBackend = 'grpc' | 'gwsi-tool-screenshooter'
 

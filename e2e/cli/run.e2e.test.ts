@@ -179,7 +179,7 @@ describe('ovd run --watch', () => {
       return (
         runDocs(lines).length === 2 && restarted !== -1 && lines.slice(restarted).some(deviceLine)
       )
-    }, 30_000)
+    })
     running.signal('SIGINT')
     const done = await running.done
 
@@ -237,7 +237,7 @@ describe('ovd run --watch', () => {
     await running.waitForStdout((s) => linesOf(s).some((l) => l.ovd?.kind === 'build'))
     // Batches go one at a time: had the armv7 batch redeployed, it would install before this one.
     rebuild(sandbox, AARCH64, 'player-aarch64-debug')
-    const out = await running.waitForStdout((s) => runDocs(linesOf(s)).length === 2, 30_000)
+    const out = await running.waitForStdout((s) => runDocs(linesOf(s)).length === 2)
     running.signal('SIGINT')
     const done = await running.done
 
@@ -275,7 +275,7 @@ describe('ovd run --watch', () => {
       w.playerStopsOnLaunch = true
     })
     rebuild(sandbox, AARCH64, 'player-aarch64-debug')
-    await running.waitForStdout((s) => runDocs(linesOf(s)).length === 2, 30_000)
+    await running.waitForStdout((s) => runDocs(linesOf(s)).length === 2)
     sandbox.update((w) => {
       w.playerStopsOnLaunch = false
     })
@@ -283,7 +283,7 @@ describe('ovd run --watch', () => {
     const out = await running.waitForStdout((s) => {
       const docs = runDocs(linesOf(s))
       return docs.length === 3
-    }, 30_000)
+    })
     running.signal('SIGINT')
     const done = await running.done
 

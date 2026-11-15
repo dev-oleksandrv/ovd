@@ -2,6 +2,8 @@
 
 Recorded with Vega SDK 0.24.12112 and Vega CLI 1.4.5 on macOS (arm64).
 
+The e2e fake SDK answers with these files (ADR 0028). The answers it builds instead, including the hand-written ones ADR 0028 allows for a stick path whose `[HW]` check is still open, are listed under "Synthesized sequences" below.
+
 | File | Command | Device | Date |
 | --- | --- | --- | --- |
 | `vega-version/manager.txt` | `vega --version` (Vega CLI / SDK Manager, `~/vega/bin/vega`) | — | 2026-10-20 |

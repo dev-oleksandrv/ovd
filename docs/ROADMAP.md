@@ -9,18 +9,18 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | Done (v0.2.0) |
 | 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Done (v0.3.0) |
 | 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Done (v0.3.0) |
-| 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Planned       |
+| 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Next          |
 | 6     | Faster dev loop             | Deep links, Metro, device shell, memory, SDK versions                    | Deep links, Shell, Performance → Memory, Environment → SDK versions | Flexible | Planned       |
 | 7     | Agents and CI               | Let AI agents and GitHub Actions use OVD                                 | Scenarios & MCP                                                     | Flexible | Planned       |
 | 8     | Performance                 | Track launch KPIs and record traces                                      | Performance → Launch KPIs, Traces & monitors                        | Flexible | Planned       |
 | 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
 | 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
 
-**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. v0.2.0 closed Stage 2 and carried 3.1–3.2. v0.3.0 closed Stages 3 and 4 together; Stage 3’s success metrics are still to be measured (#116).
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. v0.2.0 closed Stage 2 and carried 3.1–3.2. v0.3.0 closed Stages 3 and 4 together; Stage 3’s success metrics are still to be measured (#116). v0.4.0 carried 5.1–5.2.
 
 The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
-**E2E in every stage.** Each stage ships end-to-end tests for its flows, in the CLI and the desktop app, next to the code (ADR 0023). They run the built surfaces against the fake SDK and check what the user does and sees, the SDK commands run and the state left behind. A stage's **E2E** line lists the flows to cover. A stage isn't done until `pnpm run test:e2e` passes locally and the required `e2e` CI check is green.
+**E2E in every stage.** Each stage ships end-to-end tests for its flows, in the CLI and the desktop app, next to the code (ADR 0028). They run the built surfaces against the fake SDK and check what the user does and sees, the SDK commands run and the state left behind. A stage's **E2E** line lists the flows to cover. A stage isn't done until `pnpm run test:e2e` passes locally and the required `e2e` CI check is green.
 
 ---
 
@@ -138,7 +138,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 ### 1.8 E2E tests — done (PR #14, #15)
 
-- Fake SDK and harness in `e2e/` (ADR 0023); `e2e` CI check required on PRs.
+- Fake SDK and harness in `e2e/` (ADR 0028); `e2e` CI check required on PRs.
 - CLI: `doctor` (no SDK, bundled CLI only, no devices, all passing, VDA down, Virtual Device Developer Mode off and fixed, Metro port in use), `devices`, `device info | rename`, `target` (only online, remembered, offline, `VEGA_SERIAL`, `--device`), `vvd start | stop | status | devmode enable`, `setup-stick` (success, wrong code then retry, expired sign-in, bad code, `--wifi`, bundled CLI), `pair --usb`, `pair <ip>` (refused, different network, bad address), saved devices (offline, `connect`, `forget` both routes).
 - Desktop: first run, Doctor, Devices list and detail, target picker and CLI echo, Virtual Device start / stop, setup and pairing wizards with their error states, saved devices with Reconnect, command palette.
 
@@ -261,8 +261,8 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 **Sidebar adds:** Debug → Remote & Screen.
 
-- **4.1 Virtual Device gRPC backend — done (PR #109):** enable the emulator gRPC endpoint on every Virtual Device start (a small client in core instead of vega-vvd-driver; ADR 0010, Amendments). Doctor gets "Emulator gRPC" (On · :8554 / Not running / couldn't enable). _Expected:_ after `ovd vvd start`, gRPC is on and a key reaches the device.
-- **4.2 Remote and text input — done (PR #110; the stick backend is unverified on hardware, #43):** `ovd input press <key>`, `ovd input text "<text>"`. Remote pad (D-pad, OK, Back, Home, Menu, play/pause, rewind, fast-forward), keyboard hint, pressed-key flash, "Type into TV". Input session panel (backend, sent commands). Sticks via `inputd-cli`, Virtual Device via gRPC (ADR 0010); Home disabled on the Virtual Device; one persistent session; keys don't fire while typing; "Remote unavailable — <device> is offline". _Expected:_ navigate and type on both device types with immediate feedback.
+- **4.1 Virtual Device gRPC backend — done (PR #109):** enable the emulator gRPC endpoint on every Virtual Device start (a small client in core instead of vega-vvd-driver; ADR 0027). Doctor gets "Emulator gRPC" (On · :8554 / Not running / couldn't enable). _Expected:_ after `ovd vvd start`, gRPC is on and a key reaches the device.
+- **4.2 Remote and text input — done (PR #110; the stick backend is unverified on hardware, #43):** `ovd input press <key>`, `ovd input text "<text>"`. Remote pad (D-pad, OK, Back, Home, Menu, play/pause, rewind, fast-forward), keyboard hint, pressed-key flash, "Type into TV". Input session panel (backend, sent commands). Sticks via `inputd-cli`, Virtual Device via gRPC (ADR 0027); Home disabled on the Virtual Device; one persistent session; keys don't fire while typing; "Remote unavailable — <device> is offline". _Expected:_ navigate and type on both device types with immediate feedback.
 - **4.3 Screenshots — done (PR #111; the stick backend is unverified on hardware, #44):** `ovd screenshot [--out] [--clipboard]`; button and palette action; saved to `~/ovd/captures` and the clipboard; Captures list. _Expected:_ one click saves a PNG from either device type.
 - **4.4 Screen view — done (PR #112):** Virtual Device live view ("Live · emulator gRPC", ~16+ fps); stick "Latest screenshot · <time>" with Refresh (marked out of date after a key press); "No signal" when offline.
 - **4.5 Reboot & wait — done (PR #113):** `ovd reboot` returns when the device is back; desktop shows "Rebooting…". _Expected:_ a stick returns to Online without manual reconnecting.
@@ -281,7 +281,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 **Sidebar adds:** Debug → Crashes (badge for new crashes).
 
 - **5.1 Crash radar — done (PR #128):** `ovd crashes [--watch]`, `ovd crash pull <id>`. Crashes screen ("loggingctl vault · scoped to your apps · polling every 5 s"): list (signal chip native/JS, app, NEW, age, summary, pid · build · device); detail with Download ACR, Copy crash report path, Copy prompt for your agent, Logs at crash time; raw stack (symbolication later). New-crash toast and OVD log line. Apps' "Crashed on launch" gets "Open crash report". Never request elevated access. _Expected:_ a crash toasts within 5 s; report on disk in one click.
-- **5.2 Log power tools — done:** presets (All, App errors only, Network, Lifecycle) and "Save filter"; advanced filters (PID, TID, tag, identity, facility, boot); per-process level, rate limit and mute as host-side display rules, because `loggingctl config` doesn't reach JS lines (ARCHITECTURE §8); "Bundle" for bug reports. `ovd logs --preset <name>`, `ovd logs filter save|list|rm`, `ovd logs bundle`.
+- **5.2 Log power tools — done (PR #130):** presets (All, App errors only, Network, Lifecycle) and "Save filter"; advanced filters (PID, TID, tag, identity, facility, boot); per-process level, rate limit and mute as host-side display rules, because `loggingctl config` doesn't reach JS lines (ARCHITECTURE §8); "Bundle" for bug reports. `ovd logs --preset <name>`, `ovd logs filter save|list|rm`, `ovd logs bundle`.
 - **5.3 Packages → Manifest, Files, Validate:** manifest from `vpt dump` with line numbers and notes; `vpt show-contents` tree; `vpt validate` table (severity, message, file) with error badge and clickable lines where possible. `ovd pkg manifest | files | validate`. _Expected:_ a broken manifest shows exact errors; clicking opens the line.
 - **5.4 Homebrew tap — dropped:** no tap. npm and GitHub Releases already cover macOS and Ubuntu (maintainer decision, 2026-11-13; ADR 0025, #108).
 

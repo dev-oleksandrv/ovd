@@ -240,7 +240,7 @@ export interface InputSent {
   error?: ErrorJson
 }
 
-// The input session main keeps for the target (one at a time, ADR 0010). `opening` while a
+// The input session main keeps for the target (one at a time, ADR 0027). `opening` while a
 // stick's `inputd-cli` console starts; `error` when it couldn't open (Retry opens it again).
 // `sent` is the last 50, newest first.
 export interface InputState {

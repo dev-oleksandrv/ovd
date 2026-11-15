@@ -106,7 +106,7 @@ describe('ovd reboot', () => {
       const lines = linesOf(o)
       const at = lines.findIndex((l) => l.ovd?.kind === 'reconnected')
       return at >= 0 && lines.slice(at + 1).some((l) => l.level)
-    }, 30_000)
+    })
     logs.signal('SIGINT')
     const stopped = await logs.done
     expect(stopped.exitCode).toBe(0)
