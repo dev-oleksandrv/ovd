@@ -1,6 +1,7 @@
 import type { ProjectDoctorResult } from '../adapters/parseProjectDoctor.js'
 
-export type CheckId = 'sdk' | 'vda' | 'project' | 'devices' | 'devmode' | 'metro' | 'grpc' | 'node'
+export type CheckId =
+  'sdk' | 'vda' | 'project' | 'devices' | 'devmode' | 'metro' | 'grpc' | 'node' | 'path'
 export type CheckStatus = 'ok' | 'info' | 'warn' | 'fail' | 'skipped'
 // What a surface can offer to fix a check; each surface shows only the fixes it has shipped.
 export type CheckFix =

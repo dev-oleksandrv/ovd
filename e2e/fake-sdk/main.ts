@@ -1086,10 +1086,12 @@ function installApp(w: World, rest: string[]): Reply | null {
 
 async function answer(w: World): Promise<Reply | null> {
   const [first, second, ...rest] = args
+  // An SDK's own `vega` installed next to the Vega CLI answers as the bundled one (sandbox.ts).
+  const cli = process.env.OVD_FAKE_CLI === 'bundled' ? 'bundled' : w.cli
   if (first === '--version' && second === undefined) {
-    return { stdout: fixture(`vega-version/${w.cli}.txt`) }
+    return { stdout: fixture(`vega-version/${cli}.txt`) }
   }
-  if (w.cli === 'bundled' && (first === 'devmode' || first === 'sdk')) {
+  if (cli === 'bundled' && (first === 'devmode' || first === 'sdk')) {
     return { stderr: fixture('vega-devmode-login/bundled-cli.stderr.txt'), exitCode: 253 }
   }
   if (first === 'sdk' && args.join(' ') === 'sdk config doctor --json') {

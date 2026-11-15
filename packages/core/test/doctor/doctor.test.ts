@@ -18,6 +18,7 @@ const SDK_DOCTOR = 'vega sdk config doctor --json'
 const VDA_VERSION = 'vega exec vda version'
 const DEVMODE = 'vega devmode login --json'
 const NODE = 'node --version'
+const VEGA_ON_PATH = 'command -v vega'
 const forwarded = (id: string, port: number) =>
   `vega device is-port-forwarded --port ${port} --forward false --device ${id}`
 
@@ -62,7 +63,8 @@ const healthy = () => ({
   [DEVMODE]: { ...out('vega-devmode-login/signed-in.json'), exitCode: 2 },
   [forwarded(stick.id, 8081)]: out('vega-device-is-port-forwarded/false.txt'),
   [forwarded(stick.id, 8097)]: out('vega-device-is-port-forwarded/false.txt'),
-  [NODE]: { stdout: 'v24.2.0\n' }
+  [NODE]: { stdout: 'v24.2.0\n' },
+  [VEGA_ON_PATH]: { stdout: '/home/dev/vega/bin/vega\n' }
 })
 
 interface Setup {
@@ -76,6 +78,8 @@ interface Setup {
   project?: ProjectMode | null
   // What `vvd.grpc(device)` answers for an online Virtual Device; on by default.
   vvdGrpc?: VvdGrpcProbe | OvdError
+  // Symlinks `realpath` resolves; any other path resolves to itself.
+  links?: Record<string, string>
 }
 
 const VSM = 'vega exec vda -s emulator-5554 shell vsm developer-mode'
@@ -132,7 +136,8 @@ function setup(opts: Setup = {}) {
     homedir: '/home/dev',
     shell: '/bin/zsh',
     host: async () => ({ os: 'macOS', osVersion: '26.6', arch: 'arm64' }),
-    portInUse: async (port) => (opts.inUse ?? []).includes(port)
+    portInUse: async (port) => (opts.inUse ?? []).includes(port),
+    realpath: async (path) => opts.links?.[path] ?? path
   })
   return { doctor, runner, discovered, sdk, vvdAsked, grpcAsked }
 }
@@ -153,9 +158,20 @@ describe('Doctor.run', () => {
       'devmode',
       'metro',
       'grpc',
-      'node'
+      'node',
+      'path'
     ])
-    expect(statuses(report.checks)).toEqual(['ok', 'ok', 'info', 'ok', 'ok', 'info', 'info', 'ok'])
+    expect(statuses(report.checks)).toEqual([
+      'ok',
+      'ok',
+      'info',
+      'ok',
+      'ok',
+      'info',
+      'info',
+      'ok',
+      'ok'
+    ])
     expect(report.checks).toMatchObject([
       {
         name: 'Vega SDK',
@@ -181,7 +197,8 @@ describe('Doctor.run', () => {
         command: 'vega device is-port-forwarded'
       },
       { name: 'Emulator gRPC', detail: 'Not running', hint: 'Start it with ovd vvd start' },
-      { name: 'Node', detail: 'v24.2.0 (requires ≥ 22)', command: NODE }
+      { name: 'Node', detail: 'v24.2.0 (requires ≥ 22)', command: NODE },
+      { name: 'Shell PATH', detail: 'vega is ~/vega/bin/vega', command: VEGA_ON_PATH }
     ])
   })
 
@@ -214,7 +231,7 @@ describe('Doctor.run', () => {
       hint: 'Install the Vega SDK',
       fix: 'install-sdk'
     })
-    for (const id of ['vda', 'devices', 'devmode', 'metro', 'grpc']) {
+    for (const id of ['vda', 'devices', 'devmode', 'metro', 'grpc', 'path']) {
       expect(check(checks, id)).toMatchObject({
         status: 'skipped',
         detail: 'Waiting for the Vega SDK'
@@ -242,6 +259,13 @@ describe('Doctor.run', () => {
     expect([check(checks, 'vda')?.status, check(checks, 'devices')?.status]).toEqual(['ok', 'ok'])
     expect(check(checks, 'sdk')).not.toHaveProperty('command')
     expect(check(checks, 'devmode')).not.toHaveProperty('command')
+    // The SDK row already says to install the Vega CLI; PATH order means nothing without it.
+    expect(check(checks, 'path')).toEqual({
+      id: 'path',
+      name: 'Shell PATH',
+      status: 'skipped',
+      detail: 'Needs the Vega CLI (SDK Manager)'
+    })
   })
 
   test('corrupted SDK components warn', async () => {
@@ -611,6 +635,79 @@ describe('Doctor.run: Project row', () => {
   })
 })
 
+// Issue #30: the SDK's own bin before the Vega CLI on PATH makes terminal builds reach the SDK
+// by a second path, and the SDK rebuilds its workspace whenever the path switches.
+describe('Doctor.run: the Shell PATH check', () => {
+  const withVega = (result: { stdout?: string; exitCode?: number }) => ({
+    script: { ...healthy(), [VEGA_ON_PATH]: result }
+  })
+  const pathRow = async (opts: Setup) => check((await setup(opts).doctor.run()).checks, 'path')
+
+  test('asks the login shell which vega a terminal runs', async () => {
+    const { doctor, runner } = setup()
+    await doctor.run()
+    expect(runner.calls.find((c) => c.display === VEGA_ON_PATH)).toMatchObject({
+      file: '/bin/zsh',
+      args: ['-ilc', 'command -v vega']
+    })
+  })
+
+  test('the SDK’s own bin first warns, naming both folders', async () => {
+    const row = await pathRow(withVega({ stdout: '/home/dev/vega/sdk/0.24.12112/bin/vega\n' }))
+    expect(row).toEqual({
+      id: 'path',
+      name: 'Shell PATH',
+      status: 'warn',
+      detail: '~/vega/sdk/0.24.12112/bin comes before ~/vega/bin — builds fail while OVD runs',
+      command: VEGA_ON_PATH,
+      hint: 'Put ~/vega/bin before ~/vega/sdk/0.24.12112/bin on your PATH, or remove ~/vega/sdk/0.24.12112/bin, then open a new terminal'
+    })
+  })
+
+  test('a link to the Vega CLI first is the Vega CLI', async () => {
+    const row = await pathRow({
+      ...withVega({ stdout: 'Welcome back\n/usr/local/bin/vega\n' }),
+      links: { '/usr/local/bin/vega': '/home/dev/vega/bin/vega' }
+    })
+    expect(row).toMatchObject({ status: 'ok', detail: 'vega is /usr/local/bin/vega' })
+  })
+
+  test('a link to the SDK’s own vega first warns', async () => {
+    const row = await pathRow({
+      ...withVega({ stdout: '/usr/local/bin/vega\n' }),
+      links: { '/usr/local/bin/vega': '/home/dev/vega/sdk/0.24.12112/bin/vega' }
+    })
+    expect(row).toMatchObject({
+      status: 'warn',
+      detail: '/usr/local/bin comes before ~/vega/bin — builds fail while OVD runs'
+    })
+  })
+
+  test('no vega on PATH is info, with how to add it', async () => {
+    const row = await pathRow(withVega({ stdout: '', exitCode: 1 }))
+    expect(row).toMatchObject({
+      status: 'info',
+      detail: 'vega isn’t on your shell’s PATH',
+      hint: 'Add ~/vega/bin to your PATH to run vega in a terminal',
+      command: VEGA_ON_PATH
+    })
+  })
+
+  test('an alias or function is info: the shell runs no file', async () => {
+    const row = await pathRow(withVega({ stdout: "alias vega='vega --verbose'\n" }))
+    expect(row).toMatchObject({
+      status: 'info',
+      detail: 'Couldn’t tell which vega your shell runs'
+    })
+  })
+
+  test('a shell that doesn’t answer is info, never a failure', async () => {
+    const timedOut = new OvdError('COMMAND_FAILED', 'command -v vega timed out', '')
+    const row = await pathRow({ script: { ...healthy(), [VEGA_ON_PATH]: timedOut } })
+    expect(row).toMatchObject({ status: 'info', detail: 'Couldn’t read your shell’s PATH' })
+  })
+})
+
 describe('Doctor.run: the abort signal', () => {
   const PROJECT_DOCTOR = 'vega project doctor'
   const folder: ProjectMode = {
@@ -650,7 +747,8 @@ describe('Doctor.run: the abort signal', () => {
         forwarded(stick.id, 8097),
         DEVMODE,
         PROJECT_DOCTOR,
-        NODE
+        NODE,
+        VEGA_ON_PATH
       ])
     )
     expect(runner.calls.every((c) => c.signal === signal)).toBe(true)

@@ -70,6 +70,9 @@ export interface Sandbox {
   // The environment a surface is started with.
   env: Record<string, string>
   installSdk(cli?: World['cli']): void
+  // Puts these `vega` folders first on PATH, in this order, as a shell rc file does: the Vega
+  // CLI's (`~/vega/bin`) and the SDK's own bin, whose `vega` answers as the bundled one (#30).
+  vegaOnPath(order: ('cli' | 'sdk-bin')[]): void
   world(): World
   update(change: (world: World) => void): void
   // Every SDK command run, as users read it (`vega exec vda devices -l`).
@@ -127,13 +130,13 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     chmodSync(file, 0o755)
   }
 
-  const path = [fakeBin, dirname(process.execPath), '/usr/bin', '/bin']
+  const basePath = [fakeBin, dirname(process.execPath), '/usr/bin', '/bin']
   const env: Record<string, string> = {
     HOME: home,
     OVD_HOME: ovdHome,
     // Doctor's Node check runs `$SHELL -ilc 'node --version'`; with this HOME it loads no rc file.
     SHELL: '/bin/sh',
-    PATH: path.join(':'),
+    PATH: basePath.join(':'),
     TMPDIR: tmpdir(),
     // This sandbox's fake emulator, never a Virtual Device running on this host.
     OVD_EMULATOR_CONSOLE_PORT: String(emulator.consolePort),
@@ -148,6 +151,20 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     // The display of a headless Ubuntu runner (xvfb-run), for the desktop app.
     ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
     ...(process.env.XAUTHORITY ? { XAUTHORITY: process.env.XAUTHORITY } : {})
+  }
+
+  // A fake `vega` where the SDK Manager or an SDK puts it. `pinned`: it answers as `cli` whatever
+  // the world says, for an SDK's own `vega` next to the Vega CLI.
+  function writeVega(cli: World['cli'], pinned = false): string {
+    const file = join(home, cli === 'manager' ? MANAGER_VEGA : join(BUNDLED_BIN, 'vega'))
+    mkdirSync(dirname(file), { recursive: true })
+    const pin = pinned ? ` OVD_FAKE_CLI='${cli}'` : ''
+    writeFileSync(
+      file,
+      `#!/bin/sh\nOVD_FAKE_SDK_DIR='${sdkDir}'${pin} exec '${process.execPath}' --no-warnings '${FAKE_SDK_MAIN}' "$@"\n`
+    )
+    chmodSync(file, 0o755)
+    return file
   }
 
   function pidsIn(file: string): number[] {
@@ -201,17 +218,18 @@ export function openSandbox(world: Partial<World> = {}): Sandbox {
     env,
 
     installSdk(cli = 'manager') {
-      const file = join(home, cli === 'manager' ? MANAGER_VEGA : join(BUNDLED_BIN, 'vega'))
-      mkdirSync(dirname(file), { recursive: true })
-      writeFileSync(
-        file,
-        `#!/bin/sh\nOVD_FAKE_SDK_DIR='${sdkDir}' exec '${process.execPath}' --no-warnings '${FAKE_SDK_MAIN}' "$@"\n`
-      )
-      chmodSync(file, 0o755)
+      const file = writeVega(cli)
       // Only the SDK Manager's location is searched without PATH; a bundled `vega` is found on it.
       if (cli === 'bundled') env.PATH = `${dirname(file)}:${env.PATH}`
       const w = readWorld(sdkDir)
       writeWorld(sdkDir, { ...w, cli })
+    },
+
+    vegaOnPath(order) {
+      const dirs = order.map((entry) =>
+        entry === 'cli' ? dirname(join(home, MANAGER_VEGA)) : dirname(writeVega('bundled', true))
+      )
+      env.PATH = [...dirs, ...basePath].join(':')
     },
 
     world: () => readWorld(sdkDir),

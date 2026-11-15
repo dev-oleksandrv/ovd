@@ -252,9 +252,10 @@ describe('Doctor tab', () => {
     fireEvent.click(nav('Doctor'))
     expect(await screen.findByText('0 failing · 1 warning')).toBeTruthy()
     const rows = screen.getByRole('list', { name: 'Checks' })
-    expect(within(rows).getAllByRole('listitem')).toHaveLength(7)
+    expect(within(rows).getAllByRole('listitem')).toHaveLength(8)
     expect(within(rows).getByText('No devices connected')).toBeTruthy()
     expect(within(rows).getByText('vega exec vda devices -l')).toBeTruthy()
+    expect(within(rows).getByText('vega is ~/vega/bin/vega')).toBeTruthy()
   })
 
   test('Run ovd doctor runs it again, toasts and echoes the command', async () => {

@@ -13,7 +13,7 @@ export function registerDoctor(
   program
     .command('doctor')
     .description(
-      'Check the Vega SDK, VDA, project, devices, sign-in, Metro ports and emulator gRPC'
+      'Check the Vega SDK, VDA, project, devices, sign-in, Metro ports, emulator gRPC, Node and which vega your shell runs'
     )
     .action(async (_opts, cmd: Command) => {
       const ctx = reportContext(cmd, deps, setExitCode)
