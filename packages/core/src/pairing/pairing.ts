@@ -68,7 +68,8 @@ export interface Pairing {
 const CONNECT_TIMEOUT_MS = 20_000
 const RECONNECT_TIMEOUT_MS = 5_000
 const POLL_MS = 1_000
-// The stick restarts its VDA daemon after `tcpip`; connects right after can be refused.
+// The stick restarts its VDA daemon after `tcpip`; connects right after can be refused, and
+// once one printed something core couldn't read (ARCHITECTURE §8).
 const TCPIP_CONNECT_ATTEMPTS = 10
 const LISTED_ATTEMPTS = 10
 
@@ -259,8 +260,10 @@ export function createPairing(deps: PairingDeps): Pairing {
             await connectOnce(address)
             break
           } catch (error) {
-            const refused = error instanceof OvdError && error.code === 'PAIR_REFUSED'
-            if (!refused || attempt >= TCPIP_CONNECT_ATTEMPTS) throw error
+            const retry =
+              error instanceof OvdError &&
+              (error.code === 'PAIR_REFUSED' || error.code === 'UNEXPECTED_OUTPUT')
+            if (!retry || attempt >= TCPIP_CONNECT_ATTEMPTS) throw error
             await sleep(POLL_MS)
           }
         }
