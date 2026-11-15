@@ -427,17 +427,17 @@ Plugin API · error explainer (log patterns → fix hints) · device farm view �
 
 About an hour each, done just before the stage that needs them.
 
-| Check                                                       | Before                                             |
-| ----------------------------------------------------------- | -------------------------------------------------- |
-| `inputd-cli button_press` reaches apps on a real stick      | Stage 4 (signed off without)                       |
-| Screenshot rate on a stick with `gwsi-tool-screenshooter`   | Stage 4 (signed off without; stick live view in 9) |
-| `vda reboot` and the Wi‑Fi reconnect on a real stick        | Stage 4 (signed off without)                       |
-| `vpt validate` output format (line numbers?)                | Stage 5.3                                          |
-| `perf record` category names                                | Stage 8                                            |
-| Uninstall removes app data (verified 2026-11-08: it does)   | Stage 9                                            |
-| Virtual Device snapshots save and load                      | Stage 9                                            |
-| `vda pull` / shell access to app data on a production stick | Stage 9                                            |
-| `network speed` / `network delay` throttle app traffic      | Stage 10.1                                         |
+| Check                                                                         | Before                                             |
+| ----------------------------------------------------------------------------- | -------------------------------------------------- |
+| `inputd-cli button_press` reaches apps on a real stick                        | Stage 4 (signed off without)                       |
+| Screenshot rate on a stick with `gwsi-tool-screenshooter`                     | Stage 4 (signed off without; stick live view in 9) |
+| `vda reboot` and the Wi‑Fi reconnect on a real stick                          | Stage 4 (signed off without)                       |
+| `vpt validate` output format (verified 2026-11-15: line numbers, on the host) | Stage 5.3                                          |
+| `perf record` category names                                                  | Stage 8                                            |
+| Uninstall removes app data (verified 2026-11-08: it does)                     | Stage 9                                            |
+| Virtual Device snapshots save and load                                        | Stage 9                                            |
+| `vda pull` / shell access to app data on a production stick                   | Stage 9                                            |
+| `network speed` / `network delay` throttle app traffic                        | Stage 10.1                                         |
 
 ## Success metrics
 
