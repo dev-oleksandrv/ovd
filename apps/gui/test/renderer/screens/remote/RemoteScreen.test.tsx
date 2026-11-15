@@ -185,6 +185,38 @@ describe('RemoteScreen', () => {
     expect(await screen.findByText('Fire TV stick is offline')).toBeTruthy()
   })
 
+  test('a press whose IPC call rejects toasts with the CLI echo', async () => {
+    await renderScreen({
+      press: async () => {
+        throw new Error('the window went away')
+      }
+    })
+    const remote = await screen.findByRole('group', { name: 'Remote' })
+    fireEvent.click(within(remote).getByRole('button', { name: 'OK' }))
+    expect(await screen.findByText('Couldn’t send it')).toBeTruthy()
+    expect(screen.getByTitle('Copy CLI equivalent').textContent).toContain(
+      `ovd input press ok --device ${stick.id}`
+    )
+  })
+
+  test('a text whose IPC call rejects: a toast, the spinner stops and the text stays', async () => {
+    await renderScreen({
+      text: async () => {
+        throw new Error('the window went away')
+      }
+    })
+    const field = await screen.findByRole('textbox', { name: 'Text to type' })
+    fireEvent.change(field, { target: { value: 'hello' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(await screen.findByText('Couldn’t send it')).toBeTruthy()
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(
+        false
+      )
+    )
+    expect((field as HTMLInputElement).value).toBe('hello')
+  })
+
   test('on the Virtual Device Home is disabled with the reason, and H sends nothing', async () => {
     const stub = await renderScreen({ devices: [onlineVvd] })
     const remote = await screen.findByRole('group', { name: 'Remote' })
@@ -272,6 +304,32 @@ describe('RemoteScreen screenshots', () => {
     expect(
       await screen.findByText('Fire TV stick gave an empty or invalid screenshot')
     ).toBeTruthy()
+  })
+
+  test('a take whose IPC call rejects toasts and the button is free again', async () => {
+    await renderScreen({
+      screenshot: {
+        take: async () => {
+          throw new Error('the window went away')
+        }
+      }
+    })
+    await screen.findByRole('group', { name: 'Remote' })
+    fireEvent.click(shotButton())
+    expect(await screen.findByText('Couldn’t take the screenshot')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Screenshot' })).toBeTruthy()
+  })
+
+  test('Captures: a list read whose IPC call rejects is an error with Retry', async () => {
+    await renderScreen({
+      screenshot: {
+        captures: async () => {
+          throw new Error('the window went away')
+        }
+      }
+    })
+    expect(await screen.findByText('Couldn’t read the captures folder')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
   })
 
   test('while a take runs the button is busy and a second click sends nothing', async () => {

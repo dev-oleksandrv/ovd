@@ -36,7 +36,8 @@ export function useVvdActions(): VvdActions {
   const grpcRef = useRef(false)
 
   async function power(kind: 'start' | 'stop'): Promise<boolean> {
-    if (running.current) return false
+    // Doctor's Turn on runs a start too: one of them at a time.
+    if (running.current || grpcRef.current) return false
     running.current = kind
     setBusy(kind)
     const cli = kind === 'start' ? START_CLI : STOP_CLI
@@ -102,7 +103,7 @@ export function useVvdActions(): VvdActions {
   }
 
   async function enableGrpc(): Promise<boolean> {
-    if (grpcRef.current) return false
+    if (grpcRef.current || running.current) return false
     grpcRef.current = true
     setGrpcBusy(true)
     echo(START_CLI)

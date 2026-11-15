@@ -80,6 +80,7 @@ function setup(opts: {
   statuses?: (Device['status'] | 'gone')[]
   take?: () => Promise<ScreenshotResult>
   dir?: string
+  sendFrame?: (frame: ScreenFramePush) => void
 }) {
   const frames: ScreenFramePush[] = []
   const states: ScreenState[] = []
@@ -110,7 +111,10 @@ function setup(opts: {
       captures: async () => ({ dir: '/captures', captures: [] }),
       dir: () => opts.dir ?? '/captures'
     },
-    sendFrame: (f) => frames.push(f),
+    sendFrame: (f) => {
+      opts.sendFrame?.(f)
+      frames.push(f)
+    },
     sendState: (s) => states.push(s),
     sendCaptures: (l) => captures.push(l),
     sleep: async (ms) => void sleeps.push(ms),
@@ -367,6 +371,34 @@ describe('screen controller', () => {
     await flush()
     expect(s.statuses()).toEqual(['connecting', 'live'])
     expect(s.controller.state()).toEqual({ status: 'idle', target: null })
+  })
+
+  test('a frame that can’t be sent leaves no wait for its ack: the stream closes and reopens', async () => {
+    const first = fakeLive()
+    const second = fakeLive()
+    let fail = true
+    const s = setup({
+      lives: [async () => first.live, async () => second.live],
+      sendFrame: () => {
+        if (!fail) return
+        fail = false
+        throw new Error('Object has been destroyed')
+      }
+    })
+    s.controller.start('VirtualDevice')
+    first.push(frameOf(0))
+    await flush()
+    expect(first.state.closed).toBe(true)
+    second.push(frameOf(1))
+    second.push(frameOf(2))
+    await flush()
+    // The frame that failed (seq 1) is no wait: an ack for it moves nothing on.
+    s.controller.ack(1)
+    await flush()
+    expect(s.frames.map((f) => f.seq)).toEqual([2])
+    s.controller.ack(2)
+    await flush()
+    expect(s.frames.map((f) => f.seq)).toEqual([2, 3])
   })
 
   test('a stream that opens after a stop is closed', async () => {

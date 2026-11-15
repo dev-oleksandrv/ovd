@@ -319,7 +319,7 @@ export type {
 } from './screenshot/screenshot.js'
 export { captureBase, captureName, capturesDir, listCaptures, slug } from './screenshot/captures.js'
 export type { Capture, CapturesList } from './screenshot/captures.js'
-export { pngSize } from './screenshot/png.js'
+export { completePngSize, pngSize } from './screenshot/png.js'
 export { clipboardCommand, createClipboard } from './screenshot/clipboard.js'
 export type {
   Clipboard,

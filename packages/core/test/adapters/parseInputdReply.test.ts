@@ -73,6 +73,11 @@ describe('parseInputdText', () => {
     expect(parseInputdText(recorded(name))).toEqual(expected)
   })
 
+  test('a text of only spaces: the trimmed line is `Injecting Text:` alone, still ok', () => {
+    expect(parseInputdText('Injecting Text:    \n\r\ninputd-cli > ')).toEqual({ ok: true })
+    expect(parseInputdText('Injecting Text:x\n\r\ninputd-cli > ')).toMatchObject({ ok: false })
+  })
+
   test('a failure never carries the reply, which may echo the text', () => {
     const reply = 'something went wrong with hunter2\n\r\ninputd-cli > '
     expect(JSON.stringify(parseInputdText(reply))).not.toContain('hunter2')
