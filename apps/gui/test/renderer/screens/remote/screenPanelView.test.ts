@@ -47,10 +47,10 @@ describe('screenView', () => {
       { kind: 'error', error: { code: 'VVD_GRPC_FAILED', message: 'm', hint: 'h' } }
     ],
     [
-      'main says no signal',
+      'main says no signal: Retry, since the device list still has it online',
       onlineVvd,
       state({ status: 'no-signal' }),
-      { kind: 'no-signal', name: 'Vega Virtual Device', status: 'offline' }
+      { kind: 'no-signal', name: 'Vega Virtual Device', status: 'offline', retry: true }
     ],
     [
       'stopped',

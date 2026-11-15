@@ -16,8 +16,8 @@ export interface InputValue {
   // Resolves true once the device took the text.
   text(text: string): Promise<boolean>
   retry(): void
-  // Keys and texts the device took, counted up from 0: a stick's screenshot is out of date
-  // once it grew after the shot.
+  // Keys and texts the target took, counted up from 0 for each device: a stick's screenshot is
+  // out of date once its count grew after the shot.
   sentCount: number
 }
 
@@ -28,7 +28,8 @@ export function useInput(target: Device | undefined): InputValue {
   const { echo, notify } = useFeedback()
   const [state, setState] = useState<InputState>(IDLE)
   const [flash, setFlash] = useState<RemoteKey | null>(null)
-  const [sentCount, setSentCount] = useState(0)
+  // Per device ID, so sends to another target don't mark this one's screenshot out of date.
+  const [sentCounts, setSentCounts] = useState<Record<string, number>>({})
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const device = target?.status === 'online' ? target.id : null
 
@@ -58,7 +59,8 @@ export function useInput(target: Device | undefined): InputValue {
     (outcome: InputOutcome) => {
       if (outcome.ok) {
         echo(outcome.sent.cli)
-        setSentCount((n) => n + 1)
+        const id = outcome.result.target.id
+        setSentCounts((counts) => ({ ...counts, [id]: (counts[id] ?? 0) + 1 }))
       } else {
         notify({
           tone: 'error',
@@ -70,28 +72,47 @@ export function useInput(target: Device | undefined): InputValue {
     [echo, notify]
   )
 
+  // The IPC call rejects only on a bug or a torn-down window; it still toasts, never leaves a
+  // spinner on or an unhandled rejection.
+  const failed = useCallback(
+    (cli?: string) => {
+      notify({ tone: 'error', text: 'Couldn’t send it', ...(cli ? { cli } : {}) })
+    },
+    [notify]
+  )
+
   const press = useCallback(
     async (key: RemoteKey) => {
       setFlash(key)
       clearTimeout(timer.current)
       timer.current = setTimeout(() => setFlash(null), FLASH_MS)
-      report(await window.ovd.input.press(key))
+      try {
+        report(await window.ovd.input.press(key))
+      } catch {
+        failed(device === null ? undefined : `ovd input press ${key} --device ${device}`)
+      }
     },
-    [report]
+    [report, failed, device]
   )
 
   const text = useCallback(
     async (value: string) => {
-      const outcome = await window.ovd.input.text(value)
-      report(outcome)
-      return outcome.ok
+      try {
+        const outcome = await window.ovd.input.text(value)
+        report(outcome)
+        return outcome.ok
+      } catch {
+        failed()
+        return false
+      }
     },
-    [report]
+    [report, failed]
   )
 
   const retry = useCallback(() => {
     if (device !== null) void window.ovd.input.open(device)
   }, [device])
 
+  const sentCount = device === null ? 0 : (sentCounts[device] ?? 0)
   return { state, flash, press, text, retry, sentCount }
 }

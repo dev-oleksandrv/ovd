@@ -134,13 +134,19 @@ export function createScreenController(deps: {
       const n = ++seq
       await new Promise<void>((resolve) => {
         awaiting = { seq: n, acked: resolve }
-        deps.sendFrame({
-          seq: n,
-          width: frame.width,
-          height: frame.height,
-          timestampUs: frame.timestampUs,
-          pixels: frame.pixels
-        })
+        try {
+          deps.sendFrame({
+            seq: n,
+            width: frame.width,
+            height: frame.height,
+            timestampUs: frame.timestampUs,
+            pixels: frame.pixels
+          })
+        } catch (error) {
+          // Not sent (the window went away), so no ack is coming for it.
+          if (awaiting?.seq === n) awaiting = undefined
+          throw error
+        }
       })
       if (gen !== generation) return null
     }
@@ -165,8 +171,12 @@ export function createScreenController(deps: {
         }
         current.live = live
         set(gen, { status: 'live', target: live.target })
-        error = await pump(gen, live)
-        live.close()
+        try {
+          error = await pump(gen, live)
+        } finally {
+          // Also when sending a frame threw: the stream never outlives its pump.
+          live.close()
+        }
       } catch (thrown) {
         if (gen !== generation) return
         if (thrown instanceof Error && thrown.name === 'AbortError') return

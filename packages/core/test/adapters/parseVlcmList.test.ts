@@ -39,6 +39,26 @@ describe('parseVlcmList', () => {
   })
 
   test.each([
+    ['stopped: the header only', '2.0/vlcm-list/hellovega-stopped.txt', []],
+    [
+      'running',
+      '2.0/vlcm-list/hellovega-running.txt',
+      [
+        {
+          application: 'com.example.hellovega.main',
+          type: 'I',
+          pid: 4097,
+          state: 'VISIBLE',
+          lifespan: 'PERMANENT',
+          container: 'framework.slice/essential/4097'
+        }
+      ]
+    ]
+  ])('SDK 2.0, the app %s', (_name, file, expected) => {
+    expect(parseVlcmList(fixture(file))).toEqual(expected)
+  })
+
+  test.each([
     // Right after `launch-app` on a stick: pid 0 and an empty container column, so the
     // whitespace split reads the launch-args column there (ARCHITECTURE §8).
     ['idle, pid 0', 'vlcm-list/app-idle.txt', { pid: 0, state: 'IDLE', container: '<none>' }],

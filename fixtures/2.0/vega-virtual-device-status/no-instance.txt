@@ -1,0 +1,1 @@
+cannot find virtual device instance: default_instance'/home/user/vega/sdk/vega-sdk/main/2.0.13986/vvd/bin/virtualdevice status --log-path /home/user/vega/sdk/vega-sdk/main/2.0.13986/vvd --instances-path /home/user/vega/sdk/vega-sdk/main/2.0.13986/vvd/instances --name default_instance' exited with non-zero code '1'

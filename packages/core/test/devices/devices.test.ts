@@ -121,6 +121,42 @@ describe('Devices.list', () => {
     expect((await devices.list()).devices.map((d) => d.id)).toEqual(['G070000000000001'])
   })
 
+  // SDK 2.0 answers exit 1 until the first start creates the default instance.
+  test('SDK 2.0 before the first start: the Virtual Device is listed stopped', async () => {
+    const { devices } = setup({
+      ...stickOnly(),
+      [VVD]: {
+        stdout: fixture('2.0/vega-virtual-device-status/no-instance.txt'),
+        stderr: fixture('2.0/vega-virtual-device-status/no-instance.stderr.txt'),
+        exitCode: 1
+      }
+    })
+    expect((await devices.list()).devices.map((d) => [d.id, d.status])).toEqual([
+      ['G070000000000001', 'online'],
+      ['VirtualDevice', 'stopped']
+    ])
+  })
+
+  test('SDK 2.0: the Virtual Device on x86_64', async () => {
+    const { devices } = setup({
+      [VDA]: { stdout: fixture('2.0/vda-devices/virtual-device.txt') },
+      [VVD]: { stdout: fixture('2.0/vega-virtual-device-status/running.json') },
+      [VVD_INFO]: { stdout: fixture('2.0/vega-device-info/virtual-device.json') }
+    })
+    expect(await devices.list()).toMatchObject({
+      target: 'VirtualDevice',
+      devices: [
+        {
+          id: 'VirtualDevice',
+          vdaSerial: 'emulator-5554',
+          kind: 'vvd',
+          status: 'online',
+          info: { architecture: 'x86_64', os: 'OS 2.0', simulated: true, developerMode: true }
+        }
+      ]
+    })
+  })
+
   test('nothing attached', async () => {
     const { devices } = setup({
       [VDA]: out('vda-devices/none.txt'),

@@ -13,7 +13,7 @@ import type { Emulator } from '../vvd/emulator.js'
 import type { Vvd } from '../vvd/vvd.js'
 import { captureBase, capturesDir, listCaptures, type CapturesList } from './captures.js'
 import { createClipboard, type ClipboardDeps, type ClipboardTool } from './clipboard.js'
-import { pngSize } from './png.js'
+import { completePngSize } from './png.js'
 import {
   commitFile,
   nodeSaveFs,
@@ -79,8 +79,9 @@ export interface Screenshot {
   captures(opts?: { limit?: number }): Promise<CapturesList>
   // The captures folder (`OVD_CAPTURES`, else `~/ovd/captures`).
   dir(): string
-  // `--clipboard`: a host action, not a device action, so it isn't logged.
-  copy(path: string): Promise<{ tool: ClipboardTool }>
+  // `--clipboard`: a host action, not a device action, so it isn't logged. Ctrl+C (`signal`)
+  // stops the tool and rejects with an AbortError; the file stays saved.
+  copy(path: string, opts?: { signal?: AbortSignal }): Promise<{ tool: ClipboardTool }>
 }
 
 const VVD_VDA_SERIAL = 'emulator-5554'
@@ -120,13 +121,15 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
     ...(deps.isExecutable ? { isExecutable: deps.isExecutable } : {})
   })
 
-  // The device as VDA lists it now; null when that can't be read.
+  // The device as VDA lists it now; null when that can't be read, whatever the reason, so the
+  // caller keeps the error it already has.
   async function reread(device: Device): Promise<Device | null> {
     try {
       return await deps.devices.get(device.id)
     } catch (error) {
-      if (!(error instanceof OvdError)) throw error
-      return error.code === 'DEVICE_NOT_FOUND' ? { ...device, status: 'offline' } : null
+      return error instanceof OvdError && error.code === 'DEVICE_NOT_FOUND'
+        ? { ...device, status: 'offline' }
+        : null
     }
   }
 
@@ -209,14 +212,17 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
       if (backend === 'grpc') {
         bytes = await grpcShot(device, signal)
         if (signal?.aborted) throw abortError()
-        if (!pngSize(bytes)) throw failed(`${device.name} sent a screenshot that isn’t a PNG`)
+        if (!completePngSize(bytes)) {
+          throw failed(`${device.name} sent a screenshot that isn’t a PNG`)
+        }
         await writePart(temp, bytes)
       } else {
         await stickShot(device, temp, signal)
         if (signal?.aborted) throw abortError()
         bytes = (await readPart(temp)) ?? new Uint8Array()
       }
-      const size = pngSize(bytes)
+      // The whole file, not only its header: a truncated PNG is refused too.
+      const size = completePngSize(bytes)
       if (!size) throw failed(`${device.name} gave an empty or invalid screenshot`)
       const path = await commitFile(temp, dest, base, fs)
       return {
@@ -271,6 +277,6 @@ export function createScreenshot(deps: ScreenshotDeps): Screenshot {
 
     dir: () => dir,
 
-    copy: (path) => clipboard.copyPng(path)
+    copy: (path, opts) => clipboard.copyPng(path, opts)
   }
 }

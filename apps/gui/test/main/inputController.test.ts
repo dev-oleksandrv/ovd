@@ -214,8 +214,10 @@ describe('createInputController', () => {
     const opened = controller.open(STICK)
     // Once the open is waiting for core's session.
     await new Promise((r) => setTimeout(r, 0))
-    await controller.close()
+    // Close waits for the open in flight (a stick's console must get its `exit`).
+    const closed = controller.close()
     resolve(late)
+    await closed
     await opened
     expect(late.close).toHaveBeenCalled()
   })
@@ -275,6 +277,28 @@ describe('createInputController', () => {
     expect(controller.running()).toBe(false)
   })
 
+  test('a console still opening at quit: running, and close waits until it is up and closed', async () => {
+    let resolve: (s: InputSession) => void = () => undefined
+    let finishClose: () => void = () => undefined
+    const late = fakeSession()
+    late.close.mockImplementationOnce(
+      () => new Promise<undefined>((r) => (finishClose = () => r(undefined)))
+    )
+    const { controller } = setup({ session: () => new Promise((r) => (resolve = r)) })
+    void controller.open(STICK)
+    await vi.waitFor(() => expect(controller.state().status).toBe('opening'))
+    expect(controller.running()).toBe(true)
+    let closed = false
+    const quit = controller.close().then(() => (closed = true))
+    resolve(late)
+    await vi.waitFor(() => expect(late.close).toHaveBeenCalled())
+    expect(closed).toBe(false)
+    expect(controller.running()).toBe(true)
+    finishClose()
+    await quit
+    expect(controller.running()).toBe(false)
+  })
+
   test('running: false for the Virtual Device (gRPC has no console)', async () => {
     const { controller } = setup()
     await controller.open('VirtualDevice')
@@ -315,6 +339,19 @@ describe('reboot', () => {
     expect(sent).toHaveLength(pushed)
     expect(controller.state()).toMatchObject({ status: 'ready', backend: 'grpc' })
     expect(session).toHaveBeenCalledTimes(1)
+  })
+
+  test('an open refused during the reboot never answers with another device’s session', async () => {
+    const { controller } = setup()
+    await controller.open('VirtualDevice')
+    await controller.deviceRebooting(STICK)
+    expect(await controller.open(STICK)).toEqual({
+      status: 'idle',
+      target: null,
+      backend: null,
+      sent: []
+    })
+    expect(controller.state()).toMatchObject({ status: 'ready', backend: 'grpc' })
   })
 
   test('back without a reboot does nothing', () => {

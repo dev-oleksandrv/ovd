@@ -1,7 +1,7 @@
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   createActivityLog,
   createDevices,
@@ -120,6 +120,8 @@ function setup(script: ConstructorParameters<typeof FakeRunner>[0], enables?: En
   const devices = createDevices({ runner, sdk, state: createStateStore(home), activity, env: {} })
   const sleeps: number[] = []
   const fake = fakeEmulator(enables)
+  // Epoch ms; only sleeps (and tests) move it.
+  const clock = { now: 0 }
   const vvd = createVvd({
     runner,
     sdk,
@@ -129,9 +131,11 @@ function setup(script: ConstructorParameters<typeof FakeRunner>[0], enables?: En
     sleep: async (ms, signal) => {
       signal?.throwIfAborted()
       sleeps.push(ms)
-    }
+      clock.now += ms
+    },
+    now: () => clock.now
   })
-  return { vvd, devices, runner, sleeps, ...fake }
+  return { vvd, devices, runner, sleeps, clock, ...fake }
 }
 
 async function activity(): Promise<Pick<ActivityEntry, 'action' | 'result' | 'errorCode'>[]> {
@@ -180,6 +184,36 @@ describe('Vvd.start', () => {
       { action: 'vvd.start', result: 'ok' },
       { action: 'vvd.grpc.enable', result: 'ok' }
     ])
+  })
+
+  test('SDK 2.0 before the first start: starts it, which creates the instance', async () => {
+    const noInstance = {
+      vda: { stdout: fixture('2.0/vda-devices/virtual-device.txt').split('\n')[0] ?? '' },
+      status: {
+        stdout: fixture('2.0/vega-virtual-device-status/no-instance.txt'),
+        stderr: fixture('2.0/vega-virtual-device-status/no-instance.stderr.txt'),
+        exitCode: 1
+      }
+    }
+    const online20 = {
+      vda: { stdout: fixture('2.0/vda-devices/virtual-device.txt') },
+      status: { stdout: fixture('2.0/vega-virtual-device-status/running.json') }
+    }
+    const { vvd, runner } = setup({
+      [VDA]: [noInstance.vda, online20.vda],
+      [STATUS]: [noInstance.status, online20.status],
+      [VVD_INFO]: { stdout: fixture('2.0/vega-device-info/virtual-device.json') },
+      [START]: {
+        stdout: fixture('2.0/vega-virtual-device-start/started.txt'),
+        stderr: fixture('2.0/vega-virtual-device-start/started.stderr.txt')
+      }
+    })
+    expect(await vvd.start()).toMatchObject({
+      status: 'online',
+      device: { id: 'VirtualDevice', info: { architecture: 'x86_64' } },
+      grpc: { status: 'on' }
+    })
+    expect(runner.count(START)).toBe(1)
   })
 
   test('already online: nothing starts, gRPC is still turned on', async () => {
@@ -269,6 +303,19 @@ describe('Vvd.start: emulator gRPC', () => {
     ])
   })
 
+  test('a console that accepts but never answers stops after the 10 s budget', async () => {
+    const fake = setup(phases(online))
+    // Each attempt waits out the 5 s console timeout, then counts as not up yet.
+    fake.emulator.enableGrpc = async (serial, opts = {}) => {
+      fake.attempts.push({ serial, signal: opts.signal })
+      fake.clock.now += 5_000
+      throw refused()
+    }
+    expect((await fake.vvd.start()).grpc).toMatchObject({ status: 'failed' })
+    expect(fake.attempts).toHaveLength(2)
+    expect(fake.clock.now).toBe(11_000)
+  })
+
   test('a refusal such as a wrong token is not retried', async () => {
     const { vvd, attempts, sleeps } = setup(phases(online), ['rejected'])
     expect((await vvd.start()).grpc).toMatchObject({
@@ -290,12 +337,21 @@ describe('Vvd.start: emulator gRPC', () => {
     })
   })
 
-  test('an abort during the retry wait rejects and logs no gRPC entry', async () => {
+  test('an abort once it is online resolves the start with gRPC cancelled, no gRPC entry', async () => {
     const controller = new AbortController()
     const { vvd, attempts } = setup(phases(online), ['refused'])
     const sleepAbort = vvd.start({ signal: controller.signal })
     controller.abort()
-    await expect(sleepAbort).rejects.toMatchObject({ name: 'AbortError' })
+    const result = await sleepAbort
+    expect(result).toMatchObject({ status: 'online', running: true })
+    expect(result.grpc).toEqual({
+      status: 'failed',
+      error: {
+        code: 'VVD_GRPC_FAILED',
+        message: 'Cancelled before emulator gRPC was on',
+        hint: 'Turn it on with ovd vvd start'
+      }
+    })
     expect(attempts.length).toBeLessThan(10)
     expect(await activity()).toEqual([{ action: 'vvd.start', result: 'ok' }])
   })
@@ -338,6 +394,26 @@ describe('Vvd.grpc', () => {
     expect(await vvd.grpc(d)).toEqual(expected)
     expect(probes).toEqual(probed)
     expect(runner.calls).toEqual([])
+  })
+
+  test('off while this core still turns gRPC on reads as starting, then off once it gave up', async () => {
+    const fake = setup(phases(online))
+    fake.emulator.grpc = async () => ({ status: 'off' })
+    let release: (() => void) | undefined
+    fake.emulator.enableGrpc = () =>
+      new Promise((_resolve, reject) => {
+        release = () => reject(refused())
+      })
+    const started = fake.vvd.start()
+    await vi.waitFor(() => expect(release).toBeDefined())
+    expect(await fake.vvd.grpc(device('online'))).toEqual({ status: 'starting' })
+    // From here every retry fails at once (budget aside).
+    fake.emulator.enableGrpc = async () => {
+      throw new OvdError('VVD_GRPC_FAILED', 'no', 'no', { retryable: false })
+    }
+    release?.()
+    expect((await started).grpc.status).toBe('failed')
+    expect(await fake.vvd.grpc(device('online'))).toEqual({ status: 'off' })
   })
 })
 
@@ -400,8 +476,8 @@ describe('Vvd.ensureGrpc', () => {
     gate.release()
     expect(await Promise.all([first, second])).toEqual([{ port: 8554 }, { port: 8554 }])
     expect(fake.attempts).toHaveLength(1)
-    // The shared enable runs without any one caller's signal.
-    expect(fake.attempts[0]?.signal).toBeUndefined()
+    // The shared enable runs with its own signal, not any one caller's.
+    expect(fake.attempts[0]?.signal?.aborted).toBe(false)
     expect(await activity()).toEqual([{ action: 'vvd.grpc.enable', result: 'ok' }])
   })
 
@@ -433,6 +509,38 @@ describe('Vvd.ensureGrpc', () => {
     expect(await second).toEqual({ port: 8554 })
     expect(fake.attempts).toHaveLength(1)
     expect(await activity()).toEqual([{ action: 'vvd.grpc.enable', result: 'ok' }])
+  })
+
+  test('every caller gives up: the enable is aborted, and the next call runs a new one', async () => {
+    const fake = setup(phases(online))
+    const gate = held(fake)
+    const a = new AbortController()
+    const b = new AbortController()
+    const first = fake.vvd.ensureGrpc(vvdDevice('online'), a.signal)
+    const second = fake.vvd.ensureGrpc(vvdDevice('online'), b.signal)
+    a.abort()
+    await expect(first).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fake.attempts[0]?.signal?.aborted).toBe(false)
+    b.abort()
+    await expect(second).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fake.attempts[0]?.signal?.aborted).toBe(true)
+    const third = fake.vvd.ensureGrpc(vvdDevice('online'))
+    gate.release()
+    expect(await third).toEqual({ port: 8554 })
+    expect(fake.attempts).toHaveLength(2)
+  })
+
+  test('a caller without a signal keeps the enable going when the others give up', async () => {
+    const fake = setup(phases(online))
+    const gate = held(fake)
+    const controller = new AbortController()
+    const waiting = fake.vvd.ensureGrpc(vvdDevice('online'))
+    const giving = fake.vvd.ensureGrpc(vvdDevice('online'), controller.signal)
+    controller.abort()
+    await expect(giving).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fake.attempts[0]?.signal?.aborted).toBe(false)
+    gate.release()
+    expect(await waiting).toEqual({ port: 8554 })
   })
 
   test('an already aborted signal rejects at once', async () => {

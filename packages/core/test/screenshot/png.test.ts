@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
-import { pngSize } from '../../src/index.js'
+import { completePngSize, pngSize } from '../../src/index.js'
 
 const synthetic = new Uint8Array(
   readFileSync(
@@ -37,5 +37,20 @@ describe('pngSize', () => {
     ['zero height', header(1, 0)]
   ])('%s is not a PNG', (_name, bytes) => {
     expect(pngSize(bytes)).toBeNull()
+  })
+})
+
+describe('completePngSize', () => {
+  test('the synthetic screenshot ends with IEND', () => {
+    expect(completePngSize(synthetic)).toEqual({ width: 1920, height: 1080 })
+  })
+
+  test.each([
+    ['cut short', synthetic.subarray(0, synthetic.length - 1)],
+    ['header only', synthetic.subarray(0, 24)],
+    ['half the file', synthetic.subarray(0, Math.floor(synthetic.length / 2))],
+    ['empty', new Uint8Array()]
+  ])('%s is not a whole PNG', (_name, bytes) => {
+    expect(completePngSize(bytes)).toBeNull()
   })
 })

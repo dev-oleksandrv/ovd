@@ -46,8 +46,14 @@ export function registerReboot(
           const ms = timeoutMs(flags.timeout)
           const ovd = deps.ovd()
           let waiting = false
+          // Core reports `rebooting` right before it sends `vda reboot`: before that, a Ctrl+C
+          // stops a reboot that never reached the device.
+          let sending = false
           const progress = (step: RebootProgress, target: { id: string; name: string }) => {
-            if (step === 'rebooting') deps.output.stderr(`Rebooting ${target.name}…\n`)
+            if (step === 'rebooting') {
+              sending = true
+              deps.output.stderr(`Rebooting ${target.name}…\n`)
+            }
             if (step === 'waiting' && !waiting) {
               waiting = true
               deps.output.stderr(
@@ -69,7 +75,11 @@ export function registerReboot(
             })
           } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
-              throw new OvdError('COMMAND_FAILED', 'Cancelled', 'The device may still be rebooting')
+              throw new OvdError(
+                'COMMAND_FAILED',
+                'Cancelled',
+                sending ? 'The device may still be rebooting' : 'Nothing was sent to the device'
+              )
             }
             throw error
           } finally {

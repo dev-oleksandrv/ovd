@@ -14,3 +14,15 @@ export function pngSize(bytes: Uint8Array): { width: number; height: number } | 
   const height = view.getUint32(20)
   return width > 0 && height > 0 ? { width, height } : null
 }
+
+// A PNG ends with its IEND chunk: length 0, `IEND`, then its fixed CRC.
+const IEND = [0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]
+
+// `pngSize` for a whole file: also null when the file doesn't end with IEND, as a pull or an
+// answer cut short would.
+export function completePngSize(bytes: Uint8Array): { width: number; height: number } | null {
+  const size = pngSize(bytes)
+  if (!size || bytes.length < PNG_HEADER_BYTES + IEND.length) return null
+  const tail = bytes.length - IEND.length
+  return IEND.every((byte, i) => bytes[tail + i] === byte) ? size : null
+}

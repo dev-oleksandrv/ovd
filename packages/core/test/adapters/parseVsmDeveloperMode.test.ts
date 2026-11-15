@@ -4,10 +4,11 @@ import { fixture } from '../support/fixtures.js'
 
 describe('parseVsmDeveloperMode', () => {
   test.each([
-    ['vsm-developer-mode/enabled.txt', { enabled: true }],
-    ['vsm-developer-mode/disabled.txt', { enabled: false }]
+    ['0.24/vsm-developer-mode/enabled.txt', { enabled: true }],
+    ['0.24/vsm-developer-mode/disabled.txt', { enabled: false }],
+    ['2.0/vsm-developer-mode/enabled.txt', { enabled: true }]
   ])('%s', (file, expected) => {
-    expect(parseVsmDeveloperMode(fixture(`0.24/${file}`))).toEqual(expected)
+    expect(parseVsmDeveloperMode(fixture(file))).toEqual(expected)
   })
 
   test.each(['', 'enabled', fixture('0.24/vsm-developer-mode/shell-service-down.stderr.txt')])(

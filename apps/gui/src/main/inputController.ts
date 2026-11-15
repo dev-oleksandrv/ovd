@@ -24,7 +24,7 @@ export interface InputController {
   // The reboot of `id` ended (back, failed or timed out): a session it closed goes idle (pushed),
   // so a shown Remote screen opens a new one; an open refused meanwhile is made now.
   deviceBack(id: string): void
-  // True while a stick's console is open or still closing (quit waits for its `exit`).
+  // True while a stick's console is open, opening or still closing (quit waits for its `exit`).
   running(): boolean
   // On quit and when the window closes: the stick's console exits and the state goes idle (not
   // pushed, so nothing reopens it).
@@ -78,6 +78,9 @@ export function createInputController(deps: {
   let opening: Promise<InputState> | undefined
   // Stick consoles still closing (`exit` sent, the group not gone yet): quit waits for them.
   const closing = new Set<Promise<void>>()
+  // Opens in flight, even dropped ones: a stick's console may still come up and must get its
+  // `exit` before quit stops its group.
+  const inFlight = new Set<Promise<InputState>>()
   // Bumped by every open and close: an open that finishes in another generation is dropped.
   let generation = 0
   // Devices OVD is rebooting, and whether a session on it was closed or an open refused.
@@ -104,7 +107,9 @@ export function createInputController(deps: {
     session = undefined
     opening = undefined
     device = null
-    if (!old) return
+    if (old) await closeOne(old)
+  }
+  const closeOne = async (old: InputSession) => {
     const done = old.close().catch(() => undefined)
     if (old.backend === 'inputd-cli') {
       closing.add(done)
@@ -159,7 +164,8 @@ export function createInputController(deps: {
       const reboot = rebooting.get(id)
       if (reboot) {
         reboot.refused = true
-        return state
+        // Not the state of whatever session is open: none opens on this device for now.
+        return state.target?.id === id ? state : idle()
       }
       if (device === id && (state.status === 'ready' || state.status === 'opening')) {
         return opening ?? state
@@ -174,7 +180,7 @@ export function createInputController(deps: {
       const started = deps.input.session(id).then(
         async (s): Promise<InputState> => {
           if (gen !== generation) {
-            await s.close()
+            await closeOne(s)
             return state
           }
           session = s
@@ -193,7 +199,9 @@ export function createInputController(deps: {
         }
       )
       opening = started
+      inFlight.add(started)
       const result = await started
+      inFlight.delete(started)
       if (opening === started) opening = undefined
       return result
     },
@@ -219,7 +227,7 @@ export function createInputController(deps: {
     },
 
     // Ready without a session (it closed) reads as idle, so the screen opens a new one.
-    running: () => session?.backend === 'inputd-cli' || closing.size > 0,
+    running: () => session?.backend === 'inputd-cli' || closing.size > 0 || inFlight.size > 0,
 
     state: () => (state.status === 'ready' && !session ? idle() : state),
 
@@ -245,9 +253,11 @@ export function createInputController(deps: {
       void closeCurrent(true)
     },
 
-    // Also waits for a console the window's close already started closing (quit on Ubuntu).
+    // Also waits for a console the window's close already started closing (quit on Ubuntu),
+    // and for one still opening, which closes as soon as it is up.
     close: async () => {
       await closeCurrent(false)
+      await Promise.all([...inFlight])
       await Promise.all([...closing])
     }
   }

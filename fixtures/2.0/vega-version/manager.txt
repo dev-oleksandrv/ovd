@@ -1,0 +1,3 @@
+Active SDK Version: 2.0.13986
+Vega CLI Version: 1.4.9
+

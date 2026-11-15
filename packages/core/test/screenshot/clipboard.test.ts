@@ -24,6 +24,26 @@ function setup(opts: {
   return { clipboard, runs }
 }
 
+describe('Clipboard.copyPng: Ctrl+C', () => {
+  test('the signal reaches the tool, and an abort is an AbortError, not CLIPBOARD_UNAVAILABLE', async () => {
+    const controller = new AbortController()
+    let got: AbortSignal | undefined
+    const clipboard = createClipboard({
+      platform: 'darwin',
+      env: {},
+      exec: async (_command, _timeoutMs, signal) => {
+        got = signal
+        controller.abort()
+        return -1
+      }
+    })
+    await expect(clipboard.copyPng(PATH, { signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError'
+    })
+    expect(got).toBe(controller.signal)
+  })
+})
+
 describe('Clipboard.copyPng', () => {
   test('macOS: osascript with the path as an argument, never in the script', async () => {
     const { clipboard, runs } = setup({ platform: 'darwin' })

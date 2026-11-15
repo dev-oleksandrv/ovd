@@ -5,6 +5,7 @@ import { fixture } from '../support/fixtures.js'
 describe('parseIsPortForwarded', () => {
   test.each([
     [fixture('0.24/vega-device-is-port-forwarded/false.txt'), false],
+    [fixture('2.0/vega-device-is-port-forwarded/false.txt'), false],
     ['true\n', true]
   ])('%j', (out, expected) => {
     expect(parseIsPortForwarded(out)).toBe(expected)

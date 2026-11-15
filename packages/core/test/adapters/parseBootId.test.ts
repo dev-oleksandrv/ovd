@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parseBootId } from '../../src/adapters/parseBootId.js'
+import { fixture } from '../support/fixtures.js'
 
 // The sample ID of ADR 0016: a fake UUID, as `cat /proc/sys/kernel/random/boot_id` prints it
 // (ARCHITECTURE §8).
@@ -14,6 +15,12 @@ describe('parseBootId', () => {
     [`  ${DASHED}  \n`, BARE]
   ])('%j gives the ID without dashes, lower case', (out, expected) => {
     expect(parseBootId(out)).toBe(expected)
+  })
+
+  test.each(['0.24', '2.0'])('%s/vda-shell/boot-id.txt', (sdk) => {
+    expect(parseBootId(fixture(`${sdk}/vda-shell/boot-id.txt`))).toBe(
+      '00000000000040008000000000000001'
+    )
   })
 
   test.each([

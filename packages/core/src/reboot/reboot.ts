@@ -105,9 +105,16 @@ export function createReboot(deps: RebootDeps): Reboot {
   }
 
   // One `vda reboot`; false when VDA answered that it doesn't know the serial or that it is
-  // offline.
-  async function sendOnce(device: Device, signal?: AbortSignal): Promise<boolean> {
+  // offline. `sent.maybe` is true from the moment it runs until VDA answered it didn't reboot,
+  // so an abort meanwhile knows the device may be rebooting.
+  async function sendOnce(
+    device: Device,
+    sent: { maybe: boolean },
+    signal?: AbortSignal
+  ): Promise<boolean> {
     const { vegaPath } = await deps.sdk.get()
+    if (signal?.aborted) throw abortError()
+    sent.maybe = true
     const run = await deps.runner.run(
       vdaCmd(vegaPath, ['reboot'], device.vdaSerial ?? device.id, {
         timeoutMs: SEND_TIMEOUT_MS,
@@ -115,6 +122,7 @@ export function createReboot(deps: RebootDeps): Reboot {
       })
     )
     if (run.exitCode === 0) return true
+    sent.maybe = false
     // fixtures/0.24/vda-reboot/device-not-found.stderr.txt: VDA lost it since the preflight.
     if (/not found/.test(run.stderr)) return false
     const output = `${run.stdout}\n${run.stderr}`
@@ -149,12 +157,16 @@ export function createReboot(deps: RebootDeps): Reboot {
     return null
   }
 
-  async function send(device: Device, signal?: AbortSignal): Promise<void> {
-    if (await sendOnce(device, signal)) return
+  async function send(
+    device: Device,
+    sent: { maybe: boolean },
+    signal?: AbortSignal
+  ): Promise<void> {
+    if (await sendOnce(device, sent, signal)) return
     // VDA drops the Virtual Device for a few seconds right after a start (ARCHITECTURE §8),
     // answering not found or device offline: once it lists the device again (maybe under a new transport ID), one more try.
     const back = await relisted(device.id, signal)
-    if (back && (await sendOnce(back, signal))) return
+    if (back && (await sendOnce(back, sent, signal))) return
     throw offline({ ...device, status: 'offline' })
   }
 
@@ -249,23 +261,33 @@ export function createReboot(deps: RebootDeps): Reboot {
         return found
       })
       if (opts.signal?.aborted) throw abortError()
+      // The reboot was sent (or was being sent) and goes on without OVD: that attempt is logged.
+      const cancelled = async (): Promise<never> => {
+        await deps.activity.append({
+          action: 'reboot',
+          target: device.id,
+          args: { ...args, wait: 'cancelled' },
+          result: 'ok'
+        })
+        throw abortError()
+      }
       return logged('reboot', device.id, args, async () => {
         opts.onProgress?.('rebooting', { id: device.id, name: device.name })
-        await send(device, opts.signal)
+        const sent = { maybe: false }
+        try {
+          await send(device, sent, opts.signal)
+        } catch (error) {
+          // Stopped while `vda reboot` ran: it may have reached the device.
+          if (opts.signal?.aborted && sent.maybe) return cancelled()
+          throw error
+        }
         const started = now()
         let reconnected: boolean
         try {
           reconnected = await wait(device, started, timeoutMs, opts)
         } catch (error) {
           if (!opts.signal?.aborted) throw error
-          // The reboot was sent and goes on without OVD: that attempt is logged.
-          await deps.activity.append({
-            action: 'reboot',
-            target: device.id,
-            args: { ...args, wait: 'cancelled' },
-            result: 'ok'
-          })
-          throw abortError()
+          return cancelled()
         }
         return {
           target: { id: device.id, name: device.name },

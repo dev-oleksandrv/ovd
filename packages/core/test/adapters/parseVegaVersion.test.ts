@@ -4,10 +4,17 @@ import { fixture } from '../support/fixtures.js'
 
 describe('parseVegaVersion', () => {
   test.each([
-    ['vega-version/manager.txt', { cli: 'manager', sdkVersion: '0.24.12112', cliVersion: '1.4.5' }],
-    ['vega-version/bundled.txt', { cli: 'bundled', sdkVersion: '0.24.12112' }]
+    [
+      '0.24/vega-version/manager.txt',
+      { cli: 'manager', sdkVersion: '0.24.12112', cliVersion: '1.4.5' }
+    ],
+    ['0.24/vega-version/bundled.txt', { cli: 'bundled', sdkVersion: '0.24.12112' }],
+    [
+      '2.0/vega-version/manager.txt',
+      { cli: 'manager', sdkVersion: '2.0.13986', cliVersion: '1.4.9' }
+    ]
   ])('%s', (file, expected) => {
-    expect(parseVegaVersion(fixture(`0.24/${file}`))).toEqual(expected)
+    expect(parseVegaVersion(fixture(file))).toEqual(expected)
   })
 
   test('tolerates CRLF line endings', () => {
