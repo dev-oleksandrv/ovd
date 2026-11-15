@@ -4,12 +4,16 @@ import { parseAppConfig, type BuildType } from '../adapters/parseAppConfig.js'
 import { parseVptChecksum } from '../adapters/parseVptChecksum.js'
 import { parseVptContents, type PackageArch } from '../adapters/parseVptContents.js'
 import { parseVptInfo } from '../adapters/parseVptInfo.js'
+import { parseVptValidate, type ValidationIssue } from '../adapters/parseVptValidate.js'
+import { stripControl } from '../adapters/stripControl.js'
+import { unexpectedOutput } from '../adapters/unexpectedOutput.js'
 import { OvdError } from '../errors/ovdError.js'
 import { expandHome, tildePath } from '../project/paths.js'
 import type { Project } from '../project/project.js'
 import { vptCmd } from '../sdk/commands.js'
 import type { RunResult, Runner } from '../sdk/runner.js'
 import type { SdkLocator } from '../sdk/sdkLocator.js'
+import { buildFileTree, MAX_ENTRIES, type FileNode } from './packageFiles.js'
 
 export interface PackageInfo {
   path: string
@@ -49,6 +53,36 @@ export interface PackageBuild {
   folderBuildType?: BuildType
 }
 
+// Which package a tab read: the same fields as `PackageInfo` names it by.
+export interface PackageRef {
+  path: string
+  displayPath: string
+  file: string
+}
+
+// `vpt validate` on a .vpkg (Stage 5.3). `valid` is vpt's verdict (exit 0); an invalid package
+// always has at least one `error` issue.
+export interface PackageValidation extends PackageRef {
+  valid: boolean
+  errors: number
+  warnings: number
+  infos: number
+  issues: ValidationIssue[]
+}
+
+// `vpt dump <pkg> manifest.toml`, line by line, with the validation whose lines refer to it.
+export interface PackageManifest extends PackageRef {
+  entry: 'manifest.toml'
+  lines: string[]
+  validation: PackageValidation
+}
+
+// `vpt show-contents`: the list as printed and the tree built from it.
+export interface PackageFiles extends PackageRef {
+  entries: string[]
+  tree: FileNode[]
+}
+
 export interface PackagesDeps {
   runner: Runner
   sdk: SdkLocator
@@ -67,9 +101,14 @@ export interface Packages {
   builds(folder?: string): Promise<PackageBuild[]>
   // Only the architecture, from `vpt show-contents`: the guard reads it for each candidate fix.
   architecture(path: string): Promise<PackageArch>
+  // Packages → Manifest, Files, Validate (Stage 5.3); without a path, the open .vpkg.
+  manifest(path?: string): Promise<PackageManifest>
+  files(path?: string): Promise<PackageFiles>
+  validate(path?: string): Promise<PackageValidation>
 }
 
 const APP_CONFIG = 'assets/raw/keplerscript-app-config.json'
+const MANIFEST = 'manifest.toml'
 // `react-native build-vega` writes intermediate packages under `build/private/`.
 const SKIPPED = new Set(['private', 'node_modules'])
 const MAX_DEPTH = 3
@@ -89,6 +128,43 @@ export function createPackages(deps: PackagesDeps): Packages {
     )
   }
 
+  // A .vpkg that exists, checked before any `vpt` call.
+  async function vpkgFile(input?: string) {
+    const path = await target(input)
+    const file = basename(path)
+    const info = await stat(path).catch(() => undefined)
+    if (!info) {
+      throw new OvdError(
+        'PATH_NOT_FOUND',
+        `${tilde(path)} doesn’t exist`,
+        'Check the path and try again'
+      )
+    }
+    if (!info.isFile() || !/\.vpkg$/i.test(path)) throw notAVpkg(file)
+    return { path, file, info, ref: { path, displayPath: tilde(path), file } }
+  }
+
+  async function validation(ref: PackageRef): Promise<PackageValidation> {
+    const run = await vpt(['validate', '--no-color', ref.path])
+    const parsed = parseVptValidate(run)
+    if (parsed.kind === 'failed') {
+      if (/not a directory, archive, or manifest file/i.test(parsed.message)) {
+        throw notAVpkg(ref.file)
+      }
+      throw failed(run)
+    }
+    const count = (severity: ValidationIssue['severity']) =>
+      parsed.issues.filter((issue) => issue.severity === severity).length
+    return {
+      ...ref,
+      valid: parsed.valid,
+      errors: count('error'),
+      warnings: count('warning'),
+      infos: count('info'),
+      issues: parsed.issues
+    }
+  }
+
   async function vpt(args: string[]): Promise<RunResult> {
     const { vegaPath } = await deps.sdk.get()
     return deps.runner.run(vptCmd(vegaPath, args))
@@ -96,17 +172,7 @@ export function createPackages(deps: PackagesDeps): Packages {
 
   return {
     async info(input) {
-      const path = await target(input)
-      const file = basename(path)
-      const info = await stat(path).catch(() => undefined)
-      if (!info) {
-        throw new OvdError(
-          'PATH_NOT_FOUND',
-          `${tilde(path)} doesn’t exist`,
-          'Check the path and try again'
-        )
-      }
-      if (!info.isFile() || !/\.vpkg$/i.test(path)) throw notAVpkg(file)
+      const { path, file, info } = await vpkgFile(input)
 
       const read = await vpt(['info', '--json', path])
       if (read.exitCode !== 0) {
@@ -133,6 +199,39 @@ export function createPackages(deps: PackagesDeps): Packages {
         modifiedAt: info.mtime.toISOString(),
         vptInfo: raw
       }
+    },
+
+    async manifest(input) {
+      const { ref } = await vpkgFile(input)
+      const dump = await vpt(['dump', ref.path, MANIFEST])
+      if (dump.exitCode !== 0) {
+        if (/not a vpkg/i.test(dump.stderr)) throw notAVpkg(ref.file)
+        throw failed(dump)
+      }
+      const text = dump.stdout.replace(/\r\n/g, '\n').replace(/\n$/, '')
+      // The manifest is a file anyone can write: control characters never reach a terminal.
+      const lines = text === '' ? [] : text.split('\n').map(stripControl)
+      return { ...ref, entry: MANIFEST, lines, validation: await validation(ref) }
+    },
+
+    async files(input) {
+      const { ref } = await vpkgFile(input)
+      const contents = await vpt(['show-contents', ref.path])
+      if (contents.exitCode !== 0) {
+        if (/not a vpkg/i.test(contents.stderr)) throw notAVpkg(ref.file)
+        throw failed(contents)
+      }
+      const entries = contents.stdout
+        .split('\n')
+        .map((line) => stripControl(line.trim()))
+        .filter((line) => line !== '')
+      if (entries.length > MAX_ENTRIES) throw unexpectedOutput('vpt show-contents', contents.stdout)
+      return { ...ref, entries, tree: buildFileTree(entries) }
+    },
+
+    async validate(input) {
+      const { ref } = await vpkgFile(input)
+      return validation(ref)
     },
 
     async architecture(path) {
@@ -198,6 +297,17 @@ async function findVpkgs(folder: string, depth: number): Promise<string[]> {
     }
   }
   return found
+}
+
+// What `ovd pkg validate` reports for a package vpt rejects (exit 1).
+export function packageInvalid(validation: PackageValidation): OvdError {
+  const n = validation.errors
+  return new OvdError(
+    'PACKAGE_INVALID',
+    `${validation.file} has ${n} ${n === 1 ? 'error' : 'errors'}`,
+    'Fix the manifest, build again, and run ovd pkg validate',
+    { errors: n }
+  )
 }
 
 function notAVpkg(file: string): OvdError {
