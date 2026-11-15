@@ -1,0 +1,18 @@
+application                                      type      pid     id      state       lifespan       timeout container                               launch args                   
+com.amazon.minerva                               S         1743    2       READY       PERMANENT      n/a     framework.slice/service/1743            <none>                        
+com.amazon.smplighthouse.launcher.main           I         913     3       NOT_VISIBLE PERMANENT      n/a     framework.slice/launcherbackground/913  ?launchReason=wakeOnBoot      
+com.amazon.kcp.component.service                 S         1868    4       READY       PERMANENT      n/a     framework.slice/service/1868            <none>                        
+com.amazon.map.service.main                      S         2085    5       READY       PERMANENT      n/a     framework.slice/service/2085            <none>                        
+com.amazon.otad.main                             S         2103    8       READY       PERMANENT      n/a     framework.slice/service/2103            <none>                        
+com.amazon.dev.shell.service                     S         2129    9       READY       PERMANENT      n/a     framework.slice/service/2129            <none>                        
+com.amazon.aplext.alert.10.service.main          S         907     11      READY       PERMANENT      n/a     framework.slice/service/907             <none>                        
+com.amazon.cloudstreaming.mgrclient.service.main S         2287    13      READY       PERMANENT      n/a     framework.slice/service/2287            <none>                        
+com.amazon.kepler.keyvault.service.main          S         2309    14      READY       PERMANENT      n/a     framework.slice/service/2309            <none>                        
+com.amazon.admanager.service.main                S         2316    15      READY       PERMANENT      n/a     framework.slice/service/2316            <none>                        
+com.amazon.visualindicator.uxeventsvc            S         2336    16      READY       PERMANENT      n/a     framework.slice/service/2336            <none>                        
+com.amazon.devicecontrolnativeservice.service    S         2391    17      READY       PERMANENT      n/a     framework.slice/middleware/2391         <none>                        
+com.amazon.rdm.service.main                      S         2513    18      READY       PERMANENT      n/a     framework.slice/service/2513            <none>                        
+com.amazon.livedeviceservice.main                S         2711    19      READY       PERMANENT      n/a     framework.slice/service/2711            <none>                        
+com.amazon.ceviche.main                          S         2964    20      READY       PERMANENT      n/a     framework.slice/middleware/2964         <none>                        
+com.amazon.mediametrics.service                  S         5609    105     READY       PERMANENT      n/a     framework.slice/service/5609            <none>                        
+com.example.player.main                          I         8213    126     VISIBLE     PERMANENT      n/a     framework.slice/essential/8213          <none>                        
