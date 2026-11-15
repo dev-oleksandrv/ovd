@@ -1,0 +1,1 @@
+Error: archive is not a vpkg compression archive
