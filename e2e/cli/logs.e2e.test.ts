@@ -123,11 +123,37 @@ describe('ovd logs', () => {
 
   test('--until by the clock: no entry after it is printed', async () => {
     const sandbox = withStick()
-    const until = new Date(Date.now() + 3_000).toISOString()
-    const run = await ovd(sandbox, ['logs', '--json', '--until', until])
-    expect(run.exitCode).toBe(0)
-    for (const line of run.jsonLines<JsonEntry>()) {
-      expect(Date.parse(line.time)).toBeLessThanOrEqual(Date.parse(until))
+    // The clock ends only a session whose stream started before `until`: one already past by
+    // then waits for a later entry (logSession.ts), and the recording has none. How long the
+    // start takes depends on the host's load, so it is checked, not assumed: an attempt whose
+    // first line came after `until` doesn't test the clock, so it is stopped, and the next one
+    // puts `until` twice as far ahead as that attempt waited.
+    let ahead = 3_000
+    for (let attempt = 1; ; attempt++) {
+      const started = Date.now()
+      const until = new Date(started + ahead).toISOString()
+      const running = startOvd(sandbox, ['logs', '--json', '--until', until])
+      const startedInTime = await running
+        .waitForStdout((out) => out.includes('\n'), ahead)
+        .then(
+          () => true,
+          () => false
+        )
+      if (!startedInTime) {
+        running.signal('SIGINT')
+        await running.done
+        expect(attempt, `the stream never started within ${ahead} ms`).toBeLessThan(3)
+        ahead = 2 * (Date.now() - started)
+        continue
+      }
+      const run = await running.done
+      expect(run.exitCode).toBe(0)
+      const lines = run.jsonLines<JsonEntry>()
+      expect(lines.length).toBeGreaterThan(0)
+      for (const line of lines) {
+        expect(Date.parse(line.time)).toBeLessThanOrEqual(Date.parse(until))
+      }
+      break
     }
     noStreamLeft(sandbox)
   })

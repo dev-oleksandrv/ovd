@@ -37,7 +37,8 @@ function toast(page: Page, text: string) {
 // recheck or up to 1 s of tombstone retries. It also makes about 14 SDK calls of its own, and
 // the 2 s device polls (2 calls each) queue between them on the serial runner. Click to result
 // measured 12–15 s on a loaded host, so 30 s is twice the measured worst case. Only the waits
-// that cover the verification use it.
+// that cover the verification use it, and each test has at most one verification, so it fits
+// the default test timeout.
 const VERIFY_MS = 30_000
 
 // A launch is verified (ADR 0012) before the toast shows. The renderer shows "Verifying…" at the
@@ -254,14 +255,10 @@ test.describe('Apps', () => {
     })
   })
 
-  test('launch, stop, restart and uninstall the player, with Apps and Running now following', async ({
+  test('Launch on the stopped player verifies it, and Apps and Running now follow', async ({
     sandbox,
     launch
   }) => {
-    // Three verified launches (launch, relaunch, restart), each up to VERIFY_MS (30 s) on a
-    // loaded host, plus the navigation, the stop and the uninstall. It took 49–54 s of the 60 s
-    // test timeout even on a light host and hit it in CI run 42803119952; slow() gives 3 × 60 s.
-    test.slow()
     sandbox.installSdk()
     sandbox.update((w) => {
       w.vvd.running = true
@@ -285,7 +282,34 @@ test.describe('Apps', () => {
     await nav(page, 'Devices').click()
     await expect(page.getByRole('region', { name: 'Running now' }).getByText(TITLE)).toBeVisible()
 
+    expect(sandbox.calls()).toContain(LAUNCH)
+    expect(sandbox.world().running).toEqual([
+      { device: 'VirtualDevice', app: 'com.example.player' }
+    ])
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.surface === 'desktop')
+        .map((a) => [a.action, a.result])
+    ).toEqual([['app.launch', 'ok']])
+  })
+
+  test('Stop on the running player stops it, and Apps and Running now follow', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+      w.running.push({ device: 'VirtualDevice', app: 'com.example.player' })
+    })
+    const { page } = await launch()
+    await expect(page.getByRole('region', { name: 'Running now' }).getByText(TITLE)).toBeVisible()
     await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    await expect(row).toContainText(/Running · \d+/)
+
     await row.getByRole('button', { name: 'Stop' }).click()
     await expect(toast(page, `Stopped ${TITLE}`)).toBeVisible()
     await expect(echo(page)).toContainText(
@@ -298,10 +322,29 @@ test.describe('Apps', () => {
       page.getByRole('region', { name: 'Running now' }).getByText('No apps running')
     ).toBeVisible()
 
+    expect(sandbox.calls()).toContain(TERMINATE)
+    expect(sandbox.world().running).toEqual([])
+    const activity = sandbox.activity().filter((a) => a.surface === 'desktop')
+    expect(activity.map((a) => [a.action, a.result])).toEqual([['app.terminate', 'ok']])
+    expect(activity[0]).toMatchObject({ args: { app: 'com.example.player' } })
+  })
+
+  test('Restart on the running player stops it, then launches it again, verified', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+      w.running.push({ device: 'VirtualDevice', app: 'com.example.player' })
+    })
+    const { page } = await launch()
     await nav(page, 'Apps').click()
-    await row.getByRole('button', { name: 'Launch' }).click()
-    await verified(row)
+    const row = page.getByRole('row').filter({ hasText: TITLE })
     await expect(row).toContainText(/Running · \d+/)
+    await doctorDone(sandbox)
+
     const detail = page.getByRole('complementary', { name: `${TITLE} details` })
     await detail.getByRole('button', { name: 'Restart' }).click()
     await verified(row)
@@ -309,11 +352,41 @@ test.describe('Apps', () => {
     await expect(echo(page)).toContainText(
       '$ ovd apps restart com.example.player --device VirtualDevice'
     )
+    await expect(row).toContainText(/Running · \d+/)
     const calls = sandbox.calls()
     expect(calls.lastIndexOf(TERMINATE)).toBeGreaterThan(-1)
     expect(calls.lastIndexOf(TERMINATE)).toBeLessThan(calls.lastIndexOf(LAUNCH))
+    expect(sandbox.world().running).toEqual([
+      { device: 'VirtualDevice', app: 'com.example.player' }
+    ])
+    expect(
+      sandbox
+        .activity()
+        .filter((a) => a.surface === 'desktop')
+        .map((a) => [a.action, a.result])
+    ).toEqual([['app.restart', 'ok']])
+  })
 
-    // Uninstall asks first, with Cancel focused; cancelling runs nothing.
+  test('Uninstall asks first: Cancel runs nothing, Uninstall removes the player', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    sandbox.update((w) => {
+      w.vvd.running = true
+      w.installed.push({ device: 'VirtualDevice', package: 'player-aarch64-debug' })
+    })
+    const { page } = await launch()
+    await nav(page, 'Apps').click()
+    const row = page.getByRole('row').filter({ hasText: TITLE })
+    await expect(row).toContainText('Stopped')
+    await row.click()
+    await expect(echo(page)).toContainText(
+      '$ ovd apps info com.example.player --device VirtualDevice'
+    )
+    const detail = page.getByRole('complementary', { name: `${TITLE} details` })
+
+    // Cancel is focused; cancelling runs nothing and leaves the echo as it was.
     await detail.getByRole('button', { name: 'Uninstall', exact: true }).click()
     const ask = page.getByRole('dialog', { name: UNINSTALL_ASK })
     await expect(ask).toBeVisible()
@@ -323,7 +396,7 @@ test.describe('Apps', () => {
     await expect(ask).toBeHidden()
     await expect(row).toContainText('com.example.player')
     await expect(echo(page)).toContainText(
-      '$ ovd apps restart com.example.player --device VirtualDevice'
+      '$ ovd apps info com.example.player --device VirtualDevice'
     )
     expect(sandbox.calls()).not.toContain(UNINSTALL)
     expect(sandbox.activity().filter((a) => a.action === 'app.uninstall')).toEqual([])
@@ -338,19 +411,14 @@ test.describe('Apps', () => {
     )
     await expect(page.getByText('No apps you installed on Vega Virtual Device')).toBeVisible()
 
+    expect(sandbox.calls().filter((c) => c === UNINSTALL)).toHaveLength(1)
+    expect(sandbox.world().installed).toEqual([])
     expect(
       sandbox
         .activity()
         .filter((a) => a.surface === 'desktop')
         .map((a) => [a.action, a.result])
-    ).toEqual([
-      ['app.launch', 'ok'],
-      ['app.terminate', 'ok'],
-      ['app.launch', 'ok'],
-      ['app.restart', 'ok'],
-      ['app.uninstall', 'ok']
-    ])
-    expect(sandbox.calls().filter((c) => c === UNINSTALL)).toHaveLength(1)
+    ).toEqual([['app.uninstall', 'ok']])
   })
 
   test('install the player from Packages, then uninstall & reinstall it from its detail', async ({
