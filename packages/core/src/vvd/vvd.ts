@@ -24,6 +24,8 @@ export interface VvdDeps {
   emulator: Emulator
   // Injected so tests wait without real timers.
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>
+  // Epoch ms, for the gRPC retry budget.
+  now?: () => number
 }
 
 export type VvdStatus = 'online' | 'starting' | 'stopped'
@@ -54,12 +56,14 @@ export interface Vvd {
   stop(): Promise<VvdState>
   developerMode(): Promise<{ developerMode: boolean; command: string }>
   enableDeveloperMode(): Promise<{ developerMode: true }>
-  // For a device the caller already read (doctor's snapshot), so nothing is listed twice.
+  // For a device the caller already read (doctor's snapshot), so nothing is listed twice. Off
+  // while this core is still starting it or turning gRPC on reads as `starting`.
   grpc(device: Device): Promise<VvdGrpcProbe>
   // Turns emulator gRPC on for an online Virtual Device (input found it off), logged as
   // `vvd.grpc.enable`. Throws `TARGET_OFFLINE` when it isn't online, `VVD_GRPC_FAILED` when the
   // console won't turn it on. Calls while one runs share it (one `grpc` command, one entry);
-  // `signal` only stops this caller's wait.
+  // `signal` only stops this caller's wait, and once every caller has given up the enable stops
+  // too. A caller without a signal never gives up.
   ensureGrpc(device: Device, signal?: AbortSignal): Promise<{ port: number }>
 }
 
@@ -73,15 +77,28 @@ const UNLISTED_ATTEMPTS = 15
 // VDA's name for the Virtual Device when it isn't listed yet.
 const DEFAULT_VDA_SERIAL = 'emulator-5554'
 // The console can lag behind VDA right after a start: about 10 s of attempts on connection
-// errors (refused, closed, no answer), none on a refusal such as a wrong token.
+// errors (refused, closed, no answer), none on a refusal such as a wrong token. The budget
+// bounds a console that accepts but never answers (5 s per attempt): about 11 s, not 59 s.
 const GRPC_ATTEMPTS = 10
 const GRPC_RETRY_MS = 1_000
+const GRPC_RETRY_BUDGET_MS = 10_000
 
 export function createVvd(deps: VvdDeps): Vvd {
   const logged = createLogged(deps.activity)
   const sleep = deps.sleep ?? ((ms, signal) => delay(ms, undefined, { signal }))
+  const now = deps.now ?? (() => Date.now())
   // The enable in flight: the input session and the live view find gRPC off at the same time.
-  let enabling: Promise<{ port: number }> | undefined
+  // `waiters` counts the callers with a signal still waiting; `forever` is set by one without.
+  let enabling:
+    | {
+        promise: Promise<{ port: number }>
+        controller: AbortController
+        waiters: number
+        forever: boolean
+      }
+    | undefined
+  // Starts in flight here: doctor reads gRPC that is still being turned on as `starting`.
+  let starting = 0
 
   async function state(): Promise<VvdState> {
     const { devices } = await deps.devices.list()
@@ -132,68 +149,89 @@ export function createVvd(deps: VvdDeps): Vvd {
     const serial = device.vdaSerial ?? DEFAULT_VDA_SERIAL
     const port = deps.emulator.grpcPort
     return logged('vvd.grpc.enable', VVD_ID, { port: String(port) }, async () => {
+      const began = now()
       for (let attempt = 1; ; attempt++) {
         try {
           return await deps.emulator.enableGrpc(serial, signal ? { signal } : {})
         } catch (error) {
           if (!(error instanceof OvdError) || !isRetryable(error)) throw error
-          if (attempt >= GRPC_ATTEMPTS) throw error
+          if (attempt >= GRPC_ATTEMPTS || now() - began >= GRPC_RETRY_BUDGET_MS) throw error
           await sleep(GRPC_RETRY_MS, signal)
         }
       }
     })
   }
 
-  // A start reports a failed enable as a `failed` result; only an `OvdError` becomes one, so an
-  // abort or a bug still propagates.
+  // A start reports a failed enable as a `failed` result; only an `OvdError` becomes one, so a
+  // bug still propagates. The device is online by then, so Ctrl+C (or quit) during the enable
+  // is a `failed` gRPC too, not a cancelled start.
   async function enableGrpc(started: VvdState, signal?: AbortSignal): Promise<VvdGrpc> {
     try {
       const on = await turnOnGrpc(started.device, signal)
       return { status: 'on', port: on.port }
     } catch (error) {
+      if (signal?.aborted) {
+        return {
+          status: 'failed',
+          error: {
+            code: 'VVD_GRPC_FAILED',
+            message: 'Cancelled before emulator gRPC was on',
+            hint: 'Turn it on with ovd vvd start'
+          }
+        }
+      }
       if (!(error instanceof OvdError)) throw error
       return { status: 'failed', error: toErrorJson(error) }
     }
+  }
+
+  async function startOnce(opts: { signal?: AbortSignal }): Promise<VvdStartResult> {
+    const started = await logged('vvd.start', VVD_ID, {}, async () => {
+      const before = await state()
+      if (before.status === 'online') return before
+      // `start` on a running Virtual Device exits 0 without starting anything
+      // (fixtures/0.24/vega-virtual-device-start/already-running.stderr.txt), so only a
+      // stopped one is started; a booting one is only waited for.
+      if (before.status === 'stopped') {
+        const { vegaPath } = await deps.sdk.get()
+        const run = await deps.runner.run(
+          vegaCmd(vegaPath, ['virtual-device', 'start'], {
+            timeoutMs: START_TIMEOUT_MS,
+            ...(opts.signal ? { signal: opts.signal } : {})
+          })
+        )
+        if (run.exitCode !== 0) {
+          throw new OvdError(
+            'VVD_START_FAILED',
+            'The Virtual Device didn’t start',
+            'Run vega virtual-device start in a terminal to see why',
+            { exitCode: run.exitCode, stderr: lastLine(run) }
+          )
+        }
+      }
+      const listed = await waitFor((s) => s.status === 'online', LISTED_ATTEMPTS, opts.signal)
+      if (!listed) {
+        throw new OvdError(
+          'VVD_START_FAILED',
+          'The Virtual Device started, but VDA doesn’t list it',
+          'Restart it with ovd vvd stop, then ovd vvd start'
+        )
+      }
+      return listed
+    })
+    return { ...started, grpc: await enableGrpc(started, opts.signal) }
   }
 
   return {
     status: state,
 
     async start(opts = {}) {
-      const started = await logged('vvd.start', VVD_ID, {}, async () => {
-        const before = await state()
-        if (before.status === 'online') return before
-        // `start` on a running Virtual Device exits 0 without starting anything
-        // (fixtures/0.24/vega-virtual-device-start/already-running.stderr.txt), so only a
-        // stopped one is started; a booting one is only waited for.
-        if (before.status === 'stopped') {
-          const { vegaPath } = await deps.sdk.get()
-          const run = await deps.runner.run(
-            vegaCmd(vegaPath, ['virtual-device', 'start'], {
-              timeoutMs: START_TIMEOUT_MS,
-              ...(opts.signal ? { signal: opts.signal } : {})
-            })
-          )
-          if (run.exitCode !== 0) {
-            throw new OvdError(
-              'VVD_START_FAILED',
-              'The Virtual Device didn’t start',
-              'Run vega virtual-device start in a terminal to see why',
-              { exitCode: run.exitCode, stderr: lastLine(run) }
-            )
-          }
-        }
-        const listed = await waitFor((s) => s.status === 'online', LISTED_ATTEMPTS, opts.signal)
-        if (!listed) {
-          throw new OvdError(
-            'VVD_START_FAILED',
-            'The Virtual Device started, but VDA doesn’t list it',
-            'Restart it with ovd vvd stop, then ovd vvd start'
-          )
-        }
-        return listed
-      })
-      return { ...started, grpc: await enableGrpc(started, opts.signal) }
+      starting++
+      try {
+        return await startOnce(opts)
+      } finally {
+        starting--
+      }
     },
 
     stop() {
@@ -265,30 +303,52 @@ export function createVvd(deps: VvdDeps): Vvd {
     async grpc(device) {
       if (device.status === 'stopped') return { status: 'not-running' }
       if (device.status !== 'online') return { status: 'starting' }
-      return deps.emulator.grpc(device.vdaSerial ?? DEFAULT_VDA_SERIAL)
+      const probe = await deps.emulator.grpc(device.vdaSerial ?? DEFAULT_VDA_SERIAL)
+      // VDA lists the device before the console is up; a start here turns gRPC on after that.
+      if (probe.status === 'off' && (starting > 0 || enabling)) return { status: 'starting' }
+      return probe
     },
 
     ensureGrpc(device, signal) {
       if (!enabling) {
-        // Without any one caller's signal: another caller may still be waiting for it.
-        const shared = turnOnGrpc(device)
-        enabling = shared
-        void shared
+        // Its own signal, not any one caller's: another caller may still be waiting for it.
+        const controller = new AbortController()
+        const promise = turnOnGrpc(device, controller.signal)
+        const created = { promise, controller, waiters: 0, forever: false }
+        enabling = created
+        void promise
           .finally(() => {
-            if (enabling === shared) enabling = undefined
+            if (enabling === created) enabling = undefined
           })
           .catch(() => undefined)
       }
-      return signal ? untilAborted(enabling, signal) : enabling
+      const shared = enabling
+      if (!signal) {
+        shared.forever = true
+        return shared.promise
+      }
+      if (signal.aborted) return Promise.reject(abortError(signal))
+      shared.waiters++
+      return untilAborted(shared.promise, signal, () => {
+        shared.waiters--
+        if (shared.waiters > 0 || shared.forever) return
+        // Every caller gave up: the enable stops, and the next call starts a new one.
+        shared.controller.abort()
+        if (enabling === shared) enabling = undefined
+      })
     }
   }
 }
 
-// `work`, or an AbortError as soon as `signal` aborts (`work` itself goes on).
-function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+// `work`, or an AbortError as soon as `signal` aborts (`work` itself goes on); `gaveUp` runs
+// when it does.
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal, gaveUp: () => void): Promise<T> {
   if (signal.aborted) return Promise.reject(abortError(signal))
   return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(abortError(signal))
+    const onAbort = () => {
+      reject(abortError(signal))
+      gaveUp()
+    }
     signal.addEventListener('abort', onAbort, { once: true })
     work.then(
       (value) => {
