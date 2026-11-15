@@ -161,6 +161,7 @@ export type {
   PackageFiles,
   PackageInfo,
   PackageManifest,
+  PackageManifestFile,
   PackageRef,
   Packages,
   PackagesDeps,

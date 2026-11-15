@@ -70,10 +70,14 @@ export interface PackageValidation extends PackageRef {
   issues: ValidationIssue[]
 }
 
-// `vpt dump <pkg> manifest.toml`, line by line, with the validation whose lines refer to it.
-export interface PackageManifest extends PackageRef {
+// `vpt dump <pkg> manifest.toml`, line by line.
+export interface PackageManifestFile extends PackageRef {
   entry: 'manifest.toml'
   lines: string[]
+}
+
+// The manifest with the validation whose lines refer to it (`ovd pkg manifest`).
+export interface PackageManifest extends PackageManifestFile {
   validation: PackageValidation
 }
 
@@ -103,6 +107,8 @@ export interface Packages {
   architecture(path: string): Promise<PackageArch>
   // Packages → Manifest, Files, Validate (Stage 5.3); without a path, the open .vpkg.
   manifest(path?: string): Promise<PackageManifest>
+  // Only the dump: the desktop validates once for its three tabs.
+  manifestFile(path?: string): Promise<PackageManifestFile>
   files(path?: string): Promise<PackageFiles>
   validate(path?: string): Promise<PackageValidation>
 }
@@ -165,6 +171,18 @@ export function createPackages(deps: PackagesDeps): Packages {
     }
   }
 
+  async function dumpManifest(ref: PackageRef): Promise<PackageManifestFile> {
+    const dump = await vpt(['dump', ref.path, MANIFEST])
+    if (dump.exitCode !== 0) {
+      if (/not a vpkg/i.test(dump.stderr)) throw notAVpkg(ref.file)
+      throw failed(dump)
+    }
+    const text = dump.stdout.replace(/\r\n/g, '\n').replace(/\n$/, '')
+    // The manifest is a file anyone can write: control characters never reach a terminal.
+    const lines = text === '' ? [] : text.split('\n').map(stripControl)
+    return { ...ref, entry: MANIFEST, lines }
+  }
+
   async function vpt(args: string[]): Promise<RunResult> {
     const { vegaPath } = await deps.sdk.get()
     return deps.runner.run(vptCmd(vegaPath, args))
@@ -203,15 +221,12 @@ export function createPackages(deps: PackagesDeps): Packages {
 
     async manifest(input) {
       const { ref } = await vpkgFile(input)
-      const dump = await vpt(['dump', ref.path, MANIFEST])
-      if (dump.exitCode !== 0) {
-        if (/not a vpkg/i.test(dump.stderr)) throw notAVpkg(ref.file)
-        throw failed(dump)
-      }
-      const text = dump.stdout.replace(/\r\n/g, '\n').replace(/\n$/, '')
-      // The manifest is a file anyone can write: control characters never reach a terminal.
-      const lines = text === '' ? [] : text.split('\n').map(stripControl)
-      return { ...ref, entry: MANIFEST, lines, validation: await validation(ref) }
+      return { ...(await dumpManifest(ref)), validation: await validation(ref) }
+    },
+
+    async manifestFile(input) {
+      const { ref } = await vpkgFile(input)
+      return dumpManifest(ref)
     },
 
     async files(input) {

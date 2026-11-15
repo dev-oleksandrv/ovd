@@ -416,6 +416,20 @@ describe('Packages.manifest', () => {
     expect(runner.calls.map((c) => c.args.slice(2, 3))).toEqual([['dump'], ['validate']])
   })
 
+  test('manifestFile: only the dump', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages, runner } = setup({
+      [`vega exec vpt dump ${path} manifest.toml`]: out(
+        'vpt-dump-manifest/player-aarch64-release.toml'
+      )
+    })
+    const file = await packages.manifestFile(path)
+    expect(file).toMatchObject({ file: 'player_aarch64.vpkg', entry: 'manifest.toml' })
+    expect(file.lines[3]).toBe('title = "Sample Player"')
+    expect('validation' in file).toBe(false)
+    expect(runner.calls).toHaveLength(1)
+  })
+
   test('a file that isn’t a package', async () => {
     const path = await makeFile('Downloads/notes.vpkg')
     const { packages, runner } = setup({
