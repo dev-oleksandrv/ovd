@@ -149,6 +149,10 @@ export function stubPackages(
       info: missing('info'),
       builds: missing('builds'),
       architecture: missing('architecture'),
+      manifest: missing('manifest'),
+      manifestFile: missing('manifestFile'),
+      files: missing('files'),
+      validate: missing('validate'),
       ...packages
     }
   }

@@ -1,0 +1,10 @@
+found issues in manifest.toml ...
+manifest parsing error: TOML parse error at line 5, column 17
+  |
+5 | version = "0.1.0
+  |                 ^
+invalid basic string
+
+Error: Validation failed with the following errors:
+Error 1: manifest parsing failed!
+Error 2: failed to parse manifest.toml for OS Version validation

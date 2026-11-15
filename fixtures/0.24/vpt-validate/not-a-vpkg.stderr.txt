@@ -1,0 +1,1 @@
+Error: Provided path '/home/dev/Downloads/notes.vpkg' is not a directory, archive, or manifest file

@@ -49,7 +49,13 @@ export function makeVpkg(home: string, name = 'player-1.4.2-armv7.vpkg'): string
 
 // The sample packages the vpt fixtures were recorded from (fixtures/0.24/README.md).
 export type RecordedPackage =
-  'player-armv7-release' | 'player-aarch64-debug' | 'hellovega-armv7-release'
+  | 'player-armv7-release'
+  | 'player-aarch64-debug'
+  | 'hellovega-armv7-release'
+  // Recorded with `vpt dump … manifest.toml` and `vpt validate` too (Stage 5.3): a valid one
+  // and one with a broken manifest.
+  | 'player-aarch64-release'
+  | 'player-aarch64-broken'
 
 // A package the fake SDK answers for with that recording; `path` is relative to the home.
 export function makeRecordedVpkg(

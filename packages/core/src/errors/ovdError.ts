@@ -62,7 +62,8 @@ export const ERROR_CODES = [
   'INVALID_CRASH_ID',
   'CRASH_NOT_FOUND',
   'CRASH_ACCESS_DENIED',
-  'CRASH_PULL_FAILED'
+  'CRASH_PULL_FAILED',
+  'PACKAGE_INVALID'
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]
