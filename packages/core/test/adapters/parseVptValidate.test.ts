@@ -183,4 +183,23 @@ describe('parseVptValidate', () => {
     }
     expect(isOvdError(caught) && caught.code).toBe('UNEXPECTED_OUTPUT')
   })
+
+  test('more issues than any manifest has is refused, not cut', () => {
+    const infos = Array.from({ length: 1000 }, (_, i) => `manifest.toml:${i + 1}:1 info: x`)
+    let caught: unknown
+    try {
+      parseVptValidate({
+        stdout: '',
+        stderr: [
+          ...infos,
+          'Error: Validation failed with the following errors:',
+          'Error 1: [os.version] bad'
+        ].join('\n'),
+        exitCode: 1
+      })
+    } catch (error) {
+      caught = error
+    }
+    expect(isOvdError(caught) && caught.code).toBe('UNEXPECTED_OUTPUT')
+  })
 })

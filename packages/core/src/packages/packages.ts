@@ -236,10 +236,11 @@ export function createPackages(deps: PackagesDeps): Packages {
         if (/not a vpkg/i.test(contents.stderr)) throw notAVpkg(ref.file)
         throw failed(contents)
       }
+      // Names are kept as printed, spaces included: only the line endings go.
       const entries = contents.stdout
         .split('\n')
-        .map((line) => stripControl(line.trim()))
-        .filter((line) => line !== '')
+        .map((line) => stripControl(line.replace(/\r$/, '')))
+        .filter((line) => line.trim() !== '')
       if (entries.length > MAX_ENTRIES) throw unexpectedOutput('vpt show-contents', contents.stdout)
       return { ...ref, entries, tree: buildFileTree(entries) }
     },

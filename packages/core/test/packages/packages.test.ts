@@ -471,6 +471,19 @@ describe('Packages.files', () => {
     ])
   })
 
+  test('names keep their spaces; only line endings and blank lines go', async () => {
+    const path = await makeFile('Downloads/player_aarch64.vpkg')
+    const { packages } = setup({
+      [`vega exec vpt show-contents ${path}`]: {
+        stdout: 'assets/a.txt\r\nassets/a.txt \n manifest.toml\n\n'
+      }
+    })
+    const files = await packages.files(path)
+    expect(files.entries).toEqual(['assets/a.txt', 'assets/a.txt ', ' manifest.toml'])
+    expect(files.tree.map((n) => n.name)).toEqual(['assets', ' manifest.toml'])
+    expect(files.tree[0]?.children?.map((n) => n.name)).toEqual(['a.txt', 'a.txt '])
+  })
+
   test('a file that isn’t a package', async () => {
     const path = await makeFile('Downloads/notes.vpkg')
     const { packages } = setup({

@@ -195,7 +195,10 @@ function normalize(message: string): string {
 }
 
 function checked(issues: ValidationIssue[], stdout: string): ValidationIssue[] {
-  const bounded = issues.slice(0, MAX_ISSUES).map((issue) => ({
+  // More than vpt prints for any manifest: refused rather than cut, since a cut could drop the
+  // errors and leave an invalid package with none.
+  if (issues.length > MAX_ISSUES) throw unexpectedOutput('vpt validate', stdout)
+  const bounded = issues.map((issue) => ({
     ...issue,
     ...(issue.help ? { help: issue.help.slice(0, MAX_TEXT) } : {})
   }))
