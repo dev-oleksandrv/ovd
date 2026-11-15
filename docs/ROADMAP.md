@@ -9,18 +9,18 @@ OVD is built in stages. Each stage is something you can do with the tool, usable
 | 2     | Get my app on the device    | Inspect, install, launch and stop a .vpkg safely                         | Packages (Overview), Apps, project card                             | Fixed    | Done (v0.2.0) |
 | 3     | See what my app is doing    | Deploy in one action and follow live logs                                | Logs, Run button, Watch toggle                                      | Fixed    | Done (v0.3.0) |
 | 4     | Control it from the desktop | Drive the TV without the physical remote, take screenshots               | Remote & Screen, Reboot & wait                                      | Flexible | Done (v0.3.0) |
-| 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Next          |
+| 5     | Catch problems              | Get notified of crashes, dig deeper into logs, validate for the Appstore | Crashes, log presets and bundle, Packages tabs                      | Flexible | Done          |
 | 6     | Faster dev loop             | Deep links, Metro, device shell, memory, SDK versions                    | Deep links, Shell, Performance → Memory, Environment → SDK versions | Flexible | Planned       |
 | 7     | Agents and CI               | Let AI agents and GitHub Actions use OVD                                 | Scenarios & MCP                                                     | Flexible | Planned       |
 | 8     | Performance                 | Track launch KPIs and record traces                                      | Performance → Launch KPIs, Traces & monitors                        | Flexible | Planned       |
 | 9     | Power-user extras           | Pick-and-choose conveniences                                             | Small additions across screens                                      | Flexible | Planned       |
 | 10    | Last                        | Network lab and community long tail                                      | Devices → Virtual Device → Network                                  | Last     | Planned       |
 
-**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. v0.2.0 closed Stage 2 and carried 3.1–3.2. v0.3.0 closed Stages 3 and 4 together; Stage 3’s success metrics are still to be measured (#116). v0.4.0 carried 5.1–5.2.
+**Status** is the owner of "what's built": this table and the sub-stage headings below (`— done (PR #n)`, `— next`). The PR that finishes a sub-stage updates them. Done means merged into `main`; the version in brackets is the tagged release that closed the stage. Stage 1’s e2e tests (1.8) landed after v0.1.0. v0.2.0 closed Stage 2 and carried 3.1–3.2. v0.3.0 closed Stages 3 and 4 together; Stage 3’s success metrics are still to be measured (#116). v0.4.0 carried 5.1–5.2. Stage 5 is done on `main` (signed off 2026-11-15, #60); its release is pending the tag, and the version goes in its bracket then. The "Outside contributors" target for the end of Stage 5 was missed: every merged PR so far is the maintainer's (Success metrics).
 
 The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and `docs/adr/`.
 
-**E2E in every stage.** Each stage ships end-to-end tests for its flows, in the CLI and the desktop app, next to the code (ADR 0028). They run the built surfaces against the fake SDK and check what the user does and sees, the SDK commands run and the state left behind. A stage's **E2E** line lists the flows to cover. A stage isn't done until `pnpm run test:e2e` passes locally and the required `e2e` CI check is green.
+**E2E in every stage.** Each stage ships end-to-end tests for its flows, in the CLI and the desktop app, next to the code (ADR 0030). They run the built surfaces against the fake SDK and check what the user does and sees, the SDK commands run and the state left behind. A stage's **E2E** line lists the flows to cover. A stage isn't done until `pnpm run test:e2e` passes locally and the required `e2e` CI check is green.
 
 ---
 
@@ -138,7 +138,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 ### 1.8 E2E tests — done (PR #14, #15)
 
-- Fake SDK and harness in `e2e/` (ADR 0028); `e2e` CI check required on PRs.
+- Fake SDK and harness in `e2e/` (ADR 0030); `e2e` CI check required on PRs.
 - CLI: `doctor` (no SDK, bundled CLI only, no devices, all passing, VDA down, Virtual Device Developer Mode off and fixed, Metro port in use), `devices`, `device info | rename`, `target` (only online, remembered, offline, `VEGA_SERIAL`, `--device`), `vvd start | stop | status | devmode enable`, `setup-stick` (success, wrong code then retry, expired sign-in, bad code, `--wifi`, bundled CLI), `pair --usb`, `pair <ip>` (refused, different network, bad address), saved devices (offline, `connect`, `forget` both routes).
 - Desktop: first run, Doctor, Devices list and detail, target picker and CLI echo, Virtual Device start / stop, setup and pairing wizards with their error states, saved devices with Reconnect, command palette.
 
@@ -276,7 +276,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 ## Stage 5 — Catch problems
 
-**Goal:** crashes stop being silent and logs answer harder questions. **Hardware check before 5.3:** `vpt validate` output format.
+**Goal:** crashes stop being silent and logs answer harder questions. **Hardware check before 5.3:** `vpt validate` output format. It ran on the host on 2026-11-15 (ARCHITECTURE §8): `vpt validate` reports its errors with line numbers.
 
 **Sidebar adds:** Debug → Crashes (badge for new crashes).
 
@@ -380,48 +380,48 @@ Plugin API · error explainer (log patterns → fix hints) · device farm view �
 
 ## Screen → stage map
 
-| Design element                                     | Stage                                                                                                          |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Tokens, fonts, icons, base components, empty frame | 0.2                                                                                                            |
-| Title bar: logo, target picker, palette search     | 1.1                                                                                                            |
-| Title bar: Run ▸ and steps dropdown                | 3.4                                                                                                            |
-| Title bar: Watch toggle                            | 3.5                                                                                                            |
-| Sidebar navigation                                 | 1.1, grows each stage                                                                                          |
-| Sidebar project card / No project                  | 2.1                                                                                                            |
-| Status bar with CLI echo                           | 1.1                                                                                                            |
-| Command palette (+ "Coming in a later version")    | 1.1, updated each stage                                                                                        |
-| Toasts                                             | 1.1                                                                                                            |
-| Environment → Doctor: first run                    | 1.2                                                                                                            |
-| Environment → Doctor: rows                         | 1.2 (SDK, VDA, Devices, Developer Mode, Metro report), 2.1 (Project), 4.1 (Emulator gRPC), 6.2 (Metro Connect) |
-| Environment → SDK versions                         | 6.5                                                                                                            |
-| Devices: list, empty state, detail, JSON           | 1.3                                                                                                            |
-| Devices: Virtual Device start / stop               | 1.4                                                                                                            |
-| Devices: Running now                               | 2.4                                                                                                            |
-| Devices: Reboot & wait                             | 4.5                                                                                                            |
-| Devices: Shell button                              | 6.3                                                                                                            |
-| Devices: Virtual Device → Network                  | 10.1                                                                                                           |
-| Set up a new stick wizard                          | 1.5                                                                                                            |
-| Pair over Wi‑Fi wizard                             | 1.6                                                                                                            |
-| Packages: drop zone, recent builds, Overview       | 2.2                                                                                                            |
-| Packages: architecture mismatch block              | 2.3                                                                                                            |
-| Packages: Manifest, Files, Validate                | 5.3                                                                                                            |
-| Apps: tabs, table, detail, components              | 2.4                                                                                                            |
-| Apps: verifying / crashed on launch                | 2.5 (+ "Open crash report" in 5.1)                                                                             |
-| Logs: toolbar, rows, footer, Follow                | 3.1                                                                                                            |
-| Logs: restart after install, OVD lines             | 3.2                                                                                                            |
-| Logs: Export                                       | 3.3                                                                                                            |
-| Logs: presets, Save filter, Bundle                 | 5.2                                                                                                            |
-| Crashes                                            | 5.1 (symbolication in 9)                                                                                       |
-| Remote & Screen: pad, Type into TV, input session  | 4.2                                                                                                            |
-| Remote & Screen: Screenshot, Captures              | 4.3                                                                                                            |
-| Remote & Screen: live view / latest screenshot     | 4.4                                                                                                            |
-| Remote & Screen: Record                            | 9                                                                                                              |
-| Shell                                              | 6.3                                                                                                            |
-| Deep links                                         | 6.1                                                                                                            |
-| Performance → Memory                               | 6.4                                                                                                            |
-| Performance → Launch KPIs                          | 8.1                                                                                                            |
-| Performance → Traces & monitors                    | 8.2, 8.3                                                                                                       |
-| Scenarios & MCP → Scenarios / MCP server / CI      | 7.2 / 7.1 / 7.3                                                                                                |
+| Design element                                     | Stage                                                                                                                                         |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tokens, fonts, icons, base components, empty frame | 0.2                                                                                                                                           |
+| Title bar: logo, target picker, palette search     | 1.1                                                                                                                                           |
+| Title bar: Run ▸ and steps dropdown                | 3.4                                                                                                                                           |
+| Title bar: Watch toggle                            | 3.5                                                                                                                                           |
+| Sidebar navigation                                 | 1.1, grows each stage                                                                                                                         |
+| Sidebar project card / No project                  | 2.1                                                                                                                                           |
+| Status bar with CLI echo                           | 1.1                                                                                                                                           |
+| Command palette (+ "Coming in a later version")    | 1.1, updated each stage                                                                                                                       |
+| Toasts                                             | 1.1                                                                                                                                           |
+| Environment → Doctor: first run                    | 1.2                                                                                                                                           |
+| Environment → Doctor: rows                         | 1.2 (SDK, VDA, Devices, Developer Mode, Metro report, Node), 2.1 (Project), 4.1 (Emulator gRPC), 5 (Shell PATH, PR #145), 6.2 (Metro Connect) |
+| Environment → SDK versions                         | 6.5                                                                                                                                           |
+| Devices: list, empty state, detail, JSON           | 1.3                                                                                                                                           |
+| Devices: Virtual Device start / stop               | 1.4                                                                                                                                           |
+| Devices: Running now                               | 2.4                                                                                                                                           |
+| Devices: Reboot & wait                             | 4.5                                                                                                                                           |
+| Devices: Shell button                              | 6.3                                                                                                                                           |
+| Devices: Virtual Device → Network                  | 10.1                                                                                                                                          |
+| Set up a new stick wizard                          | 1.5                                                                                                                                           |
+| Pair over Wi‑Fi wizard                             | 1.6                                                                                                                                           |
+| Packages: drop zone, recent builds, Overview       | 2.2                                                                                                                                           |
+| Packages: architecture mismatch block              | 2.3                                                                                                                                           |
+| Packages: Manifest, Files, Validate                | 5.3                                                                                                                                           |
+| Apps: tabs, table, detail, components              | 2.4                                                                                                                                           |
+| Apps: verifying / crashed on launch                | 2.5 (+ "Open crash report" in 5.1)                                                                                                            |
+| Logs: toolbar, rows, footer, Follow                | 3.1                                                                                                                                           |
+| Logs: restart after install, OVD lines             | 3.2                                                                                                                                           |
+| Logs: Export                                       | 3.3                                                                                                                                           |
+| Logs: presets, Save filter, Bundle                 | 5.2                                                                                                                                           |
+| Crashes                                            | 5.1 (symbolication in 9)                                                                                                                      |
+| Remote & Screen: pad, Type into TV, input session  | 4.2                                                                                                                                           |
+| Remote & Screen: Screenshot, Captures              | 4.3                                                                                                                                           |
+| Remote & Screen: live view / latest screenshot     | 4.4                                                                                                                                           |
+| Remote & Screen: Record                            | 9                                                                                                                                             |
+| Shell                                              | 6.3                                                                                                                                           |
+| Deep links                                         | 6.1                                                                                                                                           |
+| Performance → Memory                               | 6.4                                                                                                                                           |
+| Performance → Launch KPIs                          | 8.1                                                                                                                                           |
+| Performance → Traces & monitors                    | 8.2, 8.3                                                                                                                                      |
+| Scenarios & MCP → Scenarios / MCP server / CI      | 7.2 / 7.1 / 7.3                                                                                                                               |
 
 ## Hardware checks
 
@@ -451,4 +451,4 @@ Starting targets, revisited after Stage 3.
 | Outside adoption                    | Stars, npm downloads, outside issues                 | Tracked from first public release  |
 | Outside contributors                | Merged PRs from non-maintainers                      | At least one by the end of Stage 5 |
 
-**Measured so far (#116).** .vpkg to running app with live logs, on a stick (2026-11-15): `ovd run <armv7 .vpkg>` of a throwaway `com.example.player` that wasn't installed showed the app's first log line after 82 s (install 3.6 s, the log session 12 s, launch 22 s, launch verification 21 s, the rest finding the target). The host was overloaded at the time (load average about 77 on 8 cores; one `vega exec vda shell true` took 1.5–2.7 s against about 0.3 s idle), so this says nothing about the target yet. The raw-SDK baseline (`vega device install-app`, `vega device launch-app`, `vega exec vda shell loggingctl log -f`) wasn't timed before the stick dropped off. Both are still to be measured on an idle host, with the week of self-tracking and the dogfooding count.
+**Measured so far (#116).** .vpkg to running app with live logs, on a stick (2026-11-15): `ovd run <armv7 .vpkg>` of a throwaway `com.example.player` that wasn't installed showed the app's first log line after 82 s (install 3.6 s, the log session 12 s, launch 22 s, launch verification 21 s, the rest finding the target). The host was overloaded at the time (load average about 77 on 8 cores; one `vega exec vda shell true` took 1.5–2.7 s against about 0.3 s idle), so this says nothing about the target yet. The raw-SDK baseline (`vega device install-app`, `vega device launch-app`, `vega exec vda shell loggingctl log -f`) wasn't timed before the stick dropped off. Both are still to be measured on an idle host, with the week of self-tracking and the dogfooding count. Outside contributors, at the end of Stage 5 (2026-11-15): none. All 71 PRs merged before the sign-off are the maintainer's, so the "at least one" target was missed.

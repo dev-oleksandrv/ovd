@@ -1,6 +1,6 @@
 # 0028. End-to-end tests against a fake SDK, with open stick checks
 
-- Status: Accepted
+- Status: Superseded by 0030
 - Date: 2026-11-15
 
 Decided by the maintainer at the Stage 4 sign-off on 2026-11-12 (#119) and first written as an amendment to ADR 0023. Moved into this ADR on 2026-11-15 (#121, #124), because a changed decision gets a new ADR (`docs/adr/README.md`).

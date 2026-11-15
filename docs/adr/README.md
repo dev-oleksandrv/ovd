@@ -59,3 +59,4 @@ An ADR records one significant decision: the context, what was decided, and what
 - [0027 Two backends for screen and input, with core's own emulator client](0027-screen-and-input-with-own-emulator-client.md)
 - [0028 End-to-end tests against a fake SDK, with open stick checks](0028-e2e-fake-sdk-with-open-stick-checks.md)
 - [0029 CLI and desktop ship together, except view-only actions](0029-cli-and-desktop-with-view-only-actions.md)
+- [0030 End-to-end tests against a fake SDK, with two kinds of synthesized answer](0030-e2e-fake-sdk-with-synthesized-answers.md)

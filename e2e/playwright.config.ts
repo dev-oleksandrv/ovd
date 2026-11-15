@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test'
 
-// The built desktop app against the fake SDK (ADR 0028). Each test launches its own Electron.
+// The built desktop app against the fake SDK (ADR 0030). Each test launches its own Electron.
 export default defineConfig({
   testDir: 'gui',
   testMatch: '*.e2e.ts',

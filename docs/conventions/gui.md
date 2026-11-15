@@ -28,7 +28,7 @@ Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/g
 
 ## Behavior
 
-- **CLI echo:** every action writes its `ovd …` equivalent to the status-bar echo (copyable) and to the toast's second line (ADR 0029). No CLI equivalent means the CLI part isn't done. View-only actions are exempt: an action that changes only what is shown (Clear, Pause and Resume, Follow, scrolling) writes no echo. Filter changes still write theirs.
+- **CLI echo:** every action writes its `ovd …` equivalent to the status-bar echo (copyable) and to the toast's second line (ADR 0029). No CLI equivalent means the CLI part isn't done. View-only actions are exempt: an action that changes only what is shown (Clear, Pause and Resume, Follow, scrolling) writes no echo. So does Show in folder (on Crashes and Captures, and the Logs bundle toast's Reveal): it opens the OS file manager on a saved file and changes nothing. Filter changes still write theirs.
 - **Four states** on every screen: loading, empty (with a call to action), error (with a fix hint), and offline-target for any screen that talks to a device.
 - **Sidebar grows with stages:** only shipped screens and tabs are visible. Everything else appears in the command palette as "Coming in a later version", never as a dead button (ADR 0018).
 - **Toasts:** ok, error, warning, info; at most 4 on screen; auto-dismiss after ~4 s; optional action button.
