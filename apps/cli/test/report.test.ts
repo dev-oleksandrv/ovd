@@ -55,7 +55,11 @@ describe('report', () => {
       'Launch reported success, but the app crashed',
       'Launch it again'
     )
-    async function returned(json: boolean, failureHuman?: (v: { n: number }) => string) {
+    async function returned(
+      json: boolean,
+      failureHuman?: (v: { n: number }) => string,
+      failureStdout?: (v: { n: number }) => string
+    ) {
       let stdout = ''
       let stderr = ''
       let exitCode = 0
@@ -70,7 +74,8 @@ describe('report', () => {
           json: (v) => ({ launch: { n: v.n } }),
           human: (v) => `${v.n} things\n`,
           failure: (v) => (v.n === 0 ? notVerified : undefined),
-          ...(failureHuman ? { failureHuman } : {})
+          ...(failureHuman ? { failureHuman } : {}),
+          ...(failureStdout ? { failureStdout } : {})
         }
       )
       return { stdout, stderr, exitCode }
@@ -104,6 +109,19 @@ describe('report', () => {
       const { stdout, stderr } = await returned(false, (v) => `crashed ${v.n}\n`)
       expect(stdout).toBe('')
       expect(stderr).toBe('crashed 0\n')
+    })
+
+    test('human: text it still prints on stdout, then the error on stderr', async () => {
+      expect(await returned(false, undefined, (v) => `table ${v.n}\n`)).toEqual({
+        stdout: 'table 0\n',
+        stderr: 'Error: Launch reported success, but the app crashed\nLaunch it again\n',
+        exitCode: 7
+      })
+    })
+
+    test('JSON: the stdout text is not printed', async () => {
+      const { stdout } = await returned(true, undefined, () => 'table\n')
+      expect(JSON.parse(stdout)).toMatchObject({ ok: false })
     })
   })
 

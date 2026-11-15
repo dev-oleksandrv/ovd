@@ -40,6 +40,12 @@ export type { PackageArch } from './adapters/parseVptContents.js'
 export { parseAppConfig } from './adapters/parseAppConfig.js'
 export type { BuildType } from './adapters/parseAppConfig.js'
 export { parseVptChecksum } from './adapters/parseVptChecksum.js'
+export { parseVptValidate } from './adapters/parseVptValidate.js'
+export type {
+  ValidationIssue,
+  ValidationSeverity,
+  VptValidateResult
+} from './adapters/parseVptValidate.js'
 export { parseInstallApp } from './adapters/parseInstallApp.js'
 export type { InstallApp } from './adapters/parseInstallApp.js'
 export { parseDeviceAppCommand } from './adapters/parseDeviceAppCommand.js'
@@ -149,8 +155,20 @@ export type {
   VpkgSource
 } from './project/project.js'
 export type { ProjectManifest } from './project/readProject.js'
-export { createPackages } from './packages/packages.js'
-export type { PackageBuild, PackageInfo, Packages, PackagesDeps } from './packages/packages.js'
+export { createPackages, packageInvalid } from './packages/packages.js'
+export type {
+  PackageBuild,
+  PackageFiles,
+  PackageInfo,
+  PackageManifest,
+  PackageManifestFile,
+  PackageRef,
+  Packages,
+  PackagesDeps,
+  PackageValidation
+} from './packages/packages.js'
+export { buildFileTree } from './packages/packageFiles.js'
+export type { FileNode } from './packages/packageFiles.js'
 export { compareArch } from './install/archGuard.js'
 export type { ArchVerdict } from './install/archGuard.js'
 export { createInstall } from './install/install.js'

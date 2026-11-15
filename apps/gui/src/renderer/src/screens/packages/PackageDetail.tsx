@@ -5,7 +5,12 @@ import { CodeBlock } from '../../ui/CodeBlock'
 import { Icon } from '../../ui/Icon'
 import { KeyValueGrid } from '../../ui/KeyValueGrid'
 import { Tabs } from '../../ui/Tabs'
+import { FilesTab } from './FilesTab'
+import { ManifestTab } from './ManifestTab'
+import { tabItems, type PackageTab } from './packageTabsView'
 import { fixLabel, overviewRows } from './packagesView'
+import type { PackageTabsData } from './usePackageTabs'
+import { ValidateTab } from './ValidateTab'
 
 export interface InstallControl {
   onInstall: () => void
@@ -17,13 +22,26 @@ export interface InstallControl {
   onFix: (check: ArchCheck) => void
 }
 
+export interface TabsControl {
+  tab: PackageTab
+  onTab: (tab: PackageTab) => void
+  data: PackageTabsData
+  // The manifest line Validate or Files opened, if any.
+  focusLine: number | null
+  onOpenLine: (line: number | null) => void
+  onRetry: (part: keyof PackageTabsData) => void
+  onRevalidate: () => void
+  revalidating: boolean
+}
+
 interface PackageDetailProps {
   info: PackageInfo
   install: InstallControl
+  tabs: TabsControl
 }
 
-// Only Overview ships in Stage 2.2; Manifest, Files and Validate come in 5.3 (ADR 0018).
-export function PackageDetail({ info, install }: PackageDetailProps) {
+// Overview (Stage 2.2) and Manifest, Files, Validate (5.3).
+export function PackageDetail({ info, install, tabs }: PackageDetailProps) {
   const { check } = install
   const blocked = check !== undefined && !check.allowed
   return (
@@ -70,16 +88,45 @@ export function PackageDetail({ info, install }: PackageDetailProps) {
             )}
           </BlockedNotice>
         )}
-        <Tabs
-          items={[{ id: 'overview', label: 'Overview' }]}
-          value="overview"
-          onChange={() => {}}
-        />
+        <Tabs items={tabItems(tabs.data.validation)} value={tabs.tab} onChange={tabs.onTab} />
       </div>
-      <div className="flex-1 overflow-auto px-6 py-5">
-        <div className="flex max-w-[860px] flex-col gap-4">
-          <KeyValueGrid items={overviewRows(info)} />
-          <CodeBlock title="vpt info --json" code={JSON.stringify(info.vptInfo, null, 2)} />
+      <div role="tabpanel" className="flex flex-1 flex-col overflow-auto px-6 py-5">
+        <div className="flex max-w-[960px] flex-1 flex-col gap-4">
+          {tabs.tab === 'overview' && (
+            <>
+              <KeyValueGrid items={overviewRows(info)} />
+              <CodeBlock title="vpt info --json" code={JSON.stringify(info.vptInfo, null, 2)} />
+            </>
+          )}
+          {tabs.tab === 'manifest' && (
+            <ManifestTab
+              file={info.file}
+              manifest={tabs.data.manifest}
+              validation={tabs.data.validation}
+              focusLine={tabs.focusLine}
+              onRetry={() => tabs.onRetry('manifest')}
+              onRetryValidation={() => tabs.onRetry('validation')}
+            />
+          )}
+          {tabs.tab === 'files' && (
+            <FilesTab
+              file={info.file}
+              files={tabs.data.files}
+              validation={tabs.data.validation}
+              onRetry={() => tabs.onRetry('files')}
+              onOpenManifest={() => tabs.onOpenLine(null)}
+            />
+          )}
+          {tabs.tab === 'validate' && (
+            <ValidateTab
+              file={info.file}
+              validation={tabs.data.validation}
+              revalidating={tabs.revalidating}
+              onRevalidate={tabs.onRevalidate}
+              onRetry={() => tabs.onRetry('validation')}
+              onOpenLine={tabs.onOpenLine}
+            />
+          )}
         </div>
       </div>
     </div>

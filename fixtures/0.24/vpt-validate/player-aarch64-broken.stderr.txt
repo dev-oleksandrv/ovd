@@ -1,0 +1,24 @@
+found issues in manifest.toml ...
+manifest validation found 2 errors
+manifest.toml:3:1 info: [package.icon] Icon is not defined in the manifest. System default will be used.
+  help: Define icon to help users recognize your application
+manifest.toml:7:16 error: [package.build-number] build-number must be greater than 0, found: 0
+  help: Provide a positive integer for build-number
+manifest.toml:33:15 error: [components.interactive.launch-type] 'sometimes' launch type is not supported for 'interactive' component.
+  help: Allowed launch type values for interactive are: ["new-instance", "new-container", "singleton", "singleton-per-display"]
+manifest.toml:27:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.network.privilege.net-info' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to access network connection information. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:27:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.wifi.privilege.read-wifi-credential' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to read wifi credential. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:27:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.wifi.privilege.wifi-scan' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to scan wifi and get scan results. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+manifest.toml:27:6 info: [wants.module.id] Kepler module dependency '/com.amazon.kepler.net.net_manager@INetManager' MAY require the privilege 'com.amazon.network.privilege.net-admin' to function, but the privilege is not requested in the manifest. Ensure that you request the appropriate privileges for the APIs that you use. Disregard this warning if you do not need this privilege
+  help: This privilege is required to configure network/wifi. For further information, see: https://developer.amazon.com/docs/kepler-native-development/KeplerNetworkManagerInterface.html
+
+warning: found 'meta-info/' directory in the sources, skipping as it will be regenerated.
+Error: Validation failed with the following errors:
+Error 1: manifest validation failed!
+Error 2: [os.version] contains value(s) not in the OS Version registry.
+  - min: '9.9' is not minted
+  Valid OS Versions: "1.2"
+Error 3: build_number must be greater than 0, found: 0

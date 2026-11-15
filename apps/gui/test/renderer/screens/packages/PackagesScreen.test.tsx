@@ -119,9 +119,11 @@ describe('Packages screen', () => {
     expect(screen.getByText('~/dev/player/build/armv7-release/player_armv7.vpkg')).toBeTruthy()
     expect(screen.getByText('1.5 MB · 2.8 MB unpacked')).toBeTruthy()
     expect(screen.getByText('vpt info --json')).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Overview' })).toBeTruthy()
-    expect(screen.queryByRole('tab', { name: 'Manifest' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Manifest' })).toBeTruthy()
     expect(api.packages.info).toHaveBeenCalledTimes(1)
+    // Overview doesn't validate: the other tabs do, when they open.
+    expect(api.packages.validate).not.toHaveBeenCalled()
   })
 
   test('without a target, Install on target is disabled and says why', async () => {

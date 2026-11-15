@@ -282,7 +282,7 @@ The rules that apply to every stage are in `AGENTS.md`, `docs/conventions/` and 
 
 - **5.1 Crash radar — done (PR #128):** `ovd crashes [--watch]`, `ovd crash pull <id>`. Crashes screen ("loggingctl vault · scoped to your apps · polling every 5 s"): list (signal chip native/JS, app, NEW, age, summary, pid · build · device); detail with Download ACR, Copy crash report path, Copy prompt for your agent, Logs at crash time; raw stack (symbolication later). New-crash toast and OVD log line. Apps' "Crashed on launch" gets "Open crash report". Never request elevated access. _Expected:_ a crash toasts within 5 s; report on disk in one click.
 - **5.2 Log power tools — done (PR #130):** presets (All, App errors only, Network, Lifecycle) and "Save filter"; advanced filters (PID, TID, tag, identity, facility, boot); per-process level, rate limit and mute as host-side display rules, because `loggingctl config` doesn't reach JS lines (ARCHITECTURE §8); "Bundle" for bug reports. `ovd logs --preset <name>`, `ovd logs filter save|list|rm`, `ovd logs bundle`.
-- **5.3 Packages → Manifest, Files, Validate:** manifest from `vpt dump` with line numbers and notes; `vpt show-contents` tree; `vpt validate` table (severity, message, file) with error badge and clickable lines where possible. `ovd pkg manifest | files | validate`. _Expected:_ a broken manifest shows exact errors; clicking opens the line.
+- **5.3 Packages → Manifest, Files, Validate — done (PR #138):** manifest from `vpt dump` with line numbers and notes; `vpt show-contents` tree; `vpt validate` table (severity, message, file) with error badge and clickable lines where possible. `ovd pkg manifest | files | validate`. _Expected:_ a broken manifest shows exact errors; clicking opens the line.
 - **5.4 Homebrew tap — dropped:** no tap. npm and GitHub Releases already cover macOS and Ubuntu (maintainer decision, 2026-11-13; ADR 0025, #108).
 
 **E2E:** a new crash toasting and its report downloaded; log presets, saved filters and the bundle; Manifest, Files and Validate showing a broken manifest's errors.
@@ -427,17 +427,17 @@ Plugin API · error explainer (log patterns → fix hints) · device farm view �
 
 About an hour each, done just before the stage that needs them.
 
-| Check                                                       | Before                                             |
-| ----------------------------------------------------------- | -------------------------------------------------- |
-| `inputd-cli button_press` reaches apps on a real stick      | Stage 4 (signed off without)                       |
-| Screenshot rate on a stick with `gwsi-tool-screenshooter`   | Stage 4 (signed off without; stick live view in 9) |
-| `vda reboot` and the Wi‑Fi reconnect on a real stick        | Stage 4 (signed off without)                       |
-| `vpt validate` output format (line numbers?)                | Stage 5.3                                          |
-| `perf record` category names                                | Stage 8                                            |
-| Uninstall removes app data (verified 2026-11-08: it does)   | Stage 9                                            |
-| Virtual Device snapshots save and load                      | Stage 9                                            |
-| `vda pull` / shell access to app data on a production stick | Stage 9                                            |
-| `network speed` / `network delay` throttle app traffic      | Stage 10.1                                         |
+| Check                                                                         | Before                                             |
+| ----------------------------------------------------------------------------- | -------------------------------------------------- |
+| `inputd-cli button_press` reaches apps on a real stick                        | Stage 4 (signed off without)                       |
+| Screenshot rate on a stick with `gwsi-tool-screenshooter`                     | Stage 4 (signed off without; stick live view in 9) |
+| `vda reboot` and the Wi‑Fi reconnect on a real stick                          | Stage 4 (signed off without)                       |
+| `vpt validate` output format (verified 2026-11-15: line numbers, on the host) | Stage 5.3                                          |
+| `perf record` category names                                                  | Stage 8                                            |
+| Uninstall removes app data (verified 2026-11-08: it does)                     | Stage 9                                            |
+| Virtual Device snapshots save and load                                        | Stage 9                                            |
+| `vda pull` / shell access to app data on a production stick                   | Stage 9                                            |
+| `network speed` / `network delay` throttle app traffic                        | Stage 10.1                                         |
 
 ## Success metrics
 
