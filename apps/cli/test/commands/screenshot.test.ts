@@ -46,7 +46,7 @@ describe('ovd screenshot', () => {
     })
     expect(exitCode).toBe(0)
     expect(JSON.parse(stdout)).toEqual({ ok: true, screenshot: { ...shot, copied: true } })
-    expect(copy).toHaveBeenCalledWith(shot.path)
+    expect(copy).toHaveBeenCalledWith(shot.path, { signal: expect.any(AbortSignal) })
   })
 
   test('human output', async () => {
@@ -103,6 +103,35 @@ describe('ovd screenshot', () => {
     expect(JSON.parse(stdout)).toEqual({
       ok: false,
       error: { code, message: `failed: ${code}`, hint: `hint for ${code}` }
+    })
+  })
+
+  test('Ctrl+C during the copy: exit 1, the file is kept and copied is false', async () => {
+    let interrupt = (): void => undefined
+    const copy = vi.fn(
+      (_path: string, opts?: { signal?: AbortSignal }) =>
+        new Promise<{ tool: 'osascript' }>((_resolve, reject) => {
+          opts?.signal?.addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+          )
+        })
+    )
+    const run = cli(['screenshot', '--clipboard', '--json'], {
+      ovd: stubScreenshot({ take: async () => shot, copy }),
+      onInterrupt: (abort) => (interrupt = abort)
+    })
+    await vi.waitFor(() => expect(copy).toHaveBeenCalled())
+    interrupt()
+    const { stdout, exitCode } = await run
+    expect(exitCode).toBe(1)
+    expect(JSON.parse(stdout)).toEqual({
+      ok: false,
+      error: {
+        code: 'COMMAND_FAILED',
+        message: `Saved ${shot.path}, but the copy to the clipboard was cancelled`,
+        hint: 'Copy the file from its folder instead'
+      },
+      screenshot: { ...shot, copied: false }
     })
   })
 

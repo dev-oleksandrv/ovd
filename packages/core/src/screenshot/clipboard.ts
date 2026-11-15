@@ -16,17 +16,17 @@ export interface ClipboardCommand {
 export interface ClipboardDeps {
   platform: NodeJS.Platform
   env: Record<string, string | undefined>
-  // Runs the command with stdout and stderr ignored and resolves with its exit code. Injected
-  // so tests never touch the real clipboard.
-  exec?: (command: ClipboardCommand, timeoutMs: number) => Promise<number>
+  // Runs the command with stdout and stderr ignored and resolves with its exit code; an abort
+  // stops it and rejects with an AbortError. Injected so tests never touch the real clipboard.
+  exec?: (command: ClipboardCommand, timeoutMs: number, signal?: AbortSignal) => Promise<number>
   // Whether `path` is an executable file.
   isExecutable?: (path: string) => Promise<boolean>
 }
 
 export interface Clipboard {
   // Copies the PNG at `path` to the host clipboard with a tool the platform already has.
-  // Throws CLIPBOARD_UNAVAILABLE when there is none, or it fails.
-  copyPng(path: string): Promise<{ tool: ClipboardTool }>
+  // Throws CLIPBOARD_UNAVAILABLE when there is none, or it fails; an AbortError on `signal`.
+  copyPng(path: string, opts?: { signal?: AbortSignal }): Promise<{ tool: ClipboardTool }>
 }
 
 const TIMEOUT_MS = 5_000
@@ -66,9 +66,11 @@ export async function clipboardCommand(
 }
 
 export function createClipboard(deps: ClipboardDeps): Clipboard {
-  const exec = deps.exec ?? ((command, timeoutMs) => execClipboard(command, timeoutMs, deps.env))
+  const exec =
+    deps.exec ??
+    ((command, timeoutMs, signal) => execClipboard(command, timeoutMs, deps.env, signal))
   return {
-    async copyPng(path) {
+    async copyPng(path, opts = {}) {
       const command = await clipboardCommand(path, deps)
       if (!command) {
         throw new OvdError(
@@ -79,10 +81,11 @@ export function createClipboard(deps: ClipboardDeps): Clipboard {
       }
       let exitCode: number
       try {
-        exitCode = await exec(command, TIMEOUT_MS)
+        exitCode = await exec(command, TIMEOUT_MS, opts.signal)
       } catch {
         exitCode = -1
       }
+      if (opts.signal?.aborted) throw abortError()
       if (exitCode !== 0) {
         throw new OvdError(
           'CLIPBOARD_UNAVAILABLE',
@@ -121,16 +124,24 @@ async function isExecutable(path: string): Promise<boolean> {
 async function execClipboard(
   command: ClipboardCommand,
   timeoutMs: number,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
+  signal?: AbortSignal
 ): Promise<number> {
   const result = await execa(command.file, command.args, {
     reject: false,
     env,
     extendEnv: false,
     timeout: timeoutMs,
+    ...(signal ? { cancelSignal: signal } : {}),
     stdin: command.stdinFile === undefined ? 'ignore' : { file: command.stdinFile },
     stdout: 'ignore',
     stderr: 'ignore'
   })
   return result.exitCode ?? -1
+}
+
+function abortError(): Error {
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
 }
