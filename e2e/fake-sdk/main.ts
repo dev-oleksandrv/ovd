@@ -396,8 +396,8 @@ function connect(w: World, address: string): Reply | null {
 }
 
 // `vda shell cat /proc/sys/kernel/random/boot_id` (core's BOOT_ID_ARGS): the recorded fake
-// UUID, changed by every reboot the fake saw, or a failed read (fixtures/0.24/README.md,
-// Synthesized sequences).
+// UUID, changed by every reboot the fake saw, or a failed read. The IDs after a reboot and the
+// failed read's stderr are synthesized (fixtures/0.24/README.md, Synthesized sequences).
 const BOOT_ID_SUB = 'shell cat /proc/sys/kernel/random/boot_id'
 
 function bootId(w: World, sub: string): Reply | null {
@@ -522,7 +522,8 @@ function vdaOn(w: World, serial: string, rest: string[]): Reply | null | Promise
 // (`gwsi-tool-screenshooter/stick.txt`, exit 0, no output), the pull's line
 // (`vda-pull/stick-screenshot.txt`, with the remote path and the size of the file copied put in)
 // and the `rm -f` (`vda-shell/stick-rm-f-screenshot.txt`). Only the PNG `pull` copies is
-// synthetic, `vda-pull/synthetic-screenshot.png`, not a real screen (fixtures/0.24/README.md).
+// synthetic, `vda-pull/synthetic-screenshot.png`, not a real screen (fixtures/0.24/README.md,
+// Synthesized sequences).
 const RECORDED_SHOT = { remote: '/tmp/ovd-screenshot-0a1b2c3d.png', size: '358228' }
 const REMOTE_SHOT = /^\/tmp\/ovd-screenshot-[0-9a-f]{8}\.png$/
 
@@ -573,8 +574,9 @@ function stickScreenshot(w: World, rest: string[]): Reply | null {
 // `injectPlayerCrash(sandbox, 'stick')`, then also the player's index 2100 with its recorded
 // bounded read; after the player is marked uninstalled the listing, the pull script and the pulled
 // file are the recorded -7 answers. The listing, bounded read, pull script, `vda pull` print and
-// `rm -rf` are recordings; only the .acr file `pull` copies is synthetic. Any other index stays
-// unanswered. Every in-scope report of every listing has a recorded bounded read (fixtures/0.24/README.md).
+// `rm -rf` are recordings; only the .acr file `pull` copies is synthetic (fixtures/0.24/README.md,
+// Synthesized sequences). Any other index stays unanswered. Every in-scope report of every listing
+// has a recorded bounded read (fixtures/0.24/README.md).
 const STICK_CRASH_INDEX = 2100
 // The player's reports in `virtual-device-js-before.json`, in the system package's, 50, 55 and 67.
 const VVD_PLAYER_INDEXES = [
@@ -606,6 +608,8 @@ const RM_RF = {
   vvd: 'vda-shell/rm-rf-acr-dir.txt',
   stick: 'vda-shell/stick-rm-rf-acr-dir.txt'
 } as const
+// What `vda pull` of a crash report copies, on either device: the synthetic ACR
+// (fixtures/0.24/README.md, Synthesized sequences), or the recorded -8 or -7 answer.
 const PULLED_FILE = {
   ok: 'vda-pull/synthetic-crash.acr',
   'unknown-index': 'loggingctl-vault-acr/unknown-index.json',
