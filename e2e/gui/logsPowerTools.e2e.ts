@@ -72,6 +72,18 @@ async function saveAs(app: ElectronApplication, file: string): Promise<void> {
   }, file)
 }
 
+// The window as small as the app lets the user drag it; the page has its new width on return.
+async function shrinkWindow(app: ElectronApplication, page: Page): Promise<void> {
+  const width = await app.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (!win) throw new Error('the app has no window')
+    const [minWidth = 0, minHeight = 0] = win.getMinimumSize()
+    win.setContentSize(minWidth, minHeight)
+    return minWidth
+  })
+  await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(width)
+}
+
 // The names of the saved filters, as the CLI lists them: the desktop and the CLI share the store.
 async function savedNames(sandbox: Sandbox): Promise<string[]> {
   const run = await ovd(sandbox, ['logs', 'filter', 'list', '--json'])
@@ -265,6 +277,40 @@ test.describe('Logs power tools', () => {
     for (const row of await rows(page).all()) await expect(row).toContainText('player burst')
 
     await activeFilters(page).getByRole('button', { name: 'Remove PID 31000' }).click()
+    await expect(activeFilters(page)).toHaveCount(0)
+    await expect(echo(page)).not.toContainText('--pid')
+    await streamed(page)
+  })
+
+  // A window narrower than the default has no room for the popover to the right of its button
+  // (a 1024 px wide screen, as the macOS CI runner's, gives such a window). It used to run past
+  // the window's edge: a field typed in scrolled the screen sideways, and the next click outside
+  // only closed the popover, the screen jumping back under the pointer.
+  test('in the smallest window the Filters popover stays inside it, and one click outside acts', async ({
+    sandbox,
+    launch
+  }) => {
+    sandbox.installSdk()
+    const { app, page } = await launch()
+    await shrinkWindow(app, page)
+    await openLogs(page)
+    await streamed(page)
+
+    await openFilters(page)
+    for (const name of ['Add PID', 'Add Identity', 'Add boot', 'This boot']) {
+      await expect(page.getByRole('button', { name })).toBeInViewport({ ratio: 1 })
+    }
+    await page.getByRole('textbox', { name: 'PID', exact: true }).fill('31000')
+    await page.getByRole('button', { name: 'Add PID' }).click()
+    await expect(activeFilters(page).getByText('PID 31000')).toBeVisible()
+    await expect(echo(page)).toContainText(`ovd logs --pid 31000 --device ${DEVICE}`)
+    // The screen didn't scroll sideways: its heading and the new chip are in the window.
+    await expect(page.getByRole('heading', { name: 'Logs', level: 1 })).toBeInViewport({ ratio: 1 })
+    await expect(activeFilters(page).getByText('PID 31000')).toBeInViewport({ ratio: 1 })
+
+    // One click outside the popover closes it and still does its own job.
+    await activeFilters(page).getByRole('button', { name: 'Remove PID 31000' }).click()
+    await expect(page.getByRole('textbox', { name: 'PID', exact: true })).toHaveCount(0)
     await expect(activeFilters(page)).toHaveCount(0)
     await expect(echo(page)).not.toContainText('--pid')
     await streamed(page)
