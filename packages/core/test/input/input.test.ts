@@ -260,10 +260,35 @@ describe('Input.text on a stick', () => {
     expect(await readFile(join(home, 'activity.jsonl'), 'utf8')).not.toContain('say')
   })
 
-  test('UTF-8 passes through to a stick', async () => {
+  // On a stick `send_text` answered success for these but typed nothing (ARCHITECTURE §8).
+  test.each([
+    ['café', 'A Fire TV stick only types ASCII'],
+    ['☕', 'A Fire TV stick only types ASCII'],
+    ['2*3', 'A Fire TV stick doesn’t type * + < > ^ | ~'],
+    ['a+b', 'A Fire TV stick doesn’t type * + < > ^ | ~'],
+    ['<b>', 'A Fire TV stick doesn’t type * + < > ^ | ~'],
+    ['x^2', 'A Fire TV stick doesn’t type * + < > ^ | ~'],
+    ['a|b', 'A Fire TV stick doesn’t type * + < > ^ | ~'],
+    ['~/x', 'A Fire TV stick doesn’t type * + < > ^ | ~']
+  ])('text %j on a stick: INVALID_TEXT before anything is sent', async (text, message) => {
+    const { input, runner } = setup()
+    await expect(input.text(text)).rejects.toMatchObject({ code: 'INVALID_TEXT', message })
+    expect(runner.calls).toEqual([])
+    expect((await activity())[0]).toMatchObject({
+      action: 'input.text',
+      target: stick.id,
+      args: { length: String([...text].length), backend: 'inputd-cli' },
+      errorCode: 'INVALID_TEXT'
+    })
+  })
+
+  test('every other printable ASCII character goes to a stick', async () => {
     const { input, consoles } = setup()
-    await input.text('café ☕')
-    expect((consoles[0] as InputdStream).lines[0]).toBe('send_text "café ☕"')
+    const text = ' !"#$%&\'(),-./0123456789:;=?@AZ[\\]_`az{}'
+    await input.text(text)
+    expect((consoles[0] as InputdStream).lines[0]).toBe(
+      `send_text "${text.replace(/[\\"]/g, (c) => `\\${c}`)}"`
+    )
   })
 
   test('a refused text is INPUT_FAILED, and neither the error nor the log has the text', async () => {

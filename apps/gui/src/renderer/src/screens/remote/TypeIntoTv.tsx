@@ -3,7 +3,8 @@ import { Button } from '../../ui/Button'
 import { Card } from '../../ui/Card'
 
 interface TypeIntoTvProps {
-  // The Virtual Device types printable ASCII only; a stick takes any text.
+  // The Virtual Device types printable ASCII only; a stick also leaves out * + < > ^ | ~
+  // (ARCHITECTURE §8). Core refuses what the device can't type; this only says so up front.
   asciiOnly: boolean
   onSend: (text: string) => Promise<boolean>
 }
@@ -49,7 +50,7 @@ export function TypeIntoTv({ asciiOnly, onSend }: TypeIntoTvProps) {
         <div className="text-label text-faint">
           {asciiOnly
             ? 'The Virtual Device types letters, digits and symbols on a US keyboard (no accents or emoji).'
-            : 'Sent as typed, to the field that has focus on the TV.'}
+            : 'Sent to the field that has focus on the TV: letters, digits and symbols except * + < > ^ | ~ (no accents or emoji).'}
         </div>
       </div>
     </Card>
