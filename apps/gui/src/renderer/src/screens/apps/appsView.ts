@@ -142,7 +142,7 @@ export function runningNowEmpty(device: Device): string {
   return 'No apps running'
 }
 
-// The `ovd apps …` each desktop action echoes (ADR 0005).
+// The `ovd apps …` each desktop action echoes (ADR 0029).
 export function appActionCli(action: AppAction, packageId: string, device: string): string {
   const verb = action === 'force-stop' ? 'terminate' : action
   const force = action === 'force-stop' ? ' --force' : ''

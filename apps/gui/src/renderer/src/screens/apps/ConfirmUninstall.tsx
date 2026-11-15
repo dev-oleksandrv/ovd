@@ -14,7 +14,7 @@ interface ConfirmUninstallProps {
 
 // Asks before Uninstall or Uninstall & reinstall, which both remove the app's data. Cancel is
 // the default focus, so Enter on open cancels. The action runs only on confirm, and so does its
-// CLI echo (ADR 0005).
+// CLI echo (ADR 0029).
 export function ConfirmUninstall({
   action,
   appTitle,

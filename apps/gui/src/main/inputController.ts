@@ -64,7 +64,7 @@ const noSession: ErrorJson = {
 }
 
 // One input session at a time, for the target (Stage 4.2): a stick's `inputd-cli` console stays
-// open between presses (ADR 0010). Main owns it, so it closes with the app.
+// open between presses (ADR 0027). Main owns it, so it closes with the app.
 export function createInputController(deps: {
   input: Pick<Ovd['input'], 'session'>
   send: (state: InputState) => void

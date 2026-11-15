@@ -79,7 +79,7 @@ function grpcError(message: string, details: Record<string, unknown> = {}): OvdE
 
 type Call = (method: GrpcMethod, message: Uint8Array) => Promise<Uint8Array>
 
-// gRPC over h2c on 127.0.0.1 with the discovery file's Bearer token (ADR 0010).
+// gRPC over h2c on 127.0.0.1 with the discovery file's Bearer token (ADR 0027).
 export function createEmulatorGrpc(opts: EmulatorGrpcOptions): EmulatorGrpc {
   const timeoutMs = opts.timeoutMs ?? TIMEOUT_MS
 

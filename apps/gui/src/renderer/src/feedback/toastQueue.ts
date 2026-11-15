@@ -4,7 +4,7 @@ export interface Toast {
   id: number
   tone: Exclude<Tone, 'muted'>
   text: string
-  // The CLI equivalent of the action, shown as the toast's second line (ADR 0005).
+  // The CLI equivalent of the action, shown as the toast's second line (ADR 0029).
   cli?: string
   action?: { label: string; run: () => void }
 }

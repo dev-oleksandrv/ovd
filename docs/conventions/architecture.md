@@ -27,7 +27,7 @@ Applies to the `paths:` above. Claude Code loads it through the `.claude/rules/a
 ## Rules
 
 - Never shell out to `ovd` from the desktop or MCP. Call core in-process (ADR 0001).
-- Never talk device protocols directly (no raw sockets to VDA, no reimplemented emulator console) except where an ADR allows it, e.g. emulator gRPC for the Virtual Device (ADR 0010).
+- Never talk device protocols directly (no raw sockets to VDA, no reimplemented emulator console) except where an ADR allows it, e.g. emulator gRPC for the Virtual Device (ADR 0027).
 - Never bundle, copy or download SDK binaries. Discover the user's install (`~/vega`, `vega sdk list-installed`) and fail with a fix hint when it's missing (ADR 0002).
 - Commands shown to the user are the commands core actually runs.
 - Don't model data the SDK can't provide (uptime, storage, a "Developer Mode off" device, Home on the Virtual Device).

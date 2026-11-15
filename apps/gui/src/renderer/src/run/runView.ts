@@ -156,7 +156,7 @@ export const RUN_NOT_STARTED: ErrorJson = {
   hint: 'A run may still be in progress: wait for it to finish, then try again.'
 }
 
-// The CLI equivalent (ADR 0005): core runs with no ref, so it reads the open project or .vpkg,
+// The CLI equivalent (ADR 0029): core runs with no ref, so it reads the open project or .vpkg,
 // exactly as this does.
 export function runCli(device: string): string {
   return `ovd run --device ${device}`

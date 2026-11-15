@@ -23,7 +23,7 @@ export interface InputDeps {
   vvd: Pick<Vvd, 'ensureGrpc'>
 }
 
-// Sticks go through `inputd-cli`, the Virtual Device through emulator gRPC (ADR 0010).
+// Sticks go through `inputd-cli`, the Virtual Device through emulator gRPC (ADR 0027).
 export type InputBackend = 'inputd-cli' | 'grpc'
 
 export interface InputTarget {

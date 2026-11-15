@@ -30,7 +30,7 @@ export function isRetryable(error: OvdError): boolean {
   return error.details?.retryable === true
 }
 
-// Turns on the emulator gRPC endpoint through the console (ADR 0010): wait for the greeting,
+// Turns on the emulator gRPC endpoint through the console (ADR 0027): wait for the greeting,
 // `auth <token>`, then `grpc <port>`. The token goes out only after a real console greeting,
 // so another program on the port never sees it.
 export function enableGrpc(opts: EnableGrpcOptions): Promise<{ port: number }> {

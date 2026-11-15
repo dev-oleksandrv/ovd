@@ -47,7 +47,7 @@ export function noSignalText(name: string, status: Device['status']): string {
   return `${name} is ${status === 'stopped' ? 'stopped' : 'offline'}`
 }
 
-// `ovd screenshot --device <id>`: what a stick's Refresh runs (ADR 0005).
+// `ovd screenshot --device <id>`: what a stick's Refresh runs (ADR 0029).
 export function refreshCli(device: string): string {
   return `ovd screenshot --device ${device}`
 }

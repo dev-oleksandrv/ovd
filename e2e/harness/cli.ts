@@ -22,7 +22,9 @@ export interface CliRun {
 
 export interface RunningOvd {
   pid: number
-  // Resolves with stdout so far once `predicate` holds for it.
+  // Resolves with stdout so far once `predicate` holds for it; rejects, with stdout and stderr,
+  // once ovd exited without it holding. No time limit of its own unless `timeoutMs` is given:
+  // how long ovd takes depends on the host's load, so the test's timeout is the bound.
   waitForStdout(predicate: (stdout: string) => boolean, timeoutMs?: number): Promise<string>
   signal(name: NodeJS.Signals): void
   done: Promise<CliRun>
@@ -46,6 +48,7 @@ export function startOvd(
   let stdout = ''
   let stderr = ''
   const waiters = new Set<() => void>()
+  let exited = false
   child.stdout.on('data', (chunk: Buffer) => {
     stdout += chunk.toString()
     for (const check of waiters) check()
@@ -60,23 +63,31 @@ export function startOvd(
     child.on('error', fail)
     child.on('close', (code) => {
       clearTimeout(timer)
+      exited = true
       for (const check of waiters) check()
       resolveExit(code ?? -1)
     })
   }).then((exitCode) => result(exitCode, stdout, stderr))
   return {
     pid: child.pid ?? -1,
-    waitForStdout(predicate, waitMs = 15_000) {
+    waitForStdout(predicate, waitMs) {
       return new Promise((resolveWait, fail) => {
-        const timer = setTimeout(() => {
-          waiters.delete(check)
-          fail(new Error(`ovd ${args.join(' ')}: stdout never matched\n${stdout}\n${stderr}`))
-        }, waitMs)
+        const never = (why: string) =>
+          new Error(`ovd ${args.join(' ')}: stdout never matched (${why})\n${stdout}\n${stderr}`)
+        const timer =
+          waitMs === undefined
+            ? undefined
+            : setTimeout(() => {
+                waiters.delete(check)
+                fail(never(`within ${waitMs} ms`))
+              }, waitMs)
         const check = () => {
-          if (!predicate(stdout)) return
+          const matched = predicate(stdout)
+          if (!matched && !exited) return
           clearTimeout(timer)
           waiters.delete(check)
-          resolveWait(stdout)
+          if (matched) resolveWait(stdout)
+          else fail(never('ovd exited'))
         }
         waiters.add(check)
         check()

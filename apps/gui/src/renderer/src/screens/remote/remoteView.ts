@@ -2,7 +2,7 @@ import type { Device, InputBackend, RemoteKey } from '@ovd/core'
 import type { InputState } from '../../../../preload/api'
 import { appsBlocker } from '../apps/appsView'
 
-// The Virtual Device can't take Home (ADR 0010); the pad says why.
+// The Virtual Device can't take Home (ADR 0027); the pad says why.
 export const HOME_UNSUPPORTED = 'Home can’t be sent to the Virtual Device'
 
 export interface PadKey {
